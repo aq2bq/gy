@@ -381,6 +381,17 @@ fn execute(cli: &Cli) -> Result<Output> {
             )?;
             output.value = json!({"node":store.node(id)?});
         }
+        Commands::Node {
+            command:
+                NodeCommand::Submit {
+                    id,
+                    record,
+                    evidence,
+                },
+        } => {
+            let snapshot = store.submit_record(id, record, evidence)?;
+            output.value = json!({"node": store.node(id)?, "submission": snapshot});
+        }
         Commands::Lint => {
             write = false;
             let ds = store.lint(scope);
@@ -388,7 +399,7 @@ fn execute(cli: &Cli) -> Result<Output> {
             let human = format!(
                 "{}\n{}\n",
                 if ds.is_empty() {
-                    "lint: no findings (L1–L13 and inverse links)".into()
+                    "lint: no findings (L1–L13, inverse links, and configured workflow)".into()
                 } else {
                     ds.iter()
                         .map(|d| format!("{} {} {}: {}", d.severity, d.rule, d.id, d.message))

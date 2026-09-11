@@ -253,6 +253,7 @@ impl Store {
             if [
                 "capture",
                 "transitions",
+                "record_history",
                 "closed_at",
                 "closed_by",
                 "compressed",
@@ -305,6 +306,7 @@ impl Store {
                 STATES.join(" / ")
             ))
         })?;
+        let workflow = self.transition_workflow(n, state, opts.evidence)?;
         if state == "awaiting-merge" {
             let url = n.get("pr_url");
             if !valid_url(url) || !url.contains("/pull/") {
@@ -370,6 +372,9 @@ impl Store {
             .cloned()
             .unwrap_or_default();
         history.push(json!({"from":previous,"to":opts.to,"evidence":opts.evidence,"at":chrono::Utc::now().to_rfc3339(),"reported_base":opts.reported_base,"reported_files":opts.reported_files,"data_migration":opts.data_migration,"production_only":opts.production_only,"production_done":opts.production_done,"cleanup_done":opts.cleanup_done}));
+        if let Some(workflow) = workflow {
+            history.last_mut().unwrap()["workflow"] = workflow;
+        }
         n.put("transitions", history);
         n.put("status", opts.to);
         n.put("evidence", opts.evidence);
@@ -398,6 +403,10 @@ impl Store {
             return Err(Error::input(
                 "Only completed requirements with zero remaining work can be compressed. First record completion evidence with req advance",
             ));
+        }
+        let workflow_issues = self.workflow_issues(n, base_state(n.get("status")));
+        if !workflow_issues.is_empty() {
+            return Err(Error::input(workflow_issues.join("\n")));
         }
         let constraints = n.attrs.get("constraints").and_then(Value::as_array).ok_or_else(|| Error::input("Record each downstream constraint in constraints. If review finds no constraints, record an empty array"))?;
         let mut missing = vec![];

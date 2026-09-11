@@ -180,7 +180,7 @@ gy find --where 'contracts_changed~orders.order_lines'
 
 圧縮後もID、`created` を含む必須属性、双方向エッジ、未知属性を保持します。例の要求IDは既存の表記どおり `#6006` です。要約など6項目は検索可能な属性として保持し、`show` / `render` はその属性から本文を生成します。受け入れ条件などの関連は本文へ重複させません。要求から直接 `targets` を張る場合も逆リンクを保存し、L2の担い手数にはニーズだけを数えます。
 
-圧縮で削除する既知の属性は `constraints`、`constraints_reviewed`、`remaining_work`、`transitions`、`next_evidence`、`responsible`、`pr_url`、`pr_base`、`pr_files`、`data_migration`、`production_only`、`production_done`、`cleanup_done`、`evidence`、`quality_gates`、`design_proposal`、`audit_records` です。これらと元の本文は退避先に残ります。他の拡張属性は保持します。圧縮済みの記録を再圧縮して、元の退避先を上書きすることはできません。
+圧縮で削除する既知の属性は `constraints`、`constraints_reviewed`、`remaining_work`、`transitions`、`record_history`、`next_evidence`、`responsible`、`pr_url`、`pr_base`、`pr_files`、`data_migration`、`production_only`、`production_done`、`cleanup_done`、`evidence`、`quality_gates`、`design_proposal`、`audit_records` です。これらと元の本文は退避先に残ります。他の拡張属性は保持します。圧縮済みの記録を再圧縮して、元の退避先を上書きすることはできません。
 
 残作業を移管した場合は、たとえば `residual=[{"id":"N-2","note":"性能改善を移管"},"Q-3","#6010"]` と記録します。各移管先は存在するノードである必要があります。空欄・null・空配列は`none`と区別し、L11で検出します。
 
@@ -255,3 +255,16 @@ gyは指定した見出しの本文を `decision_scope` にコピーします。
 frontmatterから取り込んだ `narrows` / `supersedes` の各関連には `imported: true` を付け、L6で移行由来のmark不足と表示します。重大度は従来どおりです。古い決定を読み、`gy link` の `--mark` で対象記述を記録すると両側が更新され、その関連の移行由来の印は通常の操作に置き換わります。
 
 importは本文中のリンクから関連やmarkを推定しません。取り込み後に `gy link` で作った関連は通常の操作として扱います。
+
+
+## 記録様式と遷移ガード
+
+`gy.toml` の `[workflow.records]` に記録の型・必須項目・空欄や「該当なし」の扱いを設定し、`[workflow.guards]` に必要となる状態と記録間の照合を設定できます。未設定の台帳には新たな必須項目を追加しません。
+
+`gy node set` で記録を編集し、`gy node submit <ID> --record <name> --evidence <根拠>` で検査・提出します。提出は状態を変更せず、検査した値・様式・根拠を `record_history` に保存します。`gy req advance` は遷移先のガードを検査し、成功時は `transitions[].workflow` に検査時の記録を保存します。
+
+不足は `gy lint` の `workflow` 診断に出ます。`gy handover --json` には有効な様式とガードも含まれます。判定対象は報告された記録の整合性であり、URL先の実在・実際のPR差分・テスト結果・承認者の人間性は確認しません。
+
+[詳しい手順](docs/workflows.md)、[設定例](crates/gy/examples/workflow.toml)、[対応する架空の記録例](crates/gy/examples/workflow-records.json)を参照してください。設定例は、設計省略にも承認者・対象版・理由・停止条件を要求します。通常の設計改訂は経路を変えず版を更新し、新しい版への承認を必要とします。
+
+設定例の品質ゲート検査は、失敗・実行不能・既存違反も区別して記録させるもので、全件成功を要求する設定ではありません。通過だけを許す運用では、許可する結果を設定で限定してください。依存ファイルに書いた条件の妥当性や、申告されていない変更の有無は実態との照合に残ります。

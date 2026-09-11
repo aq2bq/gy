@@ -192,6 +192,7 @@ pub struct Config {
     pub lint: std::collections::BTreeMap<String, RuleConfig>,
     pub render: RenderConfig,
     pub import: ImportConfig,
+    pub workflow: crate::WorkflowConfig,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]

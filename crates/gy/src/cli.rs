@@ -245,6 +245,14 @@ pub enum Gate {
 }
 #[derive(Subcommand, Debug)]
 pub enum NodeCommand {
+    /// Validate a configured record and save its inputs and schema without changing node state
+    Submit {
+        id: String,
+        #[arg(long)]
+        record: String,
+        #[arg(long)]
+        evidence: String,
+    },
     /// Values are JSON, or strings if parsing fails. Use residual for remaining-work destinations and waiting-on for unresolved references
     Set {
         id: String,

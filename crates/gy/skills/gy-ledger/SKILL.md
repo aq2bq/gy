@@ -39,6 +39,12 @@ For active requirements, maintain:
 
 Read `gy req advance --help` for transition guards, then supply the verification results through `--evidence`. At completion, record design deviations in `deviations` and transferred work destinations in `residual`. Use `none` explicitly when absent; transfer work to existing N / Q / # IDs before completing the requirement.
 
+## Submit configured records
+
+Read `workflow` in `gy handover --json` for this ledger's forms and guards. Author records with `gy node set`; use `gy node submit <ID> --record <name> --evidence "<record>"` to validate and snapshot a report without advancing state.
+
+For requirement transitions, gy validates the destination guards and saves the checked inputs. Give a changed design a new revision and record approval for that revision. Report absence, inapplicability, and non-execution using the configured alternatives; a blank field is not an explicit report.
+
 ## Compress a completed requirement
 
 Read `gy req compress --help` for the six retained fields: `summary`, `contracts_changed`, `artifacts`, `production`, `deviations`, and `residual`.

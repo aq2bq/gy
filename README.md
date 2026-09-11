@@ -43,7 +43,7 @@ To install from a source checkout, run `cargo install --path crates/gy --locked`
 | `req compress <issue>` | Check that constraints have become decisions, then compress an archived record into six items |
 | `criterion add` / `criterion satisfy` | Create acceptance criteria and record evidence of satisfaction |
 | `gate add` | Create a gate for deciding whether an approach should continue |
-| `node set` | Update arbitrary attributes or the Markdown body |
+| `node set` / `node submit` | Author attributes or body text; validate and snapshot a configured record |
 | `find` / `show` | Search attributes and text; display nodes and their relationships |
 | `next` | List needs whose prerequisites have been resolved |
 | `lint` / `handover` | Check consistency and the records needed for a handover |
@@ -175,9 +175,17 @@ Without `--evidence`, the command checks the record and outputs the original fil
 
 Compression retains the ID, required attributes including `created`, both sides of graph edges, and unknown attributes. The example retains the existing requirement ID spelling, `#6006`. The six items remain searchable attributes, and `show` / `render` generate the body from them. Relationships such as acceptance criteria are not duplicated in the body. Direct `targets` links from requirements also retain their inverse links; L2 counts only needs as supporting an acceptance criterion.
 
-Compression removes these known transient attributes: `constraints`, `constraints_reviewed`, `remaining_work`, `transitions`, `next_evidence`, `responsible`, `pr_url`, `pr_base`, `pr_files`, `data_migration`, `production_only`, `production_done`, `cleanup_done`, `evidence`, `quality_gates`, `design_proposal`, and `audit_records`. They remain in the archive along with the original body. Other extension attributes are preserved. A compressed record cannot be compressed again to overwrite its original archive pointer.
+Compression removes these known transient attributes: `constraints`, `constraints_reviewed`, `remaining_work`, `transitions`, `record_history`, `next_evidence`, `responsible`, `pr_url`, `pr_base`, `pr_files`, `data_migration`, `production_only`, `production_done`, `cleanup_done`, `evidence`, `quality_gates`, `design_proposal`, and `audit_records`. They remain in the archive along with the original body. Other extension attributes are preserved. A compressed record cannot be compressed again to overwrite its original archive pointer.
 
 For transferred work, use a value such as `residual=[{"id":"N-2","note":"Transferred performance improvements"},"Q-3","#6010"]`. Each destination must be an existing node. Blank values, null, and empty arrays are distinct from the explicit `none` and are reported by L11.
+
+## Configured workflow records
+
+Optional `[workflow.records]` schemas and `[workflow.guards]` in `gy.toml` require structured reports at selected states. They can check design approvals, explicit waivers, contract/gate coverage, and declared file scope. `gy node submit <ID> --record <name> --evidence <record>` validates a report without advancing state; submissions and transitions retain the checked inputs and schemas.
+
+`gy lint` reports missing or inconsistent inputs under `workflow`. `gy handover` includes the effective configuration. These checks validate reported records, not external facts or approver identity.
+
+See the [workflow guide](https://github.com/aq2bq/gy/blob/main/docs/workflows.md), [configuration example](https://github.com/aq2bq/gy/blob/main/crates/gy/examples/workflow.toml), and [matching illustrative records](https://github.com/aq2bq/gy/blob/main/crates/gy/examples/workflow-records.json). Existing ledgers keep their behavior until a profile is configured.
 
 ## Importing existing ADRs
 

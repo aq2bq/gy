@@ -187,6 +187,9 @@ impl Store {
             }
         };
         for n in self.nodes.values() {
+            for issue in self.workflow_issues(n, base_state(n.get("status"))) {
+                emit("workflow", n, issue, false);
+            }
             if n.closed() {
                 for id in self.waiting_references(n.id()) {
                     if let Some(referrer) = self.nodes.get(&id) {
@@ -418,7 +421,7 @@ impl Store {
                 {
                     continue;
                 }
-                for id in attribute_ids(value) {
+                for id in recorded_attribute_ids(key, value) {
                     if !self.nodes.contains_key(&id) {
                         emit(
                             "L13",
@@ -468,5 +471,35 @@ pub fn attribute_ids(value: &Value) -> std::collections::BTreeSet<String> {
             .flat_map(|(_, v)| attribute_ids(v))
             .collect(),
         _ => Default::default(),
+    }
+}
+
+/// Schema alternatives in snapshots are configuration, not node references.
+/// Preserve reference checks on actual historical values and transition evidence.
+pub fn recorded_attribute_ids(key: &str, value: &Value) -> std::collections::BTreeSet<String> {
+    match key {
+        "record_history" => value
+            .as_array()
+            .into_iter()
+            .flatten()
+            .flat_map(|snapshot| [snapshot.get("records"), snapshot.get("evidence")])
+            .flatten()
+            .flat_map(attribute_ids)
+            .collect(),
+        "transitions" => value
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_object)
+            .flat_map(|transition| transition.iter())
+            .flat_map(|(field, value)| {
+                if field == "workflow" {
+                    value.get("records").map(attribute_ids).unwrap_or_default()
+                } else {
+                    attribute_ids(value)
+                }
+            })
+            .collect(),
+        _ => attribute_ids(value),
     }
 }

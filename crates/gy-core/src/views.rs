@@ -422,13 +422,13 @@ impl Store {
                 n.attrs
                     .iter()
                     .filter(|(k, _)| k.as_str() != "id")
-                    .flat_map(|(_, v)| attribute_ids(v))
+                    .flat_map(|(k, v)| recorded_attribute_ids(k, v))
                     .filter(|id| !self.nodes.contains_key(id))
                     .map(|id| json!({"source":n.id(),"target":id}))
                     .collect::<Vec<_>>()
             })
             .collect();
-        json!({"lint":diagnostics,"active_requirements":active.len(),"with_next_evidence_and_responsible":active.len()-missing.len(),"missing":missing,"dangling":dangling,"note":INTEGRITY_NOTE})
+        json!({"lint":diagnostics,"active_requirements":active.len(),"with_next_evidence_and_responsible":active.len()-missing.len(),"missing":missing,"dangling":dangling,"workflow":self.config.workflow,"note":INTEGRITY_NOTE})
     }
     pub fn stats(&self, scope: Option<&str>, days: u32) -> Result<Value> {
         if days == 0 {

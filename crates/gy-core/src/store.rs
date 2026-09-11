@@ -190,8 +190,10 @@ impl Store {
         }
         let config: Config = toml::from_str(&fs::read_to_string(root.join("gy.toml"))?)
             .map_err(|e| Error::corrupt(format!("gy.toml: {e}")))?;
+        config.workflow.validate()?;
         for (rule, setting) in &config.lint {
-            if !(1..=13).any(|n| rule == &format!("L{n}")) && rule != "edges" {
+            if !(1..=13).any(|n| rule == &format!("L{n}")) && rule != "edges" && rule != "workflow"
+            {
                 return Err(Error::corrupt(format!("Unknown lint rule: {rule}")));
             }
             setting.severity()?;

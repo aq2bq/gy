@@ -165,6 +165,7 @@ impl Store {
             "constraints_reviewed",
             "remaining_work",
             "transitions",
+            "record_history",
             "next_evidence",
             "responsible",
             "pr_url",

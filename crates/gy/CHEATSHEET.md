@@ -82,3 +82,15 @@ Compressing completed requirements:
   gy replaces the body with six items, returns the original full text to stdout, and records the archive URL in compressed_from.
   IDs, graph relationships, and unknown attributes are retained. Full constraints, quality gates, design proposals, and audit records move to the archive.
   gy find --where 'contracts_changed~orders.order_lines'
+
+Configured workflow records (optional):
+  Read the workflow configuration in gy handover --json to discover record fields and state guards.
+  [workflow.records.<name>] declares kinds, required fields, types, alternatives, and an optional version_field.
+  [workflow.guards.<name>] declares states, required records, and equality/set comparisons.
+  Author drafts with gy node set <ID> --set '<name>={...}'.
+  gy node submit <ID> --record <name> --evidence "Review record" validates and snapshots a report without changing state.
+  gy req advance checks every matching destination guard and snapshots the checked records in transitions[].workflow.
+  A recorded version cannot be reused with different contents. A revised design needs a matching new approval.
+  lint/handover reports omissions under workflow. Disabling that lint rule does not disable guards.
+  Gate outcomes, approval identity, and file lists are caller reports; gy does not verify external facts.
+  Compression archives record_history and transitions; current workflow checks do not apply to compressed requirements.

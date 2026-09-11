@@ -51,7 +51,7 @@ const TOOL_NAMES: &[(&str, &str, &[&str])] = &[
     ("gy_gate", "Register continuation gates", &["gate"]),
     (
         "gy_node",
-        "Edit arbitrary attributes and body text",
+        "Edit attributes and body text, or validate and submit a configured record",
         &["node"],
     ),
     ("gy_render", "Generate Markdown or DOT", &["render"]),

@@ -1,0 +1,184 @@
+# Optional workflow profile. Merge these tables into the ledger's gy.toml.
+# Record names are top-level frontmatter attributes. No external facts are verified.
+# Research is mandatory for all needs/questions in this example; adjust kinds/required.
+# Gate failures/exceptions must be reported, but this example does not require all gates to pass.
+
+[workflow.records.dispatch]
+kinds = ["requirement"]
+version_field = "revision"
+[workflow.records.dispatch.fields]
+revision = { type = "string" }
+task = { type = "string", values = ["design", "implementation", "research"] }
+issue_url = { type = "url" }
+base_branch = { type = "string" }
+permissions = { type = "object", fields = { branch = { type = "boolean" }, commit = { type = "boolean" }, pr = { type = "boolean" } } }
+scope = { type = "array", allow_empty = false, items = { type = "string" } }
+out_of_scope = { type = "array", allow_empty = true, items = { type = "string" } }
+decisions = { type = "array", allow_empty = true, items = { type = "string" } }
+dependencies = { type = "array", allow_empty = true, items = { type = "string" } }
+production_prerequisites = { type = "object", fields = { status = { type = "string" } }, variant_field = "status", variants = { none = {  }, not-applicable = { reason = { type = "string" } }, reported = { details = { type = "string" } }, not-executed = { reason = { type = "string" } } } }
+dependency_files = { type = "array", allow_empty = false, items = { type = "object", fields = { path = { type = "string" }, condition = { type = "string" } } } }
+stop_conditions = { type = "array", allow_empty = false, items = { type = "string" } }
+report_and_continue = { type = "object", fields = { status = { type = "string" } }, variant_field = "status", variants = { none = {  }, not-applicable = { reason = { type = "string" } }, reported = { details = { type = "string" } }, not-executed = { reason = { type = "string" } } } }
+standards = { type = "array", allow_empty = false, items = { type = "string" } }
+required_gates = { type = "array", allow_empty = false, items = { type = "string" } }
+artifact_destination = { type = "string" }
+synchronization = { type = "array", allow_empty = true, items = { type = "string" } }
+
+[workflow.records.research]
+kinds = ["need", "question"]
+required = true
+version_field = "revision"
+[workflow.records.research.fields]
+revision = { type = "string" }
+question = { type = "string" }
+population = { type = "string" }
+period = { type = "string" }
+baseline = { type = "object", fields = { ref = { type = "string" }, environment = { type = "string" }, observed_at = { type = "string" } } }
+primary_sources = { type = "array", allow_empty = false, items = { type = "string" } }
+method = { type = "string" }
+results = { type = "string" }
+denominator = { type = "integer" }
+facts = { type = "array", allow_empty = false, items = { type = "string" } }
+inferences = { type = "object", fields = { status = { type = "string" } }, variant_field = "status", variants = { none = {  }, not-applicable = { reason = { type = "string" } }, reported = { details = { type = "string" } }, not-executed = { reason = { type = "string" } } } }
+limitations = { type = "object", fields = { status = { type = "string" } }, variant_field = "status", variants = { none = {  }, not-applicable = { reason = { type = "string" } }, reported = { details = { type = "string" } }, not-executed = { reason = { type = "string" } } } }
+location = { type = "string" }
+
+[workflow.records.design_proposal]
+kinds = ["requirement"]
+version_field = "revision"
+[workflow.records.design_proposal.fields]
+revision = { type = "string" }
+baseline = { type = "string" }
+facts = { type = "array", allow_empty = false, items = { type = "string" } }
+contracts = { type = "array", allow_empty = false, items = { type = "string" } }
+files = { type = "array", allow_empty = false, items = { type = "string" } }
+unchanged_contracts = { type = "array", allow_empty = true, items = { type = "string" } }
+out_of_scope = { type = "array", allow_empty = true, items = { type = "string" } }
+gates = { type = "array", allow_empty = false, items = { type = "object", fields = { id = { type = "string" }, contract = { type = "string" }, command = { type = "string" } } } }
+plan = { type = "object", fields = { mode = { type = "string" } }, variant_field = "mode", variants = { normal = { url = { type = "url" }, compatibility = { type = "string" }, migration = { type = "object", fields = { status = { type = "string" } }, variant_field = "status", variants = { none = {  }, not-applicable = { reason = { type = "string" } }, reported = { details = { type = "string" } }, not-executed = { reason = { type = "string" } } } }, production_order = { type = "object", fields = { status = { type = "string" } }, variant_field = "status", variants = { none = {  }, not-applicable = { reason = { type = "string" } }, reported = { details = { type = "string" } }, not-executed = { reason = { type = "string" } } } }, recovery = { type = "string" }, choices = { type = "array", allow_empty = true, items = { type = "object", fields = { question = { type = "string" }, options = { type = "array", allow_empty = false, items = { type = "string" } }, selected = { type = "string" }, reason = { type = "string" } } } }, new_questions = { type = "array", allow_empty = true, items = { type = "string" } }, synchronization = { type = "array", allow_empty = true, items = { type = "string" } } }, design-waived = { url = { type = "url" }, reason = { type = "string" }, stop_conditions = { type = "array", allow_empty = false, items = { type = "string" } } } } }
+
+[workflow.records.approval]
+kinds = ["requirement"]
+version_field = "revision"
+[workflow.records.approval.fields]
+revision = { type = "string" }
+target_revision = { type = "string" }
+mode = { type = "string", values = ["normal", "design-waived"] }
+approver = { type = "string" }
+url = { type = "url" }
+
+[workflow.records.quality_gates]
+kinds = ["requirement"]
+version_field = "revision"
+[workflow.records.quality_gates.fields]
+revision = { type = "string" }
+target_revision = { type = "string" }
+implementation_revision = { type = "string" }
+results = { type = "array", allow_empty = false, items = { type = "object", fields = { gate = { type = "string" }, contract = { type = "string" }, command = { type = "string" }, result = { type = "object", fields = { status = { type = "string" } }, variant_field = "status", variants = { passed = { population = { type = "string" }, denominator = { type = "integer" }, evidence = { type = "string" } }, failed = { reason = { type = "string" }, evidence = { type = "string" } }, not-executed = { reason = { type = "string" } }, existing-violation = { reason = { type = "string" }, evidence = { type = "string" } }, not-applicable = { reason = { type = "string" } } } } } } }
+
+[workflow.records.deviations]
+kinds = ["requirement"]
+[workflow.records.deviations.fields]
+report = { type = "object", fields = { status = { type = "string" } }, variant_field = "status", variants = { none = {  }, not-applicable = { reason = { type = "string" } }, reported = { details = { type = "string" } }, not-executed = { reason = { type = "string" } } } }
+
+[workflow.records.implementation_report]
+kinds = ["requirement"]
+version_field = "revision"
+[workflow.records.implementation_report.fields]
+revision = { type = "string" }
+target_revision = { type = "string" }
+implemented = { type = "array", allow_empty = false, items = { type = "string" } }
+contracts = { type = "array", allow_empty = false, items = { type = "string" } }
+files = { type = "array", allow_empty = false, items = { type = "string" } }
+out_of_scope_changed = { type = "boolean", equals = false }
+unrelated_changes = { type = "object", fields = { status = { type = "string" } }, variant_field = "status", variants = { none = {  }, not-applicable = { reason = { type = "string" } }, reported = { details = { type = "string" } }, not-executed = { reason = { type = "string" } } } }
+delivery = { type = "object", fields = { branch = { type = "string" }, commit = { type = "string" }, completed_steps = { type = "array", allow_empty = false, items = { type = "string" } }, location = { type = "string" } } }
+remaining_work = { type = "object", fields = { status = { type = "string" } }, variant_field = "status", variants = { none = {  }, not-applicable = { reason = { type = "string" } }, reported = { details = { type = "string" } }, not-executed = { reason = { type = "string" } } } }
+
+[workflow.records.audit_records]
+kinds = ["requirement"]
+version_field = "revision"
+[workflow.records.audit_records.fields]
+revision = { type = "string" }
+target_revision = { type = "string" }
+implementation_revision = { type = "string" }
+auditor = { type = "string" }
+url = { type = "url" }
+observations = { type = "array", allow_empty = false, items = { type = "string" } }
+evidence_source = { type = "string", values = ["reported", "primary-source"] }
+result = { type = "string", values = ["record-only", "proceed-with-record", "return"] }
+
+[workflow.guards.dispatch]
+states = ["awaiting-design", "awaiting-approval", "awaiting-implementation", "awaiting-audit", "awaiting-pr", "awaiting-merge", "awaiting-production", "awaiting-cleanup", "complete"]
+records = ["dispatch"]
+
+[workflow.guards.design]
+states = ["awaiting-approval", "awaiting-implementation", "awaiting-audit", "awaiting-pr", "awaiting-merge", "awaiting-production", "awaiting-cleanup", "complete"]
+records = ["design_proposal"]
+
+[workflow.guards.approval]
+states = ["awaiting-implementation", "awaiting-audit", "awaiting-pr", "awaiting-merge", "awaiting-production", "awaiting-cleanup", "complete"]
+records = ["dispatch", "design_proposal", "approval"]
+[[workflow.guards.approval.checks]]
+kind = "equal"
+left = "approval.target_revision"
+right = "design_proposal.revision"
+[[workflow.guards.approval.checks]]
+kind = "equal"
+left = "approval.mode"
+right = "design_proposal.plan.mode"
+[[workflow.guards.approval.checks]]
+kind = "same-set"
+left = "design_proposal.contracts"
+right = "design_proposal.gates[].contract"
+[[workflow.guards.approval.checks]]
+kind = "same-set"
+left = "dispatch.required_gates"
+right = "design_proposal.gates[].id"
+
+[workflow.guards.audit]
+states = ["awaiting-audit", "awaiting-pr", "awaiting-merge", "awaiting-production", "awaiting-cleanup", "complete"]
+records = ["dispatch", "design_proposal", "approval", "implementation_report", "quality_gates", "deviations"]
+[[workflow.guards.audit.checks]]
+kind = "equal"
+left = "implementation_report.target_revision"
+right = "design_proposal.revision"
+[[workflow.guards.audit.checks]]
+kind = "equal"
+left = "quality_gates.target_revision"
+right = "design_proposal.revision"
+[[workflow.guards.audit.checks]]
+kind = "equal"
+left = "quality_gates.implementation_revision"
+right = "implementation_report.revision"
+[[workflow.guards.audit.checks]]
+kind = "same-set"
+left = "implementation_report.contracts"
+right = "design_proposal.contracts"
+[[workflow.guards.audit.checks]]
+kind = "same-set"
+left = "quality_gates.results[].contract"
+right = "design_proposal.contracts"
+[[workflow.guards.audit.checks]]
+kind = "same-set"
+left = "design_proposal.gates"
+right = "quality_gates.results"
+left_keys = ["contract", "id"]
+right_keys = ["contract", "gate"]
+[[workflow.guards.audit.checks]]
+kind = "same-set"
+left = "implementation_report.files"
+right = "design_proposal.files"
+
+[workflow.guards.delivery]
+states = ["awaiting-pr", "awaiting-merge", "awaiting-production", "awaiting-cleanup", "complete"]
+records = ["design_proposal", "implementation_report", "audit_records"]
+[[workflow.guards.delivery.checks]]
+kind = "equal"
+left = "audit_records.target_revision"
+right = "design_proposal.revision"
+[[workflow.guards.delivery.checks]]
+kind = "equal"
+left = "audit_records.implementation_revision"
+right = "implementation_report.revision"
