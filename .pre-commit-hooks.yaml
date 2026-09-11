@@ -1,0 +1,6 @@
+- id: gy-lint
+  name: Check ledger graph consistency
+  entry: gy lint
+  language: rust
+  pass_filenames: false
+  always_run: true
