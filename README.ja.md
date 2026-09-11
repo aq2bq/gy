@@ -6,14 +6,14 @@
 
 `lint` が検査するのはグラフ内部の整合性です。台帳とコード・GitHub・本番環境の一致は、利用者が確認します。gy は GitHub API を呼びません。
 
-要求圧縮を含む初版のコマンドを実装しています。crates.ioへの公開は未実施です。
+要求圧縮を含む初版のコマンドを実装しています。
 
 ## インストールと最初の記録
 
-現在のソースからインストールします。
+crates.ioからインストールします。
 
 ```sh
-cargo install --path crates/gy --locked
+cargo install gy --locked
 gy init demo --parent-issue 6000
 gy criterion add "再送時に重複配信しない" --scope demo
 gy need add "再送を安全にする" --targets AC-1 --scope demo
@@ -27,7 +27,7 @@ gy render
 
 初期化時に `.gy-dir`、`docs/ledger/gy.toml`、スコープのディレクトリを作成し、既存の `AGENTS.md` に案内を追記します。サブディレクトリからも台帳を探索します。読み取りは全スコープが既定です。書き込みで新しいノードを作成する場合は、スコープ配下で実行するか `--scope` を指定します。既存IDを更新するコマンドはそのIDのスコープへ書き込みます。
 
-crates.io 公開後のインストールコマンドは `cargo install gy --locked` です。公開はまだ行っていません。
+ソースからインストールする場合は、チェックアウト先で `cargo install --path crates/gy --locked` を実行します。
 
 ## コマンド
 
