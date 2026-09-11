@@ -196,6 +196,16 @@ impl Store {
             }
             setting.severity()?;
         }
+        if config
+            .import
+            .scope_note_section
+            .as_ref()
+            .is_some_and(|s| s.trim().is_empty())
+        {
+            return Err(Error::corrupt(
+                "import.scope_note_section must be a nonempty heading title",
+            ));
+        }
         if config.render.split_threshold == 0 {
             return Err(Error::corrupt("render.split_threshold must be at least 1"));
         }

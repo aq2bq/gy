@@ -76,7 +76,8 @@ gy node set D-1 --body-file decision-body.md
 | `decider` / `options` | 論点の決定者と異なる選択肢の配列 |
 | `bundle` / `bundle-rationale` | 論点の束と、同じ手当てで閉じる理由 |
 | `waiting-on` / `unresolved` | 未決として参照するIDの配列 |
-| `belongs-to` | 論点の帰属先IDの配列。`raised-by` と合わせて帰属先の重複を検査 |
+| `raised-by` | 論点が生じた要求の記録。複数の要求を許可 |
+| `belongs-to` | 論点の所有ノードIDの配列。L4は異なる所有ノードが2件以上ある場合に検出 |
 | `bearer_count` | 受け入れ条件の担い手数。`targets` の実数と比較 |
 | `parent_issue` | 確認済みの親Issue番号。要求と設定値を比較 |
 | `status` | 要求の11状態、論点の `open` / `closed` |
@@ -233,3 +234,24 @@ cargo install --path crates/gy --locked --root target/install-check
 `gy-core` が保存・操作・検査・表示を提供し、`gy` がclapのCLIとMCPを提供します。台帳単位のファイルロックを読み書きの両方で取得します。複数ファイルの更新は、更新内容を記録してから各ファイルを置き換え、途中停止時には次の起動で更新を完了します。`.gy-ids.json` は削除済み番号の再利用を防ぐ採番記録なので、台帳と一緒にgitへ保存します。`.gy.lock` はgitへ保存しません。
 
 CIにはmacOS・Linux・Windowsでのテストとインストール確認を設定しています。pre-commit用のエントリは [.pre-commit-hooks.yaml](.pre-commit-hooks.yaml) です。
+
+
+## 既存ADRの成立範囲を取り込む
+
+`gy import docs/adr --scope demo` の実行前に、`gy.toml` で本文の節名を指定します。
+
+```toml
+[import]
+scope_note_section = "成立範囲"
+scope_note_placeholders = ["（移行時に明示されていない）"]
+```
+
+gyは指定した見出しの本文を `decision_scope` にコピーします。`--scope-note` は作成コマンドの引数名で、正本の属性名は `decision_scope` です。既存の空でない属性は維持します。対象は `## 成立範囲` のようなATX見出しで、下位の節を含み、同じ階層か上位の見出しで終わります。コードフェンス内の見出しは除外し、同名の見出しが複数あれば取り込みを拒否します。
+
+節がない・空欄・設定した未記入の定型文だけの場合は、属性を補完せずL7に残します。定型文は前後の空白を除いて完全一致で比較します。成立範囲の意味の妥当性は、人間とエージェントが確認してください。
+
+結果の `import_summary` に、成立範囲が欠けた件数とID、markが欠けた件数と関連を返します。終了時の警告にも件数を表示します。不足があっても取り込みは完了し、その後の `gy lint` で確認できます。
+
+frontmatterから取り込んだ `narrows` / `supersedes` の各関連には `imported: true` を付け、L6で移行由来のmark不足と表示します。重大度は従来どおりです。古い決定を読み、`gy link` の `--mark` で対象記述を記録すると両側が更新され、その関連の移行由来の印は通常の操作に置き換わります。
+
+importは本文中のリンクから関連やmarkを推定しません。取り込み後に `gy link` で作った関連は通常の操作として扱います。

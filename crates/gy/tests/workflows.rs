@@ -1455,3 +1455,195 @@ fn english_body_hints_detect_waiting_references_and_bearer_counts() {
         );
     }
 }
+
+#[test]
+fn import_maps_scope_sections_and_reports_missing_values() {
+    let t = repo();
+    let p = t.path();
+    let config = p.join("docs/ledger/gy.toml");
+    fs::write(
+        &config,
+        fs::read_to_string(&config)
+            .unwrap()
+            .replace("[import]", "[import]\nscope_note_section = 'Applicability'")
+            .replace(
+                "scope_note_placeholders = []",
+                "scope_note_placeholders = ['Not recorded']",
+            ),
+    )
+    .unwrap();
+    let dir = p.join("legacy");
+    fs::create_dir(&dir).unwrap();
+    let body = "# Decision\n\n```md\n## Applicability\nExample only\n```\n## Applicability ##\nProduction only\n### Exceptions\nExclude replay\n## Consequences\nNot part of scope\n";
+    fs::write(dir.join("0001.md"), body).unwrap();
+    fs::write(
+        dir.join("0002.md"),
+        "# Missing\n## Applicability\n\n## Consequences\n",
+    )
+    .unwrap();
+    fs::write(
+        dir.join("0003.md"),
+        "# Placeholder\n## Applicability\nNot recorded\n",
+    )
+    .unwrap();
+    fs::write(dir.join("0004.md"), "---\nid: D-4\ndecision_scope: Canonical value\ncustom: retained\n---\n## Applicability\nBody value\n").unwrap();
+    let result = run(p, &["import", "legacy", "--scope", "a"]);
+    assert_eq!(
+        result["import_summary"]["missing_decision_scope"],
+        json!(["D-2", "D-3"])
+    );
+    assert_eq!(result["import_summary"]["missing_decision_scope_count"], 2);
+    let node = run(p, &["show", "D-1"]);
+    assert_eq!(node["node"]["body"], body);
+    assert_eq!(
+        node["node"]["attrs"]["decision_scope"],
+        "Production only\n### Exceptions\nExclude replay"
+    );
+    assert_eq!(
+        run(p, &["show", "D-4"])["node"]["attrs"]["decision_scope"],
+        "Canonical value"
+    );
+    let lint = invoke(p, &["lint"]);
+    let lint: Value = serde_json::from_slice(&lint.stdout).unwrap();
+    let missing: Vec<_> = lint["diagnostics"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|d| d["rule"] == "L7")
+        .map(|d| d["id"].clone())
+        .collect();
+    assert_eq!(missing, vec![json!("D-2"), json!("D-3")]);
+
+    let other = repo();
+    let result = run(
+        other.path(),
+        &["import", dir.to_str().unwrap(), "--scope", "a"],
+    );
+    assert_eq!(result["import_summary"]["missing_decision_scope_count"], 3);
+}
+
+#[test]
+fn import_rejects_ambiguous_sections_without_writing_nodes() {
+    let t = repo();
+    let p = t.path();
+    let config = p.join("docs/ledger/gy.toml");
+    fs::write(
+        &config,
+        fs::read_to_string(&config)
+            .unwrap()
+            .replace("[import]", "[import]\nscope_note_section = 'Scope'"),
+    )
+    .unwrap();
+    let dir = p.join("legacy");
+    fs::create_dir(&dir).unwrap();
+    fs::write(dir.join("0001.md"), "# One\n## Scope\nValid\n").unwrap();
+    fs::write(dir.join("0002.md"), "# Two\n## Scope\nOne\n## Scope\nTwo\n").unwrap();
+    assert!(reject(p, &["import", "legacy", "--scope", "a"], 2).contains("Multiple sections"));
+    assert_eq!(
+        run(p, &["find", "--where", "type=decision"])["hits"],
+        json!([])
+    );
+}
+
+#[test]
+fn question_provenance_can_have_multiple_requirements_but_ownership_is_single() {
+    let t = repo();
+    let p = t.path();
+    add_q(p);
+    for issue in ["1", "2"] {
+        run(
+            p,
+            &[
+                "req",
+                "add",
+                "Requirement",
+                "--issue",
+                issue,
+                "--scope",
+                "a",
+            ],
+        );
+        run(p, &["link", &format!("#{issue}"), "raised", "Q-1"]);
+    }
+    run(p, &["node", "set", "Q-1", "--set", "belongs-to=[\"#1\"]"]);
+    let lint = run(p, &["lint"]);
+    assert!(
+        !lint["diagnostics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|d| d["rule"] == "L4")
+    );
+    run(
+        p,
+        &["node", "set", "Q-1", "--set", "belongs-to=[\"#1\",\"#2\"]"],
+    );
+    let output = invoke(p, &["lint"]);
+    assert_eq!(output.status.code(), Some(1));
+    let lint: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert!(
+        lint["diagnostics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|d| d["rule"] == "L4")
+    );
+}
+
+#[test]
+fn imported_missing_marks_remain_l6_and_are_distinct_from_new_links() {
+    let t = repo();
+    let p = t.path();
+    let dir = p.join("legacy");
+    fs::create_dir(&dir).unwrap();
+    fs::write(
+        dir.join("0001.md"),
+        "---\nid: D-1\ndecision_scope: Scope\nsuperseded-by: [D-2]\n---\nOld passage\n",
+    )
+    .unwrap();
+    fs::write(dir.join("0002.md"), "---\nid: D-2\ndecision_scope: Scope\nsupersedes: [{id: D-1, custom: retained}]\n---\nNew body\n").unwrap();
+    let result = run(p, &["import", "legacy", "--scope", "a"]);
+    assert_eq!(result["import_summary"]["missing_mark_count"], 1);
+    let show = run(p, &["show", "D-2"]);
+    assert_eq!(show["node"]["attrs"]["supersedes"][0]["custom"], "retained");
+    assert_eq!(show["node"]["attrs"]["supersedes"][0]["imported"], true);
+    let lint = run(p, &["lint"]);
+    let finding = lint["diagnostics"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|d| d["rule"] == "L6")
+        .unwrap();
+    assert_eq!(finding["severity"], "warn");
+    assert!(
+        finding["message"]
+            .as_str()
+            .unwrap()
+            .contains("Imported relationship")
+    );
+    run(
+        p,
+        &["link", "D-2", "supersedes", "D-1", "--mark", "Old passage"],
+    );
+    assert!(
+        !run(p, &["lint"])["diagnostics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|d| d["rule"] == "L6")
+    );
+    run(p, &["link", "D-2", "supersedes", "D-1"]);
+    let lint = run(p, &["lint"]);
+    let finding = lint["diagnostics"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|d| d["rule"] == "L6")
+        .unwrap();
+    assert!(
+        !finding["message"]
+            .as_str()
+            .unwrap()
+            .contains("Imported relationship")
+    );
+}

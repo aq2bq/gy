@@ -132,6 +132,9 @@ pub enum Commands {
         command: Skills,
     },
     /// Import an ADR directory as decisions, preserving IDs. Reject the entire import on conflicts
+    #[command(
+        after_help = "Configure [import] scope_note_section in gy.toml to copy an ATX heading section into decision_scope. Existing nonempty decision_scope values take precedence. scope_note_placeholders lists texts to leave unfilled. import_summary reports missing scopes and marks. Frontmatter narrows/supersedes entries receive imported=true; relationships are not inferred from prose."
+    )]
     Import { directory: PathBuf },
 }
 #[derive(Subcommand, Debug)]

@@ -43,7 +43,7 @@ States (11 values; parenthesized context is allowed):
 
 Record attributes:
   waiting-on / unresolved: arrays of IDs referenced as unresolved, e.g. --set 'waiting-on=["Q-1"]'.
-  belongs-to: an array containing a single owning node ID for a question. raised-by is also checked for ownership.
+  belongs-to: an array containing a single owning node ID for a question. raised-by records originating requirements and may contain multiple IDs.
   bearer_count: the stated number of needs supporting an acceptance criterion, checked against actual targets links.
   residual: a list of destination IDs N-xx / Q-xx / #Issue for transferred work, or 'none'. Blank or missing values trigger L11.
   deviations: deviations from the approved design and additional decisions, or 'none'.
@@ -60,7 +60,9 @@ Search, output, and checks:
   Reads cover all scopes by default. Filter with --scope <name>.
   Configure L1–L13 and edges in [lint] as true / false / "error" / "warn" / "off".
   Exit codes: 0 success, 1 failed check, 2 invalid input or guard violation, 3 ledger corruption.
-  gy import docs/adr --scope demo preserves IDs. Supply applicability conditions after importing.
+  gy import docs/adr --scope demo preserves IDs. Set [import] scope_note_section to map a body heading into decision_scope.
+  scope_note_placeholders lists exact placeholder-only texts to leave unfilled. Review import_summary for missing scope and marks.
+  Imported narrows/supersedes entries carry imported=true; L6 distinguishes their missing marks without changing severity.
   gy skills install .agents/skills / gy mcp serve / gy completions zsh
 
 Compressing completed requirements:

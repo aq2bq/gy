@@ -191,6 +191,13 @@ pub struct Config {
     pub scopes: std::collections::BTreeMap<String, ScopeConfig>,
     pub lint: std::collections::BTreeMap<String, RuleConfig>,
     pub render: RenderConfig,
+    pub import: ImportConfig,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct ImportConfig {
+    pub scope_note_section: Option<String>,
+    pub scope_note_placeholders: Vec<String>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ScopeConfig {

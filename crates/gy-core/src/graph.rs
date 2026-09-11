@@ -45,6 +45,19 @@ pub fn edge_mark(node: &Node, key: &str, id: &str) -> Option<String> {
         .filter(|s| !s.trim().is_empty())
         .map(str::to_owned)
 }
+pub fn imported_edge(node: &Node, key: &str, id: &str) -> bool {
+    let Some(value) = node.attrs.get(key) else {
+        return false;
+    };
+    let items = match value {
+        Value::Array(items) => items.iter().collect::<Vec<_>>(),
+        value => vec![value],
+    };
+    items.into_iter().any(|item| {
+        item.get("id").and_then(Value::as_str) == Some(id)
+            && item.get("imported").and_then(Value::as_bool) == Some(true)
+    })
+}
 impl Store {
     pub fn link(
         &mut self,
@@ -229,11 +242,8 @@ impl Store {
                 emit("L3", n, "A need without an acceptance criterion disappears from the progress overview. Specify targets".into(), false);
             }
             if n.kind() == "question" {
-                let owners: std::collections::BTreeSet<_> = n
-                    .refs("belongs-to")
-                    .into_iter()
-                    .chain(n.refs("raised-by"))
-                    .collect();
+                let owners: std::collections::BTreeSet<_> =
+                    n.refs("belongs-to").into_iter().collect();
                 if owners.len() > 1 {
                     emit(
                         "L4",
@@ -279,9 +289,15 @@ impl Store {
                             emit(
                                 "L6",
                                 n,
-                                format!(
-                                    "{key} {id} has no mark identifying the invalidated passage"
-                                ),
+                                if imported_edge(n, key, &id) {
+                                    format!(
+                                        "Imported relationship {key} {id} has no mark. Review the older decision and record the affected passage with gy link"
+                                    )
+                                } else {
+                                    format!(
+                                        "{key} {id} has no mark identifying the invalidated passage"
+                                    )
+                                },
                                 false,
                             );
                         }

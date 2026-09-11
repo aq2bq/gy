@@ -451,7 +451,9 @@ impl Store {
             if path.extension().is_none_or(|x| x != "md") {
                 continue;
             }
-            let raw = fs::read_to_string(&path)?;
+            let raw = fs::read_to_string(&path)?
+                .trim_start_matches('\u{feff}')
+                .replace("\r\n", "\n");
             let name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
             let first = name
                 .strip_prefix("D-")
@@ -510,6 +512,44 @@ impl Store {
                 node = Node::new(&id, "decision", title, scope);
                 node.body = raw;
             }
+            if node.get("decision_scope").trim().is_empty() {
+                if let Some(section) = &self.config.import.scope_note_section {
+                    if let Some(contents) = import_section(&node.body, section)? {
+                        let contents = contents.trim();
+                        if !contents.is_empty()
+                            && !self
+                                .config
+                                .import
+                                .scope_note_placeholders
+                                .iter()
+                                .any(|placeholder| placeholder.trim() == contents)
+                        {
+                            let contents = contents.to_owned();
+                            node.put("decision_scope", contents);
+                        }
+                    }
+                }
+            }
+            // Preserve edge metadata while recording provenance per relationship.
+            for key in ["narrows", "supersedes"] {
+                if let Some(value) = node.attrs.get_mut(key) {
+                    let entries = match value {
+                        Value::Array(entries) => entries,
+                        value => {
+                            *value = Value::Array(vec![value.clone()]);
+                            value.as_array_mut().unwrap()
+                        }
+                    };
+                    for entry in entries {
+                        if let Value::String(id) = entry {
+                            *entry = json!({"id": id});
+                        }
+                        if let Value::Object(attrs) = entry {
+                            attrs.insert("imported".into(), Value::Bool(true));
+                        }
+                    }
+                }
+            }
             if !valid_id(node.id(), "decision") {
                 return Err(Error::input(format!("{}: invalid ID", path.display())));
             }
@@ -538,4 +578,61 @@ pub fn valid_url(s: &str) -> bool {
                 .next()
                 .is_some_and(|host| !host.is_empty() && !host.contains('@'))
     }) && !s.chars().any(char::is_whitespace)
+}
+
+/// Extract a unique ATX heading section, including nested subsections.
+/// Ignore headings inside fenced code blocks and preserve the section text.
+fn import_section<'a>(body: &'a str, title: &str) -> Result<Option<&'a str>> {
+    let mut fence: Option<(char, usize)> = None;
+    let mut start = None;
+    let mut end = body.len();
+    let mut level = 0;
+    let mut offset = 0;
+    let mut found = false;
+    for line in body.split_inclusive('\n') {
+        let text = line.trim_end_matches(['\r', '\n']);
+        let trimmed = text.trim_start_matches(' ');
+        let indent = text.len() - trimmed.len();
+        if indent <= 3 {
+            if let Some((marker, count)) = fence {
+                let run = trimmed.chars().take_while(|c| *c == marker).count();
+                if run >= count && trimmed[run..].trim().is_empty() {
+                    fence = None;
+                }
+            } else if trimmed.starts_with(['`', '~']) {
+                let marker = trimmed.chars().next().unwrap();
+                let count = trimmed.chars().take_while(|c| *c == marker).count();
+                if count >= 3 && (marker != '`' || !trimmed[count..].contains('`')) {
+                    fence = Some((marker, count));
+                }
+            } else {
+                let count = trimmed.chars().take_while(|c| *c == '#').count();
+                let tail = &trimmed[count..];
+                if (1..=6).contains(&count) && (tail.is_empty() || tail.starts_with([' ', '\t'])) {
+                    let heading = tail.trim();
+                    let without_hashes = heading.trim_end_matches('#');
+                    let heading = if without_hashes.ends_with([' ', '\t']) {
+                        without_hashes.trim_end()
+                    } else {
+                        heading
+                    };
+                    if found && end == body.len() && count <= level {
+                        end = offset;
+                    }
+                    if heading == title.trim() {
+                        if found {
+                            return Err(Error::input(format!(
+                                "Multiple sections named {title}; make the import mapping unambiguous"
+                            )));
+                        }
+                        found = true;
+                        start = Some(offset + line.len());
+                        level = count;
+                    }
+                }
+            }
+        }
+        offset += line.len();
+    }
+    Ok(start.map(|start| &body[start..end]))
 }

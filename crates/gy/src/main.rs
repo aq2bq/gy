@@ -467,10 +467,35 @@ fn execute(cli: &Cli) -> Result<Output> {
         Commands::Import { directory } => {
             let s = store.scope(scope)?;
             let imported = store.import_adr(&cwd.join(directory), &s)?;
-            output.value = json!({"imported":imported});
-            output
-                .warnings
-                .push("Check the imported decisions' applicability conditions and relationships with gy lint".into());
+            let mut missing_scope = vec![];
+            let mut missing_marks = vec![];
+            for id in &imported {
+                let node = store.node(id)?;
+                if node.get("decision_scope").trim().is_empty() {
+                    missing_scope.push(id.clone());
+                }
+                for relationship in ["narrows", "supersedes"] {
+                    for target in node.refs(relationship) {
+                        if gy_core::edge_mark(node, relationship, &target).is_none() {
+                            missing_marks.push(json!({"source": id, "relationship": relationship, "target": target}));
+                        }
+                    }
+                }
+            }
+            output.warnings.push(format!(
+                "Imported {} decisions; {} missing decision_scope; {} relationships missing mark. Review import_summary and run gy lint.",
+                imported.len(), missing_scope.len(), missing_marks.len()
+            ));
+            output.value = json!({
+                "imported": imported,
+                "import_summary": {
+                    "imported_count": imported.len(),
+                    "missing_decision_scope_count": missing_scope.len(),
+                    "missing_decision_scope": missing_scope,
+                    "missing_mark_count": missing_marks.len(),
+                    "missing_marks": missing_marks
+                }
+            });
         }
         _ => unreachable!(),
     }

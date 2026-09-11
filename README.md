@@ -76,7 +76,8 @@ Search operators are `=`, `!=`, `>=`, `<=`, `>`, `<`, and `~` (substring matchin
 | `decider` / `options` | The decision-maker and an array of distinct options for a question |
 | `bundle` / `bundle-rationale` | A question bundle and why the same intervention resolves its questions |
 | `waiting-on` / `unresolved` | Arrays of IDs referenced as unresolved |
-| `belongs-to` | A question's owning node IDs; checked together with `raised-by` for multiple owners |
+| `raised-by` | Requirements that raised a question; multiple origins are allowed |
+| `belongs-to` | A question's owning node IDs; L4 allows at most one distinct owner |
 | `bearer_count` | The stated number of needs supporting an acceptance criterion; compared with actual `targets` links |
 | `parent_issue` | A confirmed parent Issue number; compared with the configured value |
 | `status` | One of 11 requirement states, or `open` / `closed` for questions |
@@ -177,6 +178,26 @@ Compression retains the ID, required attributes including `created`, both sides 
 Compression removes these known transient attributes: `constraints`, `constraints_reviewed`, `remaining_work`, `transitions`, `next_evidence`, `responsible`, `pr_url`, `pr_base`, `pr_files`, `data_migration`, `production_only`, `production_done`, `cleanup_done`, `evidence`, `quality_gates`, `design_proposal`, and `audit_records`. They remain in the archive along with the original body. Other extension attributes are preserved. A compressed record cannot be compressed again to overwrite its original archive pointer.
 
 For transferred work, use a value such as `residual=[{"id":"N-2","note":"Transferred performance improvements"},"Q-3","#6010"]`. Each destination must be an existing node. Blank values, null, and empty arrays are distinct from the explicit `none` and are reported by L11.
+
+## Importing existing ADRs
+
+`gy import docs/adr --scope demo` preserves IDs, body text, and existing frontmatter attributes. To populate `decision_scope` from a body section, configure its heading title in `gy.toml`:
+
+```toml
+[import]
+scope_note_section = "Applicability"
+scope_note_placeholders = ["Not recorded during migration"]
+```
+
+Use the heading title from your repository, in any language. The mapper recognizes ATX headings (`## Title`), includes nested subsections, stops at the next heading of the same or higher level, and ignores headings inside fenced code blocks. Repeated matching headings reject the import as ambiguous. An existing nonempty `decision_scope` takes precedence.
+
+A missing, empty, or configured placeholder-only section leaves `decision_scope` unfilled and visible to L7. Placeholder matching is exact after trimming surrounding whitespace; gy does not assess whether free text describes meaningful applicability conditions. Without a section mapping, only existing frontmatter provides `decision_scope`.
+
+The result includes `import_summary` with counts and IDs for missing `decision_scope`, plus source/relationship/target records for missing marks. The command also prints the counts as a warning. These omissions do not abort the import; run `gy lint` afterward.
+
+Imported `narrows` and `supersedes` frontmatter entries carry `imported: true` on each relationship. L6 identifies missing marks on these entries as migration work; its severity and configuration remain unchanged. Review the older decision and run `gy link <new-ID> <relationship> <old-ID> --mark "<affected passage>"` to record the mark on both sides. A subsequent `gy link` replaces that relationship's import provenance with the current operation.
+
+Import preserves frontmatter relationships; it does not infer relationships or marks from prose or Markdown links. Relations added later through `gy link` are ordinary operations, even when their endpoints were imported.
 
 ## Configuring lint and render
 
