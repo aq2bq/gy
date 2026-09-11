@@ -644,6 +644,33 @@ fn example_records_cover_normal_and_waived_workflows_and_archive_history() {
             "true",
         ],
     );
+    // Policy changes govern ongoing work, not the inputs of completed events.
+    let stricter = include_str!("../examples/workflow.toml").replace(
+        "[workflow.records.dispatch.fields]",
+        "[workflow.records.dispatch.fields]\nnew_policy_field = { type = \"string\" }",
+    );
+    fs::write(p.join("docs/ledger/gy.toml"), &stricter).unwrap();
+    let diagnostics = lint(p);
+    assert!(
+        !diagnostics["diagnostics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|d| d["id"] == "#1" && d["rule"] == "workflow")
+    );
+    assert!(diagnostics["diagnostics"].as_array().unwrap().iter().any(|d| d["id"] == "#2" && d["message"].as_str().unwrap().contains("new_policy_field")));
+    // Saved evidence is still checked against its own schema and comparisons.
+    let path = p.join("docs/ledger/test/requirements/1.md");
+    let original = fs::read_to_string(&path).unwrap();
+    let mut node = gy_core::Node::parse(&original, path.clone()).unwrap();
+    node.attrs["transitions"]
+        .as_array_mut()
+        .unwrap()
+        .last_mut()
+        .unwrap()["workflow"]["records"]["approval"]["target_revision"] = json!("wrong-design");
+    fs::write(&path, node.markdown().unwrap()).unwrap();
+    rejected(p, &["req", "compress", "1"], "history:");
+    fs::write(path, original).unwrap();
     let compressed = run(
         p,
         &[
@@ -661,6 +688,11 @@ fn example_records_cover_normal_and_waived_workflows_and_archive_history() {
             .contains("record_history:")
     );
     assert!(compressed["node"]["attrs"].get("record_history").is_none());
+    fs::write(
+        p.join("docs/ledger/gy.toml"),
+        include_str!("../examples/workflow.toml"),
+    )
+    .unwrap();
     assert!(lint(p)["diagnostics"].as_array().unwrap().is_empty());
 }
 

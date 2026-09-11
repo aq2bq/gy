@@ -18,6 +18,64 @@ pub const EDGES: &[(&str, &str, &str, &str)] = &[
 ];
 pub const REFERENCE_KEYS: &[&str] = &["waiting-on", "unresolved", "belongs-to"];
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum DependencyRole {
+    Current,
+    Historical,
+}
+
+/// A view of a recorded edge; role is derived, never persisted as another truth.
+#[derive(Debug, Serialize)]
+pub struct DecisionDependency {
+    pub requirement: String,
+    pub decision: String,
+    pub role: DependencyRole,
+    pub superseded_by: Vec<String>,
+}
+
+impl Store {
+    pub fn decision_dependencies(&self, requirement: &Node) -> Vec<DecisionDependency> {
+        if requirement.kind() != "requirement" {
+            return vec![];
+        }
+        let role = if requirement.is_complete_requirement() {
+            DependencyRole::Historical
+        } else {
+            DependencyRole::Current
+        };
+        requirement
+            .refs("relies-on")
+            .into_iter()
+            .map(|decision| {
+                // Inspect both recorded directions; broken inverse links remain
+                // independently visible to structural lint checks.
+                let mut successors: std::collections::BTreeSet<_> = self
+                    .nodes
+                    .get(&decision)
+                    .map(|d| d.refs("superseded-by"))
+                    .unwrap_or_default()
+                    .into_iter()
+                    .collect();
+                successors.extend(
+                    self.nodes
+                        .values()
+                        .filter(|n| {
+                            n.kind() == "decision" && n.refs("supersedes").contains(&decision)
+                        })
+                        .map(|n| n.id().to_owned()),
+                );
+                DecisionDependency {
+                    requirement: requirement.id().into(),
+                    decision,
+                    role,
+                    superseded_by: successors.into_iter().collect(),
+                }
+            })
+            .collect()
+    }
+}
+
 fn insert_edge(node: &mut Node, key: &str, id: &str, mark: Option<&str>) {
     let mut values = match node.attrs.get(key) {
         Some(Value::Array(a)) => a.clone(),
@@ -133,13 +191,7 @@ impl Store {
                         .refs("waiting-on")
                         .iter()
                         .chain(n.refs("unresolved").iter())
-                        .any(|id| id == question)
-                        || n.body.lines().any(|line| {
-                            contains_id(line, question)
-                                && ["undecided", "unresolved", "waiting"]
-                                    .iter()
-                                    .any(|word| line.contains(word))
-                        }))
+                        .any(|id| id == question))
             })
             .map(|n| n.id().into())
             .collect()
@@ -210,19 +262,15 @@ impl Store {
                         m.kind() == "need" && m.refs("targets").contains(&n.id().to_owned())
                     })
                     .count() as u64;
-                let stated = n
-                    .attrs
-                    .get("bearer_count")
-                    .and_then(Value::as_u64)
-                    .or_else(|| {
-                        n.body
-                            .split("bearers")
-                            .nth(1)
-                            .and_then(|s| {
-                                s.trim_start().split(|c: char| !c.is_ascii_digit()).next()
-                            })
-                            .and_then(|s| s.parse().ok())
-                    });
+                let stated = n.attrs.get("bearer_count").and_then(Value::as_u64);
+                if n.attrs.contains_key("bearer_count") && stated.is_none() {
+                    emit(
+                        "L2",
+                        n,
+                        "bearer_count must be a nonnegative integer".into(),
+                        false,
+                    );
+                }
                 if let Some(stated) = stated {
                     if stated != actual {
                         emit(
@@ -319,7 +367,7 @@ impl Store {
                         false,
                     );
                 }
-                if base_state(n.get("status")) == Some("complete") {
+                if n.is_complete_requirement() {
                     let issues = if n.attrs.contains_key("compressed") {
                         self.compression_field_issues(n)
                     } else {
@@ -329,20 +377,14 @@ impl Store {
                         emit("L11", n, message, false);
                     }
                 }
-                for id in n.refs("relies-on") {
-                    if self
-                        .nodes
-                        .get(&id)
-                        .is_some_and(|d| !d.refs("superseded-by").is_empty())
-                        || self
-                            .nodes
-                            .values()
-                            .any(|d| d.refs("supersedes").contains(&id))
+                for dependency in self.decision_dependencies(n) {
+                    if dependency.role == DependencyRole::Current
+                        && !dependency.superseded_by.is_empty()
                     {
                         emit(
                             "L5",
                             n,
-                            format!("Relies on superseded decision {id}"),
+                            format!("Relies on superseded decision {}", dependency.decision),
                             false,
                         );
                     }

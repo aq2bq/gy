@@ -185,7 +185,7 @@ Optional `[workflow.records]` schemas and `[workflow.guards]` in `gy.toml` requi
 
 `gy lint` reports missing or inconsistent inputs under `workflow`. `gy handover` includes the effective configuration. These checks validate reported records, not external facts or approver identity.
 
-See the [workflow guide](https://github.com/aq2bq/gy/blob/main/docs/workflows.md), [configuration example](https://github.com/aq2bq/gy/blob/main/crates/gy/examples/workflow.toml), and [matching illustrative records](https://github.com/aq2bq/gy/blob/main/crates/gy/examples/workflow-records.json). Existing ledgers keep their behavior until a profile is configured.
+See the [workflow guide](https://github.com/aq2bq/gy/blob/main/docs/workflows.md), [configuration example](https://github.com/aq2bq/gy/blob/main/crates/gy/examples/workflow.toml), and [matching illustrative records](https://github.com/aq2bq/gy/blob/main/crates/gy/examples/workflow-records.json). Current profiles govern ongoing work and new actions. Completed requirements retain their history without retroactive record requirements; saved snapshots are checked against their saved schemas.
 
 ## Importing existing ADRs
 
@@ -233,7 +233,7 @@ split_threshold = 100
 | L2 | Stated bearer counts differ from actual supporting needs |
 | L3 | Needs without acceptance criteria |
 | L4 | Questions with multiple owners |
-| L5 | Requirements relying on superseded decisions |
+| L5 | Unfinished requirements relying on superseded decisions |
 | L6 | Missing marks for narrowed or superseded passages |
 | L7 | Decisions without applicability conditions |
 | L8 | Questions without a decision-maker |
@@ -243,7 +243,9 @@ split_threshold = 100
 | L12 | Question bundles without a rationale |
 | L13 | References to nonexistent nodes |
 
-L1 also checks body lines containing a question ID and `undecided`, `unresolved`, or `waiting`. L2 can read a body count written as `bearers 3`; prefer the structured `bearer_count` attribute.
+L1 checks explicit `waiting-on` and `unresolved` attributes. L2 compares the optional nonnegative integer `bearer_count` with supporting needs. Neither rule infers declarations from body text.
+
+Completed requirements retain their `relies-on` history. Superseded historical dependencies appear in `show` and `handover.historical_superseded_dependencies`, without triggering L5. Reopening restores current dependency checks. Broken links and completion records remain errors. See [ledger semantics](https://github.com/aq2bq/gy/blob/main/docs/architecture.md) for the authority and lifecycle contracts.
 
 L6 defaults to `warn`; the others default to `error`. The additional `edges` rule checks inverse links, edge types, and matching marks. Incomplete questions created with `q` report missing information as errors regardless of the L8/L9 settings.
 

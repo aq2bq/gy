@@ -1415,32 +1415,49 @@ fn compression_preserves_archive_traceability_and_requires_actual_production_rec
 }
 
 #[test]
-fn english_body_hints_detect_waiting_references_and_bearer_counts() {
+fn body_edits_do_not_change_structured_checks_or_closure_warnings() {
     let t = repo();
     let p = t.path();
     add_ac(p);
     add_q(p);
     edit_node(p, "a/criteria/AC-1.md", |n| {
-        n.body = "\nWaiting on Q-1: unresolved\nbearers 3\n".into();
+        n.body = "Q-1 is unresolved. waiting_checkout?\nbearers 3\n".into();
     });
     let closed = run(
         p,
         &[
-            "question",
-            "close",
-            "Q-1",
-            "--by",
-            "fact",
-            "--note",
-            "Measurements resolved the question",
+            "question", "close", "Q-1", "--by", "fact", "--note", "Resolved",
         ],
     );
-    assert!(
-        closed["warnings"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|w| w.as_str().unwrap().contains("AC-1"))
+    assert_eq!(closed["warnings"], json!([]));
+    let baseline = run(p, &["lint"]);
+    let handover = run(p, &["handover"]);
+    let next = run(p, &["next"]);
+    for body in [
+        "",
+        "Q-1 unresolved waiting undecided",
+        "Q-1 `waiting_checkout?`",
+        "```ruby\nwaiting(Q-1)\n```",
+        "bearers 999",
+        "Q-1 is NOT unresolved",
+    ] {
+        edit_node(p, "a/criteria/AC-1.md", |n| n.body = body.into());
+        assert_eq!(run(p, &["lint"]), baseline);
+        assert_eq!(run(p, &["handover"]), handover);
+        assert_eq!(run(p, &["next"]), next);
+    }
+    // Explicit declarations remain authoritative even when prose contradicts them.
+    run(
+        p,
+        &[
+            "node",
+            "set",
+            "AC-1",
+            "--set",
+            "waiting-on=[\"Q-1\"]",
+            "--set",
+            "bearer_count=3",
+        ],
     );
     let output = invoke(p, &["lint"]);
     assert_eq!(output.status.code(), Some(1));
@@ -1454,6 +1471,9 @@ fn english_body_hints_detect_waiting_references_and_bearer_counts() {
                 .any(|d| d["rule"] == rule)
         );
     }
+    // A present but mistyped declaration is not treated as an absent count.
+    run(p, &["node", "set", "AC-1", "--set", "bearer_count=three"]);
+    assert!(String::from_utf8_lossy(&invoke(p, &["lint"]).stdout).contains("nonnegative integer"));
 }
 
 #[test]
@@ -1645,5 +1665,379 @@ fn imported_missing_marks_remain_l6_and_are_distinct_from_new_links() {
             .as_str()
             .unwrap()
             .contains("Imported relationship")
+    );
+}
+
+#[test]
+fn decision_dependencies_follow_requirement_lifecycle_without_rewriting_edges() {
+    let t = repo();
+    let p = t.path();
+    add_d(p);
+    run(
+        p,
+        &[
+            "req",
+            "add",
+            "Historical work",
+            "--issue",
+            "6006",
+            "--scope",
+            "a",
+        ],
+    );
+    run(p, &["link", "#6006", "relies-on", "D-1"]);
+    run(
+        p,
+        &[
+            "node",
+            "set",
+            "#6006",
+            "--set",
+            "deviations=none",
+            "--set",
+            "residual=none",
+        ],
+    );
+    run(
+        p,
+        &[
+            "req",
+            "advance",
+            "6006",
+            "--to",
+            "complete (production verified)",
+            "--evidence",
+            "Verified",
+            "--data-migration",
+            "false",
+            "--production-only",
+            "false",
+            "--cleanup-done",
+            "true",
+        ],
+    );
+    run(
+        p,
+        &[
+            "decide",
+            "Replacement",
+            "--scope",
+            "a",
+            "--scope-note",
+            "New work",
+        ],
+    );
+    run(
+        p,
+        &["link", "D-2", "supersedes", "D-1", "--mark", "Old behavior"],
+    );
+    let original = fs::read(p.join("docs/ledger/a/requirements/6006.md")).unwrap();
+    let original_decision = fs::read(p.join("docs/ledger/a/decisions/D-1.md")).unwrap();
+    assert!(
+        run(p, &["lint"])["diagnostics"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    let shown = run(p, &["show", "#6006"]);
+    assert_eq!(shown["node"]["attrs"]["relies-on"], json!(["D-1"]));
+    assert_eq!(shown["decision_dependencies"][0]["role"], "historical");
+    assert!(
+        shown["display"]
+            .as_str()
+            .unwrap()
+            .contains("Historical dependency")
+    );
+    assert_eq!(
+        run(p, &["handover"])["historical_superseded_dependencies"],
+        shown["decision_dependencies"]
+    );
+    assert_eq!(
+        fs::read(p.join("docs/ledger/a/requirements/6006.md")).unwrap(),
+        original
+    );
+    assert_eq!(
+        fs::read(p.join("docs/ledger/a/decisions/D-1.md")).unwrap(),
+        original_decision
+    );
+    run(p, &["init", "b"]);
+    assert_eq!(
+        run(p, &["handover", "--scope", "b"])["historical_superseded_dependencies"],
+        json!([])
+    );
+    // Reopening restores current obligations, using the same recorded edge.
+    run(
+        p,
+        &[
+            "req",
+            "advance",
+            "6006",
+            "--to",
+            "awaiting-design",
+            "--evidence",
+            "New work required",
+        ],
+    );
+    let findings: Value = serde_json::from_slice(&invoke(p, &["lint"]).stdout).unwrap();
+    assert!(
+        findings["diagnostics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|d| d["rule"] == "L5")
+    );
+    assert_eq!(
+        run(p, &["show", "#6006"])["decision_dependencies"][0]["role"],
+        "current"
+    );
+    // Invalid completion and broken edges remain errors even for historical work.
+    edit_node(p, "a/decisions/D-1.md", |n| {
+        n.put("relied-on-by", json!([]));
+    });
+    edit_node(p, "a/requirements/6006.md", |n| {
+        n.put("status", "complete");
+        n.put("remaining_work", 1);
+        n.put("relies-on", json!(["D-1", "D-999"]));
+    });
+    let findings: Value = serde_json::from_slice(&invoke(p, &["lint"]).stdout).unwrap();
+    for rule in ["L11", "L13", "edges"] {
+        assert!(
+            findings["diagnostics"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|d| d["rule"] == rule),
+            "{findings}"
+        );
+    }
+    assert!(
+        !findings["diagnostics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|d| d["rule"] == "L5")
+    );
+}
+
+#[test]
+fn next_uses_current_dependencies_and_stops_at_completed_work() {
+    let t = repo();
+    let p = t.path();
+    add_ac(p);
+    add_d(p);
+    add_q(p);
+    run(
+        p,
+        &["need", "add", "First", "--targets", "AC-1", "--scope", "a"],
+    );
+    run(
+        p,
+        &["need", "add", "Next", "--targets", "AC-1", "--scope", "a"],
+    );
+    run(
+        p,
+        &[
+            "req",
+            "add",
+            "First work",
+            "--parent-issue",
+            "6000",
+            "--issue",
+            "6006",
+            "--scope",
+            "a",
+        ],
+    );
+    run(p, &["need", "file", "N-1", "--issue", "6006"]);
+    run(p, &["link", "N-2", "depends-on", "N-1"]);
+    run(p, &["link", "#6006", "relies-on", "D-1"]);
+    assert_eq!(run(p, &["next"])["nodes"][0]["attrs"]["id"], "N-1");
+    run(
+        p,
+        &[
+            "decide",
+            "Replacement",
+            "--scope",
+            "a",
+            "--scope-note",
+            "New work",
+        ],
+    );
+    run(p, &["link", "D-2", "supersedes", "D-1"]);
+    assert_eq!(run(p, &["next"])["nodes"], json!([]));
+    run(p, &["link", "#6006", "raised", "Q-1"]);
+    edit_node(p, "a/requirements/6006.md", |n| n.put("status", "complete"));
+    // Historical questions and decisions must not block a later need.
+    assert_eq!(run(p, &["next"])["nodes"][0]["attrs"]["id"], "N-2");
+}
+
+#[test]
+fn compression_preserves_historical_dependency_semantics_and_rendered_provenance() {
+    let t = compressible();
+    let p = t.path();
+    add_d(p);
+    run(p, &["link", "#7", "relies-on", "D-1"]);
+    run(
+        p,
+        &[
+            "decide",
+            "Replacement",
+            "--scope",
+            "a",
+            "--scope-note",
+            "Future work",
+        ],
+    );
+    run(
+        p,
+        &["link", "D-2", "supersedes", "D-1", "--mark", "Old behavior"],
+    );
+    let before = run(p, &["show", "#7"])["decision_dependencies"].clone();
+    run(
+        p,
+        &[
+            "req",
+            "compress",
+            "7",
+            "--evidence",
+            "https://github.com/org/repo/issues/7#issuecomment-4",
+        ],
+    );
+    assert_eq!(run(p, &["show", "#7"])["decision_dependencies"], before);
+    assert_eq!(
+        run(p, &["handover"])["historical_superseded_dependencies"],
+        before
+    );
+    run(p, &["lint"]);
+    let original = fs::read(p.join("docs/ledger/a/requirements/7.md")).unwrap();
+    let rendered = run(p, &["render"]);
+    assert!(rendered["files"].as_array().unwrap().iter().any(|path| {
+        let path = path.as_str().unwrap();
+        fs::read_to_string(p.join("docs/ledger").join(path))
+            .unwrap_or_default()
+            .contains("Historical dependency on superseded decision: D-1")
+    }));
+    assert_eq!(
+        fs::read(p.join("docs/ledger/a/requirements/7.md")).unwrap(),
+        original
+    );
+    // Compression is not a separate exemption, and invalid states are not complete.
+    edit_node(p, "a/requirements/7.md", |n| {
+        n.put("status", "complete-ish")
+    });
+    let output = invoke(p, &["lint"]);
+    let findings: Value = serde_json::from_slice(&output.stdout).unwrap();
+    for rule in ["L10", "L5"] {
+        assert!(
+            findings["diagnostics"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|d| d["rule"] == rule)
+        );
+    }
+}
+
+#[test]
+fn adopting_workflow_does_not_reconstruct_completed_work_but_guards_new_actions() {
+    let t = compressible();
+    let p = t.path();
+    let before = run(p, &["show", "#7"])["node"].clone();
+    fs::write(
+        p.join("docs/ledger/gy.toml"),
+        include_str!("../examples/workflow.toml"),
+    )
+    .unwrap();
+    assert!(
+        run(p, &["lint"])["diagnostics"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    let preview = run(p, &["req", "compress", "7"]);
+    assert!(preview["archive"].as_str().unwrap().contains("id: '#7'"));
+    assert_eq!(run(p, &["show", "#7"])["node"], before);
+    // Explicit new actions use current policy, even when starting at complete.
+    assert!(
+        reject(
+            p,
+            &[
+                "req",
+                "advance",
+                "7",
+                "--to",
+                "awaiting-implementation",
+                "--evidence",
+                "Resume"
+            ],
+            2
+        )
+        .contains("dispatch is required")
+    );
+    assert!(
+        reject(
+            p,
+            &[
+                "req",
+                "advance",
+                "7",
+                "--to",
+                "complete",
+                "--evidence",
+                "Recheck"
+            ],
+            2
+        )
+        .contains("dispatch is required")
+    );
+    assert!(
+        reject(
+            p,
+            &[
+                "node",
+                "submit",
+                "#7",
+                "--record",
+                "approval",
+                "--evidence",
+                "Review"
+            ],
+            2
+        )
+        .contains("approval is required")
+    );
+    assert_eq!(run(p, &["show", "#7"])["node"], before);
+    let compressed = run(
+        p,
+        &[
+            "req",
+            "compress",
+            "7",
+            "--evidence",
+            "https://example.test/issues/7#issuecomment-42",
+        ],
+    );
+    assert!(compressed["node"]["attrs"].get("compressed").is_some());
+    assert!(compressed["node"]["attrs"].get("approval").is_none());
+    // A new requirement cannot skip straight to completion under this policy.
+    run(
+        p,
+        &["req", "add", "New work", "--issue", "8", "--scope", "a"],
+    );
+    assert!(
+        reject(
+            p,
+            &[
+                "req",
+                "advance",
+                "8",
+                "--to",
+                "complete",
+                "--evidence",
+                "Done"
+            ],
+            2
+        )
+        .contains("dispatch is required")
     );
 }

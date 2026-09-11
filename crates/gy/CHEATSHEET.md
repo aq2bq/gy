@@ -44,7 +44,11 @@ States (11 values; parenthesized context is allowed):
 Record attributes:
   waiting-on / unresolved: arrays of IDs referenced as unresolved, e.g. --set 'waiting-on=["Q-1"]'.
   belongs-to: an array containing a single owning node ID for a question. raised-by records originating requirements and may contain multiple IDs.
-  bearer_count: the stated number of needs supporting an acceptance criterion, checked against actual targets links.
+  bearer_count: an optional nonnegative integer, checked against actual targets links.
+  L1/L2 use explicit attributes; body wording does not declare unresolved references or bearer counts.
+  relies-on: the decision basis of requirement work, retained after completion. L5 checks current work only.
+  Superseded dependencies of completed requirements appear as history in show and handover.historical_superseded_dependencies.
+  Reopening restores current checks. Structural and completion integrity checks still apply to historical records.
   residual: a list of destination IDs N-xx / Q-xx / #Issue for transferred work, or 'none'. Blank or missing values trigger L11.
   deviations: deviations from the approved design and additional decisions, or 'none'.
   remaining_work: a legacy remaining-work count or array. If present, completion requires zero or an empty array.
@@ -93,4 +97,6 @@ Configured workflow records (optional):
   A recorded version cannot be reused with different contents. A revised design needs a matching new approval.
   lint/handover reports omissions under workflow. Disabling that lint rule does not disable guards.
   Gate outcomes, approval identity, and file lists are caller reports; gy does not verify external facts.
-  Compression archives record_history and transitions; current workflow checks do not apply to compressed requirements.
+  Completed requirements use saved workflow schemas/checks, not today's policy, even before compression.
+  New transitions and submissions always use current policy; adopting a profile does not fabricate old approvals.
+  Compression validates and archives existing history while retaining core completion and archive checks.

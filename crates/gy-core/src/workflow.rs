@@ -508,7 +508,49 @@ fn history_issues(node: &Node) -> Vec<String> {
             issues.push(
                 "Malformed workflow history snapshot; preserve the original recorded inputs".into(),
             );
+            continue;
         }
+        // Historical inputs are checked against the schema saved with them,
+        // never against today's project configuration.
+        let schemas =
+            serde_json::from_value::<BTreeMap<String, RecordSchema>>(snapshot["schemas"].clone());
+        let checks = serde_json::from_value::<Vec<RecordCheck>>(snapshot["checks"].clone());
+        let (Ok(schemas), Ok(checks)) = (schemas, checks) else {
+            issues.push("Malformed workflow history schemas or checks".into());
+            continue;
+        };
+        let config = WorkflowConfig {
+            records: schemas,
+            guards: BTreeMap::new(),
+        };
+        if let Err(error) = config.validate() {
+            issues.push(format!("Invalid workflow history schema: {error}"));
+            continue;
+        }
+        let records = snapshot["records"].as_object().unwrap();
+        if records.keys().collect::<BTreeSet<_>>() != config.records.keys().collect::<BTreeSet<_>>()
+        {
+            issues.push("Workflow history records must match their saved schemas".into());
+            continue;
+        }
+        for (name, schema) in &config.records {
+            validate_object(
+                &records[name],
+                &schema.fields,
+                &format!("history.{name}"),
+                &mut issues,
+            );
+        }
+        let historical = Node {
+            attrs: records.clone(),
+            body: String::new(),
+            path: Default::default(),
+        };
+        issues.extend(
+            check_records(&historical, &checks)
+                .into_iter()
+                .map(|s| format!("history: {s}")),
+        );
     }
     issues
 }
@@ -541,12 +583,16 @@ impl Store {
         issues
     }
 
-    /// Current-state checks are also used by lint and handover.
+    /// Passive inspection follows lifecycle: completed work has historical
+    /// records, while active work must satisfy today's configured policy.
     pub fn workflow_issues(&self, node: &Node, state: Option<&str>) -> Vec<String> {
-        // Compression archives transient workflow inputs and transition history.
-        if node.attrs.contains_key("compressed") {
-            return vec![];
+        if node.is_complete_requirement() {
+            return history_issues(node);
         }
+        self.current_workflow_issues(node, state)
+    }
+
+    fn current_workflow_issues(&self, node: &Node, state: Option<&str>) -> Vec<String> {
         let history_issues = history_issues(node);
         let mut names: BTreeSet<String> = self
             .config
@@ -607,7 +653,9 @@ impl Store {
         state: &str,
         evidence: &str,
     ) -> Result<Option<Value>> {
-        let issues = self.workflow_issues(node, Some(state));
+        // Every new transition, including re-entry into complete, is an action
+        // under the current policy, regardless of the source node's lifecycle.
+        let issues = self.current_workflow_issues(node, Some(state));
         if !issues.is_empty() {
             return Err(Error::input(issues.join("\n")));
         }

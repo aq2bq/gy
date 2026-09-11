@@ -124,6 +124,19 @@ impl Store {
         if n.attrs.contains_key("compressed") {
             copy.body = compressed_body(n)?;
         }
+        for dependency in self.decision_dependencies(n) {
+            if !dependency.superseded_by.is_empty() {
+                let label = match dependency.role {
+                    DependencyRole::Current => "Current dependency on superseded decision",
+                    DependencyRole::Historical => "Historical dependency on superseded decision",
+                };
+                copy.body.push_str(&format!(
+                    "\n> {label}: {} (superseded by {})\n",
+                    dependency.decision,
+                    dependency.superseded_by.join(", ")
+                ));
+            }
+        }
         for (key, label) in [
             ("narrowed-by", "Applicability narrowed"),
             ("superseded-by", "Superseded"),
@@ -365,12 +378,23 @@ impl Store {
                 && n.refs("filed-as").iter().all(|id| {
                     self.nodes
                         .get(id)
-                        .is_some_and(|r| base_state(r.get("status")) == Some("complete"))
+                        .is_some_and(Node::is_complete_requirement)
                 }))
     }
     fn blocked(&self, n: &Node, seen: &mut BTreeSet<String>) -> bool {
+        // Completed work contributes provenance, not live work prerequisites.
+        if n.is_complete_requirement() {
+            return false;
+        }
         if !seen.insert(n.id().into()) {
             return false;
+        }
+        if self
+            .decision_dependencies(n)
+            .iter()
+            .any(|d| d.role == DependencyRole::Current && !d.superseded_by.is_empty())
+        {
+            return true;
         }
         for key in [
             "waiting-on",
@@ -409,7 +433,7 @@ impl Store {
             .values()
             .filter(|n| {
                 n.kind() == "requirement"
-                    && base_state(n.get("status")) != Some("complete")
+                    && !n.is_complete_requirement()
                     && scope.is_none_or(|s| s == n.scope())
             })
             .collect();
@@ -428,7 +452,14 @@ impl Store {
                     .collect::<Vec<_>>()
             })
             .collect();
-        json!({"lint":diagnostics,"active_requirements":active.len(),"with_next_evidence_and_responsible":active.len()-missing.len(),"missing":missing,"dangling":dangling,"workflow":self.config.workflow,"note":INTEGRITY_NOTE})
+        let historical_dependencies: Vec<_> = self
+            .nodes
+            .values()
+            .filter(|n| scope.is_none_or(|s| n.scope() == s))
+            .flat_map(|n| self.decision_dependencies(n))
+            .filter(|d| d.role == DependencyRole::Historical && !d.superseded_by.is_empty())
+            .collect();
+        json!({"lint":diagnostics,"active_requirements":active.len(),"with_next_evidence_and_responsible":active.len()-missing.len(),"missing":missing,"dangling":dangling,"historical_superseded_dependencies":historical_dependencies,"workflow":self.config.workflow,"note":INTEGRITY_NOTE})
     }
     pub fn stats(&self, scope: Option<&str>, days: u32) -> Result<Value> {
         if days == 0 {

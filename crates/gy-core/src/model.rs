@@ -120,6 +120,11 @@ impl Node {
     pub fn closed(&self) -> bool {
         self.kind() == "question" && self.get("status") == "closed"
     }
+    /// Completion ends current work obligations, not the recorded relationships.
+    /// Invalid states are not completion; L10 diagnoses them independently.
+    pub fn is_complete_requirement(&self) -> bool {
+        self.kind() == "requirement" && base_state(self.get("status")) == Some("complete")
+    }
     pub fn put(&mut self, key: &str, value: impl Serialize) {
         self.attrs.insert(
             key.into(),

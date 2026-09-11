@@ -399,7 +399,7 @@ impl Store {
                 "{id} is already compressed. See compressed_from for the original full text"
             )));
         }
-        if base_state(n.get("status")) != Some("complete") || remaining(n) != Some(0) {
+        if !n.is_complete_requirement() || remaining(n) != Some(0) {
             return Err(Error::input(
                 "Only completed requirements with zero remaining work can be compressed. First record completion evidence with req advance",
             ));

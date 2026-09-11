@@ -428,7 +428,7 @@ fn execute(cli: &Cli) -> Result<Output> {
                 let display = store.display_node(n)?;
                 let neighbors = store.neighbors(id)?;
                 output = Output::text(
-                    json!({"node":n,"neighbors":neighbors,"display":display}),
+                    json!({"node":n,"neighbors":neighbors,"display":display,"decision_dependencies":store.decision_dependencies(n)}),
                     format!(
                         "{display}\nRelationships:\n{}",
                         serde_json::to_string_pretty(&neighbors).unwrap()

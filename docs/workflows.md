@@ -16,7 +16,7 @@ Merge the example's `workflow` tables into the ledger configuration, preserving 
 - Scope checks compare declared file lists exactly. File existence and completeness of the declared PR changes remain the caller's responsibility.
 - Adding a schema does not change any node's state or fabricate past approvals.
 
-Run `gy lint --json` after enabling a profile. Omissions appear under `workflow`. `gy handover --json` includes those diagnostics and the effective `workflow` configuration, so a new agent can discover the forms and guards.
+Run `gy lint --json` after enabling a profile. Omissions on ongoing work appear under `workflow`. Completed requirements are historical records; adopting a profile does not retroactively require its forms. `gy handover --json` includes those diagnostics and the effective `workflow` configuration, so a new agent can discover the forms and guards.
 
 ## Define a record
 
@@ -37,7 +37,7 @@ limitations = { type = "array", allow_empty = true, items = { type = "string" } 
 location = { type = "string" }
 ```
 
-`kinds` selects node types. `required = true` makes a missing record a lint finding for those types. Otherwise a record is required only by a state guard or explicit submission. Once present, it is validated even outside those states.
+`kinds` selects node types. `required = true` makes a missing record a lint finding for those types. Otherwise a record is required only by a state guard or explicit submission. On ongoing work, a present record is validated even outside those states. For completed requirements, passive inspection validates saved workflow history against its saved schemas; explicit submissions still validate against the current schema.
 
 `version_field` is optional. It must name a required nonempty string field. After submission or a transition snapshot, the same version cannot be recorded with different contents. Change the revision when changing contents. This compares recorded data, not the remote document behind a URL.
 
@@ -111,7 +111,7 @@ right = "design_proposal.revision"
 
 This guard requires schemas named `design_proposal` and `approval`. All guards matching the destination apply, including when entering from another state or adding parenthesized context. Failure returns exit code 2 without changing the node or history. Invalid configuration returns 3.
 
-A successful transition stores the applicable checks and all present, validated records and their schemas under `transitions[].workflow`, alongside the transition evidence. Current-state checks also run in lint and handover. `[lint] workflow = "warn"` or `"off"` changes lint reporting only; it does not disable transition or submission guards.
+A successful transition stores the applicable checks and all present, validated records and their schemas under `transitions[].workflow`, alongside the transition evidence. Current-state checks also run in lint and handover for ongoing work. Every explicit transition uses the current destination policy, including transitions from a completed requirement or back into `complete`. `[lint] workflow = "warn"` or `"off"` changes lint reporting only; it does not disable transition or submission guards.
 
 ## Revisions and approval
 
@@ -150,8 +150,10 @@ gy cannot discover unreported contracts, files, failed tests, or primary sources
 
 ## Compression and migration
 
-Before compression, gy rechecks the completed requirement's workflow records and existing completion guards. The archive includes workflow data and histories. Compression removes `record_history` with `transitions` and the existing documented transient fields; other extension attributes remain preserved.
+Completion ends current workflow obligations. Lint and compression validate existing workflow snapshots against the schemas and comparisons stored in those snapshots, not against today's profile. A completed requirement with no workflow history does not acquire missing-history errors when a profile is introduced. This is a lifecycle rule, not an import exemption or a claim that old work satisfied the new policy.
 
-Compressed requirements are exempt from current workflow checks because their transient inputs moved to the archive. Six-field compression checks remain active. Retrieve historical workflow details from `compressed_from`.
+Compression still requires valid completion records, the six retained fields, reviewed constraints, and a valid archive location when writing. The archive includes existing workflow data and histories. Compression removes `record_history` with `transitions` and the existing documented transient fields; other extension attributes remain preserved. Retrieve archived history from `compressed_from`. Compression is storage compaction, not a means to bypass current policy.
 
-Enabling a profile does not infer approval from a migrated node's state. Fill missing records from evidence, then use explicit submissions or later transitions to record what was checked.
+To adopt a profile, preserve completed records as they are, fill declarations needed for ongoing work from evidence, and use explicit submissions or subsequent transitions to record what is checked now. Do not reconstruct historical approvals to satisfy a policy that was not in force. Reopening completed work is a new action: current destination guards apply. New work cannot bypass completion guards by jumping directly to `complete`.
+
+See [ledger semantics](architecture.md) for the shared authority and lifecycle model.
