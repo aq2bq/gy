@@ -215,12 +215,15 @@ L1〜L13の検査項目は[英語版READMEの一覧](README.md#configuring-lint-
 
 ```sh
 gy skills install .agents/skills
+npx skills add aq2bq/gy
 gy mcp serve
 ```
 
 MCPは標準入出力でJSON-RPCメッセージを1行ずつ交換します。クライアントには `gy`、引数 `mcp serve -C /absolute/project/path` を設定します。`gy_find`、`gy_show`、`gy_question`、`gy_decide` など19ツールを公開します。各ツールの `args` はCLIの対応コマンド以降の引数配列です。たとえば `gy_find` の引数は `{"args":["配信","--where","type=decision"]}` です。
 
 同梱するskillは `gy-ledger`、`gy-question`、`gy-decide` の3つです。インストール先のskillが変更されている場合は上書きせず、別の出力先を要求します。
+
+`gy skills install` はインストール済みバイナリに埋め込まれたskillを書き出すため、本文は常にインストール済みの gy の版と一致します。出力先の指定が必要です。同梱skillは標準の `SKILL.md` 形式なので、`npx skills add aq2bq/gy` でもインストールできます。エージェント検出・project/global・symlink更新には `npx skills`、オフラインで版を固定したコピーには `gy skills install` を選びます。`npx skills` はバイナリではなくリポジトリから取得します。
 
 ## 開発と配布の検証
 

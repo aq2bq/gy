@@ -258,12 +258,15 @@ L6 defaults to `warn`; the others default to `error`. The additional `edges` rul
 
 ```sh
 gy skills install .agents/skills
+npx skills add aq2bq/gy
 gy mcp serve
 ```
 
 MCP exchanges one JSON-RPC message per line over standard input and output. Configure the client to run `gy` with arguments `mcp serve -C /absolute/project/path`. The server exposes 19 tools, including `gy_find`, `gy_show`, `gy_question`, and `gy_decide`. Each tool accepts an `args` array containing arguments after its corresponding CLI command. For example, `gy_find` accepts `{"args":["delivery","--where","type=decision"]}`.
 
 The three bundled skills are `gy-ledger`, `gy-question`, and `gy-decide`. If a destination skill has been edited, installation refuses to overwrite it and requests a different destination.
+
+`gy skills install` writes the skills embedded in the installed binary, so their text always matches the installed gy version; it requires an explicit destination. The bundled skills use the standard `SKILL.md` format, so `npx skills add aq2bq/gy` installs them as well. Choose `npx skills` for agent detection, project/global scope, and symlinked updates; it fetches from the repository rather than the installed binary. Choose `gy skills install` for offline use and a version-locked copy.
 
 ## Development and distribution checks
 
