@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.1
+
+### Added
+
+- `gy scope rename <old> <new>` relabels a scope across its directory, member
+  `scope` attributes, and `[scopes]` configuration without changing node IDs,
+  relationships, records, or history. MCP exposes the same operation as
+  `gy_scope`. CLI and MCP share the core operation; an existing destination is
+  rejected rather than merged.
+
+### Upgrade
+
+Install or update the CLI with `cargo install gy --version 0.2.1 --locked`.
+No ledger migration is required: the on-disk format and existing journal
+entries are unchanged. Rust library users can set `gy-core = "0.2.1"`.
+
 ## 0.2.0
 
 ### Added
