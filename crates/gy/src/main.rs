@@ -149,6 +149,12 @@ fn execute(cli: &Cli) -> Result<Output> {
             let store = Store::init(&cwd, name, *parent_issue)?;
             return Ok(Output::new(json!({"root":store.root,"scope":name})));
         }
+        Commands::Scope { command } => {
+            let mut store = Store::open(&cwd)?;
+            let ScopeCommand::Rename { old, new } = command;
+            store.rename_scope(old, new)?;
+            return Ok(Output::new(json!({"from":old,"to":new})));
+        }
         Commands::Mcp { .. } => return Err(Error::input("Cannot start MCP recursively")),
         _ => {}
     }

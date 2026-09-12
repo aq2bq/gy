@@ -19,6 +19,8 @@ pub struct Store {
 #[derive(Serialize, Deserialize)]
 struct Journal {
     files: BTreeMap<PathBuf, String>,
+    #[serde(default)]
+    removals: Vec<PathBuf>,
 }
 fn atomic_write(path: &Path, data: &str) -> Result<()> {
     let parent = path
@@ -63,6 +65,15 @@ fn checked_destination(root: &Path, path: &Path) -> Result<PathBuf> {
         }
     }
     Ok(destination)
+}
+fn remove_destination(root: &Path, path: &Path) -> Result<()> {
+    let destination = checked_destination(root, path)?;
+    if destination.is_dir() {
+        fs::remove_dir_all(&destination)?;
+    } else if destination.exists() {
+        fs::remove_file(&destination)?;
+    }
+    Ok(())
 }
 fn lock(root: &Path) -> Result<File> {
     let f = OpenOptions::new()
@@ -185,6 +196,14 @@ impl Store {
                     ));
                 }
                 atomic_write(&checked_destination(&root, &path)?, &data)?;
+            }
+            for path in j.removals {
+                if !local_path(&path) {
+                    return Err(Error::corrupt(
+                        "The update journal contains a path outside the ledger",
+                    ));
+                }
+                remove_destination(&root, &path)?;
             }
             fs::remove_file(pending)?;
         }
@@ -342,7 +361,54 @@ impl Store {
         self.nodes.insert(id.clone(), node);
         Ok(id)
     }
+    /// Relabel a scope: move its directory, rewrite member `scope` attributes and
+    /// paths, and move its configuration entry, without changing node identity,
+    /// relationships, lifecycle state, records, or history.
+    pub fn rename_scope(&mut self, old: &str, new: &str) -> Result<()> {
+        if old == new {
+            return Err(Error::input(
+                "The new scope name must differ from the current one",
+            ));
+        }
+        let old_dir = self.root.join(old);
+        if !old_dir.is_dir() {
+            return Err(Error::input(format!("Scope {old} does not exist")));
+        }
+        if !safe_component(new) {
+            return Err(Error::input(
+                "Use a scope identifier that is valid as a directory name",
+            ));
+        }
+        let new_dir = self.root.join(new);
+        if new_dir.exists() || self.config.scopes.contains_key(new) {
+            return Err(Error::input(format!("Scope {new} already exists")));
+        }
+        for node in self.nodes.values_mut() {
+            if node.scope() != old {
+                continue;
+            }
+            let relative = node
+                .path
+                .strip_prefix(&old_dir)
+                .map_err(|e| Error::corrupt(e.to_string()))?
+                .to_owned();
+            node.put("scope", new);
+            node.path = new_dir.join(relative);
+        }
+        if let Some(entry) = self.config.scopes.remove(old) {
+            self.config.scopes.insert(new.into(), entry);
+        }
+        let files = self.staged_files()?;
+        self.write_transaction(files, vec![PathBuf::from(old)])?;
+        for (_, _, directory) in KINDS {
+            fs::create_dir_all(new_dir.join(directory))?;
+        }
+        Ok(())
+    }
     pub fn commit(&self) -> Result<()> {
+        self.write_transaction(self.staged_files()?, vec![])
+    }
+    fn staged_files(&self) -> Result<BTreeMap<PathBuf, String>> {
         let mut files = BTreeMap::new();
         for node in self.nodes.values() {
             let data = node.markdown()?;
@@ -365,17 +431,27 @@ impl Store {
             PathBuf::from("gy.toml"),
             toml::to_string_pretty(&self.config).map_err(|e| Error::corrupt(e.to_string()))?,
         );
-        self.write_files(files)
+        Ok(files)
     }
     pub fn write_files(&self, files: BTreeMap<PathBuf, String>) -> Result<()> {
-        for path in files.keys() {
+        self.write_transaction(files, vec![])
+    }
+    fn write_transaction(
+        &self,
+        files: BTreeMap<PathBuf, String>,
+        removals: Vec<PathBuf>,
+    ) -> Result<()> {
+        for path in files.keys().chain(removals.iter()) {
             checked_destination(&self.root, path)?;
         }
-        let journal = Journal { files };
+        let journal = Journal { files, removals };
         let pending = self.root.join(".gy-transaction.json");
         atomic_write(&pending, &serde_json::to_string(&journal).unwrap())?;
-        for (path, data) in journal.files {
-            atomic_write(&checked_destination(&self.root, &path)?, &data)?;
+        for (path, data) in &journal.files {
+            atomic_write(&checked_destination(&self.root, path)?, data)?;
+        }
+        for path in &journal.removals {
+            remove_destination(&self.root, path)?;
         }
         fs::remove_file(pending)?;
         Ok(())

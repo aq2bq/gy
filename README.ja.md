@@ -25,7 +25,7 @@ gy lint
 gy render
 ```
 
-初期化時に `.gy-dir`、`docs/ledger/gy.toml`、スコープのディレクトリを作成し、既存の `AGENTS.md` に案内を追記します。サブディレクトリからも台帳を探索します。読み取りは全スコープが既定です。書き込みで新しいノードを作成する場合は、スコープ配下で実行するか `--scope` を指定します。既存IDを更新するコマンドはそのIDのスコープへ書き込みます。
+初期化時に `.gy-dir`、`docs/ledger/gy.toml`、スコープのディレクトリを作成し、既存の `AGENTS.md` に案内を追記します。サブディレクトリからも台帳を探索します。読み取りは全スコープが既定です。書き込みで新しいノードを作成する場合は、スコープ配下で実行するか `--scope` を指定します。既存IDを更新するコマンドはそのIDのスコープへ書き込みます。`gy scope rename <old> <new>` はディレクトリ・所属ノード・設定をまとめて改名し、ノードID・関連・記録・履歴を維持します。
 
 ソースからインストールする場合は、チェックアウト先で `cargo install --path crates/gy --locked` を実行します。
 
@@ -34,6 +34,7 @@ gy render
 | コマンド | 結果 |
 | --- | --- |
 | `init <scope>` | 台帳とスコープを作成 |
+| `scope rename <old> <new>` | スコープを改名。ノードID・関連・記録・履歴を維持 |
 | `need add` / `need file` | 受け入れ条件を担うニーズを作成し、要求へ関連付け |
 | `question add` / `question close` | 横断検索後の論点登録、3通りの閉鎖 |
 | `q "一文"` | 人間用の短縮メモ。必須情報を補うまで lint が失敗 |
@@ -217,7 +218,7 @@ gy skills install .agents/skills
 gy mcp serve
 ```
 
-MCPは標準入出力でJSON-RPCメッセージを1行ずつ交換します。クライアントには `gy`、引数 `mcp serve -C /absolute/project/path` を設定します。`gy_find`、`gy_show`、`gy_question`、`gy_decide` など18ツールを公開します。各ツールの `args` はCLIの対応コマンド以降の引数配列です。たとえば `gy_find` の引数は `{"args":["配信","--where","type=decision"]}` です。
+MCPは標準入出力でJSON-RPCメッセージを1行ずつ交換します。クライアントには `gy`、引数 `mcp serve -C /absolute/project/path` を設定します。`gy_find`、`gy_show`、`gy_question`、`gy_decide` など19ツールを公開します。各ツールの `args` はCLIの対応コマンド以降の引数配列です。たとえば `gy_find` の引数は `{"args":["配信","--where","type=decision"]}` です。
 
 同梱するskillは `gy-ledger`、`gy-question`、`gy-decide` の3つです。インストール先のskillが変更されている場合は上書きせず、別の出力先を要求します。
 
@@ -231,7 +232,7 @@ cargo package --workspace --allow-dirty
 cargo install --path crates/gy --locked --root target/install-check
 ```
 
-`gy-core` が保存・操作・検査・表示を提供し、`gy` がclapのCLIとMCPを提供します。台帳単位のファイルロックを読み書きの両方で取得します。複数ファイルの更新は、更新内容を記録してから各ファイルを置き換え、途中停止時には次の起動で更新を完了します。`.gy-ids.json` は削除済み番号の再利用を防ぐ採番記録なので、台帳と一緒にgitへ保存します。`.gy.lock` はgitへ保存しません。
+`gy-core` が保存・操作・検査・表示を提供し、`gy` がclapのCLIとMCPを提供します。台帳単位のファイルロックを読み書きの両方で取得します。複数ファイルの更新は、スコープ改名時のディレクトリ削除を含めて、適用前に記録し、途中停止時には次の起動で更新を完了します。`.gy-ids.json` は削除済み番号の再利用を防ぐ採番記録なので、台帳と一緒にgitへ保存します。`.gy.lock` はgitへ保存しません。
 
 CIにはmacOS・Linux・Windowsでのテストとインストール確認を設定しています。pre-commit用のエントリは [.pre-commit-hooks.yaml](.pre-commit-hooks.yaml) です。
 

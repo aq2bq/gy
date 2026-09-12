@@ -182,6 +182,113 @@ fn workflow_cross_scope_edges_and_unknown_attributes() {
     assert!(rendered.contains("region: east"));
 }
 #[test]
+fn scope_rename_preserves_identity_relationships_records_and_history() {
+    let t = repo();
+    let p = t.path();
+    add_ac(p);
+    run(p, &["init", "b"]);
+    run(
+        p,
+        &[
+            "need",
+            "add",
+            "Cross-scope need",
+            "--targets",
+            "AC-1",
+            "--scope",
+            "b",
+        ],
+    );
+    run(
+        p,
+        &[
+            "node",
+            "set",
+            "AC-1",
+            "--set",
+            "custom={\"region\":\"east\"}",
+        ],
+    );
+    let before = run(p, &["show", "AC-1"]);
+
+    let out = run(p, &["scope", "rename", "a", "renamed"]);
+    assert_eq!(out["from"], "a");
+    assert_eq!(out["to"], "renamed");
+
+    assert!(!p.join("docs/ledger/a").exists());
+    assert!(p.join("docs/ledger/renamed/criteria/AC-1.md").is_file());
+
+    let ac = run(p, &["show", "AC-1"]);
+    assert_eq!(ac["node"]["attrs"]["id"], "AC-1");
+    assert_eq!(ac["node"]["attrs"]["scope"], "renamed");
+    assert_eq!(ac["node"]["attrs"]["custom"]["region"], "east");
+    assert_eq!(ac["node"]["attrs"]["targeted-by"], json!(["N-1"]));
+    assert_eq!(ac["relationships"], before["relationships"]);
+
+    let n = run(p, &["show", "N-1"]);
+    assert_eq!(n["node"]["attrs"]["scope"], "b");
+    assert_eq!(n["node"]["attrs"]["targets"], json!(["AC-1"]));
+
+    let config = fs::read_to_string(p.join("docs/ledger/gy.toml")).unwrap();
+    assert!(config.contains("[scopes.renamed]"));
+    assert!(config.contains("parent_issue = 6000"));
+    assert!(!config.contains("[scopes.a]"));
+
+    reject(p, &["find", "--scope", "a", "--where", "type=criterion"], 2);
+    let hits = run(
+        p,
+        &["find", "--scope", "renamed", "--where", "type=criterion"],
+    );
+    assert_eq!(hits["hits"].as_array().unwrap().len(), 1);
+    run(p, &["lint"]);
+}
+#[test]
+fn scope_rename_rejects_collisions_and_invalid_names_without_changes() {
+    let t = repo();
+    let p = t.path();
+    add_ac(p);
+    run(p, &["init", "b"]);
+    let node = p.join("docs/ledger/a/criteria/AC-1.md");
+    let before = fs::read_to_string(&node).unwrap();
+    for args in [
+        vec!["scope", "rename", "a", "b"],
+        vec!["scope", "rename", "missing", "c"],
+        vec!["scope", "rename", "a", "bad/name"],
+        vec!["scope", "rename", "a", "a"],
+    ] {
+        reject(p, &args, 2);
+    }
+    assert!(node.is_file());
+    assert!(!p.join("docs/ledger/b/criteria/AC-1.md").exists());
+    assert_eq!(before, fs::read_to_string(&node).unwrap());
+}
+#[test]
+fn scope_rename_moves_empty_scope_directories() {
+    let t = repo();
+    let p = t.path();
+    run(p, &["init", "empty"]);
+    run(p, &["scope", "rename", "empty", "vacant"]);
+    assert!(!p.join("docs/ledger/empty").exists());
+    assert!(p.join("docs/ledger/vacant/criteria").is_dir());
+    run(p, &["lint"]);
+}
+#[test]
+fn open_replays_pending_transaction_removals() {
+    let t = repo();
+    let p = t.path();
+    let ledger = p.join("docs/ledger");
+    fs::create_dir_all(ledger.join("stray")).unwrap();
+    fs::write(ledger.join("stray").join("x.md"), "stale").unwrap();
+    fs::write(
+        ledger.join(".gy-transaction.json"),
+        r#"{"files":{},"removals":["stray"]}"#,
+    )
+    .unwrap();
+    run(p, &["lint"]);
+    assert!(!ledger.join("stray").exists());
+    assert!(!ledger.join(".gy-transaction.json").exists());
+}
+#[test]
 fn input_guards_explain_reasons_and_do_not_allocate() {
     let t = repo();
     let p = t.path();

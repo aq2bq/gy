@@ -11,6 +11,7 @@ Setup (specify --scope when outside the target scope directory):
   gy need add "Make retries safe" --targets AC-1 --scope demo
   gy req add "Retry control" --issue 6006 --parent-issue 6000 --scope demo
   gy need file N-1 --issue 6006
+  gy scope rename old-name new-name   # relabel a scope; IDs, edges, records, and history persist
 
 Questions and decisions:
   gy question add "How should deliveries be ordered?" --decider master --options "Publication time" --options "Arrival time" --scope demo

@@ -13,6 +13,12 @@ Body search remains available through `find`. Import may explicitly extract a co
 
 Unknown extension attributes are preserved. The existing L13 convention treats exact node-ID-valued attributes as references; it does not extract references from arbitrary prose strings. Workflow snapshot schemas are configuration, while their recorded values and evidence remain data.
 
+## Scope relabeling
+
+A scope is a label, not a node identity. Its canonical representations are the directory name, each member node's `scope` attribute, and the `[scopes]` entry in `gy.toml`; loading requires the directory and attribute to agree. `scope rename` changes all three together, so node IDs, relationships, lifecycle state, records, and history are preserved. Relationships are keyed by node ID and never embed a scope name, so cross-scope edges survive unchanged.
+
+Renaming rejects a destination that already exists or a name that is not a safe directory component. A collision is not a merge. Free text, `decision_scope`, and arbitrary attributes that mention the old name are author declarations rather than scope references, so rename does not rewrite them; later users verify any such reference. The operation applies the new files and the old directory removal in one transaction, so an interrupted update replays to a consistent state.
+
 ## Dependency meaning and lifecycle
 
 `requirement --relies-on--> decision` records the decision on which that requirement's work was based. The edge remains part of the ledger after completion or supersession. `supersedes` declares that a decision has replaced another decision; it does not retroactively replace the decisions used by earlier work.

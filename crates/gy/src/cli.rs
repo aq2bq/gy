@@ -35,6 +35,11 @@ pub enum Commands {
         #[arg(long)]
         parent_issue: Option<u64>,
     },
+    /// Rename a scope and update every member node while preserving identity, relationships, and history
+    Scope {
+        #[command(subcommand)]
+        command: ScopeCommand,
+    },
     /// Create needs and record their association with Issues
     Need {
         #[command(subcommand)]
@@ -136,6 +141,11 @@ pub enum Commands {
         after_help = "Configure [import] scope_note_section in gy.toml to copy an ATX heading section into decision_scope. Existing nonempty decision_scope values take precedence. scope_note_placeholders lists texts to leave unfilled. import_summary reports missing scopes and marks. Frontmatter narrows/supersedes entries receive imported=true; relationships are not inferred from prose."
     )]
     Import { directory: PathBuf },
+}
+#[derive(Subcommand, Debug)]
+pub enum ScopeCommand {
+    /// Rename a scope. Node IDs, relationships, records, and history are preserved
+    Rename { old: String, new: String },
 }
 #[derive(Subcommand, Debug)]
 pub enum Need {

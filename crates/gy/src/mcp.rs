@@ -62,6 +62,11 @@ const TOOL_NAMES: &[(&str, &str, &[&str])] = &[
     ),
     ("gy_init", "Create a ledger and scope", &["init"]),
     (
+        "gy_scope",
+        "Rename a scope while preserving node identity, relationships, records, and history",
+        &["scope"],
+    ),
+    (
         "gy_cheatsheet",
         "Usage instructions for the first session",
         &["cheatsheet"],

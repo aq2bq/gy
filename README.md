@@ -25,7 +25,7 @@ gy lint
 gy render
 ```
 
-Initialization creates `.gy-dir`, `docs/ledger/gy.toml`, and the scope directories, and appends a ledger reference to an existing `AGENTS.md`. Commands can discover the ledger from subdirectories. Reads cover all scopes by default. To create a node, run inside its scope directory or supply `--scope`. Commands that update an existing ID write to that node's scope.
+Initialization creates `.gy-dir`, `docs/ledger/gy.toml`, and the scope directories, and appends a ledger reference to an existing `AGENTS.md`. Commands can discover the ledger from subdirectories. Reads cover all scopes by default. To create a node, run inside its scope directory or supply `--scope`. Commands that update an existing ID write to that node's scope. `gy scope rename <old> <new>` relabels a scope in its directory, member nodes, and configuration while preserving node IDs, relationships, records, and history.
 
 To install from a source checkout, run `cargo install --path crates/gy --locked`.
 
@@ -34,6 +34,7 @@ To install from a source checkout, run `cargo install --path crates/gy --locked`
 | Command | Result |
 | --- | --- |
 | `init <scope>` | Create a ledger and scope |
+| `scope rename <old> <new>` | Rename a scope, preserving node IDs, relationships, records, and history |
 | `need add` / `need file` | Create a need tied to acceptance criteria and associate it with a requirement |
 | `question add` / `question close` | Search across scopes before registering a question; close it in one of three ways |
 | `q "one sentence"` | Capture a quick human note; lint fails until the required information is supplied |
@@ -260,7 +261,7 @@ gy skills install .agents/skills
 gy mcp serve
 ```
 
-MCP exchanges one JSON-RPC message per line over standard input and output. Configure the client to run `gy` with arguments `mcp serve -C /absolute/project/path`. The server exposes 18 tools, including `gy_find`, `gy_show`, `gy_question`, and `gy_decide`. Each tool accepts an `args` array containing arguments after its corresponding CLI command. For example, `gy_find` accepts `{"args":["delivery","--where","type=decision"]}`.
+MCP exchanges one JSON-RPC message per line over standard input and output. Configure the client to run `gy` with arguments `mcp serve -C /absolute/project/path`. The server exposes 19 tools, including `gy_find`, `gy_show`, `gy_question`, and `gy_decide`. Each tool accepts an `args` array containing arguments after its corresponding CLI command. For example, `gy_find` accepts `{"args":["delivery","--where","type=decision"]}`.
 
 The three bundled skills are `gy-ledger`, `gy-question`, and `gy-decide`. If a destination skill has been edited, installation refuses to overwrite it and requests a different destination.
 
@@ -274,6 +275,6 @@ cargo package --workspace --allow-dirty
 cargo install --path crates/gy --locked --root target/install-check
 ```
 
-`gy-core` provides storage, operations, validation, and views; `gy` provides the clap CLI and MCP interface. Both reads and writes acquire a ledger-wide file lock. Multi-file updates are journaled before replacing individual files, and an interrupted update is completed on the next startup. Commit `.gy-ids.json` with the ledger: it records allocated numbers to prevent reuse after deletion. Do not commit `.gy.lock`.
+`gy-core` provides storage, operations, validation, and views; `gy` provides the clap CLI and MCP interface. Both reads and writes acquire a ledger-wide file lock. Multi-file updates, including a renamed scope's directory removal, are journaled before applying, and an interrupted update is completed on the next startup. Commit `.gy-ids.json` with the ledger: it records allocated numbers to prevent reuse after deletion. Do not commit `.gy.lock`.
 
 CI is configured to test and install on macOS, Linux, and Windows. The pre-commit hook entry is in [.pre-commit-hooks.yaml](.pre-commit-hooks.yaml).
