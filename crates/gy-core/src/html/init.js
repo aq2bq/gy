@@ -6,8 +6,7 @@ initLayout();
 buildGenealogy();
 makeDefs();
 resetView();
-draw();
-window.addEventListener('resize', () => { applyTransform(); draw(); });
+window.addEventListener('resize', draw);
 
 // ---------- graph export? no (single-file, no external) ----------
 })();

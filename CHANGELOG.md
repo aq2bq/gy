@@ -4,6 +4,21 @@
 
 ### Changed
 
+- Clicking an individual graph node now moves the focus and opens details in a
+  separate pane. Back, the focus path, and All nodes return through stored
+  node/radius history without clearing filters, search, or lineage. A hidden
+  focus remains in the path with an explicit notice. Reset everything clears
+  navigation and filters together. Isolated nodes explicitly show that this
+  graph contains no connections for the focus.
+- Graph resizing preserves manual zoom and the graph point at the viewport
+  center, while automatic views refit. Focus/displayed-node changes refit once
+  after updating the detail pane. Automatic individual zoom is capped at 2
+  to avoid over-enlarging isolated nodes; manual zoom still reaches 4. When a
+  readable view cannot fit all selected nodes, it centers the focus (or the
+  selected bounds if the focus is absent/filtered out) and reports off-screen
+  nodes, including in lineage views.
+
+
 - Split the HTML projection sources by responsibility and assemble them at
   compile time, preserving the generated HTML byte for byte. HTML generation
   still requires only the gy binary.
@@ -32,7 +47,8 @@
 ### Upgrade
 
 `cargo install gy --version 0.3.1 --locked`. No ledger migration is required
-and the on-disk format and public API are unchanged.
+and the on-disk format and public API are unchanged. Regenerate existing HTML
+with `gy render --format html` to use the new navigation.
 
 ## 0.3.0
 

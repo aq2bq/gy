@@ -60,10 +60,10 @@
         <div class="field"><label>Neighborhood (n hops from a node)</label>
           <div class="row">
             <input id="hopFrom" type="text" placeholder="N-12">
-            <input id="hopN" type="number" min="1" max="10" value="1" style="max-width:56px">
+            <output id="hopN">Automatic radius</output>
             <button id="applyHop">Apply</button>
           </div>
-          <button id="clearFilter" style="width:100%;margin-top:4px">Reset filters and neighborhoods</button>
+          <button id="clearFilter" style="width:100%;margin-top:4px">Reset everything</button>
         </div>
         <div class="field"><label>Genealogy (decisions only)</label>
           <button id="genealogy" style="width:100%">Show decision lineage</button>
@@ -103,15 +103,28 @@
   </aside>
 
   <main>
-    <div id="graphMeta"><span id="graphCount"></span> nodes drawn &middot; <span id="graphVisible"></span> visible &middot; <span id="hopInfo"></span></div>
+    <nav id="focusNav" aria-label="Graph navigation">
+      <div class="row">
+        <button id="focusBack" disabled>Back</button>
+        <button id="focusAll" disabled>All nodes</button>
+        <button id="focusDetail" disabled>Details</button>
+        <span id="focusStatus" role="status"></span>
+      </div>
+      <div id="focusPath" aria-label="Focus path"></div>
+    </nav>
+    <div id="graphWorkspace">
+    <div id="graphPane">
+    <div id="graphMeta"><span id="graphCount"></span> nodes drawn &middot; <span id="graphVisible"></span> visible</div>
     <div id="viewer"><svg id="svg" width="100%" height="100%"></svg>
       <div id="clusterPanel"></div>
     </div>
     <div id="culling"></div>
     <div id="legendBox"></div>
+    </div>
     <div id="detail">
       <button id="closeDetail">&times; close</button>
       <div id="detailBody"></div>
+    </div>
     </div>
   </main>
 </div>

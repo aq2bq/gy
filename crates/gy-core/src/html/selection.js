@@ -29,16 +29,9 @@ function visibleNodes() {
     ids = ids.filter(id => hits.has(id));
   } else { searchHits = null; }
   // neighborhood
-  if (hopFrom) {
-    const reach = new Set([hopFrom]);
-    let frontier = [hopFrom];
-    for (let h = 0; h < hopN; h++) {
-      const next = [];
-      frontier.forEach(id => {
-        Object.keys(adj[id] || {}).forEach(t => { if (!reach.has(t)) { reach.add(t); next.push(t); } });
-      });
-      frontier = next;
-    }
+  const focus = currentFocus();
+  if (focus.id) {
+    const reach = reachable(focus.id, focus.radius);
     ids = ids.filter(id => reach.has(id));
   }
   return ids;

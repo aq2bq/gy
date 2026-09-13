@@ -5,6 +5,7 @@ svg.addEventListener('wheel', (e) => {
   const rect = svg.getBoundingClientRect();
   const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
   const nx = (cx - translate.x) / scale, ny = (cy - translate.y) / scale;
+  viewSource = 'manual';
   scale *= factor;
   scale = Math.min(4, Math.max(0.1, scale));
   translate.x = cx - nx * scale;
@@ -12,12 +13,19 @@ svg.addEventListener('wheel', (e) => {
   applyTransform(); updateLod(); draw();
 }, {passive:false});
 
-let dragging = false, dragStart = null;
-svg.addEventListener('mousedown', (e) => { dragging = true; dragStart = {x: e.clientX - translate.x, y: e.clientY - translate.y}; });
+let dragging = false, dragStart = null, dragMoved = false;
+svg.addEventListener('mousedown', (e) => {
+  if (e.button !== 0) return;
+  dragging = true; dragMoved = false;
+  dragStart = {x: e.clientX, y: e.clientY, tx: translate.x, ty: translate.y};
+});
 window.addEventListener('mousemove', (e) => {
   if (!dragging) return;
-  translate.x = e.clientX - dragStart.x;
-  translate.y = e.clientY - dragStart.y;
+  if (!dragMoved && Math.hypot(e.clientX - dragStart.x, e.clientY - dragStart.y) < 4) return;
+  dragMoved = true;
+  viewSource = 'manual';
+  translate.x = dragStart.tx + e.clientX - dragStart.x;
+  translate.y = dragStart.ty + e.clientY - dragStart.y;
   applyTransform(); updateLod(); draw();
 });
 window.addEventListener('mouseup', () => { dragging = false; });
@@ -33,6 +41,7 @@ function zoomBy(f) {
   const rect = svg.getBoundingClientRect();
   const cx = rect.width/2, cy = rect.height/2;
   const nx = (cx - translate.x) / scale, ny = (cy - translate.y) / scale;
+  viewSource = 'manual';
   scale *= f;
   scale = Math.min(4, Math.max(0.1, scale));
   translate.x = cx - nx * scale;
@@ -72,21 +81,30 @@ function fitTransform() {
       maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
     });
   }
+  viewSource = 'fit';
   if (minX > maxX) return;
   const rect = svg.getBoundingClientRect();
   const spanX = (maxX - minX) + 120;
   const spanY = (maxY - minY) + 120;
   const fit = Math.min(rect.width / Math.max(1, spanX), rect.height / Math.max(1, spanY));
-  scale = Math.min(4, fit);
+  // Avoid over-enlarging isolated/small neighborhoods; manual zoom still reaches 4.
+  scale = Math.min(over ? 4 : 2, fit);
   // H28: keep node labels readable (font 11px -> at least 11px on screen).
   // If the whole set does not fit at that scale, readability wins and the
   // off-screen count is reported by the banner in draw().
   if (!over) scale = Math.max(scale, 1.0);
-  translate.x = rect.width / 2 - ((minX + maxX) / 2) * scale;
-  translate.y = rect.height / 2 - ((minY + maxY) / 2) * scale;
+  let center = {x: (minX + maxX) / 2, y: (minY + maxY) / 2};
+  const focus = currentFocus();
+  // At the readable minimum, keep the destination visible even if its
+  // neighborhood spans more than the viewport (notably generation layouts).
+  if (!over && fit < 1 && focus.id && ids.includes(focus.id)) {
+    center = currentLayout()[focus.id] || center;
+  }
+  translate.x = rect.width / 2 - center.x * scale;
+  translate.y = rect.height / 2 - center.y * scale;
   applyTransform(); updateLod();
 }
-function fitView() { fitTransform(); draw(); }
+function fitView() { lastFitKey = ''; draw(); }
 
 function resetView() { fitView(); }
 

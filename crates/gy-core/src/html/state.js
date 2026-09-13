@@ -6,10 +6,13 @@ const MAX_LABEL_W = 190;        // graph units: label width budget at near zoom
 
 let searchText = '';
 let searchHits = null;
-let hopFrom = null, hopN = 1, hopInfo = null;
+// Navigation history is independent of filters, search, and genealogy.
+const focusHistory = [{id: null, radius: null}];
+function currentFocus() { return focusHistory[focusHistory.length - 1]; }
 let genealogyMode = false;
 let selected = null;
 let scale = 1, translate = {x:0, y:0};
+let viewSource = 'fit';
 let lod = 'far';
 let positions = {};           // id -> {x,y}, overview cluster-member grid
 let drawNodes = [];           // legacy alias for the current visible subset

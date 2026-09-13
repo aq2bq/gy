@@ -100,10 +100,11 @@ function showDetail(id) {
     + '<h2 style="position:inherit">Body</h2><div id="body">' + renderBody(n.body || '') + '</div>';
   document.getElementById('detail').classList.add('on');
 }
-function closeDetail() {
+function hideDetail() {
   document.getElementById('detail').classList.remove('on');
-  selected = null; redraw();
+  selected = null;
 }
+function closeDetail() { hideDetail(); redraw(); }
 document.getElementById('closeDetail').addEventListener('click', closeDetail);
 document.getElementById('detail').addEventListener('click', (e) => {
   const t = e.target.closest('[data-go]');

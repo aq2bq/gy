@@ -34,22 +34,32 @@ function dotPath(sx, sy, tx, ty) {
 // Refit automatically whenever the visible set changes (overview <-> neighborhood,
 // search/filter, genealogy entry), so the new content is not left outside the viewport.
 let lastFitKey = '';
+let lastViewport = null;
 function draw() {
   const ids = visibleNodes();
-  const key = (genealogyMode ? 'g' : '') + ':' + [...ids].sort().join(',');
+  renderNavigation(ids);
+  const viewport = svg.getBoundingClientRect();
+  const focus = currentFocus();
+  const key = JSON.stringify([genealogyMode, focus.id, focus.radius, [...ids].sort()]);
   if (key !== lastFitKey) {
     lastFitKey = key;
     fitTransform();
+  } else if (lastViewport && (viewport.width !== lastViewport.width || viewport.height !== lastViewport.height)) {
+    if (viewSource === 'fit') fitTransform();
+    else {
+      // Preserve the world point at the viewport center and the user's scale.
+      translate.x += (viewport.width - lastViewport.width) / 2;
+      translate.y += (viewport.height - lastViewport.height) / 2;
+      applyTransform();
+    }
   }
+  lastViewport = {width: viewport.width, height: viewport.height};
   const showingAll = ids.length <= MODE_THRESHOLD || genealogyMode;
   if (!genealogyMode && showingAll && ids.length > 0) ensureForce(ids);
   const inPositions = genealogyMode ? genealogyLayout : (showingAll ? forceLayout : positions);
 
   // clear
   root.innerHTML = '';
-  document.getElementById('hopInfo').textContent =
-    (hopFrom && hopInfo) ? ('neighborhood from ' + hopFrom + ' · ' + hopInfo.n + ' hop' + (hopInfo.n>1?'s':'') + ' · ' + hopInfo.size + ' nodes')
-    : (hopFrom ? '' : '');
   document.getElementById('lodInfo').textContent =
     showingAll ? 'zoom level: ' + lod + ' (scale ' + scale.toFixed(2) + ') '
     : 'overview · zoom level: ' + lod + ' (scale ' + scale.toFixed(2) + ')';
@@ -63,9 +73,10 @@ function draw() {
   };
 
   if (genealogyMode) {
-    drawEdgesLayer(inPositions, ids.filter(id=>inPositions[id]), EDGES.filter(e => (e.label === 'narrows' || e.label === 'supersedes' || e.label === 'completes' || e.label === 'widens') && inPositions[e.source] && inPositions[e.target]));
+    drawEdgesLayer(inPositions, ids.filter(id=>inPositions[id]), visibleEdges(ids).filter(e => (e.label === 'narrows' || e.label === 'supersedes' || e.label === 'completes' || e.label === 'widens') && inPositions[e.source] && inPositions[e.target]));
     const n = drawNodeLayer(inPositions, ids);
-    setMeta(n, n, '');
+    const off = offscreenCount(inPositions, ids);
+    setMeta(n - off, n, off > 0 ? ('Showing ' + (n - off) + ' of ' + n + ' nodes; ' + off + ' off-screen at readable zoom. Zoom out or pan to reach them.') : '');
     return;
   }
 
@@ -160,11 +171,8 @@ function draw() {
     return;
   }
 
-  // Individual mode / genealogy / filtered small set: force layout (H21)
-  const drawEdges = genealogyMode
-    ? EDGES.filter(e => (e.label === 'narrows' || e.label === 'supersedes' || e.label === 'completes' || e.label === 'widens') && inPositions[e.source] && inPositions[e.target])
-    : visibleEdges(ids);
-  drawEdgesLayer(inPositions, ids, drawEdges);
+  // Individual mode / filtered small set: force layout (H21)
+  drawEdgesLayer(inPositions, ids, visibleEdges(ids));
   const n = drawNodeLayer(inPositions, ids);
   // H28 + H18: at the readable fit scale some nodes may fall outside the viewport.
   const off = offscreenCount(inPositions, ids);
@@ -286,9 +294,14 @@ function drawNodeLayer(inPositions, ids) {
       g.appendChild(t);
       placed.push(bb);
     }
-    const ev = {id};
-    g.addEventListener('click', (e) => { e.stopPropagation(); selected = ev.id; showDetail(ev.id); continuousRedraw(); });
-    g.addEventListener('dblclick', () => { startHop(ev.id); });
+    g.dataset.nodeId = id;
+    g.setAttribute('tabindex', '0');
+    g.setAttribute('role', 'button');
+    g.setAttribute('aria-label', 'Focus ' + id + ' · ' + n.title);
+    g.addEventListener('click', (e) => { e.stopPropagation(); if (!dragMoved) startHop(id); });
+    g.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startHop(id); }
+    });
     nodeLayer.appendChild(g);
     drawn++;
   });

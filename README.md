@@ -311,6 +311,21 @@ L6 defaults to `warn`; the others default to `error`. The additional `edges` rul
 
 `render --format html` writes a single self-contained HTML file. It embeds the full ledger data, judgments from `lint`, `next`, `handover`, and `stats`, and does not fetch anything from the network, so `file://` works offline. The page shows the first screen (acceptance, states, open questions, lint counts), a graph of all six node types (each with a distinct shape and color) and twelve relationship labels, a node detail panel, filters and full-text search, the `stats` progress axes, and the handover blockers. The graph switches between two views by the number of visible nodes rather than by zoom: with many nodes it draws clusters with aggregated edge counts, and clicking a cluster lists its members to start a neighborhood from; with a small set it draws individual nodes laid out to reflect connectivity. Neighborhood hop count is chosen adaptively so the result fits the individual-view limit. Decisions read as a generation-layered lineage via `narrows` / `widens` / `supersedes` / `completes`, with superseded decisions marked. A count banner always states how many nodes are drawn and how many are hidden, including in search and lineage modes. `html_output` defaults to `gy.html` at the ledger root; writing `{scope}` in it produces one file per scope. `split_threshold` does not apply to HTML, and lint results never change the exit code. Bodies are embedded in full; the graph intentionally shows no body text (read it in the detail panel).
 
+Clicking an individual node moves the focus to its neighborhood and opens its
+full details beside the graph (below it on narrow screens). **Back** returns one
+focus, and the path above the graph lets you return several steps at once.
+**All nodes** removes the focus while retaining type, scope, state, search, and
+lineage settings; **Reset everything** clears all of them. An isolated focus
+shows “No connections in this graph”. The path retains each
+focus and its automatic hop radius, including a focus hidden by the current
+filters. Closing details keeps the focus; **Details** reopens the panel.
+
+Focus or displayed-node changes refit the graph. Resizing the graph, including
+opening details, refits an automatic view; after manual zoom or pan it preserves
+the scale and the graph point at the center. Automatic individual views cap zoom
+at 2; manual zoom can reach 4. Regenerate existing HTML with
+`gy render --format html` to use the new navigation; ledger files need no migration.
+
 `init` appends the default HTML output (`html_output`, default `gy.html`) to the ledger root's `.gitignore`; an existing `.gitignore` is appended, never rewritten, and re-running `init` does not duplicate the line. For a ledger created before this feature, either run `gy init <existing-scope>` again (append-only and idempotent; nodes, relationships, records, and history are preserved) or add the `html_output` value by hand. Re-running `init` also rewrites `gy.toml` in normalized form: attribute values are preserved, but comments and formatting are lost (inline tables expand to `[table]` sections). If you keep operating notes as comments in `gy.toml`, add the `.gitignore` line by hand instead of re-running `init`.
 
 `stats --days 7` reports new question counts, daily rates, and changes for the most recent seven days and the preceding seven days. It counts the first addition of each ID across all git refs; body edits are not new arrivals. Uncommitted questions are excluded. If the previous period had no arrivals, the decay fraction is null. Record acceptance criterion satisfaction with `criterion satisfy --evidence`.
@@ -330,6 +345,11 @@ The three bundled skills are `gy-ledger`, `gy-question`, and `gy-decide`. If a d
 `gy skills install` writes the skills embedded in the installed binary, so their text always matches the installed gy version; it requires an explicit destination. The bundled skills use the standard `SKILL.md` format, so `npx skills add aq2bq/gy` installs them as well. Choose `npx skills` for agent detection, project/global scope, and symlinked updates; it fetches from the repository rather than the installed binary. Choose `gy skills install` for offline use and a version-locked copy.
 
 ## Development and distribution checks
+
+HTML navigation state and fit regressions run with
+`node --test tests/html_navigation.test.cjs` (Node.js is needed only for these
+development tests, not for building gy or generating HTML). Browser interaction
+and hit testing are separate checks.
 
 ```sh
 cargo fmt --all -- --check

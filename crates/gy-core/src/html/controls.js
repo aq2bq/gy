@@ -37,7 +37,8 @@ document.getElementById('clearFilter').addEventListener('click', () => {
   document.getElementById('criterion').value = '';
   document.getElementById('q').value = '';
   searchText = '';
-  hopFrom = null; hopN = 1; hopInfo = null;
+  focusHistory.splice(1);
+  hideDetail();
   genealogyMode = false;
   closeClusterPanel();
   redraw();
@@ -49,12 +50,10 @@ document.getElementById('applyHop').addEventListener('click', () => {
 });
 document.getElementById('genealogy').addEventListener('click', () => {
   genealogyMode = !genealogyMode;
-  document.getElementById('genealogy').style.borderColor = genealogyMode ? 'var(--hl)' : '';
   if (genealogyMode) {
     lod = 'near';
   }
   closeClusterPanel();
-  resetView();
   redraw();
 });
 document.getElementById('zin').addEventListener('click', () => zoomBy(1.6));

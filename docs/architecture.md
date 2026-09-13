@@ -88,6 +88,46 @@ Drawing is split into two views by the number of visible nodes, not by zoom leve
 
 The count banner reports the nodes actually drawn and the visible total in every mode, including search, filters, and genealogy; culling always surfaces how many are hidden rather than silently dropping them. Fit computes the transform from the content's bounding box in the current mode, so the projected content fits the viewport instead of being a fixed scale.
 
+### Focus navigation and viewport ownership
+
+The page stores an in-memory stack of `{id, radius}` entries beginning with
+`{id: null, radius: null}`. Entering a node chooses the adaptive radius from the
+undirected EDGES adjacency and stores it; repeated entry to the current node
+leaves the stack unchanged. Back removes one entry; choosing a path entry removes
+all entries after it. The stack records the navigation route, not graph ancestry.
+Reloading the generated HTML starts with no focus.
+
+Type, scope, lifecycle filters, full-text search, and genealogy are independent
+of that stack. They intersect the neighborhood selection. A filtered-out focus
+is retained and explicitly reported in the navigation bar. An empty adjacency
+for the focus produces “No connections in this graph”; this makes no claim
+about references excluded from EDGES or connections outside the embedded graph. All nodes removes
+only the focus; Reset everything also clears filters, search, and genealogy.
+Genealogy continues to draw only its four relationship types among displayed
+decisions, using the generation layout.
+
+Node clicks, cluster member choices, and ID entry share the same navigation
+operation: update the focus, open details, then draw once. Details occupy a
+separate region beside or below the graph and can be closed without changing the
+focus. Their visibility is not part of navigation history.
+
+The viewport tracks whether its transform comes from fit or manual zoom/pan.
+A focus, displayed-node set, or genealogy change always refits. A size-only
+change refits an automatic view, while a manual view keeps its scale and the
+world coordinate at the viewport center. The draw operation observes the final
+focus and pane size, so simultaneous changes cause one fit. When a readable fit
+cannot contain all selected nodes, it centers the focus if that node belongs to
+the selected set; otherwise it centers the selected nodes' bounding box. Both
+ordinary and genealogy views report off-screen nodes. Automatic individual
+fit is limited to scale 1–2; manual zoom retains its existing 0.1–4 range. Content
+that does not fit at readable scale remains reachable by pan/zoom.
+
+Adjacency is built once in O(V + E). Choosing a radius traverses at most five
+bounded neighborhoods, each O(V + E) in the worst case. Returning uses the stored
+radius without recomputing its choice. History uses O(H) space; rebuilding the
+path is O(H) only when it changes. Existing filtering, layout, and drawing still
+run over their selected nodes; navigation does not scan ledger history.
+
 ### HTML source assembly
 
 `gy-core/src/html.rs` assembles the HTML sources with `concat!` and
