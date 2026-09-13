@@ -162,3 +162,16 @@ a{color:var(--decision);cursor:pointer}
 #detail:not(.on) #detailBody,#detail:not(.on) #closeDetail,#detail.on #detailEmpty{display:none}
 #detailEmpty{padding:24px;color:var(--muted)}
 #detailFocus{margin:0 0 14px;text-align:left}
+
+/* Search and filtering stay visible independently of the survey tab. */
+#filters{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px 12px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--border);flex:0 0 auto}
+#filters .field{margin:0;flex:1 1 130px;min-width:120px}
+#filters .field:has(#q){flex-basis:200px}
+#filters .field:has(#typeChips){flex-basis:450px}
+#filters .field:has(#hopFrom){flex-basis:440px}
+#filters .row{flex-wrap:wrap}
+#filters #hopFrom{width:100px;flex:1 1 100px}
+#filters #hopRadius{width:auto;flex:1 1 140px}
+#filters #applyHop{flex:1 1 220px}
+#filters .field:has(#zin){flex-basis:240px}
+#filters label{font-size:11px}

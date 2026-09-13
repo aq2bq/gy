@@ -61,7 +61,7 @@ function locationState(value) {
   if (value === undefined) {
     return JSON.stringify({selected, focus: focusHistory, types: typeState,
       filters: Object.fromEntries(fields.map(id => [id, document.getElementById(id).value])),
-      search: searchText, tab: document.querySelector('#tabs .on').dataset.tab, genealogy: genealogyMode});
+      search: searchText, radiusChoice: document.getElementById('hopRadius').value, tab: document.querySelector('#tabs .on').dataset.tab, genealogy: genealogyMode});
   }
   focusHistory.splice(0, focusHistory.length, {id:null, radius:null});
   if (Array.isArray(value.focus)) value.focus.forEach(f => {
@@ -69,8 +69,9 @@ function locationState(value) {
       focusHistory.push({id:f.id, radius:f.radius});
   });
   Object.keys(typeState).forEach(k => { typeState[k] = value.types?.[k] !== false; });
-  document.querySelectorAll('#typeChips .chip').forEach(c => c.classList.toggle('on', typeState[c.dataset.kind]));
+  document.querySelectorAll('#typeChips .chip').forEach(c => { c.classList.toggle('on', typeState[c.dataset.kind]); c.setAttribute('aria-pressed', String(typeState[c.dataset.kind])); });
   fields.forEach(id => { document.getElementById(id).value = typeof value.filters?.[id] === 'string' ? value.filters[id] : ''; });
+  document.getElementById('hopRadius').value = ['', '1','2','3','4','5'].includes(value.radiusChoice) ? value.radiusChoice : '';
   searchText = typeof value.search === 'string' ? value.search : '';
   document.getElementById('q').value = searchText;
   genealogyMode = value.genealogy === true;

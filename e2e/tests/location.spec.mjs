@@ -47,15 +47,13 @@ test('URL selects IDs, reports missing IDs, and restores state through history',
   await page.goForward();
   await expect(page.locator('[data-tab="overview"]')).toHaveClass('on');
   const beforeZoom = page.url();
-  await mouse(page, '[data-tab="filters"]');
   const filterUrl = page.url();
   await mouse(page, '#zin');
   expect(page.url()).toBe(filterUrl);
-  expect(filterUrl).not.toBe(beforeZoom);
+  expect(filterUrl).toBe(beforeZoom);
   await page.goto(fixture('large') + '#D-999999');
   await expect(page.locator('#locationStatus')).toContainText('Node not found: D-999999');
   await page.goto(fixture('reading') + '#D-501');
-  await mouse(page, '[data-tab="filters"]');
   await page.locator('#stateSel').selectOption({index:1});
   const state = await page.locator('#stateSel').inputValue();
   expect(state).not.toBe('');
@@ -94,4 +92,41 @@ test('node selection preserves placement, focus and filters until explicit focus
   await expect(page.locator('#focusStatus')).toContainText('Focus: D-2 ·');
   await mouse(page, '#focusBack');
   await expect(page.locator('#focusStatus')).toContainText('Focus: D-1 ·');
+});
+
+for (const width of [1280, 1440, 1920]) test(`permanent toolbar remains operable at ${width}px`, async ({page}, info) => {
+  await page.setViewportSize({width, height:1000});
+  await page.goto(fixture('reading') + '#D-501');
+  expect(await page.locator('#tabs button').allTextContents()).toEqual(['Overview', 'Progress', 'Blockers']);
+  await expect(page.locator('[data-tab="filters"]')).toHaveCount(0);
+  for (const tab of ['overview', 'progress', 'jams']) {
+    await mouse(page, `[data-tab="${tab}"]`);
+    for (const id of ['q','typeChips','scopeSel','stateSel','qstatus','criterion','clearFilter','genealogy','hopRadius'])
+      await expect(page.locator('#'+id)).toBeVisible();
+  }
+  const controls = await page.locator('#filters button, #filters input, #filters select').evaluateAll(es => es.map(el => {
+    const r = el.getBoundingClientRect(), hit = document.elementFromPoint(r.x+r.width/2, r.y+r.height/2);
+    return {id:el.id || el.dataset.kind, left:r.left, right:r.right, top:r.top, bottom:r.bottom, hit:hit === el || el.contains(hit)};
+  }));
+  expect(controls.length).toBeGreaterThan(15);
+  for (const c of controls) {
+    expect(c.left, c.id).toBeGreaterThanOrEqual(0); expect(c.right, c.id).toBeLessThanOrEqual(width);
+    expect(c.bottom, c.id).toBeLessThan(1000); expect(c.hit, c.id).toBe(true);
+  }
+  const toolbarTop = await page.locator('#filters').evaluate(el=>el.getBoundingClientRect().top);
+  const headerBottom = await page.locator('header').evaluate(el=>el.getBoundingClientRect().bottom);
+  expect(toolbarTop).toBeCloseTo(headerBottom, 1);
+  await page.locator('#hopRadius').selectOption('2');
+  await expect(page.locator('#detailFocus')).toContainText('2 hops');
+  await mouse(page, '#detailFocus');
+  await expect(page.locator('#focusStatus')).toContainText('2 hops');
+  await page.reload();
+  await expect(page.locator('#hopRadius')).toHaveValue('2');
+  await expect(page.locator('#focusStatus')).toContainText('2 hops');
+  await mouse(page, '[data-tab="overview"]');
+  await mouse(page, page.locator('#stateBars .bar').first());
+  await expect(page.locator('[data-tab="overview"]')).toHaveClass('on');
+  expect(await page.locator('#stateSel').inputValue()).not.toBe('');
+  await page.screenshot({path:info.outputPath('toolbar.png')});
+  await info.attach('toolbar-controls', {body:JSON.stringify(controls), contentType:'application/json'});
 });

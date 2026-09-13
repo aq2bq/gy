@@ -135,8 +135,12 @@ detail; an unknown ID displays a not-found message. The hash codec lives in
 `state.js`. Each changed display state adds one browser history entry; pan
 and zoom do not. Browser back/forward restores the complete recorded state.
 
-Type, scope, lifecycle filters, full-text search, and genealogy are independent
-of that stack. They intersect the neighborhood selection. A filtered-out focus
+Search, type, scope, lifecycle filters, reset, genealogy, and the neighborhood
+radius control remain in a wrapping toolbar below the header. The left panel
+contains Overview, Blockers, and Progress; setting a filter from a survey view
+does not switch tabs. The radius control offers automatic selection or an
+explicit 1–5 hops, applied by the neighborhood button. These controls are
+independent of the focus path. They intersect the neighborhood selection. A filtered-out focus
 is retained and explicitly reported in the navigation bar. An empty adjacency
 for the focus produces “No connections in this graph”; this makes no claim
 about references excluded from EDGES or connections outside the embedded graph. All nodes removes

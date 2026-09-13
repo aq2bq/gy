@@ -1,8 +1,9 @@
 // ---------- focus navigation ----------
 function startHop(id) {
   if (!byId[id]) return;
-  if (currentFocus().id !== id) {
-    focusHistory.push({id, radius: pickHop(id).n});
+  const radius = focusPlan(id).n;
+  if (currentFocus().id !== id || currentFocus().radius !== radius) {
+    focusHistory.push({id, radius});
   }
   closeClusterPanel();
   showDetail(id);
@@ -54,7 +55,7 @@ function renderNavigation(ids) {
     ' · Search: ' + (searchText || '(none)') + ' · Genealogy: ' + (genealogyMode ? 'on' : 'off');
   document.getElementById('applyHop').textContent = focusLabel(focus.id || '');
   document.getElementById('hopFrom').value = focus.id || '';
-  document.getElementById('hopN').textContent = focus.id ? focus.radius + ' hops (automatic)' : 'Automatic radius';
+  document.getElementById('hopN').textContent = focus.id ? focus.radius + ' hops in current view' : 'Automatic radius';
   document.getElementById('genealogy').setAttribute('aria-pressed', String(genealogyMode));
   document.getElementById('genealogy').style.borderColor = genealogyMode ? 'var(--hl)' : '';
 }

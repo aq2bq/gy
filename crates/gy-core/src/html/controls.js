@@ -3,7 +3,9 @@ const typeState = {};
 const typeChips = document.getElementById('typeChips');
 ['need','question','decision','requirement','criterion','gate'].forEach(k => {
   typeState[k] = true;
-  const chip = document.createElement('div');
+  const chip = document.createElement('button');
+  chip.type = 'button';
+  chip.setAttribute('aria-pressed', 'true');
   chip.className = 'chip on';
   chip.dataset.kind = k;
   chip.style.borderColor = KIND_COLORS[k];
@@ -11,6 +13,7 @@ const typeChips = document.getElementById('typeChips');
   chip.addEventListener('click', () => {
     typeState[k] = !typeState[k];
     chip.classList.toggle('on', typeState[k]);
+    chip.setAttribute('aria-pressed', String(typeState[k]));
     redraw();
   });
   typeChips.appendChild(chip);
@@ -32,7 +35,7 @@ document.getElementById('criterion').addEventListener('change', redraw);
 document.getElementById('q').addEventListener('input', () => { searchText = document.getElementById('q').value.trim(); redraw(); });
 document.getElementById('clearFilter').addEventListener('click', () => {
   Object.keys(typeState).forEach(k => { typeState[k] = true; });
-  document.querySelectorAll('#typeChips .chip').forEach(c => c.classList.add('on'));
+  document.querySelectorAll('#typeChips .chip').forEach(c => { c.classList.add('on'); c.setAttribute('aria-pressed', 'true'); });
   scopeSel.value = ''; stateSel.value = ''; document.getElementById('qstatus').value = '';
   document.getElementById('criterion').value = '';
   document.getElementById('q').value = '';
@@ -40,10 +43,15 @@ document.getElementById('clearFilter').addEventListener('click', () => {
   focusHistory.splice(1);
   hideDetail();
   genealogyMode = false;
+  document.getElementById('hopRadius').value = '';
   closeClusterPanel();
   redraw();
 });
 document.getElementById('hopFrom').addEventListener('input', () => { document.getElementById('applyHop').textContent = focusLabel(document.getElementById('hopFrom').value.trim()); });
+document.getElementById('hopRadius').addEventListener('change', () => {
+  document.getElementById('applyHop').textContent = focusLabel(document.getElementById('hopFrom').value.trim());
+  if (selected) document.getElementById('detailFocus').textContent = focusLabel(selected);
+});
 document.getElementById('applyHop').addEventListener('click', () => {
   const id = document.getElementById('hopFrom').value.trim();
   if (!byId[id]) { alert('Unknown node id: ' + id); return; }

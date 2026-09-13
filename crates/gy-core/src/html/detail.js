@@ -95,9 +95,13 @@ function proseClass(text) {
   const cjk = String(text).match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/gu) || [];
   return cjk.length > letters.length / 2 ? 'prose-ja' : 'prose-latin';
 }
+function focusPlan(id) {
+  const radius = Number(document.getElementById('hopRadius').value);
+  return radius ? {n:radius, size:reachable(id, radius).size} : pickHop(id);
+}
 function focusLabel(id) {
   if (!Object.hasOwn(byId, id)) return 'Show a node neighborhood';
-  const plan = pickHop(id);
+  const plan = focusPlan(id);
   return 'Show ' + plan.n + ' hops around ' + id + ' (' + plan.size + ' nodes before filters; up to ' + MODE_THRESHOLD + ' drawn)';
 }
 function selectNode(id) { closeClusterPanel(); showDetail(id); redraw(); }

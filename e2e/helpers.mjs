@@ -22,7 +22,6 @@ export async function open(page, name = 'large') {
   await expect(page.locator('#metaNodes')).not.toBeEmpty();
 }
 export async function enter(page, id) {
-  await mouse(page, '[data-tab="filters"]');
   await page.locator('#hopFrom').fill(id);
   await mouse(page, '#applyHop');
   await expect(page.locator('#focusStatus')).toContainText(`Focus: ${id} ·`);

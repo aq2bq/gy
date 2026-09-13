@@ -32,7 +32,7 @@ Object.entries(states).forEach(([st, cnt]) => {
   d.style.setProperty('--bar', stateColors[i++ % stateColors.length]);
   d.title = st;
   d.innerHTML = esc(st) + ' <em>' + cnt + '</em>';
-  d.addEventListener('click', () => { setStateFilter(st); gotoTab('filters'); });
+  d.addEventListener('click', () => { setStateFilter(st); });
   stateBar.appendChild(d);
 });
 

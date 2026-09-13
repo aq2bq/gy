@@ -12,7 +12,6 @@ async function clusterContract(page) {
   expect(await page.locator('#clusterPanel li').count()).toBe(175);
 }
 async function refitContract(page) {
-  await mouse(page, '[data-tab="filters"]');
   for (let i = 0; i < 6; i++) await mouse(page, '#zout');
   expect(await scale(page)).toBeLessThan(1);
   for (let i = 0; i < 6; i++) {

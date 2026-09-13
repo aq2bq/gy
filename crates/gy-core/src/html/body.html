@@ -7,11 +7,49 @@
   <span class="meta" id="metaScope"></span>
   <span class="meta" id="metaNodes"></span>
 </header>
+      <div id="filters" role="toolbar" aria-label="Search and filters">
+        <div class="field"><label>Search (title, attributes, body)</label>
+          <input id="q" type="text" placeholder="Search text&hellip;">
+          <div id="searchInfo"></div>
+        </div>
+        <div class="field"><label>Node type</label><div class="chips" id="typeChips"></div></div>
+        <div class="field"><label>Scope</label>
+          <select id="scopeSel"><option value="">all scopes</option></select>
+        </div>
+        <div class="field"><label>Requirement state</label>
+          <select id="stateSel"><option value="">any state</option></select>
+        </div>
+        <div class="field"><label>Question status</label>
+          <select id="qstatus"><option value="">any</option><option value="open">open</option><option value="closed">closed</option></select>
+        </div>
+        <div class="field"><label>Acceptance criteria</label>
+          <select id="criterion"><option value="">any</option><option value="yes">satisfied</option><option value="no">not satisfied</option></select>
+        </div>
+        <div class="field"><label>Neighborhood (n hops from a node)</label>
+          <div class="row">
+            <input id="hopFrom" type="text" placeholder="N-12">
+            <select id="hopRadius" aria-label="Neighborhood radius"><option value="">Automatic radius</option><option value="1">1 hops</option><option value="2">2 hops</option><option value="3">3 hops</option><option value="4">4 hops</option><option value="5">5 hops</option></select><output id="hopN">Automatic radius</output>
+            <button id="applyHop">Apply</button>
+          </div>
+          <button id="clearFilter" style="width:100%;margin-top:4px">Reset everything</button>
+        </div>
+        <div class="field"><label>Genealogy (decisions only)</label>
+          <button id="genealogy" style="width:100%">Show decision lineage</button>
+        </div>
+        <div class="field"><label>Zoom</label>
+          <div class="toolbar">
+            <button id="zin">Zoom in</button>
+            <button id="zout">Zoom out</button>
+            <button id="zfit">Fit</button>
+          </div>
+          <div class="small" id="lodInfo"></div>
+        </div>
+      </div>
+
 <div id="layout">
   <aside id="left">
     <div id="tabs">
       <button data-tab="overview" class="on">Overview</button>
-      <button data-tab="filters">Filter</button>
       <button data-tab="progress">Progress</button>
       <button data-tab="jams">Blockers</button>
     </div>
@@ -35,47 +73,6 @@
       <div class="kpis">
         <div class="kpi err"><div class="n" id="lintErr"></div><div class="l">errors</div></div>
         <div class="kpi warn"><div class="n" id="lintWarn"></div><div class="l">warnings</div></div>
-      </div>
-    </section>
-
-    <section id="page-filters" class="page">
-      <div id="filters">
-        <div class="field"><label>Search (title, attributes, body)</label>
-          <input id="q" type="text" placeholder="Search text&hellip;">
-          <div id="searchInfo"></div>
-        </div>
-        <div class="field"><label>Node type</label><div class="chips" id="typeChips"></div></div>
-        <div class="field"><label>Scope</label>
-          <select id="scopeSel"><option value="">all scopes</option></select>
-        </div>
-        <div class="field"><label>Requirement state</label>
-          <select id="stateSel"><option value="">any state</option></select>
-        </div>
-        <div class="field"><label>Question status</label>
-          <select id="qstatus"><option value="">any</option><option value="open">open</option><option value="closed">closed</option></select>
-        </div>
-        <div class="field"><label>Acceptance criteria</label>
-          <select id="criterion"><option value="">any</option><option value="yes">satisfied</option><option value="no">not satisfied</option></select>
-        </div>
-        <div class="field"><label>Neighborhood (n hops from a node)</label>
-          <div class="row">
-            <input id="hopFrom" type="text" placeholder="N-12">
-            <output id="hopN">Automatic radius</output>
-            <button id="applyHop">Apply</button>
-          </div>
-          <button id="clearFilter" style="width:100%;margin-top:4px">Reset everything</button>
-        </div>
-        <div class="field"><label>Genealogy (decisions only)</label>
-          <button id="genealogy" style="width:100%">Show decision lineage</button>
-        </div>
-        <div class="field"><label>Zoom</label>
-          <div class="toolbar">
-            <button id="zin">Zoom in</button>
-            <button id="zout">Zoom out</button>
-            <button id="zfit">Fit</button>
-          </div>
-          <div class="small" id="lodInfo"></div>
-        </div>
       </div>
     </section>
 
