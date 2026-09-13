@@ -173,9 +173,9 @@
   }
   function focusLabel(id) {
     if (!Object.hasOwn(byId, id))
-      return "Show a node neighborhood";
+      return "Show neighbors";
     const plan = focusPlan(id);
-    return "Show " + plan.n + " hops around " + id + " (" + plan.size + " nodes before filters; up to " + MODE_THRESHOLD + " drawn)";
+    return id + ": show " + plan.n + (plan.n === 1 ? " hop" : " hops") + " · " + plan.size + (plan.size === 1 ? " node" : " nodes");
   }
   function setPositions(value) {
     positions = value;
@@ -803,8 +803,8 @@
         if (index)
           path.appendChild(document.createTextNode(" → "));
         const button = document.createElement("button");
-        button.textContent = entry.id ? entry.id + " · " + byId[entry.id].title : "All nodes";
-        button.title = button.textContent;
+        button.textContent = entry.id ? entry.id : "All nodes";
+        button.title = entry.id ? entry.id + " · " + byId[entry.id].title : "All nodes";
         button.dataset.depth = String(index);
         if (index === focusHistory.length - 1)
           button.setAttribute("aria-current", "location");
@@ -816,15 +816,23 @@
     element("focusBack").disabled = focusHistory.length === 1;
     element("focusAll").disabled = focusHistory.length === 1;
     element("focusDetail").disabled = !focus.id;
-    element("focusStatus").textContent = focus.id ? "Focus: " + focus.id + " · " + focus.radius + " hops" + (Object.keys(adj[focus.id] || {}).length ? "" : " · No connections in this graph") + (ids.includes(focus.id) ? "" : " · Focus hidden by current filters, search, or lineage") : "All nodes · no focus";
-    element("displayStatus").textContent = "Types: " + (Object.keys(typeState).filter((k) => typeState[k]).join(", ") || "none") + " · Scope: " + (scopeSel.value || "all") + " · State: " + (stateSel.value || "any") + " · Questions: " + (element("qstatus").value || "any") + " · Criteria: " + (element("criterion").value || "any") + " · Search: " + (searchText || "(none)") + " · Genealogy: " + (genealogyMode ? "on" : "off");
+    element("focusNote").textContent = focus.id ? " · " + focus.radius + (focus.radius === 1 ? " hop" : " hops") + (Object.keys(adj[focus.id] || {}).length ? "" : " · No connections in this graph") + (ids.includes(focus.id) ? "" : " · Focus hidden by current filters, search, or lineage") : "";
+    const active = [
+      Object.values(typeState).every(Boolean) ? "" : Object.keys(typeState).filter((k) => typeState[k]).join(", ") || "No types",
+      scopeSel.value ? "Scope: " + scopeSel.value : "",
+      stateSel.value ? "State: " + stateSel.value : "",
+      element("qstatus").value ? "Questions: " + element("qstatus").value : "",
+      element("criterion").value ? "Criteria: " + element("criterion").value : "",
+      searchText ? "Search: " + searchText : ""
+    ].filter(Boolean);
+    element("displayStatus").textContent = active.length ? active.length + (active.length === 1 ? " filter" : " filters") : "No filters";
+    element("displayStatus").title = active.join(" · ");
     const input = element("hopFrom"), focusKey = JSON.stringify(focus);
     if (input.dataset.focus !== focusKey) {
       input.dataset.focus = focusKey;
       input.value = focus.id || "";
     }
     element("applyHop").textContent = focusLabel(input.value.trim());
-    element("hopN").textContent = focus.id ? focus.radius + " hops in current view" : "Automatic radius";
     element("genealogy").setAttribute("aria-pressed", String(genealogyMode));
     element("genealogy").style.borderColor = genealogyMode ? "var(--hl)" : "";
   }
@@ -902,25 +910,25 @@
       ensureForce(ids);
     const inPositions = genealogyMode ? genealogyLayout : showingAll ? forceLayout : positions;
     root.innerHTML = "";
-    element("lodInfo").textContent = showingAll ? "zoom level: " + lod + " (scale " + scale.toFixed(2) + ") " : "overview · zoom level: " + lod + " (scale " + scale.toFixed(2) + ")";
     const culling = element("culling");
     const setMeta = (drawn, visCount, extra) => {
-      element("graphCount").textContent = drawn;
-      element("graphVisible").textContent = visCount;
-      if (extra || omitted.length) {
-        culling.style.display = "block";
-        culling.textContent = extra || "";
-        if (omitted.length) {
-          culling.appendChild(document.createTextNode((extra ? " " : "") + omitted.length + " nodes omitted to keep the focused graph readable. "));
-          const button = document.createElement("button");
-          button.id = "showOmitted";
-          button.textContent = "List omitted nodes";
-          button.addEventListener("click", () => openOmittedPanel(omitted));
-          culling.appendChild(button);
-        }
-      } else {
-        culling.style.display = "none";
-        culling.textContent = "";
+      const overview = !showingAll;
+      element("viewCounts").textContent = overview ? drawn + (drawn === 1 ? " cluster" : " clusters") + " · " + ids.length + " nodes" : drawn + " shown";
+      culling.replaceChildren();
+      const off2 = overview ? 0 : Number(visCount) - drawn;
+      const hidden = off2 + omitted.length;
+      if (!hidden)
+        culling.textContent = "0 hidden";
+      if (off2)
+        culling.appendChild(document.createTextNode(off2 + " off-screen at readable zoom"));
+      if (omitted.length) {
+        if (off2)
+          culling.appendChild(document.createTextNode(" · "));
+        const button = document.createElement("button");
+        button.id = "showOmitted";
+        button.textContent = omitted.length + " nodes omitted";
+        button.addEventListener("click", () => openOmittedPanel(omitted));
+        culling.appendChild(button);
       }
     };
     if (genealogyMode) {
@@ -1756,19 +1764,16 @@
     }
     (function buildLegend() {
       const box = element("legendBox");
-      let html = '<div style="font-weight:600;margin-bottom:4px">Legend</div>';
-      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 8px;margin-bottom:6px">';
+      let html = "<strong>Legend</strong>";
       Object.entries(KIND_COLORS).forEach(([k, c]) => {
-        html += '<span style="display:flex;align-items:center;gap:4px"><span class="swatch ' + (k === "criterion" ? "shp-criterion" : "") + '" style="background:' + c + '"></span>' + k + "</span>";
+        html += '<span class="legend-item"><span class="swatch ' + (k === "criterion" ? "shp-criterion" : "") + '" style="background:' + c + '"></span>' + k + "</span>";
       });
-      html += "</div><div>";
       const labels = [...new Set(EDGES.map((e) => e.label))];
       labels.forEach((l) => {
         html += '<div class="edge-row"><span class="eline" style="border-color:' + edgeColor(l) + '"></span>' + esc(l) + "</div>";
       });
       html += '<div class="edge-row"><span class="swatch shp-need" style="background:transparent;border:2px solid var(--color-ffb000)"></span>search hit</div>';
       html += '<div class="edge-row"><span class="swatch shp-need" style="background:var(--hl);border:1px solid var(--color-222)"></span>selected</div>';
-      html += "</div>";
       box.innerHTML = html;
     })();
   }

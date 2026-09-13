@@ -78,17 +78,17 @@ test('descent, one-step return, breadcrumbs, overview and hidden focus', async (
   for (const id of ['D-2', 'D-3']) {
     await mouse(page, `[data-node-id="${id}"] > path`);
     await mouse(page, '#detailFocus');
-    await expect(page.locator('#focusStatus')).toContainText(`Focus: ${id} ·`);
+    await expect(page.locator('#focusStatus')).toContainText(`${id} ·`);
     await expect(page.locator('#focusPath [aria-current]')).toContainText(id);
   }
   await mouse(page, '#focusBack');
-  await expect(page.locator('#focusStatus')).toContainText('Focus: D-2 ·');
+  await expect(page.locator('#focusStatus')).toContainText('D-2 ·');
   await mouse(page, '[data-node-id="D-3"] > path');
   await mouse(page, '#detailFocus');
   await mouse(page, '#focusPath [data-depth="1"]');
-  await expect(page.locator('#focusStatus')).toContainText('Focus: D-1 ·');
+  await expect(page.locator('#focusStatus')).toContainText('D-1 ·');
   await mouse(page, '#focusAll');
-  await expect(page.locator('#focusStatus')).toHaveText('All nodes · no focus');
+  await expect(page.locator('#focusStatus')).toHaveText('All nodes');
   await enter(page, 'D-1');
   await page.locator('#q').fill('NO_SUCH_NODE');
   await expect(page.locator('#focusStatus')).toContainText('Focus hidden');
@@ -104,7 +104,7 @@ test('high degree stays individual with deterministic omission and a route to om
   await open(page, 'high-degree');
   expect(await page.evaluate(() => window.GY_DATA.nodes.length)).toBe(65);
   await enter(page, 'D-100');
-  await expect(page.locator('#focusStatus')).toContainText('1 hops');
+  await expect(page.locator('#focusStatus')).toContainText('1 hop');
   await expect(page.locator('[data-node-id]')).toHaveCount(60);
   await expect(page.locator('rect.node')).toHaveCount(0);
   const expected = ['D-100', 'D-61', ...Array.from({length: 60}, (_, i) => `D-${i+1}`).sort()].slice(0, 60);
@@ -122,7 +122,7 @@ test('high degree stays individual with deterministic omission and a route to om
   const omitted = await page.locator('#clusterPanel li').first().getAttribute('data-go');
   await mouse(page, page.locator('#clusterPanel li').first());
   await mouse(page, '#detailFocus');
-  await expect(page.locator('#focusStatus')).toContainText(`Focus: ${omitted} ·`);
+  await expect(page.locator('#focusStatus')).toContainText(`${omitted} ·`);
   await expect(page.locator(`[data-node-id="${omitted}"]`)).toBeInViewport();
   await mouse(page, '#focusBack');
   expect(await page.locator('[data-node-id]').evaluateAll(es => es.map(e => e.dataset.nodeId).sort())).toEqual(expected);
@@ -216,14 +216,14 @@ test('detail resizing preserves manual world center and duplicate focus adds no 
   await mouse(page, '#closeDetail');
   const after = await world();
   for (const k of ['scale','x','y']) expect(after[k]).toBeCloseTo(before[k], 4);
-  await expect(page.locator('#focusStatus')).toContainText('Focus: D-1 ·');
+  await expect(page.locator('#focusStatus')).toContainText('D-1 ·');
   await mouse(page, '#focusDetail');
   const reopened = await world();
   for (const k of ['scale','x','y']) expect(reopened[k]).toBeCloseTo(before[k], 4);
   await page.setViewportSize({width:960,height:900});
   await enter(page, 'D-2'); await enter(page, 'D-3');
   await mouse(page, '#focusPath [data-depth="1"]');
-  await expect(page.locator('#focusStatus')).toContainText('Focus: D-1 ·');
+  await expect(page.locator('#focusStatus')).toContainText('D-1 ·');
   await mouse(page, '#genealogy');
   await expect(page.locator('#genealogy')).toHaveAttribute('aria-pressed','true');
   await mouse(page, '#focusAll');

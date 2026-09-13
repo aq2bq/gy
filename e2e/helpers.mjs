@@ -24,7 +24,7 @@ export async function open(page, name = 'large') {
 export async function enter(page, id) {
   await page.locator('#hopFrom').fill(id);
   await mouse(page, '#applyHop');
-  await expect(page.locator('#focusStatus')).toContainText(`Focus: ${id} ·`);
+  await expect(page.locator('#focusStatus')).toContainText(`${id} ·`);
 }
 export async function scale(page) {
   return page.locator('#svg > g').evaluate(el => el.transform.baseVal.consolidate().matrix.a);

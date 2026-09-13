@@ -47,19 +47,18 @@ export function initProgress() {
     // ---------- legend ----------
     (function buildLegend() {
         const box = element('legendBox');
-        let html = '<div style="font-weight:600;margin-bottom:4px">Legend</div>';
-        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 8px;margin-bottom:6px">';
+        let html = '<strong>Legend</strong>';
         Object.entries(KIND_COLORS).forEach(([k, c]) => {
-            html += '<span style="display:flex;align-items:center;gap:4px"><span class="swatch ' + (k === 'criterion' ? 'shp-criterion' : '') + '" style="background:' + c + '"></span>' + k + '</span>';
+            html += '<span class="legend-item"><span class="swatch ' + (k === 'criterion' ? 'shp-criterion' : '') + '" style="background:' + c + '"></span>' + k + '</span>';
         });
-        html += '</div><div>';
+
         const labels = [...new Set(EDGES.map(e => e.label))];
         labels.forEach(l => {
             html += '<div class="edge-row"><span class="eline" style="border-color:' + edgeColor(l) + '"></span>' + esc(l) + '</div>';
         });
         html += '<div class="edge-row"><span class="swatch shp-need" style="background:transparent;border:2px solid var(--color-ffb000)"></span>search hit</div>';
         html += '<div class="edge-row"><span class="swatch shp-need" style="background:var(--hl);border:1px solid var(--color-222)"></span>selected</div>';
-        html += '</div>';
+
         box.innerHTML = html;
     })();
 }

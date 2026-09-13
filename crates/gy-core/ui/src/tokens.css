@@ -1,4 +1,6 @@
 :root{
+  --control-height: 32px;
+  --control-radius: 4px;
   --bg:#f7f6f2; --panel:#ffffff; --border:#d8d4c8; --text:#1c1a16; --muted:#6b675d;
   --need:#7a9e7e; --question:#d9a441; --decision:#4f7fb8; --requirement:#8a6fb2;
   --criterion:#c96f6f; --gate:#4f9aa8;

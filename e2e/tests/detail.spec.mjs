@@ -143,13 +143,13 @@ test('related node selection preserves layout until explicit focus', async ({pag
   });
   await mouse(page, page.locator('.detail-relations').filter({hasText:'Decision lineage'}).locator('[data-go="D-502"]'));
   // D-39 replaces click-to-focus with selection only.
-  await expect(page.locator('#focusStatus')).toContainText('Focus: D-501 ·');
+  await expect(page.locator('#focusStatus')).toContainText('D-501 ·');
   await expect(page.locator('.detail-id')).toHaveText('D-502');
   expect(await page.evaluate(()=>window.fitChanges)).toBe(0);
   await mouse(page, '#detailFocus');
   expect(await page.evaluate(()=>window.fitChanges)).toBe(1);
   await mouse(page,'#closeDetail');
-  await expect(page.locator('#focusStatus')).toContainText('Focus: D-502 ·');
+  await expect(page.locator('#focusStatus')).toContainText('D-502 ·');
 });
 
 test('Markdown preserves table cells, list hierarchy, code and safe links', async ({page}, info) => {

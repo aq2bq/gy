@@ -40,8 +40,8 @@ export function renderNavigation(ids) {
             if (index)
                 path.appendChild(document.createTextNode(' → '));
             const button = document.createElement('button');
-            button.textContent = entry.id ? entry.id + ' · ' + byId[entry.id].title : 'All nodes';
-            button.title = button.textContent;
+            button.textContent = entry.id ? entry.id : 'All nodes';
+            button.title = entry.id ? entry.id + ' · ' + byId[entry.id].title : 'All nodes';
             button.dataset.depth = String(index);
             if (index === focusHistory.length - 1)
                 button.setAttribute('aria-current', 'location');
@@ -53,24 +53,26 @@ export function renderNavigation(ids) {
     element('focusBack').disabled = focusHistory.length === 1;
     element('focusAll').disabled = focusHistory.length === 1;
     element('focusDetail').disabled = !focus.id;
-    element('focusStatus').textContent = focus.id
-        ? 'Focus: ' + focus.id + ' · ' + focus.radius + ' hops' +
-            (Object.keys(adj[focus.id] || {}).length ? '' : ' · No connections in this graph') +
-            (ids.includes(focus.id) ? '' : ' · Focus hidden by current filters, search, or lineage')
-        : 'All nodes · no focus';
-    element('displayStatus').textContent =
-        'Types: ' + (Object.keys(typeState).filter(k => typeState[k]).join(', ') || 'none') +
-            ' · Scope: ' + (scopeSel.value || 'all') + ' · State: ' + (stateSel.value || 'any') +
-            ' · Questions: ' + (element('qstatus').value || 'any') +
-            ' · Criteria: ' + (element('criterion').value || 'any') +
-            ' · Search: ' + (searchText || '(none)') + ' · Genealogy: ' + (genealogyMode ? 'on' : 'off');
+    element('focusNote').textContent = focus.id
+        ? ' · ' + focus.radius + (focus.radius === 1 ? ' hop' : ' hops') +
+          (Object.keys(adj[focus.id] || {}).length ? '' : ' · No connections in this graph') +
+          (ids.includes(focus.id) ? '' : ' · Focus hidden by current filters, search, or lineage') : '';
+    const active = [
+        Object.values(typeState).every(Boolean) ? '' : Object.keys(typeState).filter(k => typeState[k]).join(', ') || 'No types',
+        scopeSel.value ? 'Scope: ' + scopeSel.value : '',
+        stateSel.value ? 'State: ' + stateSel.value : '',
+        element('qstatus').value ? 'Questions: ' + element('qstatus').value : '',
+        element('criterion').value ? 'Criteria: ' + element('criterion').value : '',
+        searchText ? 'Search: ' + searchText : ''
+    ].filter(Boolean);
+    element('displayStatus').textContent = active.length ? active.length + (active.length === 1 ? ' filter' : ' filters') : 'No filters';
+    element('displayStatus').title = active.join(' · ');
     const input = element('hopFrom'), focusKey = JSON.stringify(focus);
     if (input.dataset.focus !== focusKey) {
         input.dataset.focus = focusKey;
         input.value = focus.id || '';
     }
     element('applyHop').textContent = focusLabel(input.value.trim());
-    element('hopN').textContent = focus.id ? focus.radius + ' hops in current view' : 'Automatic radius';
     element('genealogy').setAttribute('aria-pressed', String(genealogyMode));
     element('genealogy').style.borderColor = genealogyMode ? 'var(--hl)' : '';
 }

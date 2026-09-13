@@ -140,11 +140,17 @@ all entries after it. The stack records the navigation route, not graph ancestry
 The URL hash restores the focus path and radius, selected detail, filters,
 search, left-panel tab, and genealogy on reload. A bare node ID opens its
 detail; an unknown ID displays a not-found message. The hash codec lives in
-`state.js`. Each changed display state adds one browser history entry; pan
+`ui/src/state.ts`. Each changed display state adds one browser history entry; pan
 and zoom do not. Browser back/forward restores the complete recorded state.
 
-Search, type, scope, lifecycle filters, reset, genealogy, and the neighborhood
-radius control remain in a wrapping toolbar below the header. The left panel
+Search, type, scope, and lifecycle filters occupy a toolbar below the header,
+with Reset all at its right edge. Neighborhood, genealogy, zoom, and focus
+navigation controls occupy a separate strip above the graph. Both groups use
+one token-defined control height and four-pixel spacing steps, stay on one row
+at 1440/1920 CSS pixels, and may wrap at 1280. The strip has one status region
+for the focus path, drawn/hidden counts, and number of active filters (with
+filter values in its tooltip and the controls). The legend occupies a separate
+bottom band outside the graph; no status badge or toast overlays nodes. The left panel
 contains Overview, Blockers, and Progress; setting a filter from a survey view
 does not switch tabs. The radius control offers automatic selection or an
 explicit 1–5 hops, applied by the neighborhood button. These controls are
@@ -152,14 +158,14 @@ independent of the focus path. They intersect the neighborhood selection. A filt
 is retained and explicitly reported in the navigation bar. An empty adjacency
 for the focus produces “No connections in this graph”; this makes no claim
 about references excluded from EDGES or connections outside the embedded graph. All nodes removes
-only the focus; Reset everything also clears filters, search, and genealogy.
+only the focus; Reset all also clears filters, search, and genealogy.
 Genealogy continues to draw only its four relationship types among displayed
 decisions, using the generation layout.
 
 Node clicks, cluster member choices, relationship links, and keyboard activation
 select and open details without moving focus, changing filters, or rearranging
 the graph. An explicit neighborhood button names the target, hop count, and
-candidate count before filters, with the drawing cap. Only this explicit action
+candidate count before filters, with singular/plural labels. Only this explicit action
 updates the focus path. Current focus, radius, filters, search and genealogy are
 visible above the graph. The reading region remains reserved when details are
 closed, so selecting a record cannot change the graph viewport. Detail visibility

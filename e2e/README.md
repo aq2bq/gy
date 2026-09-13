@@ -30,6 +30,13 @@ final lines from the lower bound. These are actual glyph positions after padding
 not estimates from outer pane widths. Headings, code, and short paragraphs do not
 have a minimum line length. JSON measurements and screenshots are attached.
 
+Toolbar checks cover 1280, 1440, and 1920 CSS pixels: one control height,
+one row at the two wider sizes, a single state region, and no rectangle
+intersection between the legend and graph nodes. D-44 / AC-31 change the
+previous verbose button labels and move graph controls out of the filter strip;
+existing assertions now inspect both groups and the consolidated status.
+The 1440-pixel default and focused screenshots are retained for visual review.
+
 Tests re-resolve each locator and read its DOM `getBoundingClientRect` after
 scrolling, then send browser
 mouse input. No element click is dispatched from page JavaScript. The cluster

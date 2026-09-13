@@ -7,44 +7,15 @@
   <span class="meta" id="metaScope"></span>
   <span class="meta" id="metaNodes"></span>
 </header>
-      <div id="filters" role="toolbar" aria-label="Search and filters">
-        <div class="field"><label>Search (title, attributes, body)</label>
-          <input id="q" type="text" placeholder="Search text&hellip;">
-          <div id="searchInfo"></div>
-        </div>
-        <div class="field"><label>Node type</label><div class="chips" id="typeChips"></div></div>
-        <div class="field"><label>Scope</label>
-          <select id="scopeSel"><option value="">all scopes</option></select>
-        </div>
-        <div class="field"><label>Requirement state</label>
-          <select id="stateSel"><option value="">any state</option></select>
-        </div>
-        <div class="field"><label>Question status</label>
-          <select id="qstatus"><option value="">any</option><option value="open">open</option><option value="closed">closed</option></select>
-        </div>
-        <div class="field"><label>Acceptance criteria</label>
-          <select id="criterion"><option value="">any</option><option value="yes">satisfied</option><option value="no">not satisfied</option></select>
-        </div>
-        <div class="field"><label>Neighborhood (n hops from a node)</label>
-          <div class="row">
-            <input id="hopFrom" type="text" placeholder="N-12">
-            <select id="hopRadius" aria-label="Neighborhood radius"><option value="">Automatic radius</option><option value="1">1 hops</option><option value="2">2 hops</option><option value="3">3 hops</option><option value="4">4 hops</option><option value="5">5 hops</option></select><output id="hopN">Automatic radius</output>
-            <button id="applyHop">Apply</button>
-          </div>
-          <button id="clearFilter" style="width:100%;margin-top:4px">Reset everything</button>
-        </div>
-        <div class="field"><label>Genealogy (decisions only)</label>
-          <button id="genealogy" style="width:100%">Show decision lineage</button>
-        </div>
-        <div class="field"><label>Zoom</label>
-          <div class="toolbar">
-            <button id="zin">Zoom in</button>
-            <button id="zout">Zoom out</button>
-            <button id="zfit">Fit</button>
-          </div>
-          <div class="small" id="lodInfo"></div>
-        </div>
-      </div>
+<div id="filters" role="toolbar" aria-label="Search and filters">
+  <input id="q" type="search" aria-label="Search records" placeholder="Search records…">
+  <div class="chips" id="typeChips" aria-label="Node types"></div>
+  <select id="scopeSel" aria-label="Scope"><option value="">All scopes</option></select>
+  <select id="stateSel" aria-label="Requirement state"><option value="">Any requirement state</option></select>
+  <select id="qstatus" aria-label="Question status"><option value="">All questions</option><option value="open">Open questions</option><option value="closed">Closed questions</option></select>
+  <select id="criterion" aria-label="Acceptance criteria"><option value="">All criteria</option><option value="yes">Satisfied</option><option value="no">Not satisfied</option></select>
+  <button id="clearFilter">Reset all</button>
+</div>
 
 <div id="layout">
   <aside id="left">
@@ -101,24 +72,27 @@
 
   <main>
     <nav id="focusNav" aria-label="Graph navigation">
-      <div class="row">
-        <button id="focusBack" disabled>Back</button>
-        <button id="focusAll" disabled>All nodes</button>
-        <button id="focusDetail" disabled>Details</button>
-        <span id="focusStatus" role="status"></span>
+      <div id="graphControls" role="toolbar" aria-label="Graph controls">
+        <input id="hopFrom" type="text" aria-label="Neighborhood node" placeholder="Node ID">
+        <select id="hopRadius" aria-label="Neighborhood radius"><option value="">Auto</option><option value="1">1 hop</option><option value="2">2 hops</option><option value="3">3 hops</option><option value="4">4 hops</option><option value="5">5 hops</option></select>
+        <button id="applyHop">Show neighbors</button>
+        <button id="genealogy" aria-pressed="false">Lineage</button>
+        <div class="zoomControls"><button id="zout" aria-label="Zoom out">−</button><button id="zin" aria-label="Zoom in">+</button><button id="zfit">Fit</button></div>
+        <button id="focusBack" aria-label="Previous focus" disabled>↶</button>
+        <button id="focusAll" aria-label="Return to all nodes" disabled>All</button>
+        <button id="focusDetail" aria-label="Read focused node" disabled>Read</button>
       </div>
-      <div id="displayStatus" class="small"></div>
-      <div id="locationStatus" role="status"></div>
-      <div id="focusPath" aria-label="Focus path"></div>
+      <div id="graphStatus" role="status" aria-label="Current view">
+        <span id="focusStatus"><span id="focusPath" aria-label="Focus path"></span><span id="focusNote"></span></span>
+        <span id="viewCounts"></span><span id="culling"></span>
+        <span id="displayStatus"></span><span id="locationStatus"></span>
+      </div>
     </nav>
     <div id="graphWorkspace">
     <div id="graphPane">
-    <div id="graphMeta"><span id="graphCount"></span> nodes drawn &middot; <span id="graphVisible"></span> visible</div>
     <div id="viewer"><svg id="svg" width="100%" height="100%"></svg>
       <div id="clusterPanel"></div>
     </div>
-    <div id="culling"></div>
-    <div id="legendBox"></div>
     </div>
     <div id="detail">
       <p id="detailEmpty">Select a node to read its record.</p>
@@ -126,6 +100,7 @@
       <div id="detailBody"></div>
     </div>
     </div>
+    <div id="legendBox" aria-label="Graph legend"></div>
   </main>
 </div>
 <footer>

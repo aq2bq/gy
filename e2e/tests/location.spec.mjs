@@ -35,7 +35,7 @@ test('URL selects IDs, reports missing IDs, and restores state through history',
   await copy.close();
   await page.reload();
   await expect(page.locator('.detail-id')).toHaveText('D-2');
-  await expect(page.locator('#focusStatus')).toContainText('Focus: D-2');
+  await expect(page.locator('#focusStatus')).toContainText('D-2');
   await expect(page.locator('#q')).toHaveValue('decision');
   await expect(page.locator('#scopeSel')).toHaveValue('s0');
   await expect(page.locator('#genealogy')).toHaveAttribute('aria-pressed', 'true');
@@ -81,17 +81,17 @@ test('node selection preserves placement, focus and filters until explicit focus
   const before = await placement();
   await mouse(page, '[data-node-id="D-2"] > path');
   await expect(page.locator('.detail-id')).toHaveText('D-2');
-  await expect(page.locator('#focusStatus')).toContainText('Focus: D-1 ·');
+  await expect(page.locator('#focusStatus')).toContainText('D-1 ·');
   expect(await placement()).toEqual(before);
   await expect(page.locator('#scopeSel')).toHaveValue('');
   await expect(page.locator('#q')).toHaveValue('');
   await expect(page.locator('#displayStatus')).toBeVisible();
-  await expect(page.locator('#detailFocus')).toContainText('hops around D-2');
-  await expect(page.locator('#detailFocus')).toContainText('nodes before filters');
+  await expect(page.locator('#detailFocus')).toContainText('D-2: show');
+  await expect(page.locator('#detailFocus')).toContainText(/· \d+ nodes?/);
   await mouse(page, '#detailFocus');
-  await expect(page.locator('#focusStatus')).toContainText('Focus: D-2 ·');
+  await expect(page.locator('#focusStatus')).toContainText('D-2 ·');
   await mouse(page, '#focusBack');
-  await expect(page.locator('#focusStatus')).toContainText('Focus: D-1 ·');
+  await expect(page.locator('#focusStatus')).toContainText('D-1 ·');
 });
 
 for (const width of [1280, 1440, 1920]) test(`permanent toolbar remains operable at ${width}px`, async ({page}, info) => {
@@ -104,7 +104,7 @@ for (const width of [1280, 1440, 1920]) test(`permanent toolbar remains operable
     for (const id of ['q','typeChips','scopeSel','stateSel','qstatus','criterion','clearFilter','genealogy','hopRadius'])
       await expect(page.locator('#'+id)).toBeVisible();
   }
-  const controls = await page.locator('#filters button, #filters input, #filters select').evaluateAll(es => es.map(el => {
+  const controls = await page.locator('#filters button, #filters input, #filters select, #graphControls button, #graphControls input, #graphControls select').evaluateAll(es => es.map(el => {
     const r = el.getBoundingClientRect(), hit = document.elementFromPoint(r.x+r.width/2, r.y+r.height/2);
     return {id:el.id || el.dataset.kind, left:r.left, right:r.right, top:r.top, bottom:r.bottom, hit:hit === el || el.contains(hit)};
   }));
@@ -137,11 +137,47 @@ test('viewport redraw preserves a pending neighborhood target', async ({page}) =
   await page.locator('#hopFrom').fill('D-501');
   await page.setViewportSize({width:2560,height:1000});
   await expect(page.locator('#hopFrom')).toHaveValue('D-501');
-  await expect(page.locator('#applyHop')).toContainText('around D-501');
+  await expect(page.locator('#applyHop')).toContainText('D-501: show');
   await mouse(page, '#applyHop');
-  await expect(page.locator('#focusStatus')).toContainText('Focus: D-501 ·');
+  await expect(page.locator('#focusStatus')).toContainText('D-501 ·');
   await mouse(page, '#focusAll');
   await page.locator('#hopFrom').fill('D-502');
   await mouse(page, '#clearFilter');
   await expect(page.locator('#hopFrom')).toHaveValue('');
+});
+
+// D-44 / AC-31 replace the verbose labels and combined toolbar contract:
+// controls retain their actions, while status is one region and legends sit outside SVG.
+for (const width of [1280, 1440, 1920]) test(`toolbar groups and status occupy their intended rows at ${width}px`, async ({page}, info) => {
+  await page.setViewportSize({width,height:1000});
+  await page.goto(fixture('reading'));
+  const measure = selector => page.locator(selector).evaluateAll(es => es.map(el => {
+    const r=el.getBoundingClientRect(); return {id:el.id || el.dataset.kind, top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:r.height};
+  }));
+  const filters = await measure('#filters input, #filters select, #filters button');
+  const graph = await measure('#graphControls input, #graphControls select, #graphControls button');
+  if (width>=1440) {
+    expect(new Set(filters.map(r=>Math.round(r.top))).size).toBe(1);
+    expect(new Set(graph.map(r=>Math.round(r.top))).size).toBe(1);
+    const regions = await measure('#graphControls, #graphStatus');
+    expect(Math.abs(regions[0].top-regions[1].top)).toBeLessThanOrEqual(8);
+  }
+  expect(new Set([...filters,...graph].map(r=>Math.round(r.height)))).toEqual(new Set([32]));
+  for (const r of [...filters,...graph]) { expect(r.left).toBeGreaterThanOrEqual(0); expect(r.right).toBeLessThanOrEqual(width); }
+  await expect(page.locator('[role="status"]')).toHaveCount(1);
+  await expect(page.locator('#graphMeta, #hopN, #lodInfo')).toHaveCount(0);
+  const rectangles = await page.evaluate(()=>{
+    const bounds=el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
+    return {legend:bounds(document.querySelector('#legendBox')), nodes:[...document.querySelectorAll('#svg [data-node-id]')].map(bounds)};
+  });
+  expect(rectangles.nodes.length).toBeGreaterThan(0);
+  for (const r of rectangles.nodes) {
+    const l=rectangles.legend;expect(r.left<l.right&&r.right>l.left&&r.top<l.bottom&&r.bottom>l.top).toBe(false);
+  }
+  if (width===1440) {
+    await page.screenshot({path:info.outputPath('n26-1440.png')});
+    await enter(page, 'D-501');
+    await page.screenshot({path:info.outputPath('n26-focus-1440.png')});
+  }
+  await info.attach('toolbar-rows',{body:JSON.stringify({filters,graph,rectangles}),contentType:'application/json'});
 });

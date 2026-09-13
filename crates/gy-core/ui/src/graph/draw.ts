@@ -76,28 +76,24 @@ export function draw() {
     const inPositions = genealogyMode ? genealogyLayout : (showingAll ? forceLayout : positions);
     // clear
     root.innerHTML = '';
-    element('lodInfo').textContent =
-        showingAll ? 'zoom level: ' + lod + ' (scale ' + scale.toFixed(2) + ') '
-            : 'overview · zoom level: ' + lod + ' (scale ' + scale.toFixed(2) + ')';
     const culling = element('culling');
     const setMeta = (drawn, visCount, extra) => {
-        element('graphCount').textContent = drawn;
-        element('graphVisible').textContent = visCount;
-        if (extra || omitted.length) {
-            culling.style.display = 'block';
-            culling.textContent = extra || '';
-            if (omitted.length) {
-                culling.appendChild(document.createTextNode((extra ? ' ' : '') + omitted.length + ' nodes omitted to keep the focused graph readable. '));
-                const button = document.createElement('button');
-                button.id = 'showOmitted';
-                button.textContent = 'List omitted nodes';
-                button.addEventListener('click', () => openOmittedPanel(omitted));
-                culling.appendChild(button);
-            }
-        }
-        else {
-            culling.style.display = 'none';
-            culling.textContent = '';
+        const overview = !showingAll;
+        element('viewCounts').textContent = overview
+            ? drawn + (drawn === 1 ? ' cluster' : ' clusters') + ' · ' + ids.length + ' nodes'
+            : drawn + ' shown';
+        culling.replaceChildren();
+        const off = overview ? 0 : Number(visCount) - drawn;
+        const hidden = off + omitted.length;
+        if (!hidden) culling.textContent = '0 hidden';
+        if (off) culling.appendChild(document.createTextNode(off + ' off-screen at readable zoom'));
+        if (omitted.length) {
+            if (off) culling.appendChild(document.createTextNode(' · '));
+            const button = document.createElement('button');
+            button.id = 'showOmitted';
+            button.textContent = omitted.length + ' nodes omitted';
+            button.addEventListener('click', () => openOmittedPanel(omitted));
+            culling.appendChild(button);
         }
     };
     if (genealogyMode) {

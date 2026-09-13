@@ -144,8 +144,8 @@ export function focusPlan(id) {
 }
 export function focusLabel(id) {
     if (!Object.hasOwn(byId, id))
-        return 'Show a node neighborhood';
+        return 'Show neighbors';
     const plan = focusPlan(id);
-    return 'Show ' + plan.n + ' hops around ' + id + ' (' + plan.size + ' nodes before filters; up to ' + MODE_THRESHOLD + ' drawn)';
+    return id + ': show ' + plan.n + (plan.n === 1 ? ' hop' : ' hops') + ' · ' + plan.size + (plan.size === 1 ? ' node' : ' nodes');
 }
 export function setPositions(value: typeof positions) { positions = value; }

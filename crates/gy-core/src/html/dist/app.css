@@ -1,5 +1,7 @@
 /* src/tokens.css */
 :root {
+  --control-height: 32px;
+  --control-radius: 4px;
   --bg: #f7f6f2;
   --panel: #fff;
   --border: #d8d4c8;
@@ -157,43 +159,6 @@ main {
   flex-direction: column;
   flex: auto;
   min-width: 0;
-}
-
-#focusNav {
-  padding: var(--space-8px) var(--space-10px);
-  border-bottom: 1px solid var(--border);
-  background: var(--panel);
-  flex: none;
-}
-
-#focusNav .row {
-  flex-wrap: wrap;
-}
-
-#focusStatus {
-  font-size: var(--font-12px);
-}
-
-#focusPath {
-  display: flex;
-  align-items:  center;
-  gap: var(--space-5px);
-  overflow-x: auto;
-  white-space: nowrap;
-  margin-top: var(--space-6px);
-  padding-bottom: var(--space-3px);
-}
-
-#focusPath button {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: none;
-  max-width: 260px;
-}
-
-#focusPath [aria-current] {
-  border-color: var(--decision);
-  font-weight: 600;
 }
 
 button:disabled {
@@ -461,54 +426,6 @@ ul.list a:hover {
   border-bottom: 1px dashed var(--border);
   padding: var(--space-4px) var(--space-2px);
   font-size: var(--font-12p5px);
-}
-
-#searchInfo {
-  font-size: var(--font-12px);
-  color: var(--muted);
-  margin-top: var(--space-4px);
-}
-
-#graphMeta {
-  position: absolute;
-  z-index: 5;
-  background: var(--surface-1);
-  border: 1px solid var(--border);
-  padding: var(--space-6px) var(--space-10px);
-  font-size: var(--font-12px);
-  box-shadow: 0 1px 3px var(--surface-2);
-  border-radius: 8px;
-  top: 10px;
-  left: 10px;
-}
-
-#culling {
-  position: absolute;
-  z-index: 6;
-  background: var(--color-2a2823);
-  color: var(--color-fff);
-  padding: var(--space-6px) var(--space-14px);
-  font-size: var(--font-13px);
-  display: none;
-  box-shadow: 0 2px 8px var(--surface-3);
-  border-radius: 8px;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-#legendBox {
-  position: absolute;
-  z-index: 5;
-  background: var(--surface-4);
-  border: 1px solid var(--border);
-  padding: var(--space-8px) var(--space-10px);
-  font-size: var(--font-11px);
-  box-shadow: 0 1px 3px var(--surface-2);
-  border-radius: 8px;
-  max-width: 230px;
-  bottom: 12px;
-  right: 12px;
 }
 
 #legendBox .edge-row {
@@ -824,11 +741,6 @@ svg .elabel {
   pointer-events: none;
 }
 
-#filters {
-  display: grid;
-  gap: var(--space-8px);
-}
-
 .toolbar {
   display: flex;
   gap: var(--space-6px);
@@ -1048,57 +960,156 @@ a {
   text-align: left;
 }
 
-#filters {
+#filters, #focusNav {
   display: flex;
-  align-items:  flex-start;
-  gap: var(--space-8px) var(--space-12px);
-  padding: var(--space-8px) var(--space-12px);
+  align-items:  center;
+  gap: var(--space-8px);
+  padding: var(--space-8px);
   background: var(--panel);
   border-bottom: 1px solid var(--border);
+  flex: none;
+  min-width: 0;
+}
+
+#filters {
+  flex-wrap: wrap;
+}
+
+#filters input, #filters select, #filters button, #focusNav input, #focusNav select, #focusNav button {
+  height: var(--control-height);
+  padding: 0 var(--space-8px);
+  font-size: var(--font-12px);
+  box-sizing: border-box;
+  border-radius: var(--control-radius);
+  flex: none;
+  width: auto;
+  margin: 0;
+  line-height: 1;
+}
+
+#filters #q {
+  flex: 160px;
+  min-width: 120px;
+  max-width: 240px;
+}
+
+#filters #typeChips {
+  display: flex;
+  gap: var(--space-4px);
+  flex-wrap: nowrap;
+  margin: 0;
+}
+
+#filters #clearFilter {
+  margin-left: auto;
+}
+
+#focusNav {
+  gap: var(--space-12px);
+  flex-wrap: nowrap;
+}
+
+#graphControls {
+  display: flex;
+  align-items:  center;
+  gap: var(--space-4px);
+  flex: none;
+}
+
+#graphControls #hopFrom {
+  width: 72px;
+}
+
+#graphControls #hopRadius {
+  width: 92px;
+}
+
+#graphControls #applyHop {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 208px;
+}
+
+.zoomControls {
+  display: flex;
+  gap: var(--space-4px);
+}
+
+#graphStatus {
+  display: flex;
+  align-items:  center;
+  gap: var(--space-8px);
+  white-space: nowrap;
+  overflow-x: auto;
+  font-size: var(--font-12px);
+  flex: 1;
+  min-width: 0;
+}
+
+#graphStatus > span {
+  flex: none;
+}
+
+#focusStatus {
+  display: flex;
+  align-items:  center;
+  min-width: 0;
+  max-width: 260px;
+}
+
+#focusPath {
+  display: flex;
+  align-items:  center;
+  gap: var(--space-4px);
+  overflow-x: auto;
+  white-space: nowrap;
+  max-width: 144px;
+}
+
+#focusPath button {
+  padding: 0 var(--space-4px);
+  background: none;
+  border: 0;
+}
+
+#focusPath [aria-current] {
+  color: var(--decision);
+  font-weight: 600;
+}
+
+#culling:empty, #locationStatus:empty, #focusNote:empty {
+  display: none;
+}
+
+#legendBox {
+  display: flex;
+  align-items:  center;
+  gap: var(--space-4px) var(--space-12px);
+  padding: var(--space-8px);
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+  font-size: var(--font-11px);
   flex-wrap: wrap;
   flex: none;
 }
 
-#filters .field {
-  flex: 130px;
-  min-width: 120px;
-  margin: 0;
+#legendBox .small {
+  display: none;
 }
 
-#filters .field:has(#q) {
-  flex-basis: 200px;
+@media (max-width: 1439px) {
+  #focusNav {
+    flex-wrap: wrap;
+  }
+
+  #graphStatus {
+    flex-basis: 100%;
+  }
 }
 
-#filters .field:has(#typeChips) {
-  flex-basis: 450px;
-}
-
-#filters .field:has(#hopFrom) {
-  flex-basis: 440px;
-}
-
-#filters .row {
-  flex-wrap: wrap;
-}
-
-#filters #hopFrom {
-  flex: 100px;
-  width: 100px;
-}
-
-#filters #hopRadius {
-  flex: 140px;
-  width: auto;
-}
-
-#filters #applyHop {
-  flex: 220px;
-}
-
-#filters .field:has(#zin) {
-  flex-basis: 240px;
-}
-
-#filters label {
-  font-size: var(--font-11px);
+.legend-item {
+  display: inline-flex;
+  align-items:  center;
+  gap: var(--space-4px);
 }

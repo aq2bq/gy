@@ -143,11 +143,11 @@ test('an empty selection leaves a finite transform', async () => {
 test('isolated-focus notice is based on adjacency, not the number of visible nodes', async () => {
   const f = await fixture();
   f.run("startHop('D-10'); renderNavigation(['D-10']); currentFocus()");
-  assert.doesNotMatch(f.run("document.getElementById('focusStatus').textContent"), /No connections/);
+  assert.doesNotMatch(f.run("document.getElementById('focusNote').textContent"), /No connections/);
   f.run("adj['D-10'] = {}; renderNavigation(['D-10']); currentFocus()");
-  assert.match(f.run("document.getElementById('focusStatus').textContent"), /No connections in this graph/);
+  assert.match(f.run("document.getElementById('focusNote').textContent"), /No connections in this graph/);
   f.run('renderNavigation([]); currentFocus()');
-  assert.match(f.run("document.getElementById('focusStatus').textContent"), /Focus hidden/);
+  assert.match(f.run("document.getElementById('focusNote').textContent"), /Focus hidden/);
   assert.equal(f.run('currentFocus().id'), 'D-10');
 });
 
