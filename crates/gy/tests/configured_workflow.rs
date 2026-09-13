@@ -147,7 +147,9 @@ fn advance(p: &Path, state: &str) -> Value {
             "--evidence",
             "Reviewed reported inputs",
         ],
-    )
+    );
+    // D-34: mutation responses are summaries; read saved records explicitly.
+    run(p, &["show", "#1"])
 }
 fn reject_advance(p: &Path, state: &str, message: &str) {
     rejected(
@@ -345,8 +347,16 @@ fn research_submission_is_stateless_and_rejects_missing_and_mistyped_values() {
             "Run log",
         ],
     );
-    assert_eq!(result["node"]["attrs"]["status"], "open");
-    assert_eq!(result["submission"]["records"]["research"], record);
+    assert_eq!(
+        result["submission"],
+        json!({"record":"research", "revision":"r1"})
+    );
+    let saved = run(p, &["show", "Q-1"]);
+    assert_eq!(saved["node"]["attrs"]["status"], "open");
+    assert_eq!(
+        saved["node"]["attrs"]["record_history"][0]["records"]["research"],
+        record
+    );
     let output = invoke(p, &["handover"]);
     let handover: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(
@@ -668,6 +678,12 @@ fn example_records_cover_normal_and_waived_workflows_and_archive_history() {
     fs::write(&path, node.markdown().unwrap()).unwrap();
     rejected(p, &["req", "compress", "1"], "history:");
     fs::write(path, original).unwrap();
+    assert!(
+        run(p, &["req", "compress", "1"])["archive"]
+            .as_str()
+            .unwrap()
+            .contains("record_history:")
+    );
     let compressed = run(
         p,
         &[
@@ -678,13 +694,9 @@ fn example_records_cover_normal_and_waived_workflows_and_archive_history() {
             "https://example.test/issues/1#issuecomment-99",
         ],
     );
-    assert!(
-        compressed["archive"]
-            .as_str()
-            .unwrap()
-            .contains("record_history:")
-    );
-    assert!(compressed["node"]["attrs"].get("record_history").is_none());
+    assert!(compressed.get("archive").is_none());
+    let saved = run(p, &["show", "#1"]);
+    assert!(saved["node"]["attrs"].get("record_history").is_none());
     fs::write(
         p.join("docs/ledger/gy.toml"),
         include_str!("../examples/workflow.toml"),

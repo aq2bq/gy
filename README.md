@@ -100,6 +100,8 @@ To install from a source checkout, run `cargo install --path crates/gy --locked`
 
 All commands accept `--json`, `--quiet`, `--verbose`, `-C <dir>`, and `--scope`. With `--json`, results go to standard output and diagnostics go to standard error as JSON. `--quiet` suppresses ordinary result output while retaining JSON results and errors.
 
+Mutation results contain node summaries: `id`, `type`, `scope`, `changed_attributes`, and `body_changed`. They omit attribute values, body text, and evidence. The attribute list reflects actual changes (all names on creation, including removed names on updates); an unchanged update returns `[]` and `false`. Existing node containers hold these summaries, import returns them in `imported`, and scope rename returns `nodes`. Warnings remain available; submit returns only the record name and revision (`null` without a version field), and init retains `root` and `scope`. CLI JSON and the MCP structured result share this format; human output presents the same information compactly. Read full nodes with `gy show <ID> --json` or search with `gy find`. The read-only `gy req compress <issue>` still returns the full archive preview; compression with `--evidence` returns a summary.
+
 Exit codes are 0 for success, 1 for a failed check, 2 for missing or invalid input, nonexistent references, or guard violations, and 3 for ledger parsing failures or corruption. `handover` also returns 1 when next-transition evidence, responsibility, or referenced nodes are missing.
 
 ## Attributes and relationships

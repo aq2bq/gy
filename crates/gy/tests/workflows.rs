@@ -214,8 +214,14 @@ fn scope_rename_preserves_identity_relationships_records_and_history() {
     let before = run(p, &["show", "AC-1"]);
 
     let out = run(p, &["scope", "rename", "a", "renamed"]);
-    assert_eq!(out["from"], "a");
-    assert_eq!(out["to"], "renamed");
+    assert!(!out["nodes"].as_array().unwrap().is_empty());
+    assert!(
+        out["nodes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|n| n["scope"] == "renamed" && n["changed_attributes"] == json!(["scope"]))
+    );
 
     assert!(!p.join("docs/ledger/a").exists());
     assert!(p.join("docs/ledger/renamed/criteria/AC-1.md").is_file());
@@ -736,8 +742,13 @@ fn import_preserves_ids_and_is_atomic_on_conflict() {
     )
     .unwrap();
     assert_eq!(
-        run(p, &["import", "legacy", "--scope", "a"])["imported"],
-        json!(["D-147", "D-148"])
+        run(p, &["import", "legacy", "--scope", "a"])["imported"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|n| n["id"].clone())
+            .collect::<Vec<_>>(),
+        vec![json!("D-147"), json!("D-148")]
     );
     assert_eq!(
         run(p, &["show", "D-148"])["node"]["attrs"]["custom"],
@@ -754,7 +765,7 @@ fn import_preserves_ids_and_is_atomic_on_conflict() {
                 "--scope",
                 "a"
             ]
-        )["node"]["attrs"]["id"],
+        )["node"]["id"],
         "D-149"
     );
     fs::write(dir.join("0001-new.md"), "# new\n").unwrap();
@@ -854,7 +865,7 @@ fn concurrent_allocation_is_global_and_unique() {
         let o = c.wait_with_output().unwrap();
         assert!(o.status.success());
         let v: Value = serde_json::from_slice(&o.stdout).unwrap();
-        ids.insert(v["node"]["attrs"]["id"].as_str().unwrap().to_string());
+        ids.insert(v["node"]["id"].as_str().unwrap().to_string());
     }
     assert_eq!(ids.len(), 12);
     run(p, &["lint"]);
@@ -872,7 +883,7 @@ fn redo_journal_recovers_before_read() {
     );
     assert!(!p.join("docs/ledger/.gy-transaction.json").exists());
     assert_eq!(
-        run(p, &["criterion", "add", "next", "--scope", "a"])["node"]["attrs"]["id"],
+        run(p, &["criterion", "add", "next", "--scope", "a"])["node"]["id"],
         "AC-8"
     );
 }
@@ -1154,7 +1165,15 @@ fn compression_retains_six_records_edges_extensions_and_exact_archive() {
             "https://github.com/org/repo/issues/7#issuecomment-123",
         ],
     );
-    assert_eq!(output["archive"], raw);
+    assert!(output.get("archive").is_none());
+    assert!(
+        output["node"]["changed_attributes"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("quality_gates"))
+    );
+    assert_eq!(output["node"]["body_changed"], true);
+    let output = run(p, &["show", "#7"]);
     let attrs = &output["node"]["attrs"];
     assert_eq!(attrs["id"], "#7");
     assert!(attrs["created"].is_string());
@@ -1370,8 +1389,11 @@ fn mcp_compression_uses_the_same_guard_and_writes_six_records() {
     assert!(out.status.success());
     let v: Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(v["result"]["isError"], false);
+    let result = &v["result"]["structuredContent"]["result"];
+    assert!(result.get("archive").is_none());
+    assert!(result["node"].get("attrs").is_none());
     assert_eq!(
-        v["result"]["structuredContent"]["result"]["node"]["attrs"]["compressed_from"],
+        run(p, &["show", "#7"])["node"]["attrs"]["compressed_from"],
         "https://github.com/org/repo/issues/7#issuecomment-88"
     );
     run(p, &["lint"]);
@@ -2129,6 +2151,8 @@ fn adopting_workflow_does_not_reconstruct_completed_work_but_guards_new_actions(
             "https://example.test/issues/7#issuecomment-42",
         ],
     );
+    assert!(compressed["node"].get("attrs").is_none());
+    let compressed = run(p, &["show", "#7"]);
     assert!(compressed["node"]["attrs"].get("compressed").is_some());
     assert!(compressed["node"]["attrs"].get("approval").is_none());
     // A new requirement cannot skip straight to completion under this policy.

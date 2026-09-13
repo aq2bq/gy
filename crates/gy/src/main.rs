@@ -4,7 +4,10 @@ use clap::{CommandFactory, Parser};
 use cli::*;
 use gy_core::*;
 use serde_json::{Value, json};
-use std::fs;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fs,
+};
 
 const CHEATSHEET: &str = include_str!("../CHEATSHEET.md");
 const SKILLS: &[(&str, &str)] = &[
@@ -36,6 +39,56 @@ impl Output {
             ..Self::new(value)
         }
     }
+}
+// Compare only the nodes returned by the operation, not the whole ledger.
+fn node_summary(node: &Node, before: &BTreeMap<String, Node>) -> Value {
+    let old = before.get(node.id());
+    let keys: BTreeSet<_> = node
+        .attrs
+        .keys()
+        .chain(old.into_iter().flat_map(|n| n.attrs.keys()))
+        .collect();
+    let changed: Vec<_> = keys
+        .into_iter()
+        .filter(|key| old.and_then(|n| n.attrs.get(*key)) != node.attrs.get(*key))
+        .collect();
+    json!({"id": node.id(), "type": node.kind(), "scope": node.scope(),
+        "changed_attributes": changed,
+        "body_changed": old.map(|n| n.body.as_str()).unwrap_or("") != node.body})
+}
+fn previous_nodes(command: &Commands, store: &Store) -> BTreeMap<String, Node> {
+    let ids = match command {
+        Commands::Need {
+            command: Need::File { id, issue },
+        } => vec![id.clone(), issue_id(&issue.to_string())],
+        Commands::Question {
+            command: Question::Close { id, .. },
+        }
+        | Commands::Criterion {
+            command: Criterion::Satisfy { id, .. },
+        }
+        | Commands::Node {
+            command: NodeCommand::Set { id, .. },
+        }
+        | Commands::Node {
+            command: NodeCommand::Submit { id, .. },
+        } => vec![id.clone()],
+        Commands::Link { source, target, .. } => vec![source.clone(), target.clone()],
+        Commands::Req {
+            command: Req::Advance(a),
+        } => vec![issue_id(&a.issue)],
+        Commands::Req {
+            command:
+                Req::Compress {
+                    issue,
+                    evidence: Some(_),
+                },
+        } => vec![issue_id(issue)],
+        _ => vec![],
+    };
+    ids.into_iter()
+        .filter_map(|id| store.nodes.get(&id).cloned().map(|n| (id, n)))
+        .collect()
 }
 fn issue_id(s: &str) -> String {
     if s.starts_with('#') {
@@ -147,13 +200,25 @@ fn execute(cli: &Cli) -> Result<Output> {
         }
         Commands::Init { name, parent_issue } => {
             let store = Store::init(&cwd, name, *parent_issue)?;
-            return Ok(Output::new(json!({"root":store.root,"scope":name})));
+            let value = json!({"root":store.root,"scope":name});
+            return Ok(Output::text(value.clone(), value.to_string()));
         }
         Commands::Scope { command } => {
             let mut store = Store::open(&cwd)?;
             let ScopeCommand::Rename { old, new } = command;
+            let before: BTreeMap<_, _> = store
+                .nodes
+                .iter()
+                .filter(|(_, n)| n.scope() == old)
+                .map(|(id, n)| (id.clone(), n.clone()))
+                .collect();
             store.rename_scope(old, new)?;
-            return Ok(Output::new(json!({"from":old,"to":new})));
+            let nodes: Vec<_> = before
+                .keys()
+                .map(|id| node_summary(&store.nodes[id], &before))
+                .collect();
+            let value = json!({"nodes": nodes});
+            return Ok(Output::text(value.clone(), value.to_string()));
         }
         Commands::Mcp { .. } => return Err(Error::input("Cannot start MCP recursively")),
         _ => {}
@@ -170,6 +235,7 @@ fn execute(cli: &Cli) -> Result<Output> {
         store.scope(Some(scope))?;
     }
     let scope = cli.scope.as_deref();
+    let before = previous_nodes(&cli.command, &store);
     let mut output = Output::new(Value::Null);
     let mut write = true;
     match &cli.command {
@@ -181,11 +247,11 @@ fn execute(cli: &Cli) -> Result<Output> {
             } => {
                 let s = store.scope(scope)?;
                 let id = store.add_need(&s, title, targets, spawned_by.as_deref())?;
-                output.value = json!({"node":store.node(&id)?});
+                output.value = json!({"node":node_summary(store.node(&id)?, &before)});
             }
             Need::File { id, issue } => {
                 let req = store.file_need(id, *issue)?;
-                output.value = json!({"need":store.node(id)?,"requirement":store.node(&req)?});
+                output.value = json!({"need":node_summary(store.node(id)?, &before),"requirement":node_summary(store.node(&req)?, &before)});
             }
         },
         Commands::Question { command } => match command {
@@ -209,7 +275,8 @@ fn execute(cli: &Cli) -> Result<Output> {
                         force: *force,
                     },
                 )?;
-                output.value = json!({"node":store.node(&id)?,"search_hits":warnings});
+                output.value =
+                    json!({"node":node_summary(store.node(&id)?, &before),"search_hits":warnings});
                 output.warnings = warnings;
             }
             Question::Close {
@@ -224,7 +291,7 @@ fn execute(cli: &Cli) -> Result<Output> {
                     decision.as_deref(),
                     note.as_deref(),
                 )?;
-                output.value = json!({"node":store.node(id)?,"warnings":output.warnings});
+                output.value = json!({"node":node_summary(store.node(id)?, &before),"warnings":output.warnings});
             }
         },
         Commands::Q { title } => {
@@ -233,7 +300,7 @@ fn execute(cli: &Cli) -> Result<Output> {
             let n = store.nodes.get_mut(&id).unwrap();
             n.put("status", "open");
             n.put("capture", true);
-            output.value = json!({"node":n});
+            output.value = json!({"node":node_summary(n, &before)});
             output.warnings.push("Recorded an incomplete human note. lint will fail until decider and options are supplied".into());
         }
         Commands::Decide {
@@ -244,7 +311,8 @@ fn execute(cli: &Cli) -> Result<Output> {
             let s = store.scope(scope)?;
             let (id, warnings) =
                 store.decide(&s, title, scope_note.as_deref().unwrap_or(""), closes)?;
-            output.value = json!({"node":store.node(&id)?,"open_questions":warnings});
+            output.value =
+                json!({"node":node_summary(store.node(&id)?, &before),"open_questions":warnings});
             output.warnings = warnings;
         }
         Commands::Link {
@@ -264,7 +332,7 @@ fn execute(cli: &Cli) -> Result<Output> {
             } else {
                 output.warnings = store.link(source, label, target, mark.as_deref())?;
             }
-            output.value = json!({"source":store.node(source)?,"target":store.node(target)?,"warnings":output.warnings});
+            output.value = json!({"source":node_summary(store.node(source)?, &before),"target":node_summary(store.node(target)?, &before),"warnings":output.warnings});
         }
         Commands::Req { command } => match command {
             Req::Add {
@@ -279,7 +347,7 @@ fn execute(cli: &Cli) -> Result<Output> {
                 if let Some(p) = parent_issue {
                     n.put("parent_issue", p);
                 }
-                output.value = json!({"node":n});
+                output.value = json!({"node":node_summary(n, &before)});
             }
             Req::Advance(a) => {
                 let id = issue_id(&a.issue);
@@ -296,16 +364,13 @@ fn execute(cli: &Cli) -> Result<Output> {
                         cleanup_done: a.cleanup_done,
                     },
                 )?;
-                output.value = json!({"node":store.node(&id)?});
+                output.value = json!({"node":node_summary(store.node(&id)?, &before)});
             }
             Req::Compress { issue, evidence } => {
                 let id = issue_id(issue);
                 if let Some(evidence) = evidence {
-                    let original = store.compress(&id, evidence)?;
-                    output = Output::text(
-                        json!({"id":id,"archive":original,"node":store.node(&id)?}),
-                        original,
-                    );
+                    store.compress(&id, evidence)?;
+                    output.value = json!({"node":node_summary(store.node(&id)?, &before)});
                 } else {
                     write = false;
                     let original = store.compression_preview(&id)?;
@@ -320,7 +385,7 @@ fn execute(cli: &Cli) -> Result<Output> {
             Criterion::Add { title } => {
                 let s = store.scope(scope)?;
                 let id = store.create("criterion", title, &s, None)?;
-                output.value = json!({"node":store.node(&id)?});
+                output.value = json!({"node":node_summary(store.node(&id)?, &before)});
             }
             Criterion::Satisfy { id, evidence } => {
                 store.typed(id, "criterion")?;
@@ -331,7 +396,7 @@ fn execute(cli: &Cli) -> Result<Output> {
                     n.put("satisfied_at", gy_core::today());
                     n.put("evidence", evidence);
                 }
-                output.value = json!({"node":n});
+                output.value = json!({"node":node_summary(n, &before)});
             }
         },
         Commands::Gate {
@@ -345,7 +410,7 @@ fn execute(cli: &Cli) -> Result<Output> {
             for q in measured_by {
                 store.link(&id, "measured-by", q, None)?;
             }
-            output.value = json!({"node":store.node(&id)?});
+            output.value = json!({"node":node_summary(store.node(&id)?, &before)});
         }
         Commands::Node {
             command:
@@ -385,7 +450,7 @@ fn execute(cli: &Cli) -> Result<Output> {
                     .map(|p| fs::read_to_string(cwd.join(p)))
                     .transpose()?,
             )?;
-            output.value = json!({"node":store.node(id)?});
+            output.value = json!({"node":node_summary(store.node(id)?, &before)});
         }
         Commands::Node {
             command:
@@ -395,8 +460,14 @@ fn execute(cli: &Cli) -> Result<Output> {
                     evidence,
                 },
         } => {
-            let snapshot = store.submit_record(id, record, evidence)?;
-            output.value = json!({"node": store.node(id)?, "submission": snapshot});
+            store.submit_record(id, record, evidence)?;
+            let schema = &store.config.workflow.records[record];
+            let revision = schema
+                .version_field
+                .as_ref()
+                .and_then(|field| store.nodes[id].attrs[record].get(field));
+            output.value = json!({"node": node_summary(store.node(id)?, &before),
+                "submission": {"record": record, "revision": revision}});
         }
         Commands::Lint => {
             write = false;
@@ -504,7 +575,7 @@ fn execute(cli: &Cli) -> Result<Output> {
                 imported.len(), missing_scope.len(), missing_marks.len()
             ));
             output.value = json!({
-                "imported": imported,
+                "imported": imported.iter().map(|id| node_summary(&store.nodes[id], &before)).collect::<Vec<_>>(),
                 "import_summary": {
                     "imported_count": imported.len(),
                     "missing_decision_scope_count": missing_scope.len(),
@@ -517,6 +588,7 @@ fn execute(cli: &Cli) -> Result<Output> {
         _ => unreachable!(),
     }
     if write {
+        output.human = Some(output.value.to_string());
         store.commit()?;
     }
     Ok(output)

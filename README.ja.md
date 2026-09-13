@@ -100,6 +100,8 @@ gy render
 
 全コマンドに `--json`、`--quiet`、`--verbose`、`-C <dir>`、`--scope` を指定できます。`--json` は結果を標準出力、診断を標準エラーへJSONで返します。`--quiet` は通常の結果表示を抑え、JSON結果とエラーは維持します。
 
+変更系の結果はノード要約 `id`・`type`・`scope`・`changed_attributes`・`body_changed` を返し、属性値・本文・evidence は返しません。属性名一覧は実際の変更を表し、作成時は全属性名、更新時は削除された属性名も含みます。同値の再設定は `[]` と `false` です。既存のノード格納キーは要約を保持し、import は `imported`、scope rename は `nodes` に要約を返します。警告は維持し、submit は記録名と revision（版フィールドがなければ `null`）、init は `root` と `scope` を返します。CLI JSON と MCP の構造化結果は同じ形で、人間向け出力も同じ情報を短く表示します。全属性と本文は `gy show <ID> --json`、検索は `gy find` で取得してください。参照操作の `gy req compress <issue>` は全文プレビューを維持し、`--evidence` を伴う圧縮は要約を返します。
+
 終了コードは 0 が成功、1 が検査失敗、2 が入力不足・参照先不在・ガード違反、3 が台帳のパース失敗や不整合です。`handover` は次遷移の根拠・責任主体の不足や参照先不在でも1を返します。
 
 ## 属性と関連

@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+### Breaking
+
+- Mutation results now return node summaries (`id`, `type`, `scope`,
+  `changed_attributes`, `body_changed`) instead of full nodes. Attribute names
+  describe actual value changes, including removals; creation lists all names.
+  Repeating an unchanged update returns an empty list and `false`.
+  This applies to CLI and MCP, including human output. Existing `node`,
+  `need`/`requirement`, and `source`/`target` containers now hold summaries;
+  import's `imported` array holds summaries and scope rename returns `nodes`.
+  Warnings and import review information remain available. Submit returns
+  `submission.record` and `submission.revision` (null without a version field),
+  not the submitted records, schemas, or evidence. Init retains `root` and `scope`.
+- Migrate consumers of mutation responses to `gy show <ID> --json` for all
+  attributes and body text, or `gy find` for search. Compression with evidence
+  also returns a summary without `archive`; obtain the full archival text with
+  `gy req compress <issue>` before supplying evidence. That read-only preview
+  and other query results are unchanged.
+
 ## 0.4.0
 
 ### Breaking
