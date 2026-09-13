@@ -3,7 +3,7 @@ import { byId } from './data';
 import { hideDetail, showDetail } from './detail/index';
 import { element } from './dom';
 import { scopeSel, stateSel } from './filters';
-import { adj, currentFocus, enterFocus, focusHistory, focusLabel, focusPlan, genealogyMode, searchText, truncateFocus, typeState } from './state';
+import { selected, overviewSource, adj, currentFocus, enterFocus, focusHistory, focusLabel, focusPlan, genealogyMode, searchText, truncateFocus, typeState } from './state';
 // ---------- focus navigation ----------
 export function startHop(id) {
     if (!byId[id])
@@ -55,6 +55,7 @@ export function renderNavigation(ids) {
           (Object.keys(adj[focus.id] || {}).length ? '' : ' · No connections in this graph') +
           (ids.includes(focus.id) ? '' : ' · Focus hidden by current filters, search, or lineage') : '';
     const active = [
+        overviewSource ? 'Source: ' + overviewSource : '',
         Object.values(typeState).every(Boolean) ? '' : Object.keys(typeState).filter(k => typeState[k]).join(', ') || 'No types',
         scopeSel.value ? 'Scope: ' + scopeSel.value : '',
         stateSel.value ? 'State: ' + stateSel.value : '',
@@ -67,9 +68,10 @@ export function renderNavigation(ids) {
     const input = element('hopFrom'), focusKey = JSON.stringify(focus);
     if (input.dataset.focus !== focusKey) {
         input.dataset.focus = focusKey;
-        input.value = focus.id || '';
+        input.value = selected || focus.id || '';
     }
     element('applyHop').textContent = focusLabel(input.value.trim());
+    element('genealogy').textContent = genealogyMode ? 'Lineage: on' : 'Lineage: off';
     element('genealogy').setAttribute('aria-pressed', String(genealogyMode));
     element('genealogy').style.borderColor = genealogyMode ? 'var(--hl)' : '';
 }

@@ -10,6 +10,7 @@ export interface Point {
 export type NodeKind = 'need' | 'question' | 'decision' | 'requirement' | 'criterion' | 'gate';
 export type Filters = Readonly<Record<'scopeSel' | 'stateSel' | 'qstatus' | 'criterion', string>>;
 export interface LocationState {
+    overview?: string;
     listSort?: ListSort;
     selected?: string | null;
     focus?: readonly Focus[];
@@ -160,3 +161,6 @@ export function setListSort(value: unknown) {
 export function selectType(kind: NodeKind | 'all') {
     Object.keys(typeState).forEach(k => setType(k as NodeKind, kind === 'all' || k === kind));
 }
+
+export let overviewSource = '';
+export function setOverviewSource(value: unknown) { overviewSource = typeof value === 'string' && ['next','lint-error','lint-warn'].includes(value) ? value : ''; }

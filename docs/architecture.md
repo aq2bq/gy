@@ -267,3 +267,22 @@ Building gy, packaging it, and generating the single offline HTML file require
 neither Bun nor Node.js. UI contributors rebuild the bundle; the HTML CI job
 runs `bun run check` to reject a mismatch with the committed dist files.
 See [the UI build instructions](../crates/gy-core/ui/README.md).
+
+### HTML action targets and derived sources
+
+Overview criterion, open-question, and requirement-state links reset the toolbar
+to their counted population. The next card stores `overview=next` in URL state;
+the opened HTML derives membership from its embedded `next` result. URL state
+specifies a view, not a snapshot of IDs. Reusing a URL after regeneration follows
+the current population. Type selection, cluster selection, and Reset all clear
+this source; other toolbar predicates intersect it. Lint cards use typed
+`lint-error` / `lint-warn` sources and open the corresponding Blockers findings.
+Waiting-reference counts count relationships rather than table records and are
+plain text without a card border.
+
+Action targets use native links/buttons or keyboard-operable SVG button roles,
+with pointer cursors and hover feedback. Type chips expose selection through
+`aria-pressed`, a check mark, and bold text; Lineage names its on/off state.
+The graph navigation band owns the single neighborhood action. Selecting a
+record fills its Node ID input without moving focus; invoking the action moves
+focus. The detail panel does not duplicate that action.

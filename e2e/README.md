@@ -128,3 +128,9 @@ condition holds, confirm the metric can fail: zero overlapping labels means
 nothing when the labels are too small to read. A fault-injection test that does
 not fail after injection may be missing its target rather than proving the
 product correct.
+
+N-27 action coverage checks Overview populations and lint severity, requirement-state
+links, URL restoration of the typed next source, and pointer elements against
+native links or registered role handlers. Focus assertions use the single graph
+navigation action after selecting a record; the duplicate detail action is removed.
+The 1440px screenshot includes Overview, the table, and selected type chips.

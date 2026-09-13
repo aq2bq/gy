@@ -184,634 +184,9 @@
   function selectType(kind) {
     Object.keys(typeState).forEach((k) => setType(k, kind === "all" || k === kind));
   }
-
-  // src/graph/layout.ts
-  function computeForce(ids) {
-    const n = ids.length;
-    const W = 1400, H = 900;
-    const pos = {};
-    ids.forEach((id, i) => {
-      const angle = 2 * Math.PI * i / Math.max(1, n);
-      const r = Math.min(W, H) * 0.35;
-      pos[id] = { x: W / 2 + Math.cos(angle) * r, y: H / 2 + Math.sin(angle) * r, vx: 0, vy: 0 };
-    });
-    const idSet = new Set(ids);
-    const spring = [];
-    EDGES.forEach((e) => {
-      if (idSet.has(e.source) && idSet.has(e.target))
-        spring.push([e.source, e.target]);
-    });
-    for (let iter = 0;iter < 400; iter++) {
-      for (let i = 0;i < n; i++) {
-        const a = pos[ids[i]];
-        for (let j = i + 1;j < n; j++) {
-          const b = pos[ids[j]];
-          let dx = a.x - b.x, dy = a.y - b.y;
-          let d = Math.max(1, Math.hypot(dx, dy));
-          const f = 160000 / (d * d);
-          dx /= d;
-          dy /= d;
-          a.vx += dx * f;
-          a.vy += dy * f;
-          b.vx -= dx * f;
-          b.vy -= dy * f;
-        }
-      }
-      spring.forEach(([s, t]) => {
-        const a = pos[s], b = pos[t];
-        let dx = a.x - b.x, dy = a.y - b.y;
-        const d = Math.max(1, Math.hypot(dx, dy));
-        const f = 0.03 * (d - 110);
-        dx /= d;
-        dy /= d;
-        a.vx -= dx * f;
-        a.vy -= dy * f;
-        b.vx += dx * f;
-        b.vy += dy * f;
-      });
-      ids.forEach((id) => {
-        const p = pos[id];
-        p.vx += (W / 2 - p.x) * 0.001;
-        p.vy += (H / 2 - p.y) * 0.001;
-        const damp = 0.85;
-        p.x += p.vx * damp;
-        p.y += p.vy * damp;
-        p.vx = 0;
-        p.vy = 0;
-      });
-    }
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    ids.forEach((id) => {
-      const p = pos[id];
-      minX = Math.min(minX, p.x);
-      minY = Math.min(minY, p.y);
-      maxX = Math.max(maxX, p.x);
-      maxY = Math.max(maxY, p.y);
-    });
-    const spanX = maxX - minX, spanY = maxY - minY;
-    const target = Math.max(320, Math.sqrt(n) * 70);
-    const k = target / Math.max(1, Math.max(spanX, spanY));
-    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-    ids.forEach((id) => {
-      const p = pos[id];
-      p.x = (p.x - cx) * k;
-      p.y = (p.y - cy) * k;
-    });
-    return pos;
-  }
-  function ensureForce(ids) {
-    const key = [...ids].sort().join("|");
-    if (forceKey !== key) {
-      setForceLayout(computeForce(ids));
-      setForceKey(key);
-    }
-  }
-  function initLayout() {
-    const order = [];
-    const seen = new Set;
-    NODES.forEach((n) => {
-      const g = n.scope + "\x00" + n.type;
-      if (!seen.has(g)) {
-        seen.add(g);
-        order.push(g);
-      }
-    });
-    order.sort();
-    const cols = Math.ceil(Math.sqrt(order.length));
-    const colW = 150 * Math.sqrt(NODES.length / Math.max(1, order.length));
-    const positions2 = {};
-    order.forEach((g, gi) => {
-      const [scope, type] = g.split("\x00");
-      const members = NODES.filter((n) => n.scope === scope && n.type === type).sort((a, b) => parseInt(a.id.replace(/\D/g, ""), 10) - parseInt(b.id.replace(/\D/g, ""), 10));
-      const perRow = Math.max(6, Math.ceil(Math.sqrt(members.length * 2)));
-      const bx = gi % cols * (colW + 90);
-      const by = Math.floor(gi / cols) * (120 + Math.ceil(members.length / perRow) * 36);
-      members.forEach((n, i) => {
-        positions2[n.id] = { x: bx + i % perRow * 26, y: by + Math.floor(i / perRow) * 34 };
-      });
-    });
-    setPositions(positions2);
-  }
-  function buildGenealogy() {
-    const decisionIds = NODES.filter((n) => n.type === "decision").map((n) => n.id);
-    const dSet = new Set(decisionIds);
-    const geneEdges = EDGES.filter((e) => e.label === "narrows" || e.label === "supersedes" || e.label === "completes" || e.label === "widens");
-    const depends = {};
-    geneEdges.forEach((e) => {
-      (depends[e.source] = depends[e.source] || []).push(e.target);
-    });
-    const depth = {};
-    function computeDepth(id, seen) {
-      if (depth[id] !== undefined)
-        return depth[id];
-      if (seen.has(id))
-        return 0;
-      const deps = (depends[id] || []).filter((t) => dSet.has(t));
-      let d = 0;
-      deps.forEach((t) => {
-        d = Math.max(d, 1 + computeDepth(t, new Set(seen).add(id)));
-      });
-      depth[id] = d;
-      return d;
-    }
-    decisionIds.forEach((id) => computeDepth(id, new Set));
-    const layers = {};
-    decisionIds.forEach((id) => {
-      const d = depth[id] === undefined ? 0 : depth[id];
-      (layers[d] = layers[d] || []).push(id);
-    });
-    let maxW = 0;
-    Object.keys(layers).forEach((k) => maxW = Math.max(maxW, layers[k].length));
-    const layout = {};
-    const spacing = 90, layerGap = 190;
-    Object.keys(layers).sort((a, b) => Number(a) - Number(b)).forEach((k, li) => {
-      const ids = layers[k].sort((a, b) => a.localeCompare(b));
-      ids.forEach((id, j) => {
-        layout[id] = { x: li * layerGap, y: (j - (ids.length - 1) / 2) * 64 };
-      });
-    });
-    setGenealogyLayout(layout);
-  }
-
-  // src/filters/query.ts
-  function haystack(n) {
-    let parts = [n.id, n.title, n.type, n.scope, n.status || ""];
-    for (const [k, v] of Object.entries(n.attrs))
-      parts.push(k + "=" + String(v));
-    parts.push(n.body || "");
-    return parts.join(`
-`).toLowerCase();
-  }
-  function computeMatches(q) {
-    if (!q)
-      return null;
-    const lq = q.toLowerCase();
-    return new Set(NODES.filter((n) => haystack(n).includes(lq)).map((n) => n.id));
-  }
-  function setVisible(n) {
-    if (typeState[n.type] !== true)
-      return false;
-    if (filterState.scopeSel && n.scope !== filterState.scopeSel)
-      return false;
-    if (n.type === "requirement") {
-      if (filterState.stateSel && (n.state || "") !== filterState.stateSel)
-        return false;
-    }
-    if (n.type === "question") {
-      const qs = filterState.qstatus;
-      if (qs && (n.status === "closed" ? "closed" : "open") !== qs)
-        return false;
-    }
-    if (n.type === "criterion") {
-      const c = filterState.criterion;
-      if (c && String(!!n.attrs.satisfied) !== (c === "yes" ? "true" : "false"))
-        return false;
-    }
-    return true;
-  }
-  var previousKey = "";
-  var matches = [];
-  function filteredNodes() {
-    const key = JSON.stringify([typeState, filterState, searchText]);
-    if (key !== previousKey) {
-      const hits = computeMatches(searchText);
-      setSearchHits(hits);
-      matches = NODES.filter((n) => setVisible(n) && (!hits || hits.has(n.id)));
-      previousKey = key;
-    }
-    return matches;
-  }
-
-  // src/graph/selection.ts
-  function candidateNodes() {
-    let ids = filteredNodes().map((n) => n.id);
-    if (genealogyMode) {
-      ids = ids.filter((id) => byId[id] && byId[id].type === "decision");
-    }
-    const focus = currentFocus();
-    if (focus.id) {
-      const reach = reachable(focus.id, focus.radius);
-      ids = ids.filter((id) => reach.has(id));
-    }
-    return ids;
-  }
-  function visibleEdges(ids) {
-    const s = new Set(ids);
-    return EDGES.filter((e) => e.source && s.has(e.source) && e.target && s.has(e.target));
-  }
-  function lodFromScale() {
-    return scale < 0.35 ? "far" : scale < 1.1 ? "mid" : "near";
-  }
-  var selectionKey = "";
-  var selectionCache = null;
-  function focusedSelection() {
-    const candidates = candidateNodes();
-    const focus = currentFocus();
-    if (!focus.id || candidates.length <= MODE_THRESHOLD)
-      return { ids: candidates, omitted: [] };
-    const key = JSON.stringify([focus.id, focus.radius, candidates]);
-    if (key === selectionKey)
-      return selectionCache;
-    const distance = new Map([[focus.id, 0]]), queue = [focus.id];
-    for (let i = 0;i < queue.length; i++) {
-      const id = queue[i], d = distance.get(id);
-      if (d >= focus.radius)
-        continue;
-      for (const neighbor of Object.keys(adj[id] || {})) {
-        if (!distance.has(neighbor)) {
-          distance.set(neighbor, d + 1);
-          queue.push(neighbor);
-        }
-      }
-    }
-    const ranked = [...candidates].sort((a, b) => distance.get(a) - distance.get(b) || degree[b] - degree[a] || (a < b ? -1 : a > b ? 1 : 0));
-    selectionKey = key;
-    selectionCache = { ids: ranked.slice(0, MODE_THRESHOLD), omitted: ranked.slice(MODE_THRESHOLD) };
-    return selectionCache;
-  }
-  function visibleNodes() {
-    return focusedSelection().ids;
-  }
-
-  // src/tokens.ts
-  var values = getComputedStyle(document.documentElement);
-  function token(name) {
-    return values.getPropertyValue(name).trim();
-  }
-  var KIND_COLORS = { need: token("--need"), question: token("--question"), decision: token("--decision"), requirement: token("--requirement"), criterion: token("--criterion"), gate: token("--gate") };
-
-  // src/graph/svg.ts
-  var svg = element("svg");
-  var NS = "http:" + "//www.w3.org/2000/svg";
-  var root = document.createElementNS(NS, "g");
-  function initSvg() {
-    svg.appendChild(root);
-  }
-  var defs = null;
-  function makeDefs() {
-    defs = document.createElementNS(NS, "defs");
-    svg.insertBefore(defs, root);
-    const labels = [...new Set(EDGES.map((e) => e.label))];
-    labels.forEach((l) => {
-      const mk = document.createElementNS(NS, "marker");
-      mk.setAttribute("id", String("arr-" + l.replace(/\W/g, "_")));
-      mk.setAttribute("viewBox", "0 -4 8 8");
-      mk.setAttribute("refX", "9");
-      mk.setAttribute("refY", "0");
-      mk.setAttribute("markerWidth", "7");
-      mk.setAttribute("markerHeight", "7");
-      mk.setAttribute("orient", "auto");
-      const p = document.createElementNS(NS, "path");
-      p.setAttribute("d", "M0,-4L8,0L0,4");
-      p.setAttribute("fill", String(edgeColor(l)));
-      mk.appendChild(p);
-      defs.appendChild(mk);
-    });
-    const agg = document.createElementNS(NS, "marker");
-    agg.setAttribute("id", "arr-_agg");
-    agg.setAttribute("viewBox", "0 -4 8 8");
-    agg.setAttribute("refX", "9");
-    agg.setAttribute("refY", "0");
-    agg.setAttribute("markerWidth", "7");
-    agg.setAttribute("markerHeight", "7");
-    agg.setAttribute("orient", "auto");
-    const pa = document.createElementNS(NS, "path");
-    pa.setAttribute("d", "M0,-4L8,0L0,4");
-    pa.setAttribute("fill", String(token("--color-888")));
-    agg.appendChild(pa);
-    defs.appendChild(agg);
-  }
-  function edgeColor(label) {
-    const map = { closes: token("--color-a03b3b"), narrows: token("--decision"), widens: token("--color-3f8f6b"), supersedes: token("--color-8a2b2b"), completes: token("--ok"), targets: token("--criterion"), "spawned-by": token("--gate"), "filed-as": token("--color-7d6c5f"), "depends-on": token("--need"), "relies-on": token("--color-5a5a6e"), raised: token("--color-a8608a"), "measured-by": token("--color-556b7a") };
-    return map[label] || token("--color-666");
-  }
-  function shapeOf(type) {
-    const s = {
-      need: "M0,-7 C4,-7 7,-4 7,0 C7,4 4,7 0,7 C-4,7 -7,4 -7,0 C-7,-4 -4,-7 0,-7 Z",
-      question: "M0,-9 L2.5,-2 L9,0 L2.5,2 L0,9 L-2.5,2 L-9,0 L-2.5,-2 Z",
-      decision: "M-7,-7 L7,-7 L7,7 L-7,7 Z",
-      requirement: "M-7,-4 L0,-7 L7,-4 L7,4 L0,7 L-7,4 Z",
-      criterion: "M0,-7 L7,5 L-7,5 Z",
-      gate: "M0,-8 L7.6,-2.5 L4.7,6.5 L-4.7,6.5 L-7.6,-2.5 Z"
-    };
-    return s[type] || s.decision;
-  }
-
-  // src/graph/viewport.ts
-  function initViewport() {
-    svg.addEventListener("wheel", (e) => {
-      e.preventDefault();
-      const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
-      const rect = svg.getBoundingClientRect();
-      const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
-      const nx = (cx - translate.x) / scale, ny = (cy - translate.y) / scale;
-      setViewSource("manual");
-      setScale(scale * factor);
-      setScale(Math.min(4, Math.max(0.1, scale)));
-      setTranslate({ ...translate, x: cx - nx * scale });
-      setTranslate({ ...translate, y: cy - ny * scale });
-      applyTransform();
-      updateLod();
-      draw();
-    }, { passive: false });
-    svg.addEventListener("mousedown", (e) => {
-      if (e.button !== 0)
-        return;
-      setDragging(true);
-      setDragMoved(false);
-      setDragStart({ x: e.clientX, y: e.clientY, tx: translate.x, ty: translate.y });
-    });
-    window.addEventListener("mousemove", (e) => {
-      if (!dragging)
-        return;
-      if (!dragMoved && Math.hypot(e.clientX - dragStart.x, e.clientY - dragStart.y) < 4)
-        return;
-      setDragMoved(true);
-      setViewSource("manual");
-      setTranslate({ ...translate, x: dragStart.tx + e.clientX - dragStart.x });
-      setTranslate({ ...translate, y: dragStart.ty + e.clientY - dragStart.y });
-      applyTransform();
-      updateLod();
-      draw();
-    });
-    window.addEventListener("mouseup", () => {
-      setDragging(false);
-    });
-  }
-  function applyTransform() {
-    root.setAttribute("transform", String("translate(" + translate.x + "," + translate.y + ") scale(" + scale + ")"));
-  }
-  function updateLod() {
-    const next = lodFromScale();
-    if (next !== lod) {
-      setLod(next);
-    }
-  }
-  function zoomBy(f) {
-    const rect = svg.getBoundingClientRect();
-    const cx = rect.width / 2, cy = rect.height / 2;
-    const nx = (cx - translate.x) / scale, ny = (cy - translate.y) / scale;
-    setViewSource("manual");
-    setScale(scale * f);
-    setScale(Math.min(4, Math.max(0.1, scale)));
-    setTranslate({ ...translate, x: cx - nx * scale });
-    setTranslate({ ...translate, y: cy - ny * scale });
-    applyTransform();
-    updateLod();
-    draw();
-  }
-  function currentLayout() {
-    const ids = visibleNodes();
-    if (genealogyMode)
-      return genealogyLayout;
-    if (ids.length <= MODE_THRESHOLD) {
-      ensureForce(ids);
-      return forceLayout;
-    }
-    return positions;
-  }
-  function fitTransform() {
-    const ids = visibleNodes();
-    const over = !genealogyMode && ids.length > MODE_THRESHOLD;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    if (over) {
-      const { cluster, cells } = overviewGrid(ids);
-      for (const g of Object.keys(cluster)) {
-        const gp = cells[g] || { bx: 0, by: 0 };
-        const w = Math.min(280, Math.max(120, 40 + cluster[g].length * 1.4));
-        minX = Math.min(minX, gp.bx - w / 2);
-        minY = Math.min(minY, gp.by - 20);
-        maxX = Math.max(maxX, gp.bx + w / 2);
-        maxY = Math.max(maxY, gp.by + 20);
-      }
-    } else {
-      const layout = currentLayout();
-      const ids2 = ids.filter((id) => layout[id]);
-      const list = ids2.length ? ids2 : Object.keys(layout);
-      list.forEach((id) => {
-        const p = layout[id];
-        if (!p)
-          return;
-        minX = Math.min(minX, p.x);
-        minY = Math.min(minY, p.y);
-        maxX = Math.max(maxX, p.x);
-        maxY = Math.max(maxY, p.y);
-      });
-    }
-    setViewSource("fit");
-    if (minX > maxX)
-      return;
-    const rect = svg.getBoundingClientRect();
-    const spanX = maxX - minX + 120;
-    const spanY = maxY - minY + 120;
-    const fit = Math.min(rect.width / Math.max(1, spanX), rect.height / Math.max(1, spanY));
-    setScale(Math.min(over ? 4 : 2, fit));
-    if (!over)
-      setScale(Math.max(scale, 1));
-    let center = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
-    const focus = currentFocus();
-    if (!over && fit < 1 && focus.id && ids.includes(focus.id)) {
-      center = currentLayout()[focus.id] || center;
-    }
-    setTranslate({ ...translate, x: rect.width / 2 - center.x * scale });
-    setTranslate({ ...translate, y: rect.height / 2 - center.y * scale });
-    applyTransform();
-    updateLod();
-  }
-  function fitView() {
-    setLastFitKey("");
-    draw();
-  }
-  function resetView() {
-    fitView();
-  }
-
-  // src/filters.ts
-  var typeChips = element("typeChips");
-  var scopeSel = element("scopeSel");
-  var stateSel = element("stateSel");
-  function initFilters() {
-    ["all", "need", "question", "decision", "requirement", "criterion", "gate"].forEach((k) => {
-      const chip = document.createElement("button");
-      chip.type = "button";
-      chip.setAttribute("aria-pressed", "true");
-      chip.className = "chip on";
-      chip.dataset.kind = k;
-      chip.style.borderColor = KIND_COLORS[k] || "var(--border)";
-      chip.textContent = k === "all" ? "All types" : k;
-      chip.addEventListener("click", () => {
-        selectType(k);
-        renderTypeChips();
-        redraw();
-      });
-      typeChips.appendChild(chip);
-    });
-    (D.scopes || []).forEach((s) => {
-      const o = document.createElement("option");
-      o.value = s;
-      o.textContent = s;
-      scopeSel.appendChild(o);
-    });
-    Object.keys(states).forEach((st) => {
-      const o = document.createElement("option");
-      o.value = st;
-      o.textContent = st;
-      stateSel.appendChild(o);
-    });
-    ["scopeSel", "stateSel", "qstatus", "criterion"].forEach((id) => element(id).addEventListener("change", () => {
-      setFilter(id, element(id).value);
-      redraw();
-    }));
-    element("q").addEventListener("input", () => {
-      setSearchText(element("q").value.trim());
-      redraw();
-    });
-    element("clearFilter").addEventListener("click", () => {
-      Object.keys(typeState).forEach((k) => {
-        setType(k, true);
-      });
-      document.querySelectorAll("#typeChips .chip").forEach((c) => {
-        c.classList.add("on");
-        c.setAttribute("aria-pressed", "true");
-      });
-      scopeSel.value = "";
-      stateSel.value = "";
-      element("qstatus").value = "";
-      element("criterion").value = "";
-      element("q").value = "";
-      setSearchText("");
-      ["scopeSel", "stateSel", "qstatus", "criterion"].forEach((id) => setFilter(id, ""));
-      setRadiusChoice("");
-      setListSort(null);
-      renderTypeChips();
-      truncateFocus(1);
-      hideDetail();
-      setGenealogyMode(false);
-      element("hopRadius").value = "";
-      element("hopFrom").value = "";
-      redraw();
-    });
-    element("hopFrom").addEventListener("input", () => {
-      element("applyHop").textContent = focusLabel(element("hopFrom").value.trim());
-    });
-    element("hopRadius").addEventListener("change", () => {
-      setRadiusChoice(element("hopRadius").value);
-      element("applyHop").textContent = focusLabel(element("hopFrom").value.trim());
-      if (selected)
-        element("detailFocus").textContent = focusLabel(selected);
-    });
-    element("applyHop").addEventListener("click", () => {
-      const id = element("hopFrom").value.trim();
-      if (!byId[id]) {
-        alert("Unknown node id: " + id);
-        return;
-      }
-      startHop(id);
-    });
-    element("genealogy").addEventListener("click", () => {
-      setGenealogyMode(!genealogyMode);
-      if (genealogyMode) {
-        setLod("near");
-      }
-      redraw();
-    });
-    element("zin").addEventListener("click", () => zoomBy(1.6));
-    element("zout").addEventListener("click", () => zoomBy(1 / 1.6));
-    element("zfit").addEventListener("click", resetView);
-  }
-  function setStateFilter(st) {
-    stateSel.value = st;
-    setFilter("stateSel", stateSel.value);
-    redraw();
-  }
-  function gotoTab(t) {
-    setActiveTab(t);
-    document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
-    document.querySelectorAll(".page").forEach((p) => p.classList.toggle("on", p.id === "page-" + t));
-  }
-  function renderTypeChips() {
-    const all = Object.values(typeState).every(Boolean);
-    document.querySelectorAll("#typeChips .chip").forEach((chip) => {
-      const on = chip.dataset.kind === "all" ? all : !all && typeState[chip.dataset.kind];
-      chip.classList.toggle("on", on);
-      chip.setAttribute("aria-pressed", String(on));
-    });
-  }
-
-  // src/navigation.ts
-  function startHop(id) {
-    if (!byId[id])
-      return;
-    const radius = focusPlan(id).n;
-    if (currentFocus().id !== id || currentFocus().radius !== radius) {
-      enterFocus(id, radius);
-    }
-    showDetail(id);
-    redraw();
-  }
-  function returnFocus(index) {
-    if (!Number.isInteger(index) || index < 0 || index >= focusHistory.length)
-      return;
-    truncateFocus(index + 1);
-    if (currentFocus().id)
-      showDetail(currentFocus().id);
-    else
-      hideDetail();
-    redraw();
-  }
-  function renderNavigation(ids) {
-    const focus = currentFocus();
-    const path = element("focusPath");
-    const pathKey = JSON.stringify(focusHistory);
-    if (path.dataset.path !== pathKey) {
-      path.dataset.path = pathKey;
-      path.replaceChildren();
-      focusHistory.forEach((entry, index) => {
-        if (index)
-          path.appendChild(document.createTextNode(" → "));
-        const button = document.createElement("button");
-        button.textContent = entry.id ? entry.id : "All nodes";
-        button.title = entry.id ? entry.id + " · " + byId[entry.id].title : "All nodes";
-        button.dataset.depth = String(index);
-        if (index === focusHistory.length - 1)
-          button.setAttribute("aria-current", "location");
-        button.addEventListener("click", () => returnFocus(index));
-        path.appendChild(button);
-      });
-      path.lastElementChild.scrollIntoView({ block: "nearest", inline: "nearest" });
-    }
-    element("focusBack").disabled = focusHistory.length === 1;
-    element("focusAll").disabled = focusHistory.length === 1;
-    element("focusDetail").disabled = !focus.id;
-    element("focusNote").textContent = focus.id ? " · " + focus.radius + (focus.radius === 1 ? " hop" : " hops") + (Object.keys(adj[focus.id] || {}).length ? "" : " · No connections in this graph") + (ids.includes(focus.id) ? "" : " · Focus hidden by current filters, search, or lineage") : "";
-    const active = [
-      Object.values(typeState).every(Boolean) ? "" : Object.keys(typeState).filter((k) => typeState[k]).join(", ") || "No types",
-      scopeSel.value ? "Scope: " + scopeSel.value : "",
-      stateSel.value ? "State: " + stateSel.value : "",
-      element("qstatus").value ? "Questions: " + element("qstatus").value : "",
-      element("criterion").value ? "Criteria: " + element("criterion").value : "",
-      searchText ? "Search: " + searchText : ""
-    ].filter(Boolean);
-    element("displayStatus").textContent = active.length ? active.length + (active.length === 1 ? " filter" : " filters") : "No filters";
-    element("displayStatus").title = active.join(" · ");
-    const input = element("hopFrom"), focusKey = JSON.stringify(focus);
-    if (input.dataset.focus !== focusKey) {
-      input.dataset.focus = focusKey;
-      input.value = focus.id || "";
-    }
-    element("applyHop").textContent = focusLabel(input.value.trim());
-    element("genealogy").setAttribute("aria-pressed", String(genealogyMode));
-    element("genealogy").style.borderColor = genealogyMode ? "var(--hl)" : "";
-  }
-  function initNavigation() {
-    element("focusBack").addEventListener("click", () => returnFocus(focusHistory.length - 2));
-    element("focusAll").addEventListener("click", () => returnFocus(0));
-    element("focusDetail").addEventListener("click", () => {
-      if (currentFocus().id) {
-        showDetail(currentFocus().id);
-        redraw();
-      }
-    });
+  var overviewSource = "";
+  function setOverviewSource(value) {
+    overviewSource = typeof value === "string" && ["next", "lint-error", "lint-warn"].includes(value) ? value : "";
   }
 
   // src/detail/markdown.ts
@@ -1115,6 +490,7 @@
       return;
     const changed = selected !== id;
     setSelected(id);
+    element("hopFrom").value = id;
     const consumed = new Set(["id", "type", "scope", "title"]);
     let badges = detailBadge("type", "Type", n.type, "kind-" + n.type) + detailBadge("scope", "Scope", n.scope);
     if (typeof n.attrs.status === "string") {
@@ -1167,7 +543,7 @@
         displayBody = displayBody.split(m.mark).join(m.mark + " ⟦" + m.label + ": " + m.source + "⟧");
     });
     const markHTML = marks.length ? '<section id="detailMarks"><h2>Affected passages</h2>' + marks.map((m) => '<div class="passage-note" data-found="' + String(m.found) + '"><span class="relation-chip">' + esc(m.label) + "</span> " + nodeLink(m.source) + (m.mark ? "<blockquote>" + esc(m.mark) + "</blockquote><p>" + (m.found ? "Found in the source body." : "Location in body could not be found.") + "</p>" : "<p>No mark identifies the affected passage.</p>") + "</div>").join("") + "</section>" : "";
-    element("detailBody").innerHTML = '<div class="detail-heading"><div class="detail-id">' + esc(n.id) + "</div><h3>" + esc(n.title) + '</h3><button id="detailFocus">' + esc(focusLabel(id)) + '</button><div class="detail-badges">' + badges + "</div>" + (successors.length ? '<div class="successors">Superseded by ' + successors.map(nodeLink).join(", ") + "</div>" : "") + "</div>" + scope + '<section id="detailContent"><h2>Body</h2><div id="body" class="detail-prose ' + proseClass(n.body || "") + '">' + renderBody(displayBody) + "</div></section>" + markHTML + (declarations ? '<section id="detailDeclarations"><h2>Declarations</h2><dl>' + declarations + "</dl></section>" : "") + group("Decision lineage", relations.filter((r) => LINEAGE_LABELS.has(r.label))) + group("Relationships", relations.filter((r) => !LINEAGE_LABELS.has(r.label))) + depHTML + (additional ? '<section id="detailAdditional"><h2>Additional attributes</h2><dl>' + additional + "</dl></section>" : "");
+    element("detailBody").innerHTML = '<div class="detail-heading"><div class="detail-id">' + esc(n.id) + "</div><h3>" + esc(n.title) + '</h3><div class="detail-badges">' + badges + "</div>" + (successors.length ? '<div class="successors">Superseded by ' + successors.map(nodeLink).join(", ") + "</div>" : "") + "</div>" + scope + '<section id="detailContent"><h2>Body</h2><div id="body" class="detail-prose ' + proseClass(n.body || "") + '">' + renderBody(displayBody) + "</div></section>" + markHTML + (declarations ? '<section id="detailDeclarations"><h2>Declarations</h2><dl>' + declarations + "</dl></section>" : "") + group("Decision lineage", relations.filter((r) => LINEAGE_LABELS.has(r.label))) + group("Relationships", relations.filter((r) => !LINEAGE_LABELS.has(r.label))) + depHTML + (additional ? '<section id="detailAdditional"><h2>Additional attributes</h2><dl>' + additional + "</dl></section>" : "");
     const detail = element("detail");
     detail.classList.add("on");
     if (changed)
@@ -1187,13 +563,694 @@
       const t = e.target.closest("[data-go]");
       if (t)
         selectNode(t.dataset.go);
-      if (e.target.closest("#detailFocus") && selected)
-        startHop(selected);
+    });
+  }
+
+  // src/survey/blockers.ts
+  function jamList(ulEl, items, tag) {
+    const ul = element(ulEl);
+    ul.innerHTML = "";
+    items.forEach((it) => {
+      const li = document.createElement("li");
+      const a = document.createElement("a");
+      a.dataset.go = it.id;
+      a.href = locationHash(JSON.stringify({ selected: it.id }));
+      a.innerHTML = '<span class="id">' + esc(it.id) + '</span> <span class="lbl">' + esc(it.label) + "</span>";
+      li.appendChild(a);
+      ul.appendChild(li);
+    });
+    if (!items.length) {
+      ul.innerHTML = '<li class="small">none</li>';
+    }
+  }
+  function initBlockers() {
+    jamList("jamQ", (D.open_questions || []).flatMap((q) => [
+      { id: q.id, label: (q.title || "") + (q.referencing && q.referencing.length ? " — referenced by " + q.referencing.join(", ") : "") }
+    ]), "q");
+    jamList("jamNext", D.next || [], "next");
+    jamList("jamMissing", (D.missing || []).map((m) => ({ id: m.id, label: "next_evidence " + (m.next_evidence ? "set" : "empty") + "; responsible " + (m.responsible ? "set" : "empty") })), "missing");
+    jamList("jamDangling", (D.dangling || []).map((d) => ({ id: d.source, label: "references missing node " + d.target })), "dangling");
+    renderLint();
+    element("left").addEventListener("click", (e) => {
+      const t = e.target.closest("[data-go]");
+      if (t && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        selectNode(t.dataset.go);
+      }
+    });
+  }
+  function renderLint() {
+    const lintUl = element("jamLint");
+    lintUl.innerHTML = "";
+    const rows = lintArr.filter((d) => !overviewSource.startsWith("lint-") || d.severity === overviewSource.slice(5));
+    rows.forEach((d) => {
+      const li = document.createElement("li");
+      const a = document.createElement("a");
+      a.dataset.go = d.id;
+      a.href = locationHash(JSON.stringify({ selected: d.id }));
+      a.innerHTML = '<span class="lint-sev" style="color:' + (d.severity === "error" ? "var(--err)" : "var(--warn)") + '">' + esc(d.severity) + "</span> " + '<span class="id">' + esc(d.rule) + '</span> <span class="lbl">' + esc(d.id) + " — " + esc(d.message) + "</span>";
+      li.appendChild(a);
+      lintUl.appendChild(li);
+    });
+    if (!rows.length)
+      lintUl.innerHTML = '<li class="small">no findings</li>';
+  }
+
+  // src/graph/layout.ts
+  function computeForce(ids) {
+    const n = ids.length;
+    const W = 1400, H = 900;
+    const pos = {};
+    ids.forEach((id, i) => {
+      const angle = 2 * Math.PI * i / Math.max(1, n);
+      const r = Math.min(W, H) * 0.35;
+      pos[id] = { x: W / 2 + Math.cos(angle) * r, y: H / 2 + Math.sin(angle) * r, vx: 0, vy: 0 };
+    });
+    const idSet = new Set(ids);
+    const spring = [];
+    EDGES.forEach((e) => {
+      if (idSet.has(e.source) && idSet.has(e.target))
+        spring.push([e.source, e.target]);
+    });
+    for (let iter = 0;iter < 400; iter++) {
+      for (let i = 0;i < n; i++) {
+        const a = pos[ids[i]];
+        for (let j = i + 1;j < n; j++) {
+          const b = pos[ids[j]];
+          let dx = a.x - b.x, dy = a.y - b.y;
+          let d = Math.max(1, Math.hypot(dx, dy));
+          const f = 160000 / (d * d);
+          dx /= d;
+          dy /= d;
+          a.vx += dx * f;
+          a.vy += dy * f;
+          b.vx -= dx * f;
+          b.vy -= dy * f;
+        }
+      }
+      spring.forEach(([s, t]) => {
+        const a = pos[s], b = pos[t];
+        let dx = a.x - b.x, dy = a.y - b.y;
+        const d = Math.max(1, Math.hypot(dx, dy));
+        const f = 0.03 * (d - 110);
+        dx /= d;
+        dy /= d;
+        a.vx -= dx * f;
+        a.vy -= dy * f;
+        b.vx += dx * f;
+        b.vy += dy * f;
+      });
+      ids.forEach((id) => {
+        const p = pos[id];
+        p.vx += (W / 2 - p.x) * 0.001;
+        p.vy += (H / 2 - p.y) * 0.001;
+        const damp = 0.85;
+        p.x += p.vx * damp;
+        p.y += p.vy * damp;
+        p.vx = 0;
+        p.vy = 0;
+      });
+    }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    ids.forEach((id) => {
+      const p = pos[id];
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x);
+      maxY = Math.max(maxY, p.y);
+    });
+    const spanX = maxX - minX, spanY = maxY - minY;
+    const target = Math.max(320, Math.sqrt(n) * 70);
+    const k = target / Math.max(1, Math.max(spanX, spanY));
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    ids.forEach((id) => {
+      const p = pos[id];
+      p.x = (p.x - cx) * k;
+      p.y = (p.y - cy) * k;
+    });
+    return pos;
+  }
+  function ensureForce(ids) {
+    const key = [...ids].sort().join("|");
+    if (forceKey !== key) {
+      setForceLayout(computeForce(ids));
+      setForceKey(key);
+    }
+  }
+  function initLayout() {
+    const order = [];
+    const seen = new Set;
+    NODES.forEach((n) => {
+      const g = n.scope + "\x00" + n.type;
+      if (!seen.has(g)) {
+        seen.add(g);
+        order.push(g);
+      }
+    });
+    order.sort();
+    const cols = Math.ceil(Math.sqrt(order.length));
+    const colW = 150 * Math.sqrt(NODES.length / Math.max(1, order.length));
+    const positions2 = {};
+    order.forEach((g, gi) => {
+      const [scope, type] = g.split("\x00");
+      const members = NODES.filter((n) => n.scope === scope && n.type === type).sort((a, b) => parseInt(a.id.replace(/\D/g, ""), 10) - parseInt(b.id.replace(/\D/g, ""), 10));
+      const perRow = Math.max(6, Math.ceil(Math.sqrt(members.length * 2)));
+      const bx = gi % cols * (colW + 90);
+      const by = Math.floor(gi / cols) * (120 + Math.ceil(members.length / perRow) * 36);
+      members.forEach((n, i) => {
+        positions2[n.id] = { x: bx + i % perRow * 26, y: by + Math.floor(i / perRow) * 34 };
+      });
+    });
+    setPositions(positions2);
+  }
+  function buildGenealogy() {
+    const decisionIds = NODES.filter((n) => n.type === "decision").map((n) => n.id);
+    const dSet = new Set(decisionIds);
+    const geneEdges = EDGES.filter((e) => e.label === "narrows" || e.label === "supersedes" || e.label === "completes" || e.label === "widens");
+    const depends = {};
+    geneEdges.forEach((e) => {
+      (depends[e.source] = depends[e.source] || []).push(e.target);
+    });
+    const depth = {};
+    function computeDepth(id, seen) {
+      if (depth[id] !== undefined)
+        return depth[id];
+      if (seen.has(id))
+        return 0;
+      const deps = (depends[id] || []).filter((t) => dSet.has(t));
+      let d = 0;
+      deps.forEach((t) => {
+        d = Math.max(d, 1 + computeDepth(t, new Set(seen).add(id)));
+      });
+      depth[id] = d;
+      return d;
+    }
+    decisionIds.forEach((id) => computeDepth(id, new Set));
+    const layers = {};
+    decisionIds.forEach((id) => {
+      const d = depth[id] === undefined ? 0 : depth[id];
+      (layers[d] = layers[d] || []).push(id);
+    });
+    let maxW = 0;
+    Object.keys(layers).forEach((k) => maxW = Math.max(maxW, layers[k].length));
+    const layout = {};
+    const spacing = 90, layerGap = 190;
+    Object.keys(layers).sort((a, b) => Number(a) - Number(b)).forEach((k, li) => {
+      const ids = layers[k].sort((a, b) => a.localeCompare(b));
+      ids.forEach((id, j) => {
+        layout[id] = { x: li * layerGap, y: (j - (ids.length - 1) / 2) * 64 };
+      });
+    });
+    setGenealogyLayout(layout);
+  }
+
+  // src/filters/query.ts
+  function haystack(n) {
+    let parts = [n.id, n.title, n.type, n.scope, n.status || ""];
+    for (const [k, v] of Object.entries(n.attrs))
+      parts.push(k + "=" + String(v));
+    parts.push(n.body || "");
+    return parts.join(`
+`).toLowerCase();
+  }
+  function computeMatches(q) {
+    if (!q)
+      return null;
+    const lq = q.toLowerCase();
+    return new Set(NODES.filter((n) => haystack(n).includes(lq)).map((n) => n.id));
+  }
+  var nextIds = new Set((D.next || []).map((n) => n.id));
+  function setVisible(n) {
+    if (overviewSource === "next" && (n.type !== "need" || !nextIds.has(n.id)))
+      return false;
+    if (typeState[n.type] !== true)
+      return false;
+    if (filterState.scopeSel && n.scope !== filterState.scopeSel)
+      return false;
+    if (n.type === "requirement") {
+      if (filterState.stateSel && (n.state || "") !== filterState.stateSel)
+        return false;
+    }
+    if (n.type === "question") {
+      const qs = filterState.qstatus;
+      if (qs && (n.status === "closed" ? "closed" : "open") !== qs)
+        return false;
+    }
+    if (n.type === "criterion") {
+      const c = filterState.criterion;
+      if (c && String(!!n.attrs.satisfied) !== (c === "yes" ? "true" : "false"))
+        return false;
+    }
+    return true;
+  }
+  var previousKey = "";
+  var matches = [];
+  function filteredNodes() {
+    const key = JSON.stringify([overviewSource, typeState, filterState, searchText]);
+    if (key !== previousKey) {
+      const hits = computeMatches(searchText);
+      setSearchHits(hits);
+      matches = NODES.filter((n) => setVisible(n) && (!hits || hits.has(n.id)));
+      previousKey = key;
+    }
+    return matches;
+  }
+
+  // src/graph/selection.ts
+  function candidateNodes() {
+    let ids = filteredNodes().map((n) => n.id);
+    if (genealogyMode) {
+      ids = ids.filter((id) => byId[id] && byId[id].type === "decision");
+    }
+    const focus = currentFocus();
+    if (focus.id) {
+      const reach = reachable(focus.id, focus.radius);
+      ids = ids.filter((id) => reach.has(id));
+    }
+    return ids;
+  }
+  function visibleEdges(ids) {
+    const s = new Set(ids);
+    return EDGES.filter((e) => e.source && s.has(e.source) && e.target && s.has(e.target));
+  }
+  function lodFromScale() {
+    return scale < 0.35 ? "far" : scale < 1.1 ? "mid" : "near";
+  }
+  var selectionKey = "";
+  var selectionCache = null;
+  function focusedSelection() {
+    const candidates = candidateNodes();
+    const focus = currentFocus();
+    if (!focus.id || candidates.length <= MODE_THRESHOLD)
+      return { ids: candidates, omitted: [] };
+    const key = JSON.stringify([focus.id, focus.radius, candidates]);
+    if (key === selectionKey)
+      return selectionCache;
+    const distance = new Map([[focus.id, 0]]), queue = [focus.id];
+    for (let i = 0;i < queue.length; i++) {
+      const id = queue[i], d = distance.get(id);
+      if (d >= focus.radius)
+        continue;
+      for (const neighbor of Object.keys(adj[id] || {})) {
+        if (!distance.has(neighbor)) {
+          distance.set(neighbor, d + 1);
+          queue.push(neighbor);
+        }
+      }
+    }
+    const ranked = [...candidates].sort((a, b) => distance.get(a) - distance.get(b) || degree[b] - degree[a] || (a < b ? -1 : a > b ? 1 : 0));
+    selectionKey = key;
+    selectionCache = { ids: ranked.slice(0, MODE_THRESHOLD), omitted: ranked.slice(MODE_THRESHOLD) };
+    return selectionCache;
+  }
+  function visibleNodes() {
+    return focusedSelection().ids;
+  }
+
+  // src/tokens.ts
+  var values = getComputedStyle(document.documentElement);
+  function token(name) {
+    return values.getPropertyValue(name).trim();
+  }
+  var KIND_COLORS = { need: token("--need"), question: token("--question"), decision: token("--decision"), requirement: token("--requirement"), criterion: token("--criterion"), gate: token("--gate") };
+
+  // src/graph/svg.ts
+  var svg = element("svg");
+  var NS = "http:" + "//www.w3.org/2000/svg";
+  var root = document.createElementNS(NS, "g");
+  function initSvg() {
+    svg.appendChild(root);
+  }
+  var defs = null;
+  function makeDefs() {
+    defs = document.createElementNS(NS, "defs");
+    svg.insertBefore(defs, root);
+    const labels = [...new Set(EDGES.map((e) => e.label))];
+    labels.forEach((l) => {
+      const mk = document.createElementNS(NS, "marker");
+      mk.setAttribute("id", String("arr-" + l.replace(/\W/g, "_")));
+      mk.setAttribute("viewBox", "0 -4 8 8");
+      mk.setAttribute("refX", "9");
+      mk.setAttribute("refY", "0");
+      mk.setAttribute("markerWidth", "7");
+      mk.setAttribute("markerHeight", "7");
+      mk.setAttribute("orient", "auto");
+      const p = document.createElementNS(NS, "path");
+      p.setAttribute("d", "M0,-4L8,0L0,4");
+      p.setAttribute("fill", String(edgeColor(l)));
+      mk.appendChild(p);
+      defs.appendChild(mk);
+    });
+    const agg = document.createElementNS(NS, "marker");
+    agg.setAttribute("id", "arr-_agg");
+    agg.setAttribute("viewBox", "0 -4 8 8");
+    agg.setAttribute("refX", "9");
+    agg.setAttribute("refY", "0");
+    agg.setAttribute("markerWidth", "7");
+    agg.setAttribute("markerHeight", "7");
+    agg.setAttribute("orient", "auto");
+    const pa = document.createElementNS(NS, "path");
+    pa.setAttribute("d", "M0,-4L8,0L0,4");
+    pa.setAttribute("fill", String(token("--color-888")));
+    agg.appendChild(pa);
+    defs.appendChild(agg);
+  }
+  function edgeColor(label) {
+    const map = { closes: token("--color-a03b3b"), narrows: token("--decision"), widens: token("--color-3f8f6b"), supersedes: token("--color-8a2b2b"), completes: token("--ok"), targets: token("--criterion"), "spawned-by": token("--gate"), "filed-as": token("--color-7d6c5f"), "depends-on": token("--need"), "relies-on": token("--color-5a5a6e"), raised: token("--color-a8608a"), "measured-by": token("--color-556b7a") };
+    return map[label] || token("--color-666");
+  }
+  function shapeOf(type) {
+    const s = {
+      need: "M0,-7 C4,-7 7,-4 7,0 C7,4 4,7 0,7 C-4,7 -7,4 -7,0 C-7,-4 -4,-7 0,-7 Z",
+      question: "M0,-9 L2.5,-2 L9,0 L2.5,2 L0,9 L-2.5,2 L-9,0 L-2.5,-2 Z",
+      decision: "M-7,-7 L7,-7 L7,7 L-7,7 Z",
+      requirement: "M-7,-4 L0,-7 L7,-4 L7,4 L0,7 L-7,4 Z",
+      criterion: "M0,-7 L7,5 L-7,5 Z",
+      gate: "M0,-8 L7.6,-2.5 L4.7,6.5 L-4.7,6.5 L-7.6,-2.5 Z"
+    };
+    return s[type] || s.decision;
+  }
+
+  // src/graph/viewport.ts
+  function initViewport() {
+    svg.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+      const rect = svg.getBoundingClientRect();
+      const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+      const nx = (cx - translate.x) / scale, ny = (cy - translate.y) / scale;
+      setViewSource("manual");
+      setScale(scale * factor);
+      setScale(Math.min(4, Math.max(0.1, scale)));
+      setTranslate({ ...translate, x: cx - nx * scale });
+      setTranslate({ ...translate, y: cy - ny * scale });
+      applyTransform();
+      updateLod();
+      draw();
+    }, { passive: false });
+    svg.addEventListener("mousedown", (e) => {
+      if (e.button !== 0)
+        return;
+      setDragging(true);
+      setDragMoved(false);
+      setDragStart({ x: e.clientX, y: e.clientY, tx: translate.x, ty: translate.y });
+    });
+    window.addEventListener("mousemove", (e) => {
+      if (!dragging)
+        return;
+      if (!dragMoved && Math.hypot(e.clientX - dragStart.x, e.clientY - dragStart.y) < 4)
+        return;
+      setDragMoved(true);
+      setViewSource("manual");
+      setTranslate({ ...translate, x: dragStart.tx + e.clientX - dragStart.x });
+      setTranslate({ ...translate, y: dragStart.ty + e.clientY - dragStart.y });
+      applyTransform();
+      updateLod();
+      draw();
+    });
+    window.addEventListener("mouseup", () => {
+      setDragging(false);
+    });
+  }
+  function applyTransform() {
+    root.setAttribute("transform", String("translate(" + translate.x + "," + translate.y + ") scale(" + scale + ")"));
+  }
+  function updateLod() {
+    const next = lodFromScale();
+    if (next !== lod) {
+      setLod(next);
+    }
+  }
+  function zoomBy(f) {
+    const rect = svg.getBoundingClientRect();
+    const cx = rect.width / 2, cy = rect.height / 2;
+    const nx = (cx - translate.x) / scale, ny = (cy - translate.y) / scale;
+    setViewSource("manual");
+    setScale(scale * f);
+    setScale(Math.min(4, Math.max(0.1, scale)));
+    setTranslate({ ...translate, x: cx - nx * scale });
+    setTranslate({ ...translate, y: cy - ny * scale });
+    applyTransform();
+    updateLod();
+    draw();
+  }
+  function currentLayout() {
+    const ids = visibleNodes();
+    if (genealogyMode)
+      return genealogyLayout;
+    if (ids.length <= MODE_THRESHOLD) {
+      ensureForce(ids);
+      return forceLayout;
+    }
+    return positions;
+  }
+  function fitTransform() {
+    const ids = visibleNodes();
+    const over = !genealogyMode && ids.length > MODE_THRESHOLD;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    if (over) {
+      const { cluster, cells } = overviewGrid(ids);
+      for (const g of Object.keys(cluster)) {
+        const gp = cells[g] || { bx: 0, by: 0 };
+        const w = Math.min(280, Math.max(120, 40 + cluster[g].length * 1.4));
+        minX = Math.min(minX, gp.bx - w / 2);
+        minY = Math.min(minY, gp.by - 20);
+        maxX = Math.max(maxX, gp.bx + w / 2);
+        maxY = Math.max(maxY, gp.by + 20);
+      }
+    } else {
+      const layout = currentLayout();
+      const ids2 = ids.filter((id) => layout[id]);
+      const list = ids2.length ? ids2 : Object.keys(layout);
+      list.forEach((id) => {
+        const p = layout[id];
+        if (!p)
+          return;
+        minX = Math.min(minX, p.x);
+        minY = Math.min(minY, p.y);
+        maxX = Math.max(maxX, p.x);
+        maxY = Math.max(maxY, p.y);
+      });
+    }
+    setViewSource("fit");
+    if (minX > maxX)
+      return;
+    const rect = svg.getBoundingClientRect();
+    const spanX = maxX - minX + 120;
+    const spanY = maxY - minY + 120;
+    const fit = Math.min(rect.width / Math.max(1, spanX), rect.height / Math.max(1, spanY));
+    setScale(Math.min(over ? 4 : 2, fit));
+    if (!over)
+      setScale(Math.max(scale, 1));
+    let center = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+    const focus = currentFocus();
+    if (!over && fit < 1 && focus.id && ids.includes(focus.id)) {
+      center = currentLayout()[focus.id] || center;
+    }
+    setTranslate({ ...translate, x: rect.width / 2 - center.x * scale });
+    setTranslate({ ...translate, y: rect.height / 2 - center.y * scale });
+    applyTransform();
+    updateLod();
+  }
+  function fitView() {
+    setLastFitKey("");
+    draw();
+  }
+  function resetView() {
+    fitView();
+  }
+
+  // src/filters.ts
+  var typeChips = element("typeChips");
+  var scopeSel = element("scopeSel");
+  var stateSel = element("stateSel");
+  function initFilters() {
+    ["all", "need", "question", "decision", "requirement", "criterion", "gate"].forEach((k) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.setAttribute("aria-pressed", "true");
+      chip.className = "chip on";
+      chip.dataset.kind = k;
+      chip.style.borderColor = KIND_COLORS[k] || "var(--border)";
+      chip.textContent = k === "all" ? "All types" : k;
+      chip.addEventListener("click", () => {
+        setOverviewSource("");
+        renderLint();
+        selectType(k);
+        renderTypeChips();
+        redraw();
+      });
+      typeChips.appendChild(chip);
+    });
+    (D.scopes || []).forEach((s) => {
+      const o = document.createElement("option");
+      o.value = s;
+      o.textContent = s;
+      scopeSel.appendChild(o);
+    });
+    Object.keys(states).forEach((st) => {
+      const o = document.createElement("option");
+      o.value = st;
+      o.textContent = st;
+      stateSel.appendChild(o);
+    });
+    ["scopeSel", "stateSel", "qstatus", "criterion"].forEach((id) => element(id).addEventListener("change", () => {
+      setFilter(id, element(id).value);
+      redraw();
+    }));
+    element("q").addEventListener("input", () => {
+      setSearchText(element("q").value.trim());
+      redraw();
+    });
+    element("clearFilter").addEventListener("click", () => {
+      Object.keys(typeState).forEach((k) => {
+        setType(k, true);
+      });
+      document.querySelectorAll("#typeChips .chip").forEach((c) => {
+        c.classList.add("on");
+        c.setAttribute("aria-pressed", "true");
+      });
+      scopeSel.value = "";
+      stateSel.value = "";
+      element("qstatus").value = "";
+      element("criterion").value = "";
+      element("q").value = "";
+      setSearchText("");
+      setOverviewSource("");
+      renderLint();
+      ["scopeSel", "stateSel", "qstatus", "criterion"].forEach((id) => setFilter(id, ""));
+      setRadiusChoice("");
+      setListSort(null);
+      renderTypeChips();
+      truncateFocus(1);
+      hideDetail();
+      setGenealogyMode(false);
+      element("hopRadius").value = "";
+      element("hopFrom").value = "";
+      redraw();
+    });
+    element("hopFrom").addEventListener("input", () => {
+      element("applyHop").textContent = focusLabel(element("hopFrom").value.trim());
+    });
+    element("hopRadius").addEventListener("change", () => {
+      setRadiusChoice(element("hopRadius").value);
+      element("applyHop").textContent = focusLabel(element("hopFrom").value.trim());
+    });
+    element("applyHop").addEventListener("click", () => {
+      const id = element("hopFrom").value.trim();
+      if (!byId[id]) {
+        alert("Unknown node id: " + id);
+        return;
+      }
+      startHop(id);
+    });
+    element("genealogy").addEventListener("click", () => {
+      setGenealogyMode(!genealogyMode);
+      if (genealogyMode) {
+        setLod("near");
+      }
+      redraw();
+    });
+    element("zin").addEventListener("click", () => zoomBy(1.6));
+    element("zout").addEventListener("click", () => zoomBy(1 / 1.6));
+    element("zfit").addEventListener("click", resetView);
+  }
+  function gotoTab(t) {
+    setActiveTab(t);
+    document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
+    document.querySelectorAll(".page").forEach((p) => p.classList.toggle("on", p.id === "page-" + t));
+  }
+  function renderTypeChips() {
+    const all = Object.values(typeState).every(Boolean);
+    document.querySelectorAll("#typeChips .chip").forEach((chip) => {
+      const on = chip.dataset.kind === "all" ? all : !all && typeState[chip.dataset.kind];
+      chip.classList.toggle("on", on);
+      chip.setAttribute("aria-pressed", String(on));
+    });
+  }
+
+  // src/navigation.ts
+  function startHop(id) {
+    if (!byId[id])
+      return;
+    const radius = focusPlan(id).n;
+    if (currentFocus().id !== id || currentFocus().radius !== radius) {
+      enterFocus(id, radius);
+    }
+    showDetail(id);
+    redraw();
+  }
+  function returnFocus(index) {
+    if (!Number.isInteger(index) || index < 0 || index >= focusHistory.length)
+      return;
+    truncateFocus(index + 1);
+    if (currentFocus().id)
+      showDetail(currentFocus().id);
+    else
+      hideDetail();
+    redraw();
+  }
+  function renderNavigation(ids) {
+    const focus = currentFocus();
+    const path = element("focusPath");
+    const pathKey = JSON.stringify(focusHistory);
+    if (path.dataset.path !== pathKey) {
+      path.dataset.path = pathKey;
+      path.replaceChildren();
+      focusHistory.forEach((entry, index) => {
+        if (index)
+          path.appendChild(document.createTextNode(" → "));
+        const button = document.createElement("button");
+        button.textContent = entry.id ? entry.id : "All nodes";
+        button.title = entry.id ? entry.id + " · " + byId[entry.id].title : "All nodes";
+        button.dataset.depth = String(index);
+        if (index === focusHistory.length - 1)
+          button.setAttribute("aria-current", "location");
+        button.addEventListener("click", () => returnFocus(index));
+        path.appendChild(button);
+      });
+      path.lastElementChild.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+    element("focusBack").disabled = focusHistory.length === 1;
+    element("focusAll").disabled = focusHistory.length === 1;
+    element("focusDetail").disabled = !focus.id;
+    element("focusNote").textContent = focus.id ? " · " + focus.radius + (focus.radius === 1 ? " hop" : " hops") + (Object.keys(adj[focus.id] || {}).length ? "" : " · No connections in this graph") + (ids.includes(focus.id) ? "" : " · Focus hidden by current filters, search, or lineage") : "";
+    const active = [
+      overviewSource ? "Source: " + overviewSource : "",
+      Object.values(typeState).every(Boolean) ? "" : Object.keys(typeState).filter((k) => typeState[k]).join(", ") || "No types",
+      scopeSel.value ? "Scope: " + scopeSel.value : "",
+      stateSel.value ? "State: " + stateSel.value : "",
+      element("qstatus").value ? "Questions: " + element("qstatus").value : "",
+      element("criterion").value ? "Criteria: " + element("criterion").value : "",
+      searchText ? "Search: " + searchText : ""
+    ].filter(Boolean);
+    element("displayStatus").textContent = active.length ? active.length + (active.length === 1 ? " filter" : " filters") : "No filters";
+    element("displayStatus").title = active.join(" · ");
+    const input = element("hopFrom"), focusKey = JSON.stringify(focus);
+    if (input.dataset.focus !== focusKey) {
+      input.dataset.focus = focusKey;
+      input.value = selected || focus.id || "";
+    }
+    element("applyHop").textContent = focusLabel(input.value.trim());
+    element("genealogy").textContent = genealogyMode ? "Lineage: on" : "Lineage: off";
+    element("genealogy").setAttribute("aria-pressed", String(genealogyMode));
+    element("genealogy").style.borderColor = genealogyMode ? "var(--hl)" : "";
+  }
+  function initNavigation() {
+    element("focusBack").addEventListener("click", () => returnFocus(focusHistory.length - 2));
+    element("focusAll").addEventListener("click", () => returnFocus(0));
+    element("focusDetail").addEventListener("click", () => {
+      if (currentFocus().id) {
+        showDetail(currentFocus().id);
+        redraw();
+      }
     });
   }
 
   // src/graph/clusters.ts
   function openClusterList(group) {
+    setOverviewSource("");
+    renderLint();
     const [scope, type] = group.split("\x00");
     selectType(type);
     setFilter("scopeSel", scope);
@@ -1583,6 +1640,7 @@
         focus: focusHistory,
         types: typeState,
         filters: filterState,
+        overview: overviewSource,
         listSort,
         search: searchText,
         radiusChoice,
@@ -1596,6 +1654,8 @@
     });
     renderTypeChips();
     setListSort(value.listSort);
+    setOverviewSource(value.overview);
+    renderLint();
     fields.forEach((id) => {
       element(id).value = typeof value.filters?.[id] === "string" ? value.filters[id] : "";
       setFilter(id, element(id).value);
@@ -1708,49 +1768,6 @@
     }
   }
 
-  // src/survey/blockers.ts
-  function jamList(ulEl, items, tag) {
-    const ul = element(ulEl);
-    ul.innerHTML = "";
-    items.forEach((it) => {
-      const li = document.createElement("li");
-      const a = document.createElement("a");
-      a.dataset.go = it.id;
-      a.innerHTML = '<span class="id">' + esc(it.id) + '</span> <span class="lbl">' + esc(it.label) + "</span>";
-      li.appendChild(a);
-      ul.appendChild(li);
-    });
-    if (!items.length) {
-      ul.innerHTML = '<li class="small">none</li>';
-    }
-  }
-  function initBlockers() {
-    jamList("jamQ", (D.open_questions || []).flatMap((q) => [
-      { id: q.id, label: (q.title || "") + (q.referencing && q.referencing.length ? " — referenced by " + q.referencing.join(", ") : "") }
-    ]), "q");
-    jamList("jamNext", D.next || [], "next");
-    jamList("jamMissing", (D.missing || []).map((m) => ({ id: m.id, label: "next_evidence " + (m.next_evidence ? "set" : "empty") + "; responsible " + (m.responsible ? "set" : "empty") })), "missing");
-    jamList("jamDangling", (D.dangling || []).map((d) => ({ id: d.source, label: "references missing node " + d.target })), "dangling");
-    const lintUl = element("jamLint");
-    lintUl.innerHTML = "";
-    lintArr.forEach((d) => {
-      const li = document.createElement("li");
-      const a = document.createElement("a");
-      a.dataset.go = d.id;
-      a.innerHTML = '<span class="lint-sev" style="color:' + (d.severity === "error" ? "var(--err)" : "var(--warn)") + '">' + esc(d.severity) + "</span> " + '<span class="id">' + esc(d.rule) + '</span> <span class="lbl">' + esc(d.id) + " — " + esc(d.message) + "</span>";
-      li.appendChild(a);
-      lintUl.appendChild(li);
-    });
-    if (!lintArr.length)
-      lintUl.innerHTML = '<li class="small">no findings</li>';
-    element("left").addEventListener("click", (e) => {
-      const t = e.target.closest("[data-go]");
-      if (t) {
-        selectNode(t.dataset.go);
-      }
-    });
-  }
-
   // src/survey/overview.ts
   function initOverview() {
     element("metaGen").textContent = "Generated: " + D.generated_at;
@@ -1761,28 +1778,46 @@
     const lintWarn = lintArr.filter((d) => d.severity === "warn").length;
     const openQs = D.open_questions || [];
     const waitRefs = openQs.reduce((a, q) => a + (q.referencing || []).length, 0);
-    element("acSatisfied").textContent = D.criteria.satisfied + " / " + D.criteria.total;
-    element("acTotal").textContent = D.criteria.satisfied;
+    element("acSatisfied").textContent = D.criteria.satisfied;
+    element("acTotal").textContent = D.criteria.total;
     element("openQ").textContent = openQs.length;
     element("waitRefs").textContent = waitRefs;
     element("nextCount").textContent = (D.next || []).length;
     element("lintErr").textContent = lintErr;
     element("lintWarn").textContent = lintWarn;
+    function target(kind = "", filters = {}, overview = "", tab = "overview") {
+      return locationHash(JSON.stringify({ types: Object.fromEntries(Object.keys(typeState).map((k) => [k, !kind || k === kind])), filters, overview, tab }));
+    }
+    function link(id, href) {
+      const box = element(id).parentElement;
+      const a = document.createElement("a");
+      a.className = box.className;
+      if (box.id)
+        a.id = box.id;
+      a.href = href;
+      a.append(...box.childNodes);
+      box.replaceWith(a);
+    }
+    link("acSatisfied", target("criterion", { criterion: "yes" }));
+    link("acTotal", target("criterion"));
+    link("openQ", target("question", { qstatus: "open" }));
+    link("nextCount", target("need", {}, "next"));
+    link("lintErr", target("", {}, "lint-error", "jams"));
+    link("lintWarn", target("", {}, "lint-warn", "jams"));
+    element("waitRefs").parentElement.classList.add("text-stat");
     const maxState = Math.max(1, ...Object.values(states));
     const stateColors = [token("--requirement"), token("--need"), token("--gate"), token("--decision"), token("--question"), token("--color-c97b4f"), token("--criterion"), token("--color-a8608a"), token("--color-7d6c5f"), token("--color-556b7a"), token("--color-3f8f6b")];
     let i = 0;
     const stateBar = element("stateBars");
     Object.entries(states).forEach(([st, cnt]) => {
       const w = Math.round(cnt / maxState * 100);
-      const d = document.createElement("div");
+      const d = document.createElement("a");
       d.className = "bar";
+      d.href = target("requirement", { stateSel: st });
       d.style.setProperty("--w", w + "%");
       d.style.setProperty("--bar", stateColors[i++ % stateColors.length]);
       d.title = st;
       d.innerHTML = esc(st) + " <em>" + cnt + "</em>";
-      d.addEventListener("click", () => {
-        setStateFilter(st);
-      });
       stateBar.appendChild(d);
     });
   }

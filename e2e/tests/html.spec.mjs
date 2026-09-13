@@ -76,17 +76,17 @@ test('descent, one-step return, breadcrumbs, overview and hidden focus', async (
   await open(page); await clusterContract(page);
   await mouse(page, '#recordList [data-record="D-1"]');
   // D-39: selecting a record no longer moves focus; use the explicit control.
-  await mouse(page, '#detailFocus');
+  await mouse(page, '#applyHop');
   for (const id of ['D-2', 'D-3']) {
     await mouse(page, `[data-node-id="${id}"] > path`);
-    await mouse(page, '#detailFocus');
+    await mouse(page, '#applyHop');
     await expect(page.locator('#focusStatus')).toContainText(`${id} ·`);
     await expect(page.locator('#focusPath [aria-current]')).toContainText(id);
   }
   await mouse(page, '#focusBack');
   await expect(page.locator('#focusStatus')).toContainText('D-2 ·');
   await mouse(page, '[data-node-id="D-3"] > path');
-  await mouse(page, '#detailFocus');
+  await mouse(page, '#applyHop');
   await mouse(page, '#focusPath [data-depth="1"]');
   await expect(page.locator('#focusStatus')).toContainText('D-1 ·');
   await mouse(page, '#focusAll');
@@ -130,7 +130,7 @@ test('high degree stays individual with deterministic omission and a route to om
   const neighbors = await page.evaluate(() => window.GY_DATA.edges.flatMap(e => e.source === 'D-100' ? [e.target] : e.target === 'D-100' ? [e.source] : []));
   expect(neighbors).toContain(omitted);
   await mouse(page, page.locator('#recordList a:focus'));
-  await mouse(page, '#detailFocus');
+  await mouse(page, '#applyHop');
   await expect(page.locator('#focusStatus')).toContainText(`${omitted} ·`);
   await expect(page.locator(`[data-node-id="${omitted}"]`)).toBeInViewport();
   await mouse(page, '#focusBack');

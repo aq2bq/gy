@@ -87,9 +87,9 @@ test('node selection preserves placement, focus and filters until explicit focus
   await expect(page.locator('#scopeSel')).toHaveValue('');
   await expect(page.locator('#q')).toHaveValue('');
   await expect(page.locator('#displayStatus')).toBeVisible();
-  await expect(page.locator('#detailFocus')).toContainText('D-2: show');
-  await expect(page.locator('#detailFocus')).toContainText(/· \d+ nodes?/);
-  await mouse(page, '#detailFocus');
+  await expect(page.locator('#applyHop')).toContainText('D-2: show');
+  await expect(page.locator('#applyHop')).toContainText(/· \d+ nodes?/);
+  await mouse(page, '#applyHop');
   await expect(page.locator('#focusStatus')).toContainText('D-2 ·');
   await mouse(page, '#focusBack');
   await expect(page.locator('#focusStatus')).toContainText('D-1 ·');
@@ -118,8 +118,8 @@ for (const width of [1280, 1440, 1920]) test(`permanent toolbar remains operable
   const headerBottom = await page.locator('header').evaluate(el=>el.getBoundingClientRect().bottom);
   expect(toolbarTop).toBeCloseTo(headerBottom, 1);
   await page.locator('#hopRadius').selectOption('2');
-  await expect(page.locator('#detailFocus')).toContainText('2 hops');
-  await mouse(page, '#detailFocus');
+  await expect(page.locator('#applyHop')).toContainText('2 hops');
+  await mouse(page, '#applyHop');
   await expect(page.locator('#focusStatus')).toContainText('2 hops');
   await page.reload();
   await expect(page.locator('#hopRadius')).toHaveValue('2');
@@ -127,7 +127,7 @@ for (const width of [1280, 1440, 1920]) test(`permanent toolbar remains operable
   await mouse(page, '[data-tab="overview"]');
   await mouse(page, page.locator('#stateBars .bar').first());
   await expect(page.locator('[data-tab="overview"]')).toHaveClass('on');
-  expect(await page.locator('#stateSel').inputValue()).not.toBe('');
+  await expect(page.locator('#stateSel')).not.toHaveValue('');
   await page.screenshot({path:info.outputPath('toolbar.png')});
   await info.attach('toolbar-controls', {body:JSON.stringify(controls), contentType:'application/json'});
 });

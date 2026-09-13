@@ -1,5 +1,6 @@
+import { renderLint } from './survey/blockers';
 import { renderList } from './list';
-import { listSort, setListSort } from './state';
+import { overviewSource, setOverviewSource, listSort, setListSort } from './state';
 import { byId } from './data';
 import { hideDetail, showDetail } from './detail/index';
 import { element } from './dom';
@@ -13,12 +14,14 @@ export function locationState(value?: LocationState) {
     if (value === undefined) {
         return JSON.stringify({ selected, focus: focusHistory, types: typeState,
             filters: filterState,
-            listSort, search: searchText, radiusChoice, tab: activeTab, genealogy: genealogyMode });
+            overview: overviewSource, listSort, search: searchText, radiusChoice, tab: activeTab, genealogy: genealogyMode });
     }
     restoreFocus(value.focus);
     Object.keys(typeState).forEach(k => { setType(k as keyof typeof typeState, value.types?.[k] !== false); });
     renderTypeChips();
     setListSort(value.listSort);
+    setOverviewSource(value.overview);
+    renderLint();
     fields.forEach(id => { element(id).value = typeof value.filters?.[id] === 'string' ? value.filters[id] : ''; setFilter(id, element(id).value); });
     element('hopRadius').value = ['', '1', '2', '3', '4', '5'].includes(value.radiusChoice) ? value.radiusChoice : '';
     setRadiusChoice(element('hopRadius').value);

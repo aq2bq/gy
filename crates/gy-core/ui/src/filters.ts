@@ -1,11 +1,12 @@
-import { listSort, selectType, setListSort } from './state';
+import { renderLint } from './survey/blockers';
+import { setOverviewSource, selectType, setListSort } from './state';
 import { redraw } from './components';
-import { D, NODES, byId, states } from './data';
+import { D, byId, states } from './data';
 import { hideDetail } from './detail/index';
 import { element } from './dom';
 import { resetView, zoomBy } from './graph/viewport';
 import { startHop } from './navigation';
-import { focusLabel, genealogyMode, selected, setActiveTab, setFilter, setGenealogyMode, setLod, setRadiusChoice, setSearchText, setType, truncateFocus, typeState } from './state';
+import { focusLabel, genealogyMode, setActiveTab, setFilter, setGenealogyMode, setLod, setRadiusChoice, setSearchText, setType, truncateFocus, typeState } from './state';
 import { KIND_COLORS } from './tokens';
 export const typeChips = element('typeChips');
 export const scopeSel = element('scopeSel');
@@ -21,6 +22,8 @@ export function initFilters() {
         chip.style.borderColor = KIND_COLORS[k] || 'var(--border)';
         chip.textContent = k === 'all' ? 'All types' : k;
         chip.addEventListener('click', () => {
+            setOverviewSource('');
+            renderLint();
             selectType(k);
             renderTypeChips();
             redraw();
@@ -50,6 +53,8 @@ export function initFilters() {
         element('criterion').value = '';
         element('q').value = '';
         setSearchText('');
+        setOverviewSource('');
+        renderLint();
         (['scopeSel', 'stateSel', 'qstatus', 'criterion'] as const).forEach(id => setFilter(id, ''));
         setRadiusChoice('');
         setListSort(null);
@@ -65,8 +70,6 @@ export function initFilters() {
     element('hopRadius').addEventListener('change', () => {
         setRadiusChoice(element('hopRadius').value);
         element('applyHop').textContent = focusLabel(element('hopFrom').value.trim());
-        if (selected)
-            element('detailFocus').textContent = focusLabel(selected);
     });
     element('applyHop').addEventListener('click', () => {
         const id = element('hopFrom').value.trim();

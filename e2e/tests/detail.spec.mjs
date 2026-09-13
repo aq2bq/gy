@@ -146,7 +146,7 @@ test('related node selection preserves layout until explicit focus', async ({pag
   await expect(page.locator('#focusStatus')).toContainText('D-501 ·');
   await expect(page.locator('.detail-id')).toHaveText('D-502');
   expect(await page.evaluate(()=>window.fitChanges)).toBe(0);
-  await mouse(page, '#detailFocus');
+  await mouse(page, '#applyHop');
   expect(await page.evaluate(()=>window.fitChanges)).toBe(1);
   await mouse(page,'#closeDetail');
   await expect(page.locator('#focusStatus')).toContainText('D-502 ·');

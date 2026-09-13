@@ -1149,3 +1149,62 @@ a {
 #recordList th[aria-sort="descending"] button:after {
   content: " ↓";
 }
+
+.chip[aria-pressed="true"] {
+  color: var(--text);
+  background: var(--color-eef3f9);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px;
+}
+
+.chip[aria-pressed="true"]:before {
+  content: "✓ ";
+}
+
+button:hover {
+  filter: brightness(.93);
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+svg .node:hover {
+  filter: brightness(.8);
+  stroke: var(--text);
+  stroke-width: 2;
+}
+
+.kpi[href] {
+  display: block;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.kpi[href]:hover {
+  background: var(--color-eef3f9);
+}
+
+.kpi.text-stat {
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+button.bar {
+  display: block;
+  text-align: left;
+  width: 100%;
+}
+
+#genealogy[aria-pressed="true"] {
+  background: var(--color-eef3f9);
+  font-weight: 700;
+}
+
+a.bar {
+  display: block;
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+}

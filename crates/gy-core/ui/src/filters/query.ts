@@ -1,5 +1,5 @@
-import { NODES } from '../data';
-import { filterState, searchText, setSearchHits, typeState } from '../state';
+import { D, NODES } from '../data';
+import { overviewSource, filterState, searchText, setSearchHits, typeState } from '../state';
 export function haystack(n) {
     let parts = [n.id, n.title, n.type, n.scope, n.status || ''];
     for (const [k, v] of Object.entries(n.attrs))
@@ -13,7 +13,9 @@ export function computeMatches(q) {
     const lq = q.toLowerCase();
     return new Set(NODES.filter(n => haystack(n).includes(lq)).map(n => n.id));
 }
+const nextIds = new Set((D.next || []).map(n => n.id));
 export function setVisible(n) {
+    if (overviewSource === 'next' && (n.type !== 'need' || !nextIds.has(n.id))) return false;
     if (typeState[n.type] !== true)
         return false;
     if (filterState.scopeSel && n.scope !== filterState.scopeSel)
@@ -38,7 +40,7 @@ export function setVisible(n) {
 let previousKey = '';
 let matches = [];
 export function filteredNodes() {
-    const key = JSON.stringify([typeState, filterState, searchText]);
+    const key = JSON.stringify([overviewSource, typeState, filterState, searchText]);
     if (key !== previousKey) {
         const hits = computeMatches(searchText);
         setSearchHits(hits);

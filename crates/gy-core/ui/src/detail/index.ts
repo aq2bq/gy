@@ -1,8 +1,7 @@
 import { esc, redraw } from '../components';
 import { DEP, EDGES, byId } from '../data';
 import { element } from '../dom';
-import { startHop } from '../navigation';
-import { focusLabel, selected, setSelected } from '../state';
+import { selected, setSelected } from '../state';
 import { renderBody } from './markdown';
 // ---------- detail panel ----------
 export function relFor(id) {
@@ -55,6 +54,7 @@ export function showDetail(id) {
         return;
     const changed = selected !== id;
     setSelected(id);
+    element('hopFrom').value = id;
     const consumed = new Set(['id', 'type', 'scope', 'title']);
     let badges = detailBadge('type', 'Type', n.type, 'kind-' + n.type) + detailBadge('scope', 'Scope', n.scope);
     if (typeof n.attrs.status === 'string') {
@@ -111,7 +111,7 @@ export function showDetail(id) {
     const markHTML = marks.length ? '<section id="detailMarks"><h2>Affected passages</h2>' + marks.map(m => '<div class="passage-note" data-found="' + String(m.found) + '"><span class="relation-chip">' + esc(m.label) + '</span> ' + nodeLink(m.source) +
         (m.mark ? '<blockquote>' + esc(m.mark) + '</blockquote><p>' + (m.found ? 'Found in the source body.' : 'Location in body could not be found.') + '</p>' : '<p>No mark identifies the affected passage.</p>') + '</div>').join('') + '</section>' : '';
     element('detailBody').innerHTML =
-        '<div class="detail-heading"><div class="detail-id">' + esc(n.id) + '</div><h3>' + esc(n.title) + '</h3><button id="detailFocus">' + esc(focusLabel(id)) + '</button><div class="detail-badges">' + badges + '</div>' +
+        '<div class="detail-heading"><div class="detail-id">' + esc(n.id) + '</div><h3>' + esc(n.title) + '</h3><div class="detail-badges">' + badges + '</div>' +
             (successors.length ? '<div class="successors">Superseded by ' + successors.map(nodeLink).join(', ') + '</div>' : '') + '</div>' + scope +
             '<section id="detailContent"><h2>Body</h2><div id="body" class="detail-prose ' + proseClass(n.body || '') + '">' + renderBody(displayBody) + '</div></section>' + markHTML +
             (declarations ? '<section id="detailDeclarations"><h2>Declarations</h2><dl>' + declarations + '</dl></section>' : '') +
@@ -134,7 +134,5 @@ export function initDetail() {
         const t = (e.target as Element).closest<HTMLElement>('[data-go]');
         if (t)
             selectNode(t.dataset.go);
-        if ((e.target as Element).closest<HTMLElement>('#detailFocus') && selected)
-            startHop(selected);
     });
 }
