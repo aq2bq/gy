@@ -61,6 +61,13 @@ pattern. For an existing ledger, either run `gy init <existing-scope>` again
 (append-only, idempotent; nodes, relationships, records, and history are
 preserved), or add the line by hand.
 
+Re-running `init` also rewrites `gy.toml` in normalized form. Attribute values
+are preserved, but comments and formatting are rewritten: inline table entries
+expand to `[table]` sections, and the `html_output`, `[import]`, and
+`[workflow]` defaults may appear if absent. If you keep operating notes as
+comments in `gy.toml`, add the `.gitignore` line by hand instead of re-running
+`init`.
+
 ## 0.2.1
 
 ### Added
