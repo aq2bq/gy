@@ -53,8 +53,12 @@ function renderNavigation(ids) {
     ' · Questions: ' + (document.getElementById('qstatus').value || 'any') +
     ' · Criteria: ' + (document.getElementById('criterion').value || 'any') +
     ' · Search: ' + (searchText || '(none)') + ' · Genealogy: ' + (genealogyMode ? 'on' : 'off');
-  document.getElementById('applyHop').textContent = focusLabel(focus.id || '');
-  document.getElementById('hopFrom').value = focus.id || '';
+  const input = document.getElementById('hopFrom'), focusKey = JSON.stringify(focus);
+  if (input.dataset.focus !== focusKey) {
+    input.dataset.focus = focusKey;
+    input.value = focus.id || '';
+  }
+  document.getElementById('applyHop').textContent = focusLabel(input.value.trim());
   document.getElementById('hopN').textContent = focus.id ? focus.radius + ' hops in current view' : 'Automatic radius';
   document.getElementById('genealogy').setAttribute('aria-pressed', String(genealogyMode));
   document.getElementById('genealogy').style.borderColor = genealogyMode ? 'var(--hl)' : '';

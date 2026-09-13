@@ -44,6 +44,7 @@ document.getElementById('clearFilter').addEventListener('click', () => {
   hideDetail();
   genealogyMode = false;
   document.getElementById('hopRadius').value = '';
+  document.getElementById('hopFrom').value = '';
   closeClusterPanel();
   redraw();
 });

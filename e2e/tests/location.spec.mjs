@@ -130,3 +130,18 @@ for (const width of [1280, 1440, 1920]) test(`permanent toolbar remains operable
   await page.screenshot({path:info.outputPath('toolbar.png')});
   await info.attach('toolbar-controls', {body:JSON.stringify(controls), contentType:'application/json'});
 });
+
+
+test('viewport redraw preserves a pending neighborhood target', async ({page}) => {
+  await page.goto(fixture('reading'));
+  await page.locator('#hopFrom').fill('D-501');
+  await page.setViewportSize({width:2560,height:1000});
+  await expect(page.locator('#hopFrom')).toHaveValue('D-501');
+  await expect(page.locator('#applyHop')).toContainText('around D-501');
+  await mouse(page, '#applyHop');
+  await expect(page.locator('#focusStatus')).toContainText('Focus: D-501 ·');
+  await mouse(page, '#focusAll');
+  await page.locator('#hopFrom').fill('D-502');
+  await mouse(page, '#clearFilter');
+  await expect(page.locator('#hopFrom')).toHaveValue('');
+});

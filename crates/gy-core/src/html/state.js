@@ -77,6 +77,7 @@ function locationState(value) {
   genealogyMode = value.genealogy === true;
   const tabs = [...document.querySelectorAll('#tabs button')].map(b => b.dataset.tab);
   gotoTab(tabs.includes(value.tab) ? value.tab : 'overview');
+  document.getElementById('hopFrom').value = currentFocus().id || '';
   closeClusterPanel(); hideDetail();
   document.getElementById('locationStatus').textContent = '';
   if (typeof value.selected === 'string') {
