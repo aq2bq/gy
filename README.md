@@ -8,6 +8,20 @@ A Rust CLI that manages decisions, questions, needs, requirements, acceptance cr
 
 The initial command set, including requirement compression, is implemented.
 
+## Why this exists
+
+Agents already run large projects without gy. How well they do it depends on how much context fits, how large the project is, and how strong the model is. That dependency is invisible while things go well. It surfaces at the end of a project: when a requirement has to be declared complete, when a decision that earlier work relied on has been replaced, when remaining work has to go somewhere, and when the person accountable is holding several projects at once and cannot read all of them.
+
+gy is for that end. It does not hold a plan. It records what each piece of work was based on, and what must be true before the work can be called finished, and it reports where those records contradict each other. A decision cannot be recorded without the conditions under which it applies. A question cannot be opened without naming whose agreement closes it. A requirement cannot reach `complete` without stating its deviations and where its remaining work went.
+
+## What gy is not for
+
+- **Publishing decisions for a team to read.** That is what ADR tools are for. gy requires fields on every record and keeps a graph consistent; neither helps a reader who only wants the history.
+- **Deciding what to work on next.** "What is unblocked, who claimed it" is an issue tracker's question. `next` only shows which needs have their prerequisites resolved; it does not schedule or assign work.
+- **Checking reality.** gy does not call the GitHub API, fetch URLs, run tests, or authenticate an approver. Every external fact in the ledger was reported by a person or an agent; gy only checks that the reports are consistent with each other.
+
+gy earns its cost when several projects run in parallel, the work is delegated to agents, and one person stays accountable for all of it without reading all of it.
+
 ## The graph
 
 Six kinds of node. Four of them form a loop, and that loop is why gy exists: a decision creates new needs, a need is filed as a requirement, the work raises new questions, and a question closes into the next decision. Records break down between these nodes, not inside them.
