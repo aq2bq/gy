@@ -83,3 +83,24 @@ Pan/zoom therefore does not repeat ranking or force iterations when the set is
 unchanged. Candidate filtering, neighborhood traversal, and edge selection still
 scan ledger data; at most 60 nodes are rebuilt in the SVG DOM. Similar timing at
 two scales does not establish scale-independent cost.
+
+## Viewing generated HTML by hand
+
+A browser driven from the terminal is for looking at the current output; the
+suite above is the reproducible check. Reuse one tab and reload it after
+regenerating a file, keep at most two tabs for a comparison, close tabs when
+done, and shut down the browser you opened at the end. A large ledger's HTML is heavy per
+tab, and stacked tabs stop responding.
+
+Take element coordinates from the DOM's `getBoundingClientRect`, not from the
+driver's bounding box: on WebKit the two disagreed (x873/y546 versus x570/y306
+for the same SVG element). Confirm clicks with real mouse input (move, down,
+up), since a dispatched click skips hit testing and hides an overlapping element
+that steals the pointer. Check that an action succeeded and, separately, that
+its result is visible to a reader. Verify the target of a result, not only that
+a result occurred: an opened panel is confirmed by its identifier and counts,
+which is the only way a coordinate mix-up is caught. When a metric says a
+condition holds, confirm the metric can fail: zero overlapping labels means
+nothing when the labels are too small to read. A fault-injection test that does
+not fail after injection may be missing its target rather than proving the
+product correct.
