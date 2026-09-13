@@ -9,27 +9,13 @@
 use crate::*;
 use serde_json::{Value, json};
 
-// Preserve source order and bytes inside one shared JavaScript closure.
+// Commit the Bun bundle so Cargo consumers need no frontend toolchain.
 const TEMPLATE: &str = concat!(
-    include_str!("html/head.html"),
-    include_str!("html/style.css"),
-    include_str!("html/body.html"),
-    include_str!("html/data.js"),
-    include_str!("html/summary.js"),
-    include_str!("html/controls.js"),
-    include_str!("html/state.js"),
-    include_str!("html/layout.js"),
-    include_str!("html/svg.js"),
-    include_str!("html/selection.js"),
-    include_str!("html/draw.js"),
-    include_str!("html/navigation.js"),
-    include_str!("html/clusters.js"),
-    include_str!("html/viewport.js"),
-    include_str!("html/detail.js"),
-    include_str!("html/blockers.js"),
-    include_str!("html/progress.js"),
-    include_str!("html/init.js"),
-    include_str!("html/tail.html"),
+    include_str!("../ui/src/templates/head.html"),
+    include_str!("html/dist/app.css"),
+    include_str!("../ui/src/templates/body.html"),
+    include_str!("html/dist/app.js"),
+    include_str!("../ui/src/templates/tail.html"),
 );
 const ARRIVAL_DAYS: u32 = 7;
 

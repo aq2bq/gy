@@ -24,7 +24,15 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: e2e/package-lock.json
-      - run: node --test tests/html_navigation.test.cjs
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.0'
+      - run: bun install
+        working-directory: crates/gy-core/ui
+      - name: Check committed HTML bundle
+        run: bun run check
+        working-directory: crates/gy-core/ui
+      - run: node --experimental-vm-modules --test tests/html_navigation.test.cjs
       - run: npm ci
         working-directory: e2e
       - run: npx playwright install --with-deps chromium

@@ -223,13 +223,24 @@ unfocused lineage retains its generation layout.
 
 ### HTML source assembly
 
-`gy-core/src/html.rs` assembles the HTML sources with `concat!` and
-`include_str!` at compile time, then replaces the payload placeholder with
-escaped JSON. The ordered fragments in `gy-core/src/html/` contain the HTML
-shell, CSS, and JavaScript responsibilities: data, summary, controls, state and
-neighborhood traversal, layout, SVG primitives, selection, drawing, navigation,
-cluster lists, viewport, details, blockers, progress and legend, and startup.
-All JavaScript fragments share one closure; their order in `TEMPLATE` preserves
-initialization order. Fragment boundaries do not add whitespace or script tags.
-The generated artifact remains one offline HTML file, and neither building gy
-nor generating HTML requires a JavaScript bundler or Node.js.
+`crates/gy-core/ui/src/` contains TypeScript ES modules. `data` reads the
+embedded payload and indexes nodes; `state` owns typed display state, its
+mutation functions, neighborhood traversal, and the sole hash codec. `filters`,
+`navigation`, `location`, `list`, `detail`, `graph`, and `survey` import the data
+and state they use. Only `state` changes shared display state. Renderers may
+retain private derived caches and DOM references. `main` explicitly initializes
+the UI; file concatenation order is no longer a dependency.
+
+`tokens.css` defines shared spacing, font-size, and color variables with the
+existing values. CSS and the SVG/chart palette in `tokens.ts` use those values.
+The list module currently renders cluster members; the filtered list view is
+separate future work. Details retain the existing offline Markdown renderer.
+
+Bun 1.4.0 bundles the modules and CSS into the unminified, committed
+`crates/gy-core/src/html/dist/app.js` and `app.css`. `html.rs` embeds those two
+files and the head/body/tail templates, then replaces the payload placeholder
+with escaped JSON. The payload shape and escaping contract are unchanged.
+Building gy, packaging it, and generating the single offline HTML file require
+neither Bun nor Node.js. UI contributors rebuild the bundle; the HTML CI job
+runs `bun run check` to reject a mismatch with the committed dist files.
+See [the UI build instructions](../crates/gy-core/ui/README.md).
