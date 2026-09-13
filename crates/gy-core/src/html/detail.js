@@ -95,6 +95,12 @@ function proseClass(text) {
   const cjk = String(text).match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/gu) || [];
   return cjk.length > letters.length / 2 ? 'prose-ja' : 'prose-latin';
 }
+function focusLabel(id) {
+  if (!Object.hasOwn(byId, id)) return 'Show a node neighborhood';
+  const plan = pickHop(id);
+  return 'Show ' + plan.n + ' hops around ' + id + ' (' + plan.size + ' nodes before filters; up to ' + MODE_THRESHOLD + ' drawn)';
+}
+function selectNode(id) { closeClusterPanel(); showDetail(id); redraw(); }
 function showDetail(id) {
   const n = byId[id];
   if (!n) return;
@@ -152,7 +158,7 @@ function showDetail(id) {
     '<div class="passage-note" data-found="' + String(m.found) + '"><span class="relation-chip">' + esc(m.label) + '</span> ' + nodeLink(m.source) +
     (m.mark ? '<blockquote>' + esc(m.mark) + '</blockquote><p>' + (m.found ? 'Found in the source body.' : 'Location in body could not be found.') + '</p>' : '<p>No mark identifies the affected passage.</p>') + '</div>').join('') + '</section>' : '';
   document.getElementById('detailBody').innerHTML =
-    '<div class="detail-heading"><div class="detail-id">' + esc(n.id) + '</div><h3>' + esc(n.title) + '</h3><div class="detail-badges">' + badges + '</div>' +
+    '<div class="detail-heading"><div class="detail-id">' + esc(n.id) + '</div><h3>' + esc(n.title) + '</h3><button id="detailFocus">' + esc(focusLabel(id)) + '</button><div class="detail-badges">' + badges + '</div>' +
     (successors.length ? '<div class="successors">Superseded by ' + successors.map(nodeLink).join(', ') + '</div>' : '') + '</div>' + scope +
     '<section id="detailContent"><h2>Body</h2><div id="body" class="detail-prose ' + proseClass(n.body || '') + '">' + renderBody(displayBody) + '</div></section>' + markHTML +
     (declarations ? '<section id="detailDeclarations"><h2>Declarations</h2><dl>' + declarations + '</dl></section>' : '') +
@@ -171,6 +177,7 @@ function closeDetail() { hideDetail(); redraw(); }
 document.getElementById('closeDetail').addEventListener('click', closeDetail);
 document.getElementById('detail').addEventListener('click', (e) => {
   const t = e.target.closest('[data-go]');
-  if (t) { startHop(t.dataset.go); }
+  if (t) selectNode(t.dataset.go);
+  if (e.target.closest('#detailFocus') && selected) startHop(selected);
 });
 

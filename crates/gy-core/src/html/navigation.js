@@ -46,6 +46,13 @@ function renderNavigation(ids) {
       (Object.keys(adj[focus.id] || {}).length ? '' : ' · No connections in this graph') +
       (ids.includes(focus.id) ? '' : ' · Focus hidden by current filters, search, or lineage')
     : 'All nodes · no focus';
+  document.getElementById('displayStatus').textContent =
+    'Types: ' + (Object.keys(typeState).filter(k => typeState[k]).join(', ') || 'none') +
+    ' · Scope: ' + (scopeSel.value || 'all') + ' · State: ' + (stateSel.value || 'any') +
+    ' · Questions: ' + (document.getElementById('qstatus').value || 'any') +
+    ' · Criteria: ' + (document.getElementById('criterion').value || 'any') +
+    ' · Search: ' + (searchText || '(none)') + ' · Genealogy: ' + (genealogyMode ? 'on' : 'off');
+  document.getElementById('applyHop').textContent = focusLabel(focus.id || '');
   document.getElementById('hopFrom').value = focus.id || '';
   document.getElementById('hopN').textContent = focus.id ? focus.radius + ' hops (automatic)' : 'Automatic radius';
   document.getElementById('genealogy').setAttribute('aria-pressed', String(genealogyMode));

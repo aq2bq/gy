@@ -71,3 +71,27 @@ test('URL selects IDs, reports missing IDs, and restores state through history',
 
 
 });
+
+test('node selection preserves placement, focus and filters until explicit focus', async ({page}) => {
+  await page.goto(fixture('large'));
+  await enter(page, 'D-1');
+  await mouse(page, '#closeDetail');
+  const placement = () => page.locator('#svg').evaluate(svg => ({
+    transform: svg.querySelector(':scope > g').getAttribute('transform'),
+    nodes: [...svg.querySelectorAll('[data-node-id]')].map(n => ({id:n.dataset.nodeId, transform:n.getAttribute('transform')}))
+  }));
+  const before = await placement();
+  await mouse(page, '[data-node-id="D-2"] > path');
+  await expect(page.locator('.detail-id')).toHaveText('D-2');
+  await expect(page.locator('#focusStatus')).toContainText('Focus: D-1 ·');
+  expect(await placement()).toEqual(before);
+  await expect(page.locator('#scopeSel')).toHaveValue('');
+  await expect(page.locator('#q')).toHaveValue('');
+  await expect(page.locator('#displayStatus')).toBeVisible();
+  await expect(page.locator('#detailFocus')).toContainText('hops around D-2');
+  await expect(page.locator('#detailFocus')).toContainText('nodes before filters');
+  await mouse(page, '#detailFocus');
+  await expect(page.locator('#focusStatus')).toContainText('Focus: D-2 ·');
+  await mouse(page, '#focusBack');
+  await expect(page.locator('#focusStatus')).toContainText('Focus: D-1 ·');
+});

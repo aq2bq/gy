@@ -50,7 +50,7 @@ function renderClusterRows(rows, type, scope, g) {
   }));
   panel.querySelectorAll('li').forEach(li => li.addEventListener('click', () => {
     closeClusterPanel();
-    startHop(li.dataset.go);
+    selectNode(li.dataset.go);
   }));
   panel.querySelector('[data-close]').addEventListener('click', closeClusterPanel);
 }

@@ -74,14 +74,18 @@ test('injected missing refit is detected by the same contract', async ({page}, i
 test('descent, one-step return, breadcrumbs, overview and hidden focus', async ({page}) => {
   await open(page); await clusterContract(page);
   await mouse(page, '#clusterPanel [data-go="D-1"]');
+  // D-39: selecting a record no longer moves focus; use the explicit control.
+  await mouse(page, '#detailFocus');
   for (const id of ['D-2', 'D-3']) {
     await mouse(page, `[data-node-id="${id}"] > path`);
+    await mouse(page, '#detailFocus');
     await expect(page.locator('#focusStatus')).toContainText(`Focus: ${id} ·`);
     await expect(page.locator('#focusPath [aria-current]')).toContainText(id);
   }
   await mouse(page, '#focusBack');
   await expect(page.locator('#focusStatus')).toContainText('Focus: D-2 ·');
   await mouse(page, '[data-node-id="D-3"] > path');
+  await mouse(page, '#detailFocus');
   await mouse(page, '#focusPath [data-depth="1"]');
   await expect(page.locator('#focusStatus')).toContainText('Focus: D-1 ·');
   await mouse(page, '#focusAll');
@@ -118,6 +122,7 @@ test('high degree stays individual with deterministic omission and a route to om
   await expect(page.locator('#clusterPanel li')).toHaveCount(2);
   const omitted = await page.locator('#clusterPanel li').first().getAttribute('data-go');
   await mouse(page, page.locator('#clusterPanel li').first());
+  await mouse(page, '#detailFocus');
   await expect(page.locator('#focusStatus')).toContainText(`Focus: ${omitted} ·`);
   await expect(page.locator(`[data-node-id="${omitted}"]`)).toBeInViewport();
   await mouse(page, '#focusBack');

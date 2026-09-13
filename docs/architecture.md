@@ -118,7 +118,7 @@ Judgments are the only reason the page carries curated lists; everything else is
 
 The graph renders each of the six node types with a distinct shape and color, so type identification does not depend on color alone. Genealogy mode restricts the displayed set to decision nodes and lays them out by generation, so a supersede chain reads directionally.
 
-Drawing is split into two views by the number of visible nodes, not by zoom level. Without a focus, more than 60 visible nodes are drawn as clusters (scope × type) and aggregated edge counts per cluster pair, plus internal edge counts per cluster; individual nodes and edges are withheld so the overview stays readable. Clicking a cluster opens a member list from which a start node is chosen, and the neighborhood hop count is then computed adaptively: the largest value up to a ceiling whose reachable set fits the individual-view limit, displayed on screen. With the visible set at or below the limit, nodes are drawn individually in a force-directed layout that reflects connectivity, so a short edge means adjacent nodes, and node labels are measured (via `getComputedTextLength`), truncated to the available width, and skipped when they would overlap a neighbour. Edge labels are off by default and appear only for a small individual set or an explicitly selected edge; full titles always remain in the detail panel.
+Drawing is split into two views by the number of visible nodes, not by zoom level. Without a focus, more than 60 visible nodes are drawn as clusters (scope × type) and aggregated edge counts per cluster pair, plus internal edge counts per cluster; individual nodes and edges are withheld so the overview stays readable. Clicking a cluster opens a member list; selecting a member opens its details. The explicit neighborhood action chooses a focus with an adaptive hop count: the largest value up to a ceiling whose reachable set fits the individual-view limit, displayed on screen. With the visible set at or below the limit, nodes are drawn individually in a force-directed layout that reflects connectivity, so a short edge means adjacent nodes, and node labels are measured (via `getComputedTextLength`), truncated to the available width, and skipped when they would overlap a neighbour. Edge labels are off by default and appear only for a small individual set or an explicitly selected edge; full titles always remain in the detail panel.
 
 The count banner reports the nodes actually drawn and the visible total in every mode, including search, filters, and genealogy; culling always surfaces how many are hidden rather than silently dropping them. Fit computes the transform from the content's bounding box in the current mode, so the projected content fits the viewport instead of being a fixed scale.
 
@@ -144,10 +144,14 @@ only the focus; Reset everything also clears filters, search, and genealogy.
 Genealogy continues to draw only its four relationship types among displayed
 decisions, using the generation layout.
 
-Node clicks, cluster member choices, and ID entry share the same navigation
-operation: update the focus, open details, then draw once. Details occupy a
-separate region beside or below the graph and can be closed without changing the
-focus. Their visibility is part of URL history, independently of the focus path.
+Node clicks, cluster member choices, relationship links, and keyboard activation
+select and open details without moving focus, changing filters, or rearranging
+the graph. An explicit neighborhood button names the target, hop count, and
+candidate count before filters, with the drawing cap. Only this explicit action
+updates the focus path. Current focus, radius, filters, search and genealogy are
+visible above the graph. The reading region remains reserved when details are
+closed, so selecting a record cannot change the graph viewport. Detail visibility
+is part of URL history, independently of the focus path.
 
 Wide layouts give the graph and details equal shares of the available width;
 at 1100 CSS pixels or below, details move beneath the graph. Type, scope,

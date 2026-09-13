@@ -135,15 +135,18 @@ test('core mark projection distinguishes found and missing passages without movi
   await expect(page.locator('#body')).not.toContainText('⟦Superseded');
 });
 
-test('related node navigation refits once and detail close preserves focus', async ({page}) => {
+test('related node selection preserves layout until explicit focus', async ({page}) => {
   await enter(page,'D-501');
   await page.evaluate(()=>{
     window.fitChanges=0;
     new MutationObserver(ms=>window.fitChanges+=ms.filter(m=>m.attributeName==='transform').length).observe(document.querySelector('#svg > g'),{attributes:true});
   });
   await mouse(page, page.locator('.detail-relations').filter({hasText:'Decision lineage'}).locator('[data-go="D-502"]'));
-  await expect(page.locator('#focusStatus')).toContainText('Focus: D-502 ·');
+  // D-39 replaces click-to-focus with selection only.
+  await expect(page.locator('#focusStatus')).toContainText('Focus: D-501 ·');
   await expect(page.locator('.detail-id')).toHaveText('D-502');
+  expect(await page.evaluate(()=>window.fitChanges)).toBe(0);
+  await mouse(page, '#detailFocus');
   expect(await page.evaluate(()=>window.fitChanges)).toBe(1);
   await mouse(page,'#closeDetail');
   await expect(page.locator('#focusStatus')).toContainText('Focus: D-502 ·');

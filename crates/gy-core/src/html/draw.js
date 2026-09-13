@@ -309,10 +309,10 @@ function drawNodeLayer(inPositions, ids) {
     g.dataset.nodeId = id;
     g.setAttribute('tabindex', '0');
     g.setAttribute('role', 'button');
-    g.setAttribute('aria-label', 'Focus ' + id + ' · ' + n.title);
-    g.addEventListener('click', (e) => { e.stopPropagation(); if (!dragMoved) startHop(id); });
+    g.setAttribute('aria-label', 'Read ' + id + ' · ' + n.title);
+    g.addEventListener('click', (e) => { e.stopPropagation(); if (!dragMoved) selectNode(id); });
     g.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startHop(id); }
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectNode(id); }
     });
     nodeLayer.appendChild(g);
     drawn++;

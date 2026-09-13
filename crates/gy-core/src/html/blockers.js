@@ -35,8 +35,8 @@ lintArr.forEach(d => {
   lintUl.appendChild(li);
 });
 if (!lintArr.length) lintUl.innerHTML = '<li class="small">no findings</li>';
-document.getElementById('detail').addEventListener('click', (e) => {
+document.getElementById('left').addEventListener('click', (e) => {
   const t = e.target.closest('[data-go]');
-  if (t) { showDetail(t.dataset.go); }
+  if (t) { selectNode(t.dataset.go); }
 });
 

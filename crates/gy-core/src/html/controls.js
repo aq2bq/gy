@@ -43,6 +43,7 @@ document.getElementById('clearFilter').addEventListener('click', () => {
   closeClusterPanel();
   redraw();
 });
+document.getElementById('hopFrom').addEventListener('input', () => { document.getElementById('applyHop').textContent = focusLabel(document.getElementById('hopFrom').value.trim()); });
 document.getElementById('applyHop').addEventListener('click', () => {
   const id = document.getElementById('hopFrom').value.trim();
   if (!byId[id]) { alert('Unknown node id: ' + id); return; }
