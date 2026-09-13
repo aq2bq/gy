@@ -41,11 +41,18 @@ test('URL selects IDs, reports missing IDs, and restores state through history',
   await expect(page.locator('#genealogy')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('[data-tab="jams"]')).toHaveClass('on');
   await mouse(page, '[data-tab="overview"]');
+  // The input event schedules URL persistence; traverse only after that entry exists.
+  await expect.poll(() => decodeURIComponent(page.url())).toContain('"tab":"overview"');
+  const overviewUrl = page.url();
+  const tabHistoryLength = await page.evaluate(() => history.length);
   await page.goBack();
-  expect(page.url()).toBe(url);
+  await expect(page).toHaveURL(url);
   await expect(page.locator('[data-tab="jams"]')).toHaveClass('on');
+  expect(await page.evaluate(() => history.length)).toBe(tabHistoryLength);
   await page.goForward();
+  await expect(page).toHaveURL(overviewUrl);
   await expect(page.locator('[data-tab="overview"]')).toHaveClass('on');
+  expect(await page.evaluate(() => history.length)).toBe(tabHistoryLength);
   const beforeZoom = page.url();
   const filterUrl = page.url();
   await mouse(page, '#zin');

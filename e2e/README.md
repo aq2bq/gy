@@ -143,3 +143,9 @@ Cluster scope/type/count labels receive the same height and containment check.
 Lineage retains its readable pan contract; ordinary full-containment assertions
 are not applied to its uncapped generation layout. Edge-label placement is a
 separate contract from the node-label measurements.
+
+History checks wait for a control's URL entry before invoking browser Back,
+and wait for the exact destination URL and matching tab after Back/Forward.
+They also assert that traversal does not increase history length. This checks
+both persistence and restoration without fixed delays or assuming that a mouse
+command's completion means the asynchronous URL save has already run.
