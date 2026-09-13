@@ -51,10 +51,19 @@ test('pointer elements have native actions or registered role handlers',async({p
  });
  for(const name of ['reading','large']){
   await page.goto(fixture(name));
-  const failures=await page.evaluate(()=>[...document.querySelectorAll('*')].filter(el=>el.getClientRects().length&&getComputedStyle(el).cursor==='pointer').filter(el=>{
-   const action=el.closest('a[href],button,[role="button"],[role="link"]');
-   return !action || (!action.matches('a[href]')&&!window.actionTargets.has(action)&&!action.matches('button[data-sort],button[data-go]'));
-  }).map(e=>e.outerHTML.slice(0,160)));
+  const failures=await page.evaluate(()=>{
+   const hits=new Set();
+   for(const el of document.querySelectorAll('*')){
+    if(!el.getClientRects().length || getComputedStyle(el).cursor!=='pointer')continue;
+    const r=el.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2;
+    const hit=document.elementFromPoint(x,y);
+    if(hit && getComputedStyle(hit).cursor==='pointer')hits.add(hit);
+   }
+   return [...hits].filter(el=>{
+    const action=el.closest('a[href],button,[role="button"],[role="link"]');
+    return !action || (!action.matches('a[href]')&&!window.actionTargets.has(action)&&!action.matches('button[data-sort],button[data-go]'));
+   }).map(e=>e.outerHTML.slice(0,160));
+  });
   expect(failures).toEqual([]);
   if(name==='large'){
    const count=await page.evaluate(()=>window.GY_DATA.lint.length);
