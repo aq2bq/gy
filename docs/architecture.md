@@ -86,6 +86,30 @@ The regression contract covers prose-edit invariance, structured assertions over
 
 ## HTML projection
 
+### Reading tasks and design principles
+
+The page exists for five reader tasks, and every element and gesture belongs
+to one of them: reaching a node by its ID in one step; filtering by type,
+scope, and state and reading the result as a list; reading one node's body,
+attributes, and relationships as the ledger stores them; moving to neighbours
+without losing the current place, with a way back; and surveying blockers and
+progress. Requests for the page are judged by which task they serve.
+
+Six principles follow from those tasks. Location lives in the URL: focus,
+selection, filters, search text, and the active tab are in the hash, the
+browser's back button returns to the previous view, and `gy.html#<ID>` opens
+that node. The page is modeless: a gesture means the same thing in every
+state, a click selects and shows, and layout changes, focus moves, and filter
+changes are explicit controls whose effect is readable before pressing them.
+Lists are primary and the graph is a supporting view of relationships, not a
+table of contents. Search and filters are a permanent toolbar under the
+header; the left panel holds only the survey views. Bodies render the
+ledger's Markdown completely, including GFM tables, nested lists, code
+blocks, and links, under the existing escaping contract. Every title has a
+place where it reads in full; graph labels wrap before they truncate, and a
+truncated label still keeps a meaningful head rather than a fragment.
+
+
 `render --format html` writes a single self-contained HTML file for reading the whole ledger. The supported browser for this local projection is Chromium. It is a derived view: the page never computes a lint, scheduling, dependency, or handover judgment itself. It embeds diagnostics from `lint`, needs from `next`, handover facts (missing records, dangling references), the `stats` criteria and question-arrival numbers, and the `decision_dependencies` projection, all produced by the same core functions the CLI and MCP use. Filters and full-text search select the embedded data at display time; the graph routes forward edges exactly as `dot` does, so no relationship is drawn twice through its reverse label.
 
 Bodies are embedded verbatim so the page carries the ledger's full record. The graph never renders body text; the detail panel shows it, rendered as Markdown on demand. Escaping replaces `<`, `>`, `&`, U+2028, and U+2029 in the embedded payload so a body containing `</script>`, a comment opener, or a line separator cannot terminate or comment out the data script. Unknown attributes are preserved in node payloads alongside their structured values.
