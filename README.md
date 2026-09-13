@@ -8,6 +8,36 @@ A Rust CLI that manages decisions, questions, needs, requirements, acceptance cr
 
 The initial command set, including requirement compression, is implemented.
 
+## The graph
+
+Six kinds of node. Four of them form a loop, and that loop is why gy exists: a decision creates new needs, a need is filed as a requirement, the work raises new questions, and a question closes into the next decision. Records break down between these nodes, not inside them.
+
+```mermaid
+flowchart LR
+  D["decision<br/>D-n"]
+  N["need<br/>N-n"]
+  R["requirement<br/>#35;issue"]
+  Q["question<br/>Q-n"]
+  D -. "spawns (inverse)" .-> N
+  N -- "filed-as" --> R
+  R -- "raised" --> Q
+  Q -- "closes" --> D
+```
+
+The dotted edge is drawn in its inverse direction so the loop reads forward. The label `link` accepts is `spawned-by`, written from the need to the decision.
+
+The other two kinds do not take part in the flow. They attach from the side to measure something: an acceptance criterion is what progress is counted against, and a gate decides whether an approach continues at all.
+
+```mermaid
+flowchart LR
+  N["need"] -- "targets" --> AC["criterion<br/>AC-n"]
+  R["requirement"] -- "targets" --> AC
+  R -- "relies-on" --> D["decision"]
+  G["gate<br/>G-n"] -- "measured-by" --> Q["question"]
+```
+
+Two relationships stay within one kind and are left out of the diagrams: `decision → decision` carries the lineage (`narrows` / `widens` / `supersedes` / `completes`), and `need → need` records order (`depends-on`). All twelve labels, their directions, and their inverse attribute names are listed under [Attributes and relationships](#attributes-and-relationships).
+
 ## Installation and first records
 
 Install from crates.io:
@@ -49,7 +79,7 @@ To install from a source checkout, run `cargo install --path crates/gy --locked`
 | `next` | List needs whose prerequisites have been resolved |
 | `lint` / `handover` | Check consistency and the records needed for a handover |
 | `stats` | Report satisfied acceptance criteria and question arrival rates from git history |
-| `render` | Generate paginated Markdown or DOT |
+| `render` | Generate paginated Markdown, DOT, or a single-file HTML view |
 | `import <directory>` | Import ADRs while preserving their IDs |
 | `cheatsheet` / `completions <shell>` | Print a workflow reference or shell completions |
 | `skills install <dir>` / `mcp serve` | Install agent instructions or start the MCP server |
@@ -114,7 +144,7 @@ For `narrows` and `supersedes`, use `--mark` to identify the affected passage in
 
 ## Requirement state transitions
 
-Use `req advance --evidence` to record what was checked. gy enforces the following 11 states and the main guards, rather than a complete transition table:
+Use `req advance --evidence` to record what was checked. gy enforces these 11 states and the main guards, not a transition table. **No order between states is checked:** a requirement can move to any of the 11 states from any other, forwards or backwards, as long as that state's own guards pass. Every transition requires `--evidence` and is appended to the `transitions` history with its origin, destination, and timestamp.
 
 ```text
 unfiled / defining / awaiting-design / awaiting-approval / awaiting-implementation /
@@ -134,7 +164,18 @@ gy req advance 6006 --to awaiting-merge --evidence "Record of PR diff review" \
 
 To enter `awaiting-merge`, the user supplies confirmed values through `--reported-base` and `--reported-files`; gy compares them with frontmatter. It does not query the PR or its diff.
 
-Transitions to `awaiting-production` (awaiting production work), `awaiting-cleanup` (awaiting cleanup), or `complete` (complete) require `--data-migration true|false` and `--production-only true|false`. If migration or production-only verification is needed and `production_done` is not recorded, the state is awaiting production work. If production work is unnecessary or complete, but cleanup is unconfirmed or work remains, the state is awaiting cleanup. Completion requires `--cleanup-done true` and no unassigned remaining work.
+The last three states are the exception: you do not choose among them. Transitions to `awaiting-production`, `awaiting-cleanup`, or `complete` require `--data-migration true|false` and `--production-only true|false`, and gy computes which one the recorded facts allow. Naming a different one is rejected.
+
+```mermaid
+flowchart LR
+  F["facts recorded on<br/>the requirement"] --> P{"migration or production-only,<br/>and production_done not set?"}
+  P -- yes --> PP["awaiting-production"]
+  P -- no --> C{"cleanup_done set and<br/>remaining_work zero?"}
+  C -- no --> CC["awaiting-cleanup"]
+  C -- yes --> DD["complete"]
+```
+
+Completion requires `--cleanup-done true` and no unassigned remaining work.
 
 Completed requirements must explicitly record `deviations` and `residual`. Set `residual` to `none` or to existing destination IDs of the form `N-xx`, `Q-xx`, or `#Issue`. If `remaining_work` is still present, it must be zero or an empty array.
 
@@ -226,6 +267,8 @@ L2 = { enabled = true, severity = "error" }
 [render]
 output = "{scope}/README.md"
 split_threshold = 100
+# HTML projection, written as the ledger root (default) or per scope
+html_output = "gy.html"
 ```
 
 | Rule | Check |
@@ -251,6 +294,10 @@ Completed requirements retain their `relies-on` history. Superseded historical d
 L6 defaults to `warn`; the others default to `error`. The additional `edges` rule checks inverse links, edge types, and matching marks. Incomplete questions created with `q` report missing information as errors regardless of the L8/L9 settings.
 
 `render` splits each scope into pages of the configured node count and creates a README index when multiple pages are needed. Output paths must be relative to the ledger directory and cannot point into the directories containing source nodes.
+
+`render --format html` writes a single self-contained HTML file. It embeds the full ledger data, judgments from `lint`, `next`, `handover`, and `stats`, and does not fetch anything from the network, so `file://` works offline. The page shows the first screen (acceptance, states, open questions, lint counts), a zoomable graph of all six node types (each with a distinct shape and color) and twelve relationship labels, a node detail panel, filters and full-text search, the `stats` progress axes, and the handover blockers. Decisions read as a generation-layered lineage via `narrows` / `widens` / `supersedes` / `completes`, with superseded decisions marked. A count banner always states how many nodes are drawn and how many are hidden, including in search and lineage modes. `html_output` defaults to `gy.html` at the ledger root; writing `{scope}` in it produces one file per scope. `split_threshold` does not apply to HTML, and lint results never change the exit code. Bodies are embedded in full; the graph intentionally shows no body text (read it in the detail panel).
+
+`init` appends the default HTML output (`html_output`, default `gy.html`) to the ledger root's `.gitignore`; an existing `.gitignore` is appended, never rewritten, and re-running `init` does not duplicate the line. For a ledger created before this feature, either run `gy init <existing-scope>` again (append-only and idempotent; nodes, relationships, records, and history are preserved) or add the `html_output` value by hand.
 
 `stats --days 7` reports new question counts, daily rates, and changes for the most recent seven days and the preceding seven days. It counts the first addition of each ID across all git refs; body edits are not new arrivals. Uncommitted questions are excluded. If the previous period had no arrivals, the decay fraction is null. Record acceptance criterion satisfaction with `criterion satisfy --evidence`.
 

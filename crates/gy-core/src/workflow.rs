@@ -6,6 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[non_exhaustive]
 pub struct WorkflowConfig {
     pub records: BTreeMap<String, RecordSchema>,
     pub guards: BTreeMap<String, StateGuard>,
@@ -13,6 +14,7 @@ pub struct WorkflowConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct RecordSchema {
     pub kinds: Vec<String>,
     #[serde(default)]
@@ -28,6 +30,7 @@ fn yes() -> bool {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct FieldSchema {
     #[serde(rename = "type")]
     pub kind: FieldType,
@@ -61,6 +64,7 @@ pub enum FieldType {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[non_exhaustive]
 pub struct StateGuard {
     pub states: Vec<String>,
     pub records: Vec<String>,
@@ -69,6 +73,7 @@ pub struct StateGuard {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct RecordCheck {
     pub kind: CheckKind,
     pub left: String,

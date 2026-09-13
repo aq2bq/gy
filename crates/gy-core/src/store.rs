@@ -148,7 +148,7 @@ impl Store {
             if !root.join("gy.toml").exists() {
                 atomic_write(
                     &root.join("gy.toml"),
-                    "[render]\nsplit_threshold = 100\noutput = \"{scope}/README.md\"\n\n[lint]\n",
+                    "[render]\nsplit_threshold = 100\noutput = \"{scope}/README.md\"\nhtml_output = \"gy.html\"\n\n[lint]\n",
                 )?;
             }
             for (_, _, dir) in KINDS {
@@ -179,7 +179,36 @@ impl Store {
             entry.parent_issue = Some(p);
         }
         store.commit()?;
+        store.append_render_ignore()?;
         Ok(store)
+    }
+    /// Append the HTML projection output to the ledger-root .gitignore.
+    /// The output is a derived artifact meant for local reading only, so the
+    /// default destination should not be committed. Existing .gitignore files
+    /// are appended, never rewritten.
+    fn append_render_ignore(&self) -> Result<()> {
+        let output = &self.config.render.html_output;
+        if output.trim().is_empty() {
+            return Ok(());
+        }
+        let pattern = output.replace("{scope}", "*");
+        let ignore = self.root.join(".gitignore");
+        let original = if ignore.exists() {
+            fs::read_to_string(&ignore)?
+        } else {
+            String::new()
+        };
+        if original.lines().any(|l| l.trim() == pattern) {
+            return Ok(());
+        }
+        let mut updated = original;
+        if !updated.is_empty() && !updated.ends_with('\n') {
+            updated.push('\n');
+        }
+        updated.push_str(&pattern);
+        updated.push('\n');
+        atomic_write(&ignore, &updated)?;
+        Ok(())
     }
     pub fn open(cwd: &Path) -> Result<Self> {
         let cwd = cwd.canonicalize()?;

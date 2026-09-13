@@ -238,12 +238,31 @@ impl Store {
         Ok(out)
     }
     pub fn render(&self, scope: Option<&str>, format: &str) -> Result<Vec<PathBuf>> {
-        if !["markdown", "dot"].contains(&format) {
-            return Err(Error::input("--format must be markdown / dot"));
+        if !["markdown", "dot", "html"].contains(&format) {
+            return Err(Error::input("--format must be markdown / dot / html"));
         }
         let mut files = BTreeMap::new();
         if format == "dot" {
             files.insert(PathBuf::from("graph.dot"), self.dot(scope, None)?);
+        } else if format == "html" {
+            let output = self.config.render.html_output.clone();
+            if !output.contains("{scope}") {
+                files.insert(PathBuf::from(&output), self.render_html(scope)?);
+            } else {
+                let mut scopes: BTreeSet<_> =
+                    self.nodes.values().map(|n| n.scope().to_owned()).collect();
+                scopes.extend(self.config.scopes.keys().cloned());
+                if let Some(s) = scope {
+                    if !scopes.contains(s) {
+                        return Err(Error::input(format!("Scope {s} does not exist")));
+                    }
+                    scopes.retain(|x| x == s);
+                }
+                for s in scopes {
+                    let output = output.replace("{scope}", &s);
+                    files.insert(PathBuf::from(&output), self.render_html(Some(&s))?);
+                }
+            }
         } else {
             let mut scopes: BTreeSet<_> =
                 self.nodes.values().map(|n| n.scope().to_owned()).collect();

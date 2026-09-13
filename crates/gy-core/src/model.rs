@@ -191,6 +191,7 @@ impl Node {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
+#[non_exhaustive]
 pub struct Config {
     pub parent_issue: Option<u64>,
     pub scopes: std::collections::BTreeMap<String, ScopeConfig>,
@@ -201,11 +202,13 @@ pub struct Config {
 }
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
+#[non_exhaustive]
 pub struct ImportConfig {
     pub scope_note_section: Option<String>,
     pub scope_note_placeholders: Vec<String>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[non_exhaustive]
 pub struct ScopeConfig {
     pub parent_issue: Option<u64>,
 }
@@ -244,15 +247,18 @@ impl RuleConfig {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+#[non_exhaustive]
 pub struct RenderConfig {
     pub split_threshold: usize,
     pub output: String,
+    pub html_output: String,
 }
 impl Default for RenderConfig {
     fn default() -> Self {
         Self {
             split_threshold: 100,
             output: "{scope}/README.md".into(),
+            html_output: "gy.html".into(),
         }
     }
 }

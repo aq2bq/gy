@@ -2,6 +2,7 @@
 //! interrupted multi-file commits are recovered from a durable redo journal.
 mod compression;
 mod graph;
+mod html;
 mod model;
 mod operations;
 mod store;

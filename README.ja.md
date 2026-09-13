@@ -8,6 +8,36 @@
 
 要求圧縮を含む初版のコマンドを実装しています。
 
+## グラフの形
+
+ノードは6種あります。そのうち4種は環をなし、この環が gy の存在理由です。決定が新しいニーズを生み、ニーズが起票されて要求になり、作業が新しい論点を生み、論点が次の決定として閉じます。記録が破綻するのはノードの内部ではなく、このノードのあいだです。
+
+```mermaid
+flowchart LR
+  D["決定<br/>decision · D-n"]
+  N["ニーズ<br/>need · N-n"]
+  R["要求<br/>requirement · #35;issue"]
+  Q["論点<br/>question · Q-n"]
+  D -. "spawns (逆リンク)" .-> N
+  N -- "filed-as" --> R
+  R -- "raised" --> Q
+  Q -- "closes" --> D
+```
+
+箱に併記した英語は `type` 属性の値、辺のラベルは `link` に渡す語で、どちらも翻訳せずそのまま使います。点線の1辺だけ、環が順方向に読めるよう逆リンク名で描いています。`link` に渡す正式なラベルは `spawned-by` で、向きはニーズから決定です。
+
+残る2種は流れに参加しません。測るために横から刺さります。受け入れ条件は進捗を数える相手であり、ゲートは方式そのものを続けるかを判断します。
+
+```mermaid
+flowchart LR
+  N["ニーズ<br/>need"] -- "targets" --> AC["受け入れ条件<br/>criterion · AC-n"]
+  R["要求<br/>requirement"] -- "targets" --> AC
+  R -- "relies-on" --> D["決定<br/>decision"]
+  G["ゲート<br/>gate · G-n"] -- "measured-by" --> Q["論点<br/>question"]
+```
+
+同種内で閉じる2つの関連は図から外しました。`decision → decision` が系譜（`narrows` / `widens` / `supersedes` / `completes`）を担い、`need → need` が着手順序（`depends-on`）を記録します。12ラベルすべての向きと逆リンク属性名は[属性と関連](#属性と関連)にあります。
+
 ## インストールと最初の記録
 
 crates.ioからインストールします。
@@ -49,7 +79,7 @@ gy render
 | `next` | 前提を解消したニーズを列挙 |
 | `lint` / `handover` | 整合性と引継ぎに必要な記録を検査 |
 | `stats` | 受け入れ条件の充足数と、git履歴による論点発生率 |
-| `render` | 分割された Markdown または DOT を生成 |
+| `render` | 分割された Markdown・DOT・単一HTMLを生成 |
 | `import <directory>` | ADRをIDを維持して取り込み |
 | `cheatsheet` / `completions <shell>` | 操作早見表とシェル補完 |
 | `skills install <dir>` / `mcp serve` | エージェント向け手順の展開と MCP サーバ |
@@ -112,7 +142,7 @@ gy node set D-1 --body-file decision-body.md
 
 ## 要求の状態遷移
 
-`req advance --evidence` で確認した結果を記録します。全遷移表は実装せず、11状態と主要ガードを検査します。CLI・生成文書・同梱手順は英語です。状態値は次の対応で指定します。
+`req advance --evidence` で確認した結果を記録します。全遷移表は実装せず、11状態と主要ガードを検査します。**状態間の順序は検査しません。** その状態自身のガードを満たすかぎり、11状態のどこからどこへでも、前へも後ろへも移せます。すべての遷移に `--evidence` が必要で、遷移元・遷移先・時刻とともに `transitions` の履歴へ追記されます。CLI・生成文書・同梱手順は英語です。状態値は次の対応で指定します。
 
 | 意味 | 状態値 |
 | --- | --- |
@@ -141,7 +171,18 @@ gy req advance 6006 --to awaiting-merge --evidence "PRの差分を確認した�
 
 `--reported-base` と `--reported-files` は、利用者が確認した値です。gyはこれをfrontmatterと照合します。PRの実在や差分を問い合わせません。
 
-本番作業待ち・後始末待ち・完了へ進める際には、`--data-migration true|false` と `--production-only true|false` を報告します。移行または本番での確認が必要で、`production_done` が未記録なら本番作業待ちです。本番作業が不要または完了済みで、後始末が未確認または残作業があれば後始末待ちです。`--cleanup-done true` と、未帰属の残作業がないことを確認すると完了です。完了要求では `deviations` と `residual` の明記が必要です。`residual` は`none`、または存在する移管先の `N-xx` / `Q-xx` / `#Issue` を記録します。`remaining_work` が残っている場合は0か空配列でなければなりません。
+末尾の3状態だけは例外で、利用者が選ぶものではありません。`awaiting-production` / `awaiting-cleanup` / `complete` へ進める際には `--data-migration true|false` と `--production-only true|false` を報告し、記録された事実からどれが許されるかを gy が計算します。違うものを指定すると拒否されます。
+
+```mermaid
+flowchart LR
+  F["要求に記録された事実"] --> P{"移行または本番限定で、<br/>production_done が未記録?"}
+  P -- yes --> PP["awaiting-production"]
+  P -- no --> C{"cleanup_done が記録済みで、<br/>remaining_work が0?"}
+  C -- no --> CC["awaiting-cleanup"]
+  C -- yes --> DD["complete"]
+```
+
+完了には `--cleanup-done true` と、未帰属の残作業がないことが必要です。完了要求では `deviations` と `residual` の明記が必要です。`residual` は`none`、または存在する移管先の `N-xx` / `Q-xx` / `#Issue` を記録します。`remaining_work` が残っている場合は0か空配列でなければなりません。
 
 ```sh
 gy node set '#6006' --set remaining_work=0 --set deviations=none --set residual=none
@@ -203,11 +244,17 @@ L2 = { enabled = true, severity = "error" }
 [render]
 output = "{scope}/README.md"
 split_threshold = 100
+# HTML投影。台帳ルート直下（既定）または {scope} ごとに書く
+html_output = "gy.html"
 ```
 
 L1〜L13の検査項目は[英語版READMEの一覧](README.md#configuring-lint-and-render)を参照してください。既定はL6がwarn、それ以外がerrorです。追加項目 `edges` は逆リンク・エッジの型・markの一致を検査します。短縮入力 `q` の不完全な論点は、L8/L9の設定にかかわらず、不足している情報をerrorとして報告します。
 
 `render` はスコープごとに指定ノード数で分割し、複数ページの場合はREADMEに索引を作ります。出力先は台帳内の相対パスを指定します。正本のノードディレクトリには出力できません。
+
+`render --format html` は自己完結の単一HTMLファイルを生成します。台帳の全データと、`lint` / `next` / `handover` / `stats` が返す判断を埋め込み、ネットワークへ一切出ないため、`file://` でオフライン動作します。最初の1画面（充足度・状態分布・未決数・lint件数）、6種のノード（各種別を形と色の両方で区別）と12の関連ラベルを描くズーム可能なグラフ、ノード詳細、絞り込みと全文検索、`stats` と同じ2軸、handoverの詰まり一覧を備えます。決定は `narrows` / `widens` / `supersedes` / `completes` を世代方向へ並べた系譜として読み、置き換えられた決定には印を付けます。描画件数と非表示件数は、検索・系譜を含むすべてのモードでバナーに常時表示します。`html_output` は台帳ルート直下の `gy.html`（既定）で、`{scope}` を書いたときだけスコープごとに分割します。`split_threshold` はHTMLに適用せず、lintの結果は終了コードを変えません。本文は全文を埋め込んでいますが、グラフ上には描かず詳細パネルで読みます（埋め込み方針は [ledger semantics](docs/architecture.md) を参照）。
+
+`init` は既定のHTML出力（`html_output`、既定 `gy.html`）を台帳ルートの `.gitignore` に追記します。既存の `.gitignore` は上書きせず追記のみで、`init` を再実行しても行を重複しません。この機能より前に作った台帳では、既存スコープ名で `gy init <scope>` を再実行するか（追記のみで冪等、ノード・関連・記録・履歴は保持）、`html_output` の値を手で1行追加してください。
 
 `stats --days 7` は直近7日とその前の7日の論点の新規発生数・1日当たりの率・変化量を返します。gitの全refでIDごとの最初の追加を数え、本文の編集は新規発生に含めません。未コミットの論点は対象外です。前の期間が0件の場合、減衰割合は算出せずnullを返します。受け入れ条件の充足は `criterion satisfy --evidence` で記録します。
 

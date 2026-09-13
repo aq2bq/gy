@@ -73,3 +73,13 @@ A word-boundary adjustment would retain two competing sources of authority. A se
 A per-node L5 acknowledgement would obscure whether a dependency is historical or current. Treating every completed node as exempt from all lint would instead hide broken history. The lifecycle projection avoids both: it preserves recorded relationships and applies each rule according to the meaning of its assertion.
 
 The regression contract covers prose-edit invariance, structured assertions overriding prose, completion and reopening, scoped historical output, scheduling through completed work, and persistence of structural errors. Existing compression, workflow, and MCP tests verify the shared storage and execution paths.
+
+## HTML projection
+
+`render --format html` writes a single self-contained HTML file for reading the whole ledger. It is a derived view: the page never computes a lint, scheduling, dependency, or handover judgment itself. It embeds diagnostics from `lint`, needs from `next`, handover facts (missing records, dangling references), the `stats` criteria and question-arrival numbers, and the `decision_dependencies` projection, all produced by the same core functions the CLI and MCP use. Filters and full-text search select the embedded data at display time; the graph routes forward edges exactly as `dot` does, so no relationship is drawn twice through its reverse label.
+
+Bodies are embedded verbatim so the page carries the ledger's full record. The graph never renders body text; the detail panel shows it, rendered as Markdown on demand. Escaping replaces `<`, `>`, `&`, U+2028, and U+2029 in the embedded payload so a body containing `</script>`, a comment opener, or a line separator cannot terminate or comment out the data script. Unknown attributes are preserved in node payloads alongside their structured values.
+
+Judgments are the only reason the page carries curated lists; everything else is the ledger's own data. This mirrors the `handover` boundary: derived output is never written back to canonical files, and the page cannot edit the ledger.
+
+The graph renders each of the six node types with a distinct shape and color, so type identification does not depend on color alone. Genealogy mode restricts the displayed set to decision nodes and lays them out by generation, so a supersede chain reads directionally. The count banner reports the nodes actually drawn and the visible total in every mode, including search, filters, and genealogy; a zoom limit that culls nodes always surfaces how many are hidden rather than silently dropping them. Fit computes the transform from the content's bounding box in the current mode, so the projected content fits the viewport instead of being a fixed scale.

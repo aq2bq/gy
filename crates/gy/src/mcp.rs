@@ -54,7 +54,11 @@ const TOOL_NAMES: &[(&str, &str, &[&str])] = &[
         "Edit attributes and body text, or validate and submit a configured record",
         &["node"],
     ),
-    ("gy_render", "Generate Markdown or DOT", &["render"]),
+    (
+        "gy_render",
+        "Generate Markdown, DOT, or a single-file HTML view",
+        &["render"],
+    ),
     (
         "gy_import",
         "Import existing ADRs while preserving IDs",
