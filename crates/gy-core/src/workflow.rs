@@ -16,6 +16,9 @@ pub struct WorkflowConfig {
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct RecordSchema {
+    /// Project-authored explanation; never interpreted by validation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
     pub kinds: Vec<String>,
     #[serde(default)]
     pub required: bool,
@@ -32,6 +35,9 @@ fn yes() -> bool {
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct FieldSchema {
+    /// Project-authored explanation; never interpreted by validation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
     #[serde(rename = "type")]
     pub kind: FieldType,
     #[serde(default = "yes")]

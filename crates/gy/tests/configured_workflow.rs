@@ -760,3 +760,96 @@ fn mcp_submission_and_history_corruption_use_the_same_checks() {
                 && d["message"].as_str().unwrap().contains("record_history"))
     );
 }
+
+#[test]
+fn descriptions_are_discoverable_without_changing_checks_or_history() {
+    let t = repo();
+    let p = t.path();
+    put(p, "#1", "next_evidence", json!("Approval record"));
+    put(p, "#1", "responsible", json!("reviewer"));
+    put(p, "#1", "design", design("d1"));
+    advance(p, "awaiting-approval");
+    let config_path = p.join("docs/ledger/gy.toml");
+    let node_path = p.join("docs/ledger/test/requirements/1.md");
+    let original_node = fs::read(&node_path).unwrap();
+    let original_lint = lint(p);
+    let submit = [
+        "node",
+        "submit",
+        "#1",
+        "--record",
+        "design",
+        "--evidence",
+        "Checked",
+    ];
+    let baseline_failure = invoke(
+        p,
+        &[
+            "req",
+            "advance",
+            "1",
+            "--to",
+            "awaiting-implementation",
+            "--evidence",
+            "Checked",
+        ],
+    );
+    let config = CONFIG
+        .replace(
+            "[workflow.records.design]",
+            "[workflow.records.design]\ndescription = \"Design basis; explanatory only.\"",
+        )
+        .replace(
+            "revision = { type = \"string\" }",
+            "revision = { type = \"string\", description = \"Recorded revision.\" }",
+        )
+        .replace(
+            "items = { type = \"string\" }",
+            "items = { type = \"string\", description = \"Declared value.\" }",
+        )
+        .replace(
+            "url = { type = \"url\" }",
+            "url = { type = \"url\", description = \"Location; contents are not fetched.\" }",
+        );
+    fs::write(&config_path, config).unwrap();
+    let handover = run(p, &["handover"]);
+    let schema = &handover["workflow"]["records"]["design"];
+    assert_eq!(schema["description"], "Design basis; explanatory only.");
+    assert_eq!(
+        schema["fields"]["revision"]["description"],
+        "Recorded revision."
+    );
+    assert_eq!(
+        schema["fields"]["files"]["items"]["description"],
+        "Declared value."
+    );
+    assert_eq!(
+        schema["fields"]["plan"]["variants"]["normal"]["url"]["description"],
+        "Location; contents are not fetched."
+    );
+    assert_eq!(lint(p), original_lint);
+    let failure = invoke(
+        p,
+        &[
+            "req",
+            "advance",
+            "1",
+            "--to",
+            "awaiting-implementation",
+            "--evidence",
+            "Checked",
+        ],
+    );
+    assert_eq!(failure.status.code(), baseline_failure.status.code());
+    assert_eq!(failure.stderr, baseline_failure.stderr);
+    assert_eq!(fs::read(&node_path).unwrap(), original_node);
+    // The same recorded version remains valid after explanatory edits.
+    run(p, &submit);
+    let node = run(p, &["show", "#1"]);
+    assert_eq!(
+        node["node"]["attrs"]["record_history"][0]["schemas"]["design"]["description"],
+        schema["description"]
+    );
+    fs::write(config_path, CONFIG).unwrap();
+    assert_eq!(lint(p), original_lint);
+}

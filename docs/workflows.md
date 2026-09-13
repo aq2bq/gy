@@ -24,13 +24,14 @@ Each record name is a top-level frontmatter attribute. This example requires a r
 
 ```toml
 [workflow.records.research]
+description = "Evidence and limits supporting the recorded answer."
 kinds = ["need"]
 required = true
 version_field = "revision"
 
 [workflow.records.research.fields]
 revision = { type = "string" }
-question = { type = "string" }
+question = { type = "string", description = "The question this research answers." }
 population = { type = "integer" }
 sources = { type = "array", items = { type = "string" } }
 limitations = { type = "array", allow_empty = true, items = { type = "string" } }
@@ -43,6 +44,7 @@ location = { type = "string" }
 
 | Field setting | Meaning |
 | --- | --- |
+| `description` | Optional project-authored explanation; never used for validation |
 | `type` | `string`, `url`, `boolean`, `integer`, `number`, `array`, or `object` |
 | `required` | Defaults to true; false permits an absent field |
 | `allow_empty` | Defaults to false; permits empty strings, arrays, or objects when true |
@@ -55,6 +57,8 @@ location = { type = "string" }
 An optional field may be absent; null is not a valid substitute. Zero and false are valid numeric and boolean values. Unspecified attributes remain preserved. Configuration keys and field types are checked strictly to catch typos.
 
 Record and field names use ASCII letters, digits, underscores, and hyphens. Core identity and lifecycle attributes cannot be record names. Check paths use dots for objects and `[]` to project array elements; literal dots in field names are not supported.
+
+Records and fields (including nested fields, array items, and alternative fields) accept an optional string `description`. gy preserves it in the effective configuration returned by `handover --json` and in saved schemas. Descriptions explain project policy to readers; they do not change validation, comparisons, or record revisions. Existing configurations and saved schemas may omit them. To add explanations to an existing ledger, edit its `gy.toml`; no node or historical record migration is needed.
 
 ## Explicit absence and exceptions
 
