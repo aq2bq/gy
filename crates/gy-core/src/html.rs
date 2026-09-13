@@ -49,7 +49,22 @@ fn node_payload(n: &Node, superseded: &std::collections::BTreeMap<String, Vec<St
     } else {
         None
     };
+    // Use the same reverse declarations and exact anchors as display_node.
+    let body_marks: Vec<Value> = [
+        ("narrowed-by", "Applicability narrowed"),
+        ("superseded-by", "Superseded"),
+    ]
+    .into_iter()
+    .flat_map(|(key, label)| {
+        n.refs(key).into_iter().map(move |source| {
+            let mark = edge_mark(n, key, &source);
+            let found = mark.as_ref().is_some_and(|text| n.body.contains(text));
+            json!({"source": source, "label": label, "mark": mark, "found": found})
+        })
+    })
+    .collect();
     json!({
+        "body_marks": body_marks,
         "id": n.id(),
         "type": n.kind(),
         "scope": n.scope(),
@@ -311,6 +326,32 @@ mod tests {
         serde_json::from_str(payload).unwrap()
     }
 
+    #[test]
+    fn body_marks_keep_exact_locations_and_do_not_infer_missing_anchors() {
+        let mut node = Node::new("D-1", "decision", "Original", "a");
+        node.body = "Keep this exact passage.\n".into();
+        node.put(
+            "superseded-by",
+            json!([
+                {"id":"D-2", "mark":"exact passage"},
+                {"id":"D-3", "mark":"Exact passage"},
+                {"id":"D-4", "mark":" "},
+                "D-5"
+            ]),
+        );
+        let payload = node_payload(&node, &Default::default());
+        assert_eq!(payload["body"], node.body);
+        let marks = payload["body_marks"].as_array().unwrap();
+        assert_eq!(marks.len(), 4);
+        assert_eq!(marks[0]["found"], true);
+        assert_eq!(marks[0]["source"], "D-2");
+        assert_eq!(marks[1]["found"], false);
+        assert_eq!(marks[1]["mark"], "Exact passage");
+        assert_eq!(marks[2]["mark"], Value::Null);
+        assert_eq!(marks[3]["mark"], Value::Null);
+        assert_eq!(node.body, "Keep this exact passage.\n");
+    }
+
     fn store(cwd: &Path) -> Store {
         let mut s = Store::init(cwd, "a", None).unwrap();
         let id = s.create("criterion", "Criterion", "a", None).unwrap();
@@ -354,11 +395,30 @@ mod tests {
     #[test]
     fn html_is_single_file_and_has_no_external_reference() {
         let t = tempfile::tempdir().unwrap();
-        store(t.path());
-        let html = Store::open(t.path()).unwrap().render_html(None).unwrap();
+        let mut s = store(t.path());
+        let id = s
+            .create("decision", "URL-bearing record", "a", None)
+            .unwrap();
+        s.nodes
+            .get_mut(&id)
+            .unwrap()
+            .attrs
+            .insert("pr_url".into(), json!("https://example.com/pull/1"));
+        let html = s.render_html(None).unwrap();
         assert!(html.starts_with("<!DOCTYPE html>"));
+        assert!(html.contains("https://example.com/pull/1"));
+        // A coarse guard against literal resource references, not an HTML/JS
+        // parser. URLs in payloads and code that builds user-followed links are
+        // valid. E2E checks attempted HTTP(S) requests during load and interaction;
+        // that runtime check enforces the no-external-fetch contract.
         for tok in [
-            "https://", "http://", "src=", "href=", "@import", "url(http",
+            "src=\"http",
+            "src='http",
+            "href=\"http",
+            "href='http",
+            "@import",
+            "url(http",
+            "<link",
         ] {
             assert!(!html.contains(tok), "external reference {tok} present");
         }

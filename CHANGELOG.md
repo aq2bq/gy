@@ -4,6 +4,12 @@
 
 ### Changed
 
+- Give details the same width as the graph on wide screens. Separate applicability
+  and body from labeled declarations, show finite metadata as badges, and retain
+  complete additional attributes. Relationship marks keep exact body annotations
+  or explicit missing-location notices. Add browser checks for width, actual
+  Japanese/Latin line wrapping, metadata, and lossless attributes.
+
 - Focused neighborhoods remain individual even above 60 candidates. The graph
   selects up to 60 by distance, degree, and ID, with an omitted-node list for
   reaching the remainder. Omission and off-screen counts have separate actions.
@@ -56,7 +62,7 @@
 
 `cargo install gy --version 0.3.1 --locked`. No ledger migration is required
 and the on-disk format and public API are unchanged. Regenerate existing HTML
-with `gy render --format html` to use the new navigation.
+with `gy render --format html` to use the new navigation and detail layout.
 
 ## 0.3.0
 

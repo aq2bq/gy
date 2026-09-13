@@ -12,7 +12,6 @@ function relFor(id) {
 function renderBody(md) {
   // minimal, safe markdown: escape everything, then apply fenced code, headings, lists, paragraphs
   const s = String(md || '').replace(/[\r\n]+$/, '');
-  const blocks = [];
   const lines = s.split(/\n/);
   // code fences first
   const out = [];
@@ -64,41 +63,105 @@ function inline(s) {
   return r;
 }
 
-function attrRows(n) {
-  const rows = [];
-  for (const [k, v] of Object.entries(n.attrs)) {
-    const str = typeof v === 'string' ? v : JSON.stringify(v, null, 1);
-    rows.push('<tr><th>' + esc(k) + '</th><td><pre>' + esc(str) + '</pre></td></tr>');
+// Presentation only: the embedded core projection remains the source of state.
+const DETAIL_FIELDS = {
+  created: 'Created', closed_at: 'Closed', satisfied_at: 'Satisfied at',
+  parent_issue: 'Parent issue', pr_url: 'Pull request', responsible: 'Responsible',
+  decider: 'Decider', next_evidence: 'Next evidence', closure_note: 'Closure note',
+  evidence: 'Evidence', summary: 'Summary', contracts_changed: 'Contracts changed',
+  artifacts: 'Artifacts', production: 'Production', deviations: 'Deviations',
+  residual: 'Residual', compressed_from: 'Archived record'
+};
+const LINEAGE_LABELS = new Set(['narrows', 'narrowed-by', 'widens', 'widened-by',
+  'supersedes', 'superseded-by', 'completes', 'completed-by']);
+function detailValue(value) { return typeof value === 'string' ? value : JSON.stringify(value, null, 2); }
+function valueHTML(value) {
+  const text = detailValue(value);
+  // A URL is a link only when the entire scalar is an HTTP(S) URL.
+  if (typeof value === 'string' && /^https?:\/\/[^\s]+$/i.test(value)) {
+    return '<a href="' + esc(value) + '" target="_blank" rel="noopener noreferrer">' + esc(value) + '</a>';
   }
-  return rows.join('');
+  return esc(text);
 }
-
+function nodeLink(id) {
+  return byId[id] ? '<button class="node-link" data-go="' + esc(id) + '">' + esc(id) + '</button>' : esc(id);
+}
+function detailBadge(field, label, value, tone = '') {
+  return '<span class="detail-badge ' + tone + '" data-field="' + field + '"><span class="badge-label">' + label + '</span> ' + esc(value) + '</span>';
+}
+function proseClass(text) {
+  // Script-sensitive measure, not a language or domain-state inference.
+  const letters = String(text).match(/\p{L}/gu) || [];
+  const cjk = String(text).match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/gu) || [];
+  return cjk.length > letters.length / 2 ? 'prose-ja' : 'prose-latin';
+}
 function showDetail(id) {
   const n = byId[id];
   if (!n) return;
+  const changed = selected !== id;
   selected = id;
-  const el = document.getElementById('detailBody');
-  const rel = relFor(id);
-  const rx = rel.map(r => '<div class="rel">' + esc(r.other) + ' <span class="lbl">' + esc(r.label) + ' ' + r.dir + '</span></div>').join('');
-  let depRows = '';
-  const myDeps = DEP.filter(d => d.requirement === id);
-  if (myDeps.length) {
-    depRows = '<h2 style="position:inherit">Decision dependencies</h2><table><tr><th>decision</th><th>role</th><th>superseded by</th></tr>' +
-      myDeps.map(d => '<tr><td>' + esc(d.decision) + '</td><td>' + esc(d.role) + '</td><td>' + esc((d.superseded_by||[]).join(', ')) + '</td></tr>').join('') +
-      '</table>';
+  const consumed = new Set(['id', 'type', 'scope', 'title']);
+  let badges = detailBadge('type', 'Type', n.type, 'kind-' + n.type) + detailBadge('scope', 'Scope', n.scope);
+  if (typeof n.attrs.status === 'string') {
+    badges += detailBadge('status', 'Status', n.state || n.status);
+    if (n.state && n.status !== n.state) badges += '<span class="status-note">' + esc(n.status) + '</span>';
+    consumed.add('status');
   }
-  const superseded = dSuperseded[id];
-  const supNote = superseded ? '<div class="rel"><span class="lbl">This decision is superseded by:</span> ' + superseded.map(esc).join(', ') + '</div>' : '';
-  const gitHubId = (n.attrs['parent_issue'] !== undefined) ? ' · parent #' + esc(String(n.attrs['parent_issue'])) : '';
-  el.innerHTML =
-    '<h3>' + esc(n.id) + '</h3>'
-    + '<div class="sub">' + esc(n.type) + ' · ' + esc(n.scope) + (n.status ? ' · ' + esc(n.status) : '') + ' · created ' + esc(n.created || '') + '</div>'
-    + '<div style="margin-bottom:8px"><b>' + esc(n.title) + '</b></div>'
-    + '<h2 style="position:inherit">Attributes</h2><table>' + attrRows(n) + '</table>'
-    + '<h2 style="position:inherit">Relationships</h2>' + (rx || '<div class="small">none</div>')
-    + supNote + depRows
-    + '<h2 style="position:inherit">Body</h2><div id="body">' + renderBody(n.body || '') + '</div>';
-  document.getElementById('detail').classList.add('on');
+  if (n.type === 'criterion') {
+    badges += detailBadge('satisfied', 'Acceptance', n.attrs.satisfied === true ? 'Satisfied' : 'Not satisfied', n.attrs.satisfied === true ? 'positive' : '');
+    if (typeof n.attrs.satisfied === 'boolean') consumed.add('satisfied');
+  }
+  if (n.type === 'question' && typeof n.attrs.closed_by === 'string') {
+    badges += detailBadge('closed_by', 'Closed by', n.attrs.closed_by);
+    consumed.add('closed_by');
+  }
+  const successors = n.superseded_by || [];
+  if (n.type === 'decision') badges += detailBadge('superseded', 'Decision', successors.length ? 'Superseded' : 'Current', successors.length ? 'superseded' : 'positive');
+  let declarations = '';
+  for (const [key, label] of Object.entries(DETAIL_FIELDS)) {
+    if (!Object.prototype.hasOwnProperty.call(n.attrs, key)) continue;
+    consumed.add(key);
+    const value = n.attrs[key];
+    const rendered = ['created','closed_at','satisfied_at'].includes(key) && typeof value === 'string'
+      ? '<time datetime="' + esc(value) + '">' + esc(value) + '</time>' : valueHTML(value);
+    declarations += '<div class="declaration" data-field="' + key + '"><dt>' + label + '</dt><dd>' + rendered + '</dd></div>';
+  }
+  let scope = '';
+  if (Object.prototype.hasOwnProperty.call(n.attrs, 'decision_scope')) {
+    consumed.add('decision_scope');
+    const text = detailValue(n.attrs.decision_scope);
+    scope = '<section id="detailScope"><h2>Applicability</h2><div class="detail-prose ' + proseClass(text) + '">' + renderBody(text) + '</div></section>';
+  }
+  let additional = '';
+  for (const [key, value] of Object.entries(n.attrs)) {
+    if (consumed.has(key)) continue;
+    additional += '<div class="additional-attribute" data-key="' + esc(key) + '"><dt>' + esc(key) + '</dt><dd><pre>' + esc(detailValue(value)) + '</pre></dd></div>';
+  }
+  const relations = relFor(id);
+  const group = (title, items) => items.length ? '<section class="detail-relations"><h2>' + title + '</h2>' + items.map(r =>
+    '<div class="rel"><span class="relation-chip">' + esc(r.dir + ' ' + r.label) + '</span> ' + nodeLink(r.other) + '</div>').join('') + '</section>' : '';
+  const dependencies = DEP.filter(d => d.requirement === id);
+  const depHTML = dependencies.length ? '<section id="detailDependencies"><h2>Decision dependencies</h2><table><thead><tr><th>Decision</th><th>Role</th><th>Superseded by</th></tr></thead><tbody>' +
+    dependencies.map(d => '<tr><td>' + nodeLink(d.decision) + '</td><td>' + esc(d.role) + '</td><td>' + (d.superseded_by || []).map(nodeLink).join(', ') + '</td></tr>').join('') + '</tbody></table></section>' : '';
+  let displayBody = n.body || '';
+  const marks = n.body_marks || [];
+  marks.forEach(m => {
+    if (m.found && m.mark) displayBody = displayBody.split(m.mark).join(m.mark + ' ⟦' + m.label + ': ' + m.source + '⟧');
+  });
+  const markHTML = marks.length ? '<section id="detailMarks"><h2>Affected passages</h2>' + marks.map(m =>
+    '<div class="passage-note" data-found="' + String(m.found) + '"><span class="relation-chip">' + esc(m.label) + '</span> ' + nodeLink(m.source) +
+    (m.mark ? '<blockquote>' + esc(m.mark) + '</blockquote><p>' + (m.found ? 'Found in the source body.' : 'Location in body could not be found.') + '</p>' : '<p>No mark identifies the affected passage.</p>') + '</div>').join('') + '</section>' : '';
+  document.getElementById('detailBody').innerHTML =
+    '<div class="detail-heading"><div class="detail-id">' + esc(n.id) + '</div><h3>' + esc(n.title) + '</h3><div class="detail-badges">' + badges + '</div>' +
+    (successors.length ? '<div class="successors">Superseded by ' + successors.map(nodeLink).join(', ') + '</div>' : '') + '</div>' + scope +
+    '<section id="detailContent"><h2>Body</h2><div id="body" class="detail-prose ' + proseClass(n.body || '') + '">' + renderBody(displayBody) + '</div></section>' + markHTML +
+    (declarations ? '<section id="detailDeclarations"><h2>Declarations</h2><dl>' + declarations + '</dl></section>' : '') +
+    group('Decision lineage', relations.filter(r => LINEAGE_LABELS.has(r.label))) +
+    group('Relationships', relations.filter(r => !LINEAGE_LABELS.has(r.label))) + depHTML +
+    (additional ? '<section id="detailAdditional"><h2>Additional attributes</h2><dl>' + additional + '</dl></section>' : '');
+  const detail = document.getElementById('detail');
+  detail.classList.add('on');
+  if (changed) detail.scrollTop = 0;
 }
 function hideDetail() {
   document.getElementById('detail').classList.remove('on');
@@ -108,12 +171,6 @@ function closeDetail() { hideDetail(); redraw(); }
 document.getElementById('closeDetail').addEventListener('click', closeDetail);
 document.getElementById('detail').addEventListener('click', (e) => {
   const t = e.target.closest('[data-go]');
-  if (t) { showDetail(t.dataset.go); }
-});
-
-// superseded marked per node in payload; also keep the map for the detail panel
-const dSuperseded = {};
-EDGES.forEach(e => {
-  if (e.label === 'supersedes') { (dSuperseded[e.target] = dSuperseded[e.target] || []).push(e.source); }
+  if (t) { startHop(t.dataset.go); }
 });
 

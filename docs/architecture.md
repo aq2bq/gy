@@ -111,6 +111,36 @@ operation: update the focus, open details, then draw once. Details occupy a
 separate region beside or below the graph and can be closed without changing the
 focus. Their visibility is not part of navigation history.
 
+Wide layouts give the graph and details equal shares of the available width;
+at 1100 CSS pixels or below, details move beneath the graph. Type, scope,
+requirement state, criterion satisfaction, question closure, and decision
+supersession use labeled badges. Requirement state and supersession come from
+core projections; status supplements and unfamiliar values are not normalized
+away. Applicability and body are separate reading sections; other declarations
+use labels, comparable dependency fields use a table, and additional attributes
+retain full structured values, including false, zero, and null. Lineage relations
+and other relations have separate headings, preserving targets and marks.
+
+The private HTML payload includes exact body-mark locations derived from the same
+reverse declarations and `edge_mark` lookup as the core display path. Matching
+marks annotate the corresponding passage for display without modifying the raw
+body. Missing or unlocated marks remain in a separate affected-passages section;
+they are never assigned to another passage.
+
+Reading text uses 16px type and a 1.75 line height. Long paragraphs are tested
+at viewport widths 1400, 1920, and 2560 CSS pixels with DOM Range rectangles:
+Japanese full lines contain 30–45 fullwidth characters, Latin full lines 45–90.
+These measurements exclude padding and final lines; short paragraphs, headings,
+and code are not subject to the lower bound. Narrow screens necessarily wrap
+more tightly. The synthetic paragraphs test actual wrapping, not a width-to-font
+estimate or a claim that every mixed-script paragraph has identical line lengths.
+
+Self-containment prohibits external resource fetches during loading and page
+interaction, not URL strings in data or explicit user-followed HTTP(S) links.
+Rust checks literal resource-reference tokens as a coarse guard. Chromium E2E
+observes attempted HTTP(S) requests, including when URL-bearing details render;
+zero requests is the runtime contract.
+
 The viewport tracks whether its transform comes from fit or manual zoom/pan.
 A focus, displayed-node set, or genealogy change always refits. A size-only
 change refits an automatic view, while a manual view keeps its scale and the

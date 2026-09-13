@@ -1,37 +1,10 @@
 import {test, expect} from '@playwright/test';
 import {readFileSync, writeFileSync} from 'node:fs';
-import {fileURLToPath, pathToFileURL} from 'node:url';
+import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 import os from 'node:os';
-const dir = fileURLToPath(new URL('../.generated/', import.meta.url));
-const fixture = name => pathToFileURL(resolve(dir, name, 'gy.html')).href;
+import {dir, fixture, mouse, open, enter, scale} from '../helpers.mjs';
 
-// Re-resolve the locator and its current box after every redraw/scroll/resize.
-// Read the DOM rect: Playwright boundingBox returned different SVG coordinates
-// in WebKit during earlier validation. Keep this if browser coverage expands.
-// Browser mouse input deliberately exercises hit testing, including label overlays.
-async function mouse(page, selector) {
-  const target = typeof selector === 'string' ? page.locator(selector) : selector;
-  await target.scrollIntoViewIfNeeded();
-  const box = await target.evaluate(el => { const r = el.getBoundingClientRect(); return {x:r.x, y:r.y, width:r.width, height:r.height}; });
-  expect(box).not.toBeNull();
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.down();
-  await page.mouse.up();
-}
-async function open(page, name = 'large') {
-  await page.goto(fixture(name));
-  await expect(page.locator('#metaNodes')).not.toBeEmpty();
-}
-async function enter(page, id) {
-  await mouse(page, '[data-tab="filters"]');
-  await page.locator('#hopFrom').fill(id);
-  await mouse(page, '#applyHop');
-  await expect(page.locator('#focusStatus')).toContainText(`Focus: ${id} ·`);
-}
-async function scale(page) {
-  return page.locator('#svg > g').evaluate(el => el.transform.baseVal.consolidate().matrix.a);
-}
 async function clusterContract(page) {
   await mouse(page, page.locator('#svg text.nlabel').filter({hasText: 's0 / decision'}));
   await expect(page.locator('#clusterPanel'), 'cluster label must open its member list').toHaveClass(/on/, {timeout: 600});

@@ -15,6 +15,17 @@ The 1000-node fixture contains disjoint 15-node chains across six scopes. The
 high-degree fixture has 65 nodes, 64 edges, and a center with 61 immediate
 neighbors; an unequal-degree neighbor tests the degree tie-breaker.
 
+The reading fixture has 24 nodes and one edge. It covers all six types,
+requirement states (including an unfamiliar value and a status supplement),
+closure and satisfaction variants, reverse-only supersession, matching/missing
+body marks, Japanese/Latin paragraphs, URL values, and false/zero/null/nested
+additional attributes. Width tests cover 1280, 1440, 1920, and 2560 CSS pixels.
+At 1400, 1920, and 2560, DOM Range measurements count actual wrapped characters
+in long applicability/body paragraphs: Japanese 30–45 and Latin 45–90, excluding
+final lines from the lower bound. These are actual glyph positions after padding,
+not estimates from outer pane widths. Headings, code, and short paragraphs do not
+have a minimum line length. JSON measurements and screenshots are attached.
+
 Tests re-resolve each locator and read its DOM `getBoundingClientRect` after
 scrolling, then send browser
 mouse input. No element click is dispatched from page JavaScript. The cluster
@@ -35,7 +46,10 @@ An unexpectedly successful contract makes the injection test fail. Browser or
 JavaScript errors cannot count as successful detection. The production template
 and canonical generated fixtures are never modified by injection.
 
-The suite checks browser errors and attempted HTTP(S) requests. CI runs the
+Every test checks browser errors and attempted HTTP(S) requests, including the
+URL-bearing reading fixture. Links are inspected without navigating away; no
+request may be attempted while loading or operating the page. This runtime check
+complements Rust's coarse literal-reference scan; URL text itself is valid. CI runs the
 suite with one worker and no retries, and retains its JSON report, failed-test
 traces, high-degree screenshots, and generation measurements as an artifact.
 

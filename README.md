@@ -326,6 +326,15 @@ the scale and the graph point at the center. Automatic individual views cap zoom
 at 2; manual zoom can reach 4. Regenerate existing HTML with
 `gy render --format html` to use the new navigation; ledger files need no migration.
 
+On wide screens, details share the available width equally with the graph.
+Type, scope, state, satisfaction, closure, and supersession appear as badges;
+applicability and body have separate reading sections. Other declarations have
+labels, and additional attributes retain their complete values, including `false`,
+`0`, and `null`. Relationship chips retain target IDs; raw relationship attributes retain marks. Matching
+marks annotate the exact body passage; missing marks are listed separately, never
+moved to a different passage. HTTP(S) attribute links open only when followed;
+loading and drawing the page fetch no external resources.
+
 `init` appends the default HTML output (`html_output`, default `gy.html`) to the ledger root's `.gitignore`; an existing `.gitignore` is appended, never rewritten, and re-running `init` does not duplicate the line. For a ledger created before this feature, either run `gy init <existing-scope>` again (append-only and idempotent; nodes, relationships, records, and history are preserved) or add the `html_output` value by hand. Re-running `init` also rewrites `gy.toml` in normalized form: attribute values are preserved, but comments and formatting are lost (inline tables expand to `[table]` sections). If you keep operating notes as comments in `gy.toml`, add the `.gitignore` line by hand instead of re-running `init`.
 
 `stats --days 7` reports new question counts, daily rates, and changes for the most recent seven days and the preceding seven days. It counts the first addition of each ID across all git refs; body edits are not new arrivals. Uncommitted questions are excluded. If the previous period had no arrivals, the decay fraction is null. Record acceptance criterion satisfaction with `criterion satisfy --evidence`.
