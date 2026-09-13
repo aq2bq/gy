@@ -33,7 +33,7 @@ toml = "0.8"
 tempfile = "3"
 ```
 
-Save the following as `src/main.rs`. Copy the [minimal file-scope profile](../crates/gy/examples/file-scope.toml) to this crate's `gy.toml`, then run `cargo run -- gy.toml`. Retain the resulting lockfile and use `cargo run --locked -- gy.toml` to repeat with the same resolved dependencies. This program creates only a temporary test ledger, reads the supplied configuration, checks a matching report, and confirms that an extra file is rejected.
+Save the following as `src/main.rs`. Copy the [minimal file-scope profile](../crates/gy/examples/file-scope.toml) to this crate's `gy.toml` and the [shared baseline requirement](../crates/gy/tests/fixtures/requirement.md) to `requirement.md`, then run `cargo run -- gy.toml requirement.md`. Retain the resulting lockfile and use `cargo run --locked -- gy.toml requirement.md` to repeat with the same resolved dependencies. This program creates only a temporary test ledger, validates the same baseline requirement used by the integration tests, reads the supplied configuration, checks a matching report, and confirms that an extra file is rejected.
 
 ```rust
 use gy_core::{CheckKind, Config, DependencyRole, FieldType, Node, RuleConfig, Store};
@@ -78,11 +78,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(check_name, "matches-declared-files");
     let temp = tempfile::tempdir()?;
     let mut store = Store::init(temp.path(), "test", None)?;
-    store.config = config;
+    let fixture = std::env::args().nth(2).ok_or("pass the baseline requirement path")?;
     let mut node = Node::parse(
-        "---\nid: '#1'\ntitle: Example\ncreated: 2026-09-13\ntype: requirement\nscope: test\nstatus: awaiting-audit\n---\n",
-        temp.path().join("example.md"),
+        &std::fs::read_to_string(fixture)?,
+        store.root.join("test/requirements/1.md"),
     )?;
+    store.nodes.insert(node.id().to_owned(), node.clone());
+    assert!(store.lint(None).is_empty());
+    store.config = config;
+    node.put("status", "awaiting-audit");
     node.put("design_proposal", json!({"revision":"d1", "files":[
         {"kind":"literal", "path":"src/retry.rs"},
         {"kind":"generated", "directory":"db/migrate", "prefix":"",

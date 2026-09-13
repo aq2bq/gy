@@ -1,3 +1,5 @@
+mod support;
+
 use serde_json::{Value, json};
 use std::{
     fs,
@@ -113,13 +115,8 @@ fn rejected(p: &Path, args: &[&str], text: &str) {
     );
 }
 fn repo() -> tempfile::TempDir {
-    let t = tempfile::tempdir().unwrap();
-    run(t.path(), &["init", "test"]);
+    let t = support::baseline("test", None);
     fs::write(t.path().join("docs/ledger/gy.toml"), CONFIG).unwrap();
-    run(
-        t.path(),
-        &["req", "add", "Feature", "--issue", "1", "--scope", "test"],
-    );
     t
 }
 fn put(p: &Path, id: &str, name: &str, value: Value) {

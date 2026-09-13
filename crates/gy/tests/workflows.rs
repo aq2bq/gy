@@ -1,3 +1,5 @@
+mod support;
+
 use serde_json::{Value, json};
 use std::{
     fs,
@@ -876,11 +878,14 @@ fn redo_journal_recovers_before_read() {
 }
 #[test]
 fn handover_reports_facts_and_stats_use_git_additions() {
-    let t = repo();
+    let t = support::baseline("a", Some(6000));
     let p = t.path();
     add_ac(p);
     add_q(p);
-    run(p, &["req", "add", "req", "--issue", "1", "--scope", "a"]);
+    edit_node(p, "a/requirements/1.md", |n| {
+        n.attrs.remove("next_evidence");
+        n.attrs.remove("responsible");
+    });
     assert_eq!(invoke(p, &["handover"]).status.code(), Some(1));
     run(
         p,
@@ -1027,7 +1032,7 @@ fn refiling_does_not_rewind_and_invalid_title_does_not_corrupt() {
 
 #[test]
 fn handover_checks_dangling_references_even_with_l13_disabled() {
-    let t = repo();
+    let t = support::baseline("a", Some(6000));
     let p = t.path();
     add_ac(p);
     run(
