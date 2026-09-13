@@ -24,3 +24,25 @@ test('cluster labels fit at readable character height',async({page})=>{
  const m=await page.locator('#svg text.nlabel').evaluateAll(es=>{const v=document.querySelector('#svg').getBoundingClientRect();return es.map(e=>{const b=e.getBoundingClientRect();return {height:b.height,inside:b.left>=v.left&&b.right<=v.right&&b.top>=v.top&&b.bottom<=v.bottom};});});
  expect(m.length).toBeGreaterThan(0);for(const x of m){expect(x.height).toBeGreaterThanOrEqual(11);expect(x.inside).toBe(true);}
 });
+test('individual edge labels avoid node titles and unavailable placements use details',async({page},info)=>{
+ await page.setViewportSize({width:1440,height:1000});
+ await page.goto(fixture('near-labels')+'#view='+encodeURIComponent(JSON.stringify({focus:[{id:'D-200',radius:1}],selected:'D-200'})));
+ const measure=()=>page.evaluate(()=>{
+  const nodes=[...document.querySelectorAll('#svg .node .nlabel')].map(e=>e.getBoundingClientRect());
+  const labels=[...document.querySelectorAll('#svg .elabel')].map(e=>e.getBoundingClientRect());
+  return {nodes:nodes.length,labels:labels.length,edges:document.querySelectorAll('#svg line[data-lbl]').length,intersections:labels.reduce((n,a)=>n+nodes.filter(b=>a.left<b.right&&b.left<a.right&&a.top<b.bottom&&b.top<a.bottom).length,0)};
+ });
+ const normal=await measure();
+ expect(normal.nodes).toBe(20);expect(normal.labels).toBeGreaterThan(0);expect(normal.edges).toBe(19);expect(normal.intersections).toBe(0);
+ await info.attach('edge-label-measurements',{body:JSON.stringify(normal),contentType:'application/json'});
+ await page.screenshot({path:info.outputPath('n29-edge-labels-1440.png')});
+ const relationships=await page.locator('.detail-relations').allTextContents();
+ expect(relationships.length).toBeGreaterThan(0);
+ // An oversized measured label cannot fit near these edges. Keep the edges and
+ // the exact detail relationships while suppressing their colliding labels.
+ await page.addStyleTag({content:'svg .elabel{font-size:1000px}'});
+ await page.setViewportSize({width:1441,height:1000});
+ await expect(page.locator('#svg .elabel')).toHaveCount(0);
+ expect((await measure()).edges).toBe(normal.edges);
+ expect(await page.locator('.detail-relations').allTextContents()).toEqual(relationships);
+});

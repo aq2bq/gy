@@ -149,3 +149,8 @@ and wait for the exact destination URL and matching tab after Back/Forward.
 They also assert that traversal does not increase history length. This checks
 both persistence and restoration without fixed delays or assuming that a mouse
 command's completion means the asynchronous URL save has already run.
+
+Individual edge-label checks measure every visible edge label against node labels,
+require a nonempty label population, and preserve edge counts and detail relations
+when oversized labels force the collision fallback. A 1440px screenshot records
+the ordinary placement.

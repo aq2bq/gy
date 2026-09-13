@@ -1561,7 +1561,12 @@
   }
   function drawEdgesLayer(inPositions, ids, drawEdges) {
     const edgeLayer = document.createElementNS(NS, "g");
+    root.appendChild(edgeLayer);
     const wantLabels = !genealogyMode && ids.length <= EDGE_LABEL_MAX;
+    const obstacles = wantLabels ? ids.filter((id) => inPositions[id]).map((id) => {
+      const b = labelBounds(id), p = inPositions[id];
+      return { left: p.x + b.left, right: p.x + b.right, top: p.y + b.top, bottom: p.y + b.bottom };
+    }) : [];
     drawEdges.forEach((e, idx) => {
       const a = inPositions[e.source], b = inPositions[e.target];
       if (!a || !b)
@@ -1587,9 +1592,29 @@
         t.setAttribute("class", "elabel");
         t.textContent = e.label;
         edgeLayer.appendChild(t);
+        const box = t.getBBox();
+        const dx = p.x2 - p.x1, dy = p.y2 - p.y1, length = Math.max(1, Math.hypot(dx, dy));
+        let placed = false;
+        for (const fraction of [0.5, 0.35, 0.65, 0.2, 0.8]) {
+          for (const offset of [-3, -16, 16, -28, 28]) {
+            const x = p.x1 + dx * fraction - dy / length * offset;
+            const y = p.y1 + dy * fraction + dx / length * offset;
+            const left = x - box.width / 2, right = left + box.width;
+            const top = y + (box.y - Number(t.getAttribute("y"))), bottom = top + box.height;
+            if (obstacles.some((b2) => left < b2.right + 2 && right > b2.left - 2 && top < b2.bottom + 2 && bottom > b2.top - 2))
+              continue;
+            t.setAttribute("x", String(x));
+            t.setAttribute("y", String(y));
+            placed = true;
+            break;
+          }
+          if (placed)
+            break;
+        }
+        if (!placed)
+          t.remove();
       }
     });
-    root.appendChild(edgeLayer);
   }
   function drawNodeLayer(inPositions, ids) {
     const nodeLayer = document.createElementNS(NS, "g");
