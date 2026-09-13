@@ -129,7 +129,11 @@ The page stores an in-memory stack of `{id, radius}` entries beginning with
 undirected EDGES adjacency and stores it; repeated entry to the current node
 leaves the stack unchanged. Back removes one entry; choosing a path entry removes
 all entries after it. The stack records the navigation route, not graph ancestry.
-Reloading the generated HTML starts with no focus.
+The URL hash restores the focus path and radius, selected detail, filters,
+search, left-panel tab, and genealogy on reload. A bare node ID opens its
+detail; an unknown ID displays a not-found message. The hash codec lives in
+`state.js`. Each changed display state adds one browser history entry; pan
+and zoom do not. Browser back/forward restores the complete recorded state.
 
 Type, scope, lifecycle filters, full-text search, and genealogy are independent
 of that stack. They intersect the neighborhood selection. A filtered-out focus
@@ -143,7 +147,7 @@ decisions, using the generation layout.
 Node clicks, cluster member choices, and ID entry share the same navigation
 operation: update the focus, open details, then draw once. Details occupy a
 separate region beside or below the graph and can be closed without changing the
-focus. Their visibility is not part of navigation history.
+focus. Their visibility is part of URL history, independently of the focus path.
 
 Wide layouts give the graph and details equal shares of the available width;
 at 1100 CSS pixels or below, details move beneath the graph. Type, scope,

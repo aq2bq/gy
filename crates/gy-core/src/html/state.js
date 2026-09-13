@@ -53,3 +53,55 @@ function pickHop(start) {
   return {n: 1, size: s.size};
 }
 
+
+// URL state is the shared location contract. Pan and zoom are deliberately absent.
+let lastLocationState = '';
+function locationState(value) {
+  const fields = ['scopeSel', 'stateSel', 'qstatus', 'criterion'];
+  if (value === undefined) {
+    return JSON.stringify({selected, focus: focusHistory, types: typeState,
+      filters: Object.fromEntries(fields.map(id => [id, document.getElementById(id).value])),
+      search: searchText, tab: document.querySelector('#tabs .on').dataset.tab, genealogy: genealogyMode});
+  }
+  focusHistory.splice(0, focusHistory.length, {id:null, radius:null});
+  if (Array.isArray(value.focus)) value.focus.forEach(f => {
+    if (f && typeof f.id === 'string' && Object.hasOwn(byId, f.id) && Number.isInteger(f.radius) && f.radius >= 1 && f.radius <= HOP_CAP)
+      focusHistory.push({id:f.id, radius:f.radius});
+  });
+  Object.keys(typeState).forEach(k => { typeState[k] = value.types?.[k] !== false; });
+  document.querySelectorAll('#typeChips .chip').forEach(c => c.classList.toggle('on', typeState[c.dataset.kind]));
+  fields.forEach(id => { document.getElementById(id).value = typeof value.filters?.[id] === 'string' ? value.filters[id] : ''; });
+  searchText = typeof value.search === 'string' ? value.search : '';
+  document.getElementById('q').value = searchText;
+  genealogyMode = value.genealogy === true;
+  const tabs = [...document.querySelectorAll('#tabs button')].map(b => b.dataset.tab);
+  gotoTab(tabs.includes(value.tab) ? value.tab : 'overview');
+  closeClusterPanel(); hideDetail();
+  document.getElementById('locationStatus').textContent = '';
+  if (typeof value.selected === 'string') {
+    if (Object.hasOwn(byId, value.selected)) showDetail(value.selected);
+    else document.getElementById('locationStatus').textContent = 'Node not found: ' + value.selected;
+  }
+}
+function locationHash(state) {
+  const prefix = 'view=';
+  if (state !== undefined) return '#' + prefix + encodeURIComponent(state);
+  try {
+    const hash = decodeURIComponent(location.hash.slice(1));
+    const value = hash.startsWith(prefix) ? JSON.parse(hash.slice(prefix.length)) : (hash ? {selected:hash} : {});
+    return value && typeof value === 'object' ? value : {};
+  } catch (_) { return {}; }
+}
+function restoreLocation() {
+  const state = locationHash();
+  locationState(state);
+  lastLocationState = locationState();
+  resetView();
+}
+function saveLocation() {
+  const state = locationState();
+  if (state === lastLocationState) return;
+  history.pushState(null, '', locationHash(state));
+  lastLocationState = state;
+  document.getElementById('locationStatus').textContent = '';
+}

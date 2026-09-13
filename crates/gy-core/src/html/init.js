@@ -5,7 +5,10 @@ document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click
 initLayout();
 buildGenealogy();
 makeDefs();
-resetView();
+restoreLocation();
+window.addEventListener('hashchange', restoreLocation);
+// Capture also sees node clicks that stop propagation; save after their handlers.
+['click', 'input', 'change', 'keydown'].forEach(event => document.addEventListener(event, () => setTimeout(saveLocation, 0), true));
 window.addEventListener('resize', draw);
 
 // ---------- graph export? no (single-file, no external) ----------
