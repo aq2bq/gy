@@ -36,7 +36,8 @@ function dotPath(sx, sy, tx, ty) {
 let lastFitKey = '';
 let lastViewport = null;
 function draw() {
-  const ids = visibleNodes();
+  const {ids, omitted} = focusedSelection();
+  if (panel.dataset.g === 'omitted' && panel.dataset.members !== JSON.stringify(omitted)) closeClusterPanel();
   renderNavigation(ids);
   const viewport = svg.getBoundingClientRect();
   const focus = currentFocus();
@@ -68,7 +69,18 @@ function draw() {
   const setMeta = (drawn, visCount, extra) => {
     document.getElementById('graphCount').textContent = drawn;
     document.getElementById('graphVisible').textContent = visCount;
-    if (extra) { culling.style.display = 'block'; culling.textContent = extra; }
+    if (extra || omitted.length) {
+      culling.style.display = 'block';
+      culling.textContent = extra || '';
+      if (omitted.length) {
+        culling.appendChild(document.createTextNode((extra ? ' ' : '') + omitted.length + ' nodes omitted to keep the focused graph readable. '));
+        const button = document.createElement('button');
+        button.id = 'showOmitted';
+        button.textContent = 'List omitted nodes';
+        button.addEventListener('click', () => openOmittedPanel(omitted));
+        culling.appendChild(button);
+      }
+    }
     else { culling.style.display = 'none'; culling.textContent = ''; }
   };
 

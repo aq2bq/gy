@@ -4,6 +4,14 @@
 
 ### Changed
 
+- Focused neighborhoods remain individual even above 60 candidates. The graph
+  selects up to 60 by distance, degree, and ID, with an omitted-node list for
+  reaching the remainder. Omission and off-screen counts have separate actions.
+- Add development-only Playwright checks for Chromium,
+  including synthetic high-degree and 1000-node fixtures and automatic known-
+  defect injection on every CI run. Node.js and browser binaries are not needed
+  to build, install, or use gy.
+
 - Clicking an individual graph node now moves the focus and opens details in a
   separate pane. Back, the focus path, and All nodes return through stored
   node/radius history without clearing filters, search, or lineage. A hidden
@@ -24,7 +32,7 @@
   still requires only the gy binary.
 
 - The HTML graph now switches between two views by the number of visible
-  nodes instead of by zoom level. With more than 60 nodes it draws clusters
+  nodes instead of by zoom level. Without a focus, more than 60 nodes form clusters
   with aggregated edge counts (per cluster pair) and internal edge counts per
   cluster, without individual nodes or edges. With 60 or fewer it draws
   individual nodes laid out by a force-directed layout that reflects

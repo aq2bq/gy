@@ -1,0 +1,10 @@
+{
+  "name": "gy-html-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare:fixtures": "node fixtures.mjs",
+    "test": "npm run prepare:fixtures && playwright test"
+  },
+  "devDependencies": {"@playwright/test": "1.63.0"}
+}

@@ -29,6 +29,8 @@ EDGES.forEach(e => {
   (adj[e.target] = adj[e.target] || {})[e.source] = e.reverse;
 });
 
+const degree = Object.fromEntries(NODES.map(n => [n.id, Object.keys(adj[n.id]).length]));
+
 // ---------- adaptive neighborhood (H27) ----------
 function reachable(start, n) {
   let seen = new Set([start]);
@@ -41,7 +43,7 @@ function reachable(start, n) {
   return seen;
 }
 // Largest n in [1..HOP_CAP] whose reachable set fits the threshold.
-// 1 hop is always degree+1 <= 60, so the rule always terminates.
+// If even one hop exceeds the threshold, focusedSelection bounds rendering.
 function pickHop(start) {
   for (let n = HOP_CAP; n >= 1; n--) {
     const s = reachable(start, n);

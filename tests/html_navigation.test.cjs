@@ -142,3 +142,23 @@ test('without a displayed focus, readable fit centers the selected bounds', () =
   assert.deepEqual(run("fitTransform(); [scale, (800/2-translate.x)/scale, (600/2-translate.y)/scale]"), [1,100,-1500]);
   assert.deepEqual(run("focusHistory.push({id:'hidden',radius:1}); fitTransform(); [scale, (800/2-translate.x)/scale, (600/2-translate.y)/scale]"), [1,100,-1500]);
 });
+
+test('focused selection caps at 60 using distance, degree and ID; filters still hide the focus', () => {
+  const f = fixture();
+  f.run(`for (const id of Object.keys(adj)) adj[id] = {};
+    for (let i=1; i<80; i++) { adj['D-0']['D-'+i]='supersedes'; adj['D-'+i]['D-0']='superseded-by'; }
+    adj['D-79']['D-78']='supersedes'; adj['D-78']['D-79']='superseded-by';
+    for (const id of Object.keys(adj)) degree[id] = Object.keys(adj[id]).length;
+    startHop('D-0'); currentFocus();`);
+  const selection = f.run('focusedSelection()');
+  assert.equal(selection.ids.length, 60);
+  assert.equal(selection.omitted.length, 20);
+  assert.deepEqual(selection.ids.slice(0, 3), ['D-0', 'D-78', 'D-79']);
+  assert.deepEqual(selection.ids.slice(3), Array.from({length:77}, (_,i) => 'D-'+(i+1)).sort().slice(0,57));
+  assert.equal(f.run('candidateNodes().length'), 80);
+  f.run("searchText = 'D-1'");
+  assert.deepEqual(f.run('visibleNodes()'), ['D-1']);
+  assert.equal(f.run('currentFocus().id'), 'D-0');
+  f.run("searchText = ''; returnFocus(0); currentFocus()");
+  assert.equal(f.run('visibleNodes().length'), 81);
+});

@@ -4,6 +4,15 @@ const panel = document.getElementById('clusterPanel');
 
 function openClusterPanel(g, members) {
   const [scope, type] = g.split('\u0000');
+  openNodePanel(members, type, scope, g);
+}
+
+function openOmittedPanel(members) {
+  panel.dataset.members = JSON.stringify(members);
+  openNodePanel(members, 'omitted nodes', currentFocus().id, 'omitted');
+}
+
+function openNodePanel(members, type, scope, g) {
   panel.classList.add('on');
   panel.dataset.g = g;
   const rows = members.map(id => {

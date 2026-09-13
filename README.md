@@ -349,7 +349,20 @@ The three bundled skills are `gy-ledger`, `gy-question`, and `gy-decide`. If a d
 HTML navigation state and fit regressions run with
 `node --test tests/html_navigation.test.cjs` (Node.js is needed only for these
 development tests, not for building gy or generating HTML). Browser interaction
-and hit testing are separate checks.
+and hit testing run with Playwright:
+
+```sh
+cd e2e
+npm ci
+npx playwright install --with-deps chromium
+npm test
+```
+
+This builds the local CLI and generates public synthetic ledgers. The separate
+HTML E2E CI job runs Chromium, including known-defect injection on every
+run. These development dependencies are outside both Rust packages; generated
+HTML remains a standalone file. See [e2e/README.md](e2e/README.md) for the measured
+performance scope and how failed assertions prove defect detection.
 
 ```sh
 cargo fmt --all -- --check

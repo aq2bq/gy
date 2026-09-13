@@ -292,7 +292,16 @@ MCPは標準入出力でJSON-RPCメッセージを1行ずつ交換します。�
 
 ## 開発と配布の検証
 
-HTMLの焦点状態とフィットの回帰テストは `node --test tests/html_navigation.test.cjs` で実行します。Node.jsはこの開発用テストにのみ必要で、gyのビルドやHTML生成には不要です。ブラウザでの操作と当たり判定は別に確認します。
+HTMLの焦点状態とフィットの回帰テストは `node --test tests/html_navigation.test.cjs` で実行します。Node.jsは開発用テストに必要で、gyのビルドやHTML生成には不要です。ブラウザでの操作と当たり判定はPlaywrightで検証します。
+
+```sh
+cd e2e
+npm ci
+npx playwright install --with-deps chromium
+npm test
+```
+
+この手順ではローカルCLIをビルドし、公開可能な合成台帳を生成します。CIの独立したHTML E2Eジョブは、Chromiumで既知欠陥の注入を含む検証を毎回実行します。これらの開発依存は両方のRustクレートの外に置き、生成HTMLは単一ファイルのままです。性能測定の範囲と、欠陥注入後の検証失敗によって検出力を確かめる方法は、[e2e/README.md](e2e/README.md)を参照してください。
 
 ```sh
 cargo fmt --all -- --check

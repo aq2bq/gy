@@ -76,7 +76,7 @@ The regression contract covers prose-edit invariance, structured assertions over
 
 ## HTML projection
 
-`render --format html` writes a single self-contained HTML file for reading the whole ledger. It is a derived view: the page never computes a lint, scheduling, dependency, or handover judgment itself. It embeds diagnostics from `lint`, needs from `next`, handover facts (missing records, dangling references), the `stats` criteria and question-arrival numbers, and the `decision_dependencies` projection, all produced by the same core functions the CLI and MCP use. Filters and full-text search select the embedded data at display time; the graph routes forward edges exactly as `dot` does, so no relationship is drawn twice through its reverse label.
+`render --format html` writes a single self-contained HTML file for reading the whole ledger. The supported browser for this local projection is Chromium. It is a derived view: the page never computes a lint, scheduling, dependency, or handover judgment itself. It embeds diagnostics from `lint`, needs from `next`, handover facts (missing records, dangling references), the `stats` criteria and question-arrival numbers, and the `decision_dependencies` projection, all produced by the same core functions the CLI and MCP use. Filters and full-text search select the embedded data at display time; the graph routes forward edges exactly as `dot` does, so no relationship is drawn twice through its reverse label.
 
 Bodies are embedded verbatim so the page carries the ledger's full record. The graph never renders body text; the detail panel shows it, rendered as Markdown on demand. Escaping replaces `<`, `>`, `&`, U+2028, and U+2029 in the embedded payload so a body containing `</script>`, a comment opener, or a line separator cannot terminate or comment out the data script. Unknown attributes are preserved in node payloads alongside their structured values.
 
@@ -84,7 +84,7 @@ Judgments are the only reason the page carries curated lists; everything else is
 
 The graph renders each of the six node types with a distinct shape and color, so type identification does not depend on color alone. Genealogy mode restricts the displayed set to decision nodes and lays them out by generation, so a supersede chain reads directionally.
 
-Drawing is split into two views by the number of visible nodes, not by zoom level. With more than 60 visible nodes the page draws clusters (scope × type) and aggregated edge counts per cluster pair, plus internal edge counts per cluster; individual nodes and edges are withheld so the overview stays readable. Clicking a cluster opens a member list from which a start node is chosen, and the neighborhood hop count is then computed adaptively: the largest value up to a ceiling whose reachable set fits the individual-view limit, displayed on screen. With the visible set at or below the limit, nodes are drawn individually in a force-directed layout that reflects connectivity, so a short edge means adjacent nodes, and node labels are measured (via `getComputedTextLength`), truncated to the available width, and skipped when they would overlap a neighbour. Edge labels are off by default and appear only for a small individual set or an explicitly selected edge; full titles always remain in the detail panel.
+Drawing is split into two views by the number of visible nodes, not by zoom level. Without a focus, more than 60 visible nodes are drawn as clusters (scope × type) and aggregated edge counts per cluster pair, plus internal edge counts per cluster; individual nodes and edges are withheld so the overview stays readable. Clicking a cluster opens a member list from which a start node is chosen, and the neighborhood hop count is then computed adaptively: the largest value up to a ceiling whose reachable set fits the individual-view limit, displayed on screen. With the visible set at or below the limit, nodes are drawn individually in a force-directed layout that reflects connectivity, so a short edge means adjacent nodes, and node labels are measured (via `getComputedTextLength`), truncated to the available width, and skipped when they would overlap a neighbour. Edge labels are off by default and appear only for a small individual set or an explicitly selected edge; full titles always remain in the detail panel.
 
 The count banner reports the nodes actually drawn and the visible total in every mode, including search, filters, and genealogy; culling always surfaces how many are hidden rather than silently dropping them. Fit computes the transform from the content's bounding box in the current mode, so the projected content fits the viewport instead of being a fixed scale.
 
@@ -127,6 +127,15 @@ bounded neighborhoods, each O(V + E) in the worst case. Returning uses the store
 radius without recomputing its choice. History uses O(H) space; rebuilding the
 path is O(H) only when it changes. Existing filtering, layout, and drawing still
 run over their selected nodes; navigation does not scan ledger history.
+
+When a focus has more than 60 filtered neighborhood candidates even at one hop,
+individual drawing continues with at most 60 nodes. Selection orders candidates
+by distance from the focus, then descending degree in the embedded undirected
+edge graph, then ID. The focus is included if it passes the filters; it is never
+restored against a filter. Omitted candidates have a separate count and member
+list for navigation. They differ from drawn nodes outside the viewport, which
+remain accessible by pan or zoom. The limit applies to focused lineage as well;
+unfocused lineage retains its generation layout.
 
 ### HTML source assembly
 
