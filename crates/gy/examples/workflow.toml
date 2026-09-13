@@ -75,7 +75,7 @@ version_field = "revision"
 revision = { type = "string" }
 target_revision = { type = "string" }
 implementation_revision = { type = "string" }
-results = { type = "array", allow_empty = false, items = { type = "object", fields = { gate = { type = "string" }, contract = { type = "string" }, command = { type = "string" }, result = { type = "object", fields = { status = { type = "string" } }, variant_field = "status", variants = { passed = { population = { type = "string" }, denominator = { type = "integer" }, evidence = { type = "string" } }, failed = { reason = { type = "string" }, evidence = { type = "string" } }, not-executed = { reason = { type = "string" } }, existing-violation = { reason = { type = "string" }, evidence = { type = "string" } }, not-applicable = { reason = { type = "string" } } } } } } }
+results = { type = "array", allow_empty = false, items = { type = "object", fields = { gate = { type = "string" }, contract = { type = "string" }, command = { type = "string" }, result = { type = "object", fields = { status = { type = "string" } }, variant_field = "status", variants = { passed = { population = { type = "string" }, denominator = { type = "integer" }, evidence = { type = "string" } }, passed-without-population = { reason = { type = "string" }, evidence = { type = "string" } }, failed = { reason = { type = "string" }, evidence = { type = "string" } }, not-executed = { reason = { type = "string" } }, existing-violation = { reason = { type = "string" }, evidence = { type = "string" } }, not-applicable = { reason = { type = "string" } } } } } } }
 
 [workflow.records.deviations]
 kinds = ["requirement"]

@@ -14,7 +14,7 @@
     "stop_conditions": ["Stop if the retry contract changes"],
     "report_and_continue": { "status": "reported", "details": "Report additional tests within the approved scope" },
     "standards": ["Project contribution guide"],
-    "required_gates": ["retry-tests"],
+    "required_gates": ["retry-tests", "type-check"],
     "artifact_destination": "https://example.test/issues/1",
     "synchronization": ["Retry documentation"]
   },
@@ -41,7 +41,10 @@
     "files": ["src/retry.rs"],
     "unchanged_contracts": ["billing"],
     "out_of_scope": ["Billing"],
-    "gates": [{ "id": "retry-tests", "contract": "retry-idempotency", "command": "cargo test retries" }],
+    "gates": [
+      { "id": "retry-tests", "contract": "retry-idempotency", "command": "cargo test retries" },
+      { "id": "type-check", "contract": "retry-idempotency", "command": "cargo check" }
+    ],
     "plan": {
       "mode": "normal",
       "url": "https://example.test/issues/1#issuecomment-10",
@@ -70,6 +73,11 @@
       "contract": "retry-idempotency",
       "command": "cargo test retries",
       "result": { "status": "passed", "population": "Retry tests", "denominator": 2, "evidence": "retry-test.log" }
+    }, {
+      "gate": "type-check",
+      "contract": "retry-idempotency",
+      "command": "cargo check",
+      "result": { "status": "passed-without-population", "reason": "Compilation is a whole-program check without a population of test cases.", "evidence": "cargo-check.log: exit 0" }
     }]
   },
   "deviations": { "report": { "status": "none" } },

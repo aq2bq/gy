@@ -853,3 +853,65 @@ fn descriptions_are_discoverable_without_changing_checks_or_history() {
     fs::write(config_path, CONFIG).unwrap();
     assert_eq!(lint(p), original_lint);
 }
+
+#[test]
+fn example_distinguishes_passed_gates_with_and_without_a_population() {
+    let t = repo();
+    let p = t.path();
+    fs::write(
+        p.join("docs/ledger/gy.toml"),
+        include_str!("../examples/workflow.toml"),
+    )
+    .unwrap();
+    let records: Value =
+        serde_json::from_str(include_str!("../examples/workflow-records.json")).unwrap();
+    let gates = records["quality_gates"].clone();
+    assert_eq!(gates["results"][0]["result"]["status"], "passed");
+    assert_eq!(
+        gates["results"][1]["result"]["status"],
+        "passed-without-population"
+    );
+    assert!(gates["results"][1]["result"].get("denominator").is_none());
+    assert!(gates["results"][1]["result"].get("population").is_none());
+    let submit = [
+        "node",
+        "submit",
+        "#1",
+        "--record",
+        "quality_gates",
+        "--evidence",
+        "Gate logs",
+    ];
+    // Reject incomplete reports before recording any history.
+    for (index, field) in [
+        (0, "denominator"),
+        (0, "population"),
+        (1, "reason"),
+        (1, "evidence"),
+    ] {
+        let mut incomplete = gates.clone();
+        incomplete["results"][index]["result"]
+            .as_object_mut()
+            .unwrap()
+            .remove(field);
+        put(p, "#1", "quality_gates", incomplete);
+        let path = p.join("docs/ledger/test/requirements/1.md");
+        let before = fs::read(&path).unwrap();
+        rejected(
+            p,
+            &submit,
+            &format!("quality_gates.results[{index}].result.{field} is required"),
+        );
+        assert_eq!(fs::read(path).unwrap(), before);
+    }
+    put(p, "#1", "quality_gates", gates);
+    run(p, &submit);
+    let node = run(p, &["show", "#1"]);
+    assert_eq!(
+        node["node"]["attrs"]["record_history"][0]["records"]["quality_gates"]["results"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+}

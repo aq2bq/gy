@@ -89,6 +89,17 @@ details = { type = "string" }
 
 The full example uses this mechanism for `normal` and `design-waived`. Both keep a versioned work plan, contracts, and file scope. The normal route requires design details; the waiver requires a reason, location, and stopping conditions. Both require a separate approver, approval location, and matching target revision before implementation.
 
+### Quality gates with and without a population
+
+The example keeps two distinct reports of a successful gate:
+
+- `passed` requires `population`, integer `denominator`, and `evidence`. Use it when the gate has a countable population, such as RSpec examples. A missing denominator is an error for this variant.
+- `passed-without-population` requires `reason` and `evidence`. Use it only when the gate has no population concept, such as a whole-program type check or applying a migration. Explain why no population exists and report the execution outcome in the evidence.
+
+A missing measurement is not an absent population concept. If a test runner has a population but its count was not collected, recover that measurement before reporting `passed`. Do not invent a denominator by counting source files. The project chooses the variant from the gate's contract; gy validates the declared fields but cannot determine whether a gate actually has a population or whether the reported execution succeeded.
+
+Existing ledgers must merge the `passed-without-population` variant from the updated example into `workflow.records.quality_gates.fields.results.items.fields.result.variants` in their own `gy.toml`. Preserve project-specific variants and guards. Existing `passed` reports remain valid; historical snapshots retain their saved schemas. Only new submissions and transitions use the updated profile. Do not rewrite past results or approvals to adopt it.
+
 ## Write, submit, and advance
 
 Use `node set` to author a record. Drafts may be incomplete so they can be filled incrementally; lint exposes omissions.

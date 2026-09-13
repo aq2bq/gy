@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- The example workflow accepts successful gates without a population through
+  `passed-without-population`, requiring a reason and execution evidence.
+  `passed` still requires its population and integer denominator. Existing
+  users must merge the new variant into their ledger configuration while
+  preserving local guards and past records; see the
+  [workflow migration guide](docs/workflows.md#quality-gates-with-and-without-a-population).
+
 ## 0.3.1
 
 ### Changed
