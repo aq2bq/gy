@@ -1,5 +1,66 @@
 # Changelog
 
+## 0.3.0
+
+### Added
+
+- `gy render --format html` projects the whole ledger into one self-contained,
+  offline HTML file. It embeds the ledger's data and core judgments (lint, next,
+  handover facts, stats, decision dependencies), draws all six node types and
+  twelve relationship labels with direction, filters/scans the ledger, shows
+  per-node details, and renders the decision lineage by generation.
+- New `RenderConfig::html_output` (`gy.toml [render]`), defaulting to
+  `gy.html` at the ledger root. Writing `{scope}` in it splits the output per
+  scope. `split_threshold` never applies to HTML.
+- `gy init` appends the default HTML output to the ledger root's `.gitignore`.
+- Lint findings do not change `render`'s exit code: a broken ledger still
+  renders so its problems can be seen from the projection.
+
+### Changed
+
+- **Breaking:** the public config structs `Config`, `ImportConfig`,
+  `ScopeConfig`, `RenderConfig`, `WorkflowConfig`, `RecordSchema`,
+  `FieldSchema`, `StateGuard`, and `RecordCheck` are now `#[non_exhaustive]`.
+  Downstream crates can no longer build them with struct expressions of any
+  form (exhaustive or functional update), because `#[non_exhaustive]` forbids
+  struct expressions outside the defining crate. The new
+  `RenderConfig::html_output` field is one reason; future render settings can
+  now be added without another breaking release.
+- **Breaking:** `RenderConfig` grows the `html_output` field (see Added). Rust
+  library users constructing it exhaustively must update their code.
+- The `--format html` value is accepted by `render` and `gy_render`.
+
+### Upgrade
+
+Install or update the CLI with `cargo install gy --version 0.3.0 --locked`.
+No ledger migration is required: existing `gy.toml` files continue to parse
+and the on-disk data format is unchanged.
+
+#### Rust library users (`gy-core`)
+
+Six config structs derive `Default`: `Config`, `ImportConfig`, `ScopeConfig`,
+`RenderConfig`, `WorkflowConfig`, and `StateGuard`. For these, construct with
+`Default::default()` and assign the public fields you need:
+
+```rust
+let mut render = gy_core::RenderConfig::default();
+render.html_output = "gy.html".into();
+```
+
+The other three — `RecordSchema`, `FieldSchema`, and `RecordCheck` — have no
+meaningful defaults and do not implement `Default`. They are read-only
+configuration types: construct them by deserializing a `gy.toml`/JSON value
+via `serde`. `RecordSchema::default()` and `FieldSchema::default()` do not
+exist; this is deliberate, not a gap to fill in downstream code.
+
+#### Existing ledgers: ignoring the HTML output
+
+`gy init` appends `html_output` (default `gy.html`) to the ledger root's
+`.gitignore`. When `html_output` contains `{scope}` it appends the expanded
+pattern. For an existing ledger, either run `gy init <existing-scope>` again
+(append-only, idempotent; nodes, relationships, records, and history are
+preserved), or add the line by hand.
+
 ## 0.2.1
 
 ### Added
