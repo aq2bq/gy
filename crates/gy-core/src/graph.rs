@@ -20,6 +20,7 @@ pub const REFERENCE_KEYS: &[&str] = &["waiting-on", "unresolved", "belongs-to"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
+#[non_exhaustive]
 pub enum DependencyRole {
     Current,
     Historical,

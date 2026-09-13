@@ -38,7 +38,10 @@
     "baseline": "main",
     "facts": ["The handler receives an idempotency key"],
     "contracts": ["retry-idempotency"],
-    "files": ["src/retry.rs"],
+    "files": [
+      { "kind": "literal", "path": "src/retry.rs" },
+      { "kind": "generated", "directory": "db/migrate", "prefix": "", "suffix": "_add_retry_keys.rb", "token_class": "ascii-digits", "token_length": 14 }
+    ],
     "unchanged_contracts": ["billing"],
     "out_of_scope": ["Billing"],
     "gates": [
@@ -86,7 +89,7 @@
     "target_revision": "design-v1",
     "implemented": ["Reuse the idempotency key"],
     "contracts": ["retry-idempotency"],
-    "files": ["src/retry.rs"],
+    "files": ["src/retry.rs", "db/migrate/20260913090000_add_retry_keys.rb"],
     "out_of_scope_changed": false,
     "unrelated_changes": { "status": "none" },
     "delivery": {
@@ -103,7 +106,7 @@
     "implementation_revision": "implementation-v1",
     "auditor": "reviewer",
     "url": "https://example.test/issues/1#issuecomment-13",
-    "observations": ["Reported files match the approved file list"],
+    "observations": ["Reported files match the approved file declarations"],
     "evidence_source": "reported",
     "result": "record-only"
   }

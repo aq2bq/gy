@@ -13,7 +13,7 @@ Merge the example's `workflow` tables into the ledger configuration, preserving 
 - The example requires research on every need and question. Change `kinds` or `required` if that is not your policy.
 - Guards apply to every listed destination state, regardless of the previous state. Later states are listed too, so skipping directly to a later state cannot bypass required records.
 - The example requires reports for gate failures, existing violations, and unexecuted or inapplicable gates. It does not require every result to be `passed`; the project decides which reported results prevent progress.
-- Scope checks compare declared file lists exactly. File existence and completeness of the declared PR changes remain the caller's responsibility.
+- The example checks concrete reported paths against bounded file declarations in the design. File existence and completeness of the declared PR changes remain the caller's responsibility.
 - Adding a schema does not change any node's state or fabricate past approvals.
 
 Run `gy lint --json` after enabling a profile. Omissions on ongoing work appear under `workflow`. Completed requirements are historical records; adopting a profile does not retroactively require its forms. `gy handover --json` includes those diagnostics and the effective `workflow` configuration, so a new agent can discover the forms and guards.
@@ -145,8 +145,9 @@ Checks compare records on the same node. Every root must be in that guard's `rec
 | `equal` | Two single values match exactly, including JSON types |
 | `same-set` | Both operands contain the same set of nonempty strings |
 | `subset` | Every value on the left is present on the right |
+| `matches-declared-files` | Each reported path matches exactly one design declaration, and each declaration matches exactly one reported path |
 
-Sets ignore order and repeated values. Missing paths or wrong types fail. Empty collections are accepted only when the schema allows them. For scope, use `same-set` for exact file lists or `subset` with reported files on the left and allowed files on the right.
+The `same-set` and `subset` checks ignore order and repeated values. Missing paths or wrong types fail. Empty collections are accepted only when the schema allows them. For scope, use `same-set` for exact file lists or `subset` with reported files on the left and allowed files on the right.
 
 To check contract/gate associations, compare tuples:
 
@@ -162,6 +163,45 @@ right_keys = ["contract", "gate"]
 This detects swapped contracts even if every gate and contract name appears somewhere in the report. The example also compares planned gates with dispatch requirements and checks that every changed contract has results.
 
 gy cannot discover unreported contracts, files, failed tests, or primary sources. The caller must record the authoritative inputs.
+
+### Generated file names
+
+Use `matches-declared-files` when a design must declare a file before its generated name is known. The left operand is an array of concrete path strings reported by the implementer. The right operand is an array of declarations in the design revision. Neither operand uses `[]` projections or comparison keys. See the [minimal profile](../crates/gy/examples/file-scope.toml) for the required array schemas.
+
+```toml
+[[workflow.guards.audit.checks]]
+kind = "matches-declared-files"
+left = "implementation_report.files"
+right = "design_proposal.files"
+```
+
+A design's `files` can contain both declaration forms:
+
+```json
+[
+  {"kind":"literal", "path":"src/retry.rs"},
+  {"kind":"generated", "directory":"db/migrate", "prefix":"", "suffix":"_add_retry_keys.rb", "token_class":"ascii-digits", "token_length":14}
+]
+```
+
+The matching implementation report contains concrete strings, for example `src/retry.rs` and `db/migrate/20260913090000_add_retry_keys.rb`. A literal declaration matches the entire path exactly, including any metacharacters. A generated declaration matches the fixed directory and filename prefix/suffix exactly; only the intervening token varies.
+
+| Declaration field | Contract |
+| --- | --- |
+| `kind` | `literal` or `generated`; no other declaration forms or extra fields |
+| `path` | Required for `literal`; a concrete relative path |
+| `directory` | Required for `generated`; a fixed relative directory, or an empty string for the root |
+| `prefix`, `suffix` | Both required for `generated`; no path separators; at least one must be nonempty |
+| `token_class` | `ascii-digits` (0–9) or `lowercase-hex` (0–9, a–f) |
+| `token_length` | Required positive integer; exact number of ASCII characters |
+
+All paths are case-sensitive and use `/`. Absolute paths, Windows drive prefixes, backslashes, empty path components, and `.` / `..` components are rejected. No normalization, glob expansion, or filesystem lookup occurs. Only one token in the final filename may vary. A different valid token is allowed, but gy does not verify that it is a real timestamp, a content hash, or the same file contents.
+
+Every declaration must match exactly one reported file, and every reported file exactly one declaration. Missing files, undeclared files, duplicate reports or declarations, and overlapping declarations fail. Adding a second matching migration therefore fails even when both names fit the same generated shape. Array order is irrelevant. Empty arrays are allowed only when their schemas permit them; the shipped profile requires nonempty arrays. These rules apply only to the new comparison; existing `equal`, `same-set`, and `subset` behavior is unchanged.
+
+The comparison validates declaration constraints and one-to-one coverage when its guard runs, including lint/handover at that state and historical validation of saved checks. Explicit `node submit` continues to validate only the selected record's configured schema; it does not execute state-guard comparisons. Failure during a transition leaves the node and history unchanged. Saved declarations and checks remain in history after a profile changes.
+
+For an existing profile, use the [0.4 migration steps](migration-0.4.md) to update the design schema and comparison together. Changing already recorded design data requires a new revision and its matching approval. Do not reinterpret old placeholder strings or reconstruct past approvals.
 
 ## Compression and migration
 

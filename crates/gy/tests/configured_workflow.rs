@@ -915,3 +915,169 @@ fn example_distinguishes_passed_gates_with_and_without_a_population() {
         2
     );
 }
+
+const FILE_SCOPE_CONFIG: &str = include_str!("../examples/file-scope.toml");
+
+fn declared_scope() -> Value {
+    json!([
+        {"kind":"literal", "path":"src/api.rs"},
+        {"kind":"generated", "directory":"db/migrate", "prefix":"", "suffix":"_add_keys.rb",
+            "token_class":"ascii-digits", "token_length":14}
+    ])
+}
+fn reported_scope() -> Value {
+    json!(["src/api.rs", "db/migrate/20260913090000_add_keys.rb"])
+}
+fn mcp_advance(p: &Path) -> Value {
+    use std::io::Write;
+    use std::process::Stdio;
+    let mut child = Command::new(env!("CARGO_BIN_EXE_gy"))
+        .current_dir(p)
+        .args(["mcp", "serve"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let request = json!({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{
+        "name":"gy_req", "arguments":{"args":["advance","1","--to","awaiting-audit","--evidence","Checked"]}}});
+    writeln!(child.stdin.take().unwrap(), "{request}").unwrap();
+    let output = child.wait_with_output().unwrap();
+    serde_json::from_slice(&output.stdout).unwrap()
+}
+
+#[test]
+fn declared_scope_matches_across_routes_without_rewriting_old_history() {
+    let t = repo();
+    let p = t.path();
+    let config_path = p.join("docs/ledger/gy.toml");
+    let path = p.join("docs/ledger/test/requirements/1.md");
+    // First save the former string-set schema and comparison.
+    let legacy = FILE_SCOPE_CONFIG
+        .lines()
+        .map(|line| {
+            if line.starts_with("files =") {
+                "files = { type = \"array\", items = { type = \"string\" } }"
+            } else {
+                line
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+        .replace("matches-declared-files", "same-set");
+    fs::write(&config_path, legacy).unwrap();
+    put(p, "#1", "next_evidence", json!("Audit report"));
+    put(p, "#1", "responsible", json!("reviewer"));
+    put(
+        p,
+        "#1",
+        "design_proposal",
+        json!({"revision":"d1","files":reported_scope()}),
+    );
+    put(
+        p,
+        "#1",
+        "implementation_report",
+        json!({"files":reported_scope()}),
+    );
+    let old = advance(p, "awaiting-audit")["node"]["attrs"]["transitions"][0].clone();
+    fs::write(&config_path, FILE_SCOPE_CONFIG).unwrap();
+    put(
+        p,
+        "#1",
+        "design_proposal",
+        json!({"revision":"d1","files":declared_scope()}),
+    );
+    reject_advance(
+        p,
+        "awaiting-audit",
+        "was already recorded with different contents",
+    );
+    put(
+        p,
+        "#1",
+        "design_proposal",
+        json!({"revision":"d2","files":declared_scope()}),
+    );
+    let success = mcp_advance(p);
+    assert_ne!(success["result"]["isError"], true, "{success}");
+    let node = run(p, &["show", "#1"]);
+    assert_eq!(node["node"]["attrs"]["transitions"][0], old);
+    assert_eq!(
+        node["node"]["attrs"]["transitions"][1]["workflow"]["checks"][0]["kind"],
+        "matches-declared-files"
+    );
+    let valid_bytes = fs::read(&path).unwrap();
+    assert!(lint(p)["diagnostics"].as_array().unwrap().is_empty());
+    run(p, &["handover"]);
+    run(p, &["show", "#1"]);
+    run(p, &["render"]);
+    assert_eq!(fs::read(&path).unwrap(), valid_bytes);
+
+    let mut files = reported_scope();
+    files.as_array_mut().unwrap().push(json!("undeclared.rs"));
+    put(p, "#1", "implementation_report", json!({"files":files}));
+    let before_rejection = fs::read(&path).unwrap();
+    let reason = "left[2] (undeclared.rs) matches 0 declarations";
+    assert!(lint(p).to_string().contains(reason));
+    let handover = invoke(p, &["handover"]);
+    assert_eq!(handover.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&handover.stdout).contains(reason));
+    reject_advance(p, "awaiting-audit", reason);
+    let rejected = mcp_advance(p);
+    assert_eq!(rejected["result"]["isError"], true);
+    assert!(rejected.to_string().contains(reason));
+    assert_eq!(fs::read(&path).unwrap(), before_rejection);
+
+    // Completed work keeps old and new snapshots even under a stricter policy.
+    let mut complete =
+        gy_core::Node::parse(std::str::from_utf8(&valid_bytes).unwrap(), path.clone()).unwrap();
+    complete.put("status", json!("complete"));
+    complete.put("deviations", json!("none"));
+    complete.put("residual", json!("none"));
+    fs::write(&path, complete.markdown().unwrap()).unwrap();
+    fs::write(
+        &config_path,
+        FILE_SCOPE_CONFIG.replace(
+            "[workflow.records.design_proposal.fields]",
+            "[workflow.records.design_proposal.fields]\nnew_policy = { type = \"string\" }",
+        ),
+    )
+    .unwrap();
+    assert!(
+        !lint(p)["diagnostics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|d| d["rule"] == "workflow")
+    );
+    complete.attrs["transitions"][1]["workflow"]["records"]["implementation_report"]["files"] =
+        json!(["undeclared.rs"]);
+    fs::write(&path, complete.markdown().unwrap()).unwrap();
+    let diagnostics = lint(p).to_string();
+    assert!(diagnostics.contains("history: MatchesDeclaredFiles check failed"));
+    assert!(!diagnostics.contains("new_policy is required"));
+}
+
+#[test]
+fn declared_scope_configuration_rejects_wrong_operand_shapes_and_keys() {
+    let t = repo();
+    let p = t.path();
+    for config in [
+        FILE_SCOPE_CONFIG.replace(
+            "left = \"implementation_report.files\"",
+            "left = \"implementation_report.files[]\"",
+        ),
+        FILE_SCOPE_CONFIG.replace(
+            "right = \"design_proposal.files\"",
+            "right = \"design_proposal.revision\"",
+        ),
+        FILE_SCOPE_CONFIG.replace(
+            "right = \"design_proposal.files\"",
+            "right = \"implementation_report.files\"",
+        ),
+        format!("{FILE_SCOPE_CONFIG}\nleft_keys = [\"path\"]\nright_keys = [\"path\"]\n"),
+    ] {
+        fs::write(p.join("docs/ledger/gy.toml"), config).unwrap();
+        assert_eq!(invoke(p, &["lint"]).status.code(), Some(3));
+    }
+}

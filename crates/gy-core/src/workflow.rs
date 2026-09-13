@@ -1,5 +1,7 @@
 //! Configured record checks inspect reports, never external systems.
+mod declared_files;
 use crate::*;
+use declared_files::match_declared_files;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use std::collections::{BTreeMap, BTreeSet};
@@ -58,6 +60,7 @@ pub struct FieldSchema {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[non_exhaustive]
 pub enum FieldType {
     String,
     Url,
@@ -91,10 +94,12 @@ pub struct RecordCheck {
 }
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[non_exhaustive]
 pub enum CheckKind {
     Equal,
     SameSet,
     Subset,
+    MatchesDeclaredFiles,
 }
 
 fn component(s: &str) -> bool {
@@ -175,7 +180,11 @@ impl WorkflowConfig {
             }
             for check in &guard.checks {
                 if check.left_keys.len() != check.right_keys.len()
-                    || (!check.left_keys.is_empty() && matches!(check.kind, CheckKind::Equal))
+                    || (!check.left_keys.is_empty()
+                        && matches!(
+                            check.kind,
+                            CheckKind::Equal | CheckKind::MatchesDeclaredFiles
+                        ))
                     || check
                         .left_keys
                         .iter()
@@ -183,6 +192,30 @@ impl WorkflowConfig {
                         .any(|k| !component(k))
                 {
                     return Err(bad(format!("{state}: invalid comparison keys")));
+                }
+                if matches!(check.kind, CheckKind::MatchesDeclaredFiles) {
+                    for (path, item_kind) in [
+                        (&check.left, FieldType::String),
+                        (&check.right, FieldType::Object),
+                    ] {
+                        let mut parts = path.split('.');
+                        let field =
+                            self.records
+                                .get(parts.next().unwrap_or_default())
+                                .and_then(|record| {
+                                    schema_field(&record.fields, &parts.collect::<Vec<_>>())
+                                });
+                        if path.contains("[]")
+                            || !field.is_some_and(|f| {
+                                f.kind == FieldType::Array
+                                    && f.items.as_deref().is_some_and(|i| i.kind == item_kind)
+                            })
+                        {
+                            return Err(bad(format!(
+                                "{state}: matches-declared-files requires an array of {item_kind:?} at {path}, without [] projections"
+                            )));
+                        }
+                    }
                 }
                 for (path, keys) in [
                     (&check.left, &check.left_keys),
@@ -297,26 +330,27 @@ fn valid_record_path(path: &str) -> bool {
         && !path.split('.').next().unwrap_or("").ends_with("[]")
 }
 fn schema_path(fields: &BTreeMap<String, FieldSchema>, parts: &[&str]) -> bool {
-    if parts.is_empty() {
-        return true;
-    }
-    let part = parts[0];
-    let Some(mut field) = fields.get(part.strip_suffix("[]").unwrap_or(part)) else {
-        return false;
-    };
+    parts.is_empty() || schema_field(fields, parts).is_some()
+}
+fn schema_field<'a>(
+    fields: &'a BTreeMap<String, FieldSchema>,
+    parts: &[&str],
+) -> Option<&'a FieldSchema> {
+    let part = *parts.first()?;
+    let mut field = fields.get(part.strip_suffix("[]").unwrap_or(part))?;
     if part.ends_with("[]") {
         if field.kind != FieldType::Array {
-            return false;
+            return None;
         }
-        let Some(item) = field.items.as_deref() else {
-            return false;
-        };
-        field = item;
+        field = field.items.as_deref()?;
     }
     if parts.len() == 1 {
-        return true;
+        return Some(field);
     }
-    field.kind == FieldType::Object && schema_path(&field.fields, &parts[1..])
+    if field.kind != FieldType::Object {
+        return None;
+    }
+    schema_field(&field.fields, &parts[1..])
 }
 fn validate_object(
     value: &Value,
@@ -454,6 +488,20 @@ fn check_records(node: &Node, checks: &[RecordCheck]) -> Vec<String> {
             continue;
         };
         let valid = match check.kind {
+            CheckKind::MatchesDeclaredFiles => {
+                let result = if check.left_keys.is_empty() && check.right_keys.is_empty() {
+                    match_declared_files(&left, &right)
+                } else {
+                    Err("comparison keys are not supported".into())
+                };
+                if let Err(reason) = result {
+                    issues.push(format!(
+                        "MatchesDeclaredFiles check failed: {} versus {}: {reason}",
+                        check.left, check.right
+                    ));
+                }
+                continue;
+            }
             CheckKind::Equal => {
                 left.len() == 1 && right.len() == 1 && left == right && !left[0].is_null()
             }

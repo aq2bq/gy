@@ -345,6 +345,8 @@ importは本文中のリンクから関連やmarkを推定しません。取り�
 
 `gy node set` で記録を編集し、`gy node submit <ID> --record <name> --evidence <根拠>` で検査・提出します。提出は状態を変更せず、検査した値・様式・根拠を `record_history` に保存します。`gy req advance` は遷移先のガードを検査し、成功時は `transitions[].workflow` に検査時の記録を保存します。
 
+設定例の `matches-declared-files` では、設計側が確定済みのパス、または固定ディレクトリ・ファイル名の接頭辞と接尾辞・生成部分の文字種と長さを宣言します。各宣言と報告ファイルが1対1で対応することを検査します。既存の比較は従来どおりです。新しい形を採用するときは、設計の様式・ガード・現在の設計の版を一緒に更新してください。[0.4 の移行手順](docs/migration-0.4.md)を参照してください。
+
 設定例では、母数の概念がないゲートの合格を `passed-without-population` で記録できます。`passed` の母数必須は維持します。既存の利用者は、独自の設定と過去の記録を保持し、台帳の `gy.toml` に新しい variant を追加してください。[使い分けと移行手順](docs/workflows.md#quality-gates-with-and-without-a-population)を参照してください。
 
 不足は `gy lint` の `workflow` 診断に出ます。`gy handover --json` には有効な様式とガードも含まれます。判定対象は報告された記録の整合性であり、URL先の実在・実際のPR差分・テスト結果・承認者の人間性は確認しません。

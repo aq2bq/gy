@@ -214,6 +214,7 @@ pub struct ScopeConfig {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
+#[non_exhaustive]
 pub enum RuleConfig {
     Enabled(bool),
     Severity(String),

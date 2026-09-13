@@ -47,6 +47,16 @@ A new transition always evaluates the current destination guards, including reop
 
 Compression is an archival operation, not a work transition. It validates existing historical snapshots and core completion/archive requirements, then preserves the original data. Completed work without workflow snapshots can be archived without constructing a fictional history. Existing snapshots remain subject to their own recorded schemas and checks even if the current profile changes or is removed. Neither absence nor presence of a snapshot proves external approval or correct implementation.
 
+## Declared file scope
+
+The opt-in `matches-declared-files` comparison treats the design's right-hand array as declarations and the implementation's left-hand array as concrete paths. A declaration identifies either an exact path or one variable filename token bounded by a fixed directory, prefix/suffix, ASCII character class, and positive exact length. At least one filename prefix/suffix must be nonempty. gy does not interpret globs or inspect external files.
+
+The comparison requires a one-to-one match in both directions. Unknown or malformed declarations, unmatched entries, duplicates, and overlapping matches fail. The existing string-set comparisons retain their exact-string and duplicate-elimination semantics. Record data, not explanatory descriptions, supplies every operand. Configured schemas govern whether empty arrays are allowed.
+
+Current state guards and stored historical checks use the same core matcher. A failed transition does not write the node or append history; derived output does not rewrite declarations. Adopting a new design shape is a current revision change, and cannot rewrite an old approval or convert an old historical comparison. Explicit record submission retains its existing schema-only scope.
+
+The matcher reads the two arrays for the current comparison only. For D declarations, F reported files and path length L, matching takes O(D × F × L) with O(D × L + F × L) input data and O(F) matching counters. It does not add a graph or history traversal; the existing callers invoke it for each applicable current or saved comparison.
+
 ## Rule contracts
 
 | Consumer | Authoritative input | Result |

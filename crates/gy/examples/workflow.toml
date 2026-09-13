@@ -52,7 +52,7 @@ revision = { type = "string" }
 baseline = { type = "string" }
 facts = { type = "array", allow_empty = false, items = { type = "string" } }
 contracts = { type = "array", allow_empty = false, items = { type = "string" } }
-files = { type = "array", allow_empty = false, items = { type = "string" } }
+files = { type = "array", items = { type = "object", fields = { kind = { type = "string" } }, variant_field = "kind", variants = { literal = { path = { type = "string" } }, generated = { directory = { type = "string", allow_empty = true }, prefix = { type = "string", allow_empty = true }, suffix = { type = "string", allow_empty = true }, token_class = { type = "string", values = ["ascii-digits", "lowercase-hex"] }, token_length = { type = "integer" } } } } }
 unchanged_contracts = { type = "array", allow_empty = true, items = { type = "string" } }
 out_of_scope = { type = "array", allow_empty = true, items = { type = "string" } }
 gates = { type = "array", allow_empty = false, items = { type = "object", fields = { id = { type = "string" }, contract = { type = "string" }, command = { type = "string" } } } }
@@ -167,7 +167,7 @@ right = "quality_gates.results"
 left_keys = ["contract", "id"]
 right_keys = ["contract", "gate"]
 [[workflow.guards.audit.checks]]
-kind = "same-set"
+kind = "matches-declared-files"
 left = "implementation_report.files"
 right = "design_proposal.files"
 

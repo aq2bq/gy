@@ -1,0 +1,20 @@
+# Minimal opt-in profile for exact and generated file declarations.
+[workflow.records.design_proposal]
+kinds = ["requirement"]
+version_field = "revision"
+[workflow.records.design_proposal.fields]
+revision = { type = "string" }
+files = { type = "array", items = { type = "object", fields = { kind = { type = "string" } }, variant_field = "kind", variants = { literal = { path = { type = "string" } }, generated = { directory = { type = "string", allow_empty = true }, prefix = { type = "string", allow_empty = true }, suffix = { type = "string", allow_empty = true }, token_class = { type = "string", values = ["ascii-digits", "lowercase-hex"] }, token_length = { type = "integer" } } } } }
+
+[workflow.records.implementation_report]
+kinds = ["requirement"]
+[workflow.records.implementation_report.fields]
+files = { type = "array", items = { type = "string" } }
+
+[workflow.guards.file_scope]
+states = ["awaiting-audit"]
+records = ["design_proposal", "implementation_report"]
+[[workflow.guards.file_scope.checks]]
+kind = "matches-declared-files"
+left = "implementation_report.files"
+right = "design_proposal.files"

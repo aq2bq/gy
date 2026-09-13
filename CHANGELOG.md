@@ -2,13 +2,51 @@
 
 ## Unreleased
 
+### Breaking
+
+- Add `CheckKind::MatchesDeclaredFiles` and mark `DependencyRole`, `RuleConfig`,
+  `FieldType`, and `CheckKind` as `#[non_exhaustive]`. Downstream matches must
+  include a wildcard arm. Known enum variants remain constructible, including
+  `RuleConfig::Detail { enabled: Some(true), severity: None }`. This differs
+  from the non-exhaustive structs introduced in 0.3, whose downstream struct
+  literals remain forbidden. See the [compiled migration example](docs/migration-0.4.md#update-rust-clients).
+- The shipped workflow example now declares design files as `literal` or
+  `generated` objects and compares them with `matches-declared-files`.
+  Existing profiles keep their current behavior. To adopt the new shape,
+  replace the `design_proposal.fields.files` schema using the
+  [minimal profile](crates/gy/examples/file-scope.toml), change the file guard
+  to `matches-declared-files` with implementation files on the left and design
+  declarations on the right, and remove comparison keys or `[]` projections.
+  Convert fixed design paths to `{ "kind": "literal", "path": "..." }` and
+  generated names to fixed directory/prefix/suffix plus token class and length.
+  Keep implementation paths as concrete strings. Already recorded designs need
+  a new revision and matching approval; do not rewrite old snapshots. See the
+  [complete migration steps](docs/migration-0.4.md#update-workflow-profiles-and-records).
+
+### Added
+
+- Optional `description` strings on workflow records and fields appear in
+  handover JSON and saved schemas without affecting checks or record revisions.
+  Existing data needs no migration. Upgrade every ledger reader before using
+  descriptions: older binaries reject configurations and histories containing
+  them. Removing descriptions from today's configuration does not remove them
+  from saved history. Older binaries also reject the new file comparison.
+- The opt-in file comparison permits one generated filename token with an exact
+  ASCII digit or lowercase hexadecimal length. Each declaration must match one
+  reported file and each file one declaration. Undeclared, missing, duplicate,
+  and ambiguous entries fail. No glob interpretation or file lookup occurs;
+  existing `equal`, `same-set`, and `subset` semantics remain unchanged.
+
 ### Fixed
 
 - The example workflow accepts successful gates without a population through
   `passed-without-population`, requiring a reason and execution evidence.
   `passed` still requires its population and integer denominator. Existing
-  users must merge the new variant into their ledger configuration while
-  preserving local guards and past records; see the
+  users must add `passed-without-population` with required string `reason`
+  and `evidence` fields to
+  `workflow.records.quality_gates.fields.results.items.fields.result.variants`
+  in their ledger configuration, preserving `passed`, local guards and past
+  records. Use it only when no population concept exists; see the
   [workflow migration guide](docs/workflows.md#quality-gates-with-and-without-a-population).
 
 ## 0.3.1

@@ -239,6 +239,8 @@ For transferred work, use a value such as `residual=[{"id":"N-2","note":"Transfe
 
 Optional `[workflow.records]` schemas and `[workflow.guards]` in `gy.toml` require structured reports at selected states. They can check design approvals, explicit waivers, contract/gate coverage, and declared file scope. `gy node submit <ID> --record <name> --evidence <record>` validates a report without advancing state; submissions and transitions retain the checked inputs and schemas.
 
+The example also supports generated file names through `matches-declared-files`: design declarations specify a literal path or a fixed directory and filename prefix/suffix around an ASCII token of a declared class and length. Each declaration must match exactly one reported file. Existing profiles keep their existing comparisons; adopting the new shape requires updating the design schema, guard, and current design revision together. See the [0.4 migration guide](docs/migration-0.4.md).
+
 The example supports `passed-without-population` for successful gates that have no population concept; `passed` still requires its denominator. Existing users must merge the new variant into their ledger's `gy.toml`, preserving local policy and historical records. See [quality gate choices and migration](docs/workflows.md#quality-gates-with-and-without-a-population).
 
 `gy lint` reports missing or inconsistent inputs under `workflow`. `gy handover` includes the effective configuration. These checks validate reported records, not external facts or approver identity.
