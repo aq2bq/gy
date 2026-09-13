@@ -383,4 +383,4 @@ cargo install --path crates/gy --locked --root target/install-check
 
 `gy-core` provides storage, operations, validation, and views; `gy` provides the clap CLI and MCP interface. Both reads and writes acquire a ledger-wide file lock. Multi-file updates, including a renamed scope's directory removal, are journaled before applying, and an interrupted update is completed on the next startup. Commit `.gy-ids.json` with the ledger: it records allocated numbers to prevent reuse after deletion. Do not commit `.gy.lock`.
 
-CI is configured to test and install on macOS, Linux, and Windows. The pre-commit hook entry is in [.pre-commit-hooks.yaml](.pre-commit-hooks.yaml).
+CI tests and installs on Linux. Other platforms are not verified. The pre-commit hook entry is in [.pre-commit-hooks.yaml](.pre-commit-hooks.yaml).

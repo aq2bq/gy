@@ -315,7 +315,7 @@ cargo install --path crates/gy --locked --root target/install-check
 
 `gy-core` が保存・操作・検査・表示を提供し、`gy` がclapのCLIとMCPを提供します。台帳単位のファイルロックを読み書きの両方で取得します。複数ファイルの更新は、スコープ改名時のディレクトリ削除を含めて、適用前に記録し、途中停止時には次の起動で更新を完了します。`.gy-ids.json` は削除済み番号の再利用を防ぐ採番記録なので、台帳と一緒にgitへ保存します。`.gy.lock` はgitへ保存しません。
 
-CIにはmacOS・Linux・Windowsでのテストとインストール確認を設定しています。pre-commit用のエントリは [.pre-commit-hooks.yaml](.pre-commit-hooks.yaml) です。
+CIはLinuxでテストとインストール確認を行います。他のプラットフォームは検証していません。pre-commit用のエントリは [.pre-commit-hooks.yaml](.pre-commit-hooks.yaml) です。
 
 
 ## 既存ADRの成立範囲を取り込む

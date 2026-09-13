@@ -66,8 +66,14 @@ After four warmups, 20 alternating pan/wheel samples produce two timing series:
 
 Reports include raw samples, median, p95, maximum, browser/OS/CPU metadata, and
 focus-entry time. Neither series measures physical display latency. CI checks
-10 seconds for initial navigation, 500 ms p95 for the automation round trip, and
-100 ms p95 for the browser-side series. Actual values and measurement conditions
+10 seconds for initial navigation and 100 ms p95 for the browser-side series.
+The automation round trip remains in the report for diagnosis, without a latency
+gate: shared-runner driver/IPC/assertion overhead is not product response time.
+Performance tests have a 120-second whole-test watchdog for their 24 input
+round trips; other tests retain 30 seconds. This bounds stalled tests, not UI
+latency. Cluster assertions use the same 3-second wait as other assertions,
+including when the injected defect is expected to prevent opening. Actual values
+and measurement conditions
 should accompany these regression limits; they do not promise performance for
 every device or topology.
 
