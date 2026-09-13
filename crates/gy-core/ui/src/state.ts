@@ -10,6 +10,7 @@ export interface Point {
 export type NodeKind = 'need' | 'question' | 'decision' | 'requirement' | 'criterion' | 'gate';
 export type Filters = Readonly<Record<'scopeSel' | 'stateSel' | 'qstatus' | 'criterion', string>>;
 export interface LocationState {
+    listSort?: ListSort;
     selected?: string | null;
     focus?: readonly Focus[];
     types?: Readonly<Record<string, boolean>>;
@@ -76,7 +77,6 @@ export let typeState: Readonly<Record<NodeKind, boolean>> = { need: true, questi
 export let filterState: Filters = { scopeSel: '', stateSel: '', qstatus: '', criterion: '' };
 export let radiusChoice = '';
 export let activeTab = 'overview';
-export let clusterSort = 'deg';
 export let dragging = false;
 export let dragStart: {
     x: number;
@@ -119,7 +119,6 @@ export function setForceLayout(value: typeof forceLayout) { forceLayout = value;
 export function setForceKey(value: typeof forceKey) { forceKey = value; }
 export function setRadiusChoice(value: typeof radiusChoice) { radiusChoice = value; }
 export function setActiveTab(value: typeof activeTab) { activeTab = value; }
-export function setClusterSort(value: typeof clusterSort) { clusterSort = value; }
 export function setDragging(value: typeof dragging) { dragging = value; }
 export function setDragStart(value: typeof dragStart) { dragStart = value; }
 export function setDragMoved(value: typeof dragMoved) { dragMoved = value; }
@@ -149,3 +148,15 @@ export function focusLabel(id) {
     return id + ': show ' + plan.n + (plan.n === 1 ? ' hop' : ' hops') + ' · ' + plan.size + (plan.size === 1 ? ' node' : ' nodes');
 }
 export function setPositions(value: typeof positions) { positions = value; }
+
+export type SortColumn = 'id' | 'type' | 'title' | 'scope' | 'status' | 'created';
+export interface ListSort { readonly key: SortColumn; readonly direction: 'asc' | 'desc'; }
+export let listSort: ListSort = {key:'id', direction:'asc'};
+export function setListSort(value: unknown) {
+    const v = value as Partial<ListSort> | null;
+    listSort = v && ['id','type','title','scope','status','created'].includes(v.key) && ['asc','desc'].includes(v.direction)
+        ? {key:v.key, direction:v.direction} : {key:'id', direction:'asc'};
+}
+export function selectType(kind: NodeKind | 'all') {
+    Object.keys(typeState).forEach(k => setType(k as NodeKind, kind === 'all' || k === kind));
+}

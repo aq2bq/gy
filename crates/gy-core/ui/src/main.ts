@@ -1,3 +1,4 @@
+import { initList } from './list';
 import { initDetail } from './detail/index';
 import { gotoTab, initFilters } from './filters';
 import { draw } from './graph/draw';
@@ -10,6 +11,7 @@ import { initSurvey } from './survey/index';
 import './style.css';
 initSvg();
 initFilters();
+initList();
 initNavigation();
 initDetail();
 initViewport();

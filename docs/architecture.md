@@ -114,7 +114,7 @@ truncated label still keeps a meaningful head rather than a fragment.
 
 Bodies are embedded verbatim so the page carries the ledger's full record. The graph never renders body text; the detail panel shows it, rendered as Markdown on demand. Escaping replaces `<`, `>`, `&`, U+2028, and U+2029 in the embedded payload so a body containing `</script>`, a comment opener, or a line separator cannot terminate or comment out the data script. Unknown attributes are preserved in node payloads alongside their structured values.
 
-The on-demand renderer in `detail.js` reads table headers, delimiter-row
+The on-demand renderer in `ui/src/detail/markdown.ts` reads table headers, delimiter-row
 alignment and cells, nested unordered/ordered lists, fenced code blocks, inline
 code, emphasis, and links. Code contents remain text, including newlines and
 tabs; source HTML is escaped rather than executed. Link destinations are limited
@@ -126,7 +126,7 @@ Judgments are the only reason the page carries curated lists; everything else is
 
 The graph renders each of the six node types with a distinct shape and color, so type identification does not depend on color alone. Genealogy mode restricts the displayed set to decision nodes and lays them out by generation, so a supersede chain reads directionally.
 
-Drawing is split into two views by the number of visible nodes, not by zoom level. Without a focus, more than 60 visible nodes are drawn as clusters (scope × type) and aggregated edge counts per cluster pair, plus internal edge counts per cluster; individual nodes and edges are withheld so the overview stays readable. Clicking a cluster opens a member list; selecting a member opens its details. The explicit neighborhood action chooses a focus with an adaptive hop count: the largest value up to a ceiling whose reachable set fits the individual-view limit, displayed on screen. With the visible set at or below the limit, nodes are drawn individually in a force-directed layout that reflects connectivity, so a short edge means adjacent nodes, and node labels are measured (via `getComputedTextLength`), truncated to the available width, and skipped when they would overlap a neighbour. Edge labels are off by default and appear only for a small individual set or an explicitly selected edge; full titles always remain in the detail panel.
+Drawing is split into two views by the number of visible nodes, not by zoom level. Without a focus, more than 60 visible nodes are drawn as clusters (scope × type) and aggregated edge counts per cluster pair, plus internal edge counts per cluster; individual nodes and edges are withheld so the overview stays readable. Clicking a cluster applies its scope and type to the permanent table; a row link opens details. The explicit neighborhood action chooses a focus with an adaptive hop count: the largest value up to a ceiling whose reachable set fits the individual-view limit, displayed on screen. With the visible set at or below the limit, nodes are drawn individually in a force-directed layout that reflects connectivity, so a short edge means adjacent nodes, and node labels are measured (via `getComputedTextLength`), truncated to the available width, and skipped when they would overlap a neighbour. Edge labels are off by default and appear only for a small individual set or an explicitly selected edge; full titles always remain in the detail panel.
 
 The count banner reports the nodes actually drawn and the visible total in every mode, including search, filters, and genealogy; culling always surfaces how many are hidden rather than silently dropping them. Fit computes the transform from the content's bounding box in the current mode, so the projected content fits the viewport instead of being a fixed scale.
 
@@ -138,7 +138,7 @@ undirected EDGES adjacency and stores it; repeated entry to the current node
 leaves the stack unchanged. Back removes one entry; choosing a path entry removes
 all entries after it. The stack records the navigation route, not graph ancestry.
 The URL hash restores the focus path and radius, selected detail, filters,
-search, left-panel tab, and genealogy on reload. A bare node ID opens its
+search, left-panel tab, genealogy, and table sort column/direction on reload. A bare node ID opens its
 detail; an unknown ID displays a not-found message. The hash codec lives in
 `ui/src/state.ts`. Each changed display state adds one browser history entry; pan
 and zoom do not. Browser back/forward restores the complete recorded state.
@@ -170,6 +170,23 @@ updates the focus path. Current focus, radius, filters, search and genealogy are
 visible above the graph. The reading region remains reserved when details are
 closed, so selecting a record cannot change the graph viewport. Detail visibility
 is part of URL history, independently of the focus path.
+
+The main region starts with a persistent six-column table: ID, type, full
+wrapping title, scope, lifecycle state, and creation date. Row-wide native links
+open records without moving graph focus; column buttons show and change sort
+order. An unfamiliar requirement state retains its raw status text. Type chips
+select one type, with an explicit All types choice; old hash values containing
+multiple enabled types still restore. Cluster clicks narrow scope/type, and the
+same predicates select table rows and graph candidates. Neighborhood and
+lineage controls additionally narrow the graph, leaving the complete filtered
+table available. One status region reports table results and graph counts.
+
+The table occupies the upper part of the main region, prioritizing at least
+30 full-width title characters at 1440 CSS pixels. Graph and details remain
+below it, with graph controls directly above the graph. No list/graph toggle is
+introduced. Filter matches are cached by toolbar state; table DOM is rebuilt
+only when its row IDs or sort change. Pan/zoom still visits O(V) row IDs to check
+that cache, while record-link locations update only when URL state changes.
 
 Wide layouts give the graph and details equal shares of the available width;
 at 1100 CSS pixels or below, details move beneath the graph. Type, scope,
@@ -222,8 +239,8 @@ When a focus has more than 60 filtered neighborhood candidates even at one hop,
 individual drawing continues with at most 60 nodes. Selection orders candidates
 by distance from the focus, then descending degree in the embedded undirected
 edge graph, then ID. The focus is included if it passes the filters; it is never
-restored against a filter. Omitted candidates have a separate count and member
-list for navigation. They differ from drawn nodes outside the viewport, which
+restored against a filter. Omitted candidates have a separate count and a control that reveals their first
+row in the permanent table. They differ from drawn nodes outside the viewport, which
 remain accessible by pan or zoom. The limit applies to focused lineage as well;
 unfocused lineage retains its generation layout.
 
@@ -239,8 +256,8 @@ the UI; file concatenation order is no longer a dependency.
 
 `tokens.css` defines shared spacing, font-size, and color variables with the
 existing values. CSS and the SVG/chart palette in `tokens.ts` use those values.
-The list module currently renders cluster members; the filtered list view is
-separate future work. Details retain the existing offline Markdown renderer.
+The list module renders the permanent record table and links; the shared query
+module applies the same toolbar predicates to table rows and graph candidates. Details retain the existing offline Markdown renderer.
 
 Bun 1.4.0 bundles the modules and CSS into the unminified, committed
 `crates/gy-core/src/html/dist/app.js` and `app.css`. `html.rs` embeds those two

@@ -21,6 +21,7 @@ async function loadModules(context, entries, stubs) {
 }
 async function fixture() {
   const nodes = Array.from({length: 80}, (_, i) => ({id: 'D-' + i, type: 'decision', title: 'Decision ' + i, scope: 'a', attrs: {}}));
+  nodes[1].attrs.search = 'unique-match';
   nodes.push({id: 'Q-1', type: 'question', scope: 'b', attrs: {}, status: 'open'});
   const edges = Array.from({length: 79}, (_, i) => ({source: 'D-' + i, target: 'D-' + (i+1), label: 'supersedes', reverse: 'superseded-by'}));
   edges.push({source: 'Q-1', target: 'D-0', label: 'closes', reverse: 'closed-by'});
@@ -177,7 +178,7 @@ test('focused selection caps at 60 using distance, degree and ID; filters still 
   assert.deepEqual(selection.ids.slice(0, 3), ['D-0', 'D-78', 'D-79']);
   assert.deepEqual(selection.ids.slice(3), Array.from({length:77}, (_,i) => 'D-'+(i+1)).sort().slice(0,57));
   assert.equal(f.run('candidateNodes().length'), 80);
-  f.run("setSearchText('D-1')");
+  f.run("setSearchText('unique-match')");
   assert.deepEqual(f.run('visibleNodes()'), ['D-1']);
   assert.equal(f.run('currentFocus().id'), 'D-0');
   f.run("setSearchText(''); returnFocus(0); currentFocus()");

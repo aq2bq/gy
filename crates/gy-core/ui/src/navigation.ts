@@ -3,7 +3,6 @@ import { byId } from './data';
 import { hideDetail, showDetail } from './detail/index';
 import { element } from './dom';
 import { scopeSel, stateSel } from './filters';
-import { closeClusterPanel } from './graph/clusters';
 import { adj, currentFocus, enterFocus, focusHistory, focusLabel, focusPlan, genealogyMode, searchText, truncateFocus, typeState } from './state';
 // ---------- focus navigation ----------
 export function startHop(id) {
@@ -13,7 +12,6 @@ export function startHop(id) {
     if (currentFocus().id !== id || currentFocus().radius !== radius) {
         enterFocus(id, radius);
     }
-    closeClusterPanel();
     showDetail(id);
     redraw();
 }
@@ -21,7 +19,6 @@ export function returnFocus(index) {
     if (!Number.isInteger(index) || index < 0 || index >= focusHistory.length)
         return;
     truncateFocus(index + 1);
-    closeClusterPanel();
     if (currentFocus().id)
         showDetail(currentFocus().id);
     else

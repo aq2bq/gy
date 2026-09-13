@@ -60,12 +60,13 @@ test('URL selects IDs, reports missing IDs, and restores state through history',
   await page.locator('#qstatus').selectOption('closed');
   await page.locator('#criterion').selectOption('yes');
   await mouse(page, '[data-kind="question"]');
-  await expect.poll(() => decodeURIComponent(page.url())).toContain('"question":false');
+  await expect.poll(() => decodeURIComponent(page.url())).toContain('"question":true');
+  await expect.poll(() => decodeURIComponent(page.url())).toContain('"decision":false');
   await page.reload();
   await expect(page.locator('#stateSel')).toHaveValue(state);
   await expect(page.locator('#qstatus')).toHaveValue('closed');
   await expect(page.locator('#criterion')).toHaveValue('yes');
-  await expect(page.locator('[data-kind="question"]')).not.toHaveClass(/on/);
+  await expect(page.locator('[data-kind="question"]')).toHaveClass(/on/);
 
 
 });
@@ -168,9 +169,13 @@ for (const width of [1280, 1440, 1920]) test(`toolbar groups and status occupy t
   await expect(page.locator('#graphMeta, #hopN, #lodInfo')).toHaveCount(0);
   const rectangles = await page.evaluate(()=>{
     const bounds=el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
-    return {legend:bounds(document.querySelector('#legendBox')), nodes:[...document.querySelectorAll('#svg [data-node-id]')].map(bounds)};
+    const viewport=bounds(document.querySelector('#svg'));
+    const nodes=[...document.querySelectorAll('#svg [data-node-id]')].map(bounds).map(r=>({left:Math.max(r.left,viewport.left),right:Math.min(r.right,viewport.right),top:Math.max(r.top,viewport.top),bottom:Math.min(r.bottom,viewport.bottom)})).filter(r=>r.left<r.right&&r.top<r.bottom);
+    return {legend:bounds(document.querySelector('#legendBox')), viewport, nodes};
   });
   expect(rectangles.nodes.length).toBeGreaterThan(0);
+  const v=rectangles.viewport,l=rectangles.legend;
+  expect(v.left<l.right&&v.right>l.left&&v.top<l.bottom&&v.bottom>l.top).toBe(false);
   for (const r of rectangles.nodes) {
     const l=rectangles.legend;expect(r.left<l.right&&r.right>l.left&&r.top<l.bottom&&r.bottom>l.top).toBe(false);
   }

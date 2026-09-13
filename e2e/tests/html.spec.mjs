@@ -7,9 +7,11 @@ import {dir, fixture, mouse, open, enter, scale} from '../helpers.mjs';
 
 async function clusterContract(page) {
   await mouse(page, page.locator('#svg text.nlabel').filter({hasText: 's0 / decision'}));
-  await expect(page.locator('#clusterPanel'), 'cluster label must open its member list').toHaveClass(/on/);
-  await expect(page.locator('#clusterPanel h3')).toContainText('s0 / decision');
-  expect(await page.locator('#clusterPanel li').count()).toBe(175);
+  await expect(page.locator('#scopeSel'), 'cluster label must filter its member list').toHaveValue('s0');
+  await expect(page.locator('[data-kind=decision]')).toHaveAttribute('aria-pressed', 'true');
+  expect(await page.locator('#recordList tbody tr').count()).toBe(175);
+  expect(new Set(await page.locator('#recordList td[data-column=scope]').allTextContents())).toEqual(new Set(['s0']));
+  expect(new Set(await page.locator('#recordList td[data-column=type]').allTextContents())).toEqual(new Set(['decision']));
 }
 async function refitContract(page) {
   for (let i = 0; i < 6; i++) await mouse(page, '#zout');
@@ -53,7 +55,7 @@ test('display target changes refit after manual zoom', async ({page}) => {
 test('injected label interception is detected by the same contract', async ({page}, info) => {
   await open(page);
   await page.addStyleTag({content: 'svg .nlabel { pointer-events: auto !important; }'});
-  await expect(clusterContract(page)).rejects.toThrow(/cluster label must open/);
+  await expect(clusterContract(page)).rejects.toThrow(/cluster label must filter/);
   await info.attach('injected-defect', {body: 'The unchanged cluster contract rejected pointer-events:auto.', contentType: 'text/plain'});
 });
 test('injected missing refit is detected by the same contract', async ({page}, info) => {
@@ -72,7 +74,7 @@ test('injected missing refit is detected by the same contract', async ({page}, i
 
 test('descent, one-step return, breadcrumbs, overview and hidden focus', async ({page}) => {
   await open(page); await clusterContract(page);
-  await mouse(page, '#clusterPanel [data-go="D-1"]');
+  await mouse(page, '#recordList [data-record="D-1"]');
   // D-39: selecting a record no longer moves focus; use the explicit control.
   await mouse(page, '#detailFocus');
   for (const id of ['D-2', 'D-3']) {
@@ -111,16 +113,23 @@ test('high degree stays individual with deterministic omission and a route to om
   expect(await page.locator('[data-node-id]').evaluateAll(es => es.map(e => e.dataset.nodeId).sort())).toEqual(expected.sort());
   await expect(page.locator('#culling')).toContainText('2 nodes omitted');
   await expect(page.locator('[data-node-id="D-100"]')).toBeInViewport();
+  const originalCulling = await page.locator('#culling').textContent();
+  const countOffscreen = text => Number(text.match(/(\d+) off-screen/)?.[1] || 0);
   await page.setViewportSize({width:1400,height:500});
   await expect(page.locator('#culling')).toContainText('off-screen at readable zoom');
   await expect(page.locator('#culling')).toContainText('2 nodes omitted');
+  await expect.poll(async()=>countOffscreen(await page.locator('#culling').textContent())).toBeGreaterThan(countOffscreen(originalCulling));
   await page.screenshot({path: info.outputPath('omitted-and-offscreen.png')});
   await page.setViewportSize({width:1400,height:1000});
-  await expect(page.locator('#culling')).not.toContainText('off-screen at readable zoom');
+  // D-40 / AC-27: the table reserves height; restoring the viewport restores its measured count.
+  await expect(page.locator('#culling')).toHaveText(originalCulling);
   await mouse(page, '#showOmitted');
-  await expect(page.locator('#clusterPanel li')).toHaveCount(2);
-  const omitted = await page.locator('#clusterPanel li').first().getAttribute('data-go');
-  await mouse(page, page.locator('#clusterPanel li').first());
+  await expect(page.locator('#recordList tbody tr')).toHaveCount(65);
+  const omitted = await page.locator('#recordList a:focus').getAttribute('data-record');
+  expect(expected).not.toContain(omitted);
+  const neighbors = await page.evaluate(() => window.GY_DATA.edges.flatMap(e => e.source === 'D-100' ? [e.target] : e.target === 'D-100' ? [e.source] : []));
+  expect(neighbors).toContain(omitted);
+  await mouse(page, page.locator('#recordList a:focus'));
   await mouse(page, '#detailFocus');
   await expect(page.locator('#focusStatus')).toContainText(`${omitted} ·`);
   await expect(page.locator(`[data-node-id="${omitted}"]`)).toBeInViewport();
@@ -129,7 +138,7 @@ test('high degree stays individual with deterministic omission and a route to om
   await page.screenshot({path: info.outputPath('high-degree.png')});
   await mouse(page, '#showOmitted');
   await page.locator('#q').fill('NO_SUCH_NODE');
-  await expect(page.locator('#clusterPanel')).not.toHaveClass(/on/);
+  await expect(page.locator('#recordList tbody tr')).toHaveCount(0);
   await expect(page.locator('#focusStatus')).toContainText('Focus hidden');
   await expect(page.locator('[data-node-id]')).toHaveCount(0);
   await page.locator('#q').fill('');

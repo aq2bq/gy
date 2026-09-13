@@ -1,8 +1,9 @@
+import { renderList } from './list';
+import { listSort, setListSort } from './state';
 import { byId } from './data';
 import { hideDetail, showDetail } from './detail/index';
 import { element } from './dom';
-import { gotoTab } from './filters';
-import { closeClusterPanel } from './graph/clusters';
+import { gotoTab, renderTypeChips } from './filters';
 import { resetView } from './graph/viewport';
 import { LocationState, activeTab, currentFocus, filterState, focusHistory, genealogyMode, locationHash, radiusChoice, restoreFocus, searchText, selected, setFilter, setGenealogyMode, setRadiusChoice, setSearchText, setType, typeState } from './state';
 // URL state is the shared location contract. Pan and zoom are deliberately absent.
@@ -12,11 +13,12 @@ export function locationState(value?: LocationState) {
     if (value === undefined) {
         return JSON.stringify({ selected, focus: focusHistory, types: typeState,
             filters: filterState,
-            search: searchText, radiusChoice, tab: activeTab, genealogy: genealogyMode });
+            listSort, search: searchText, radiusChoice, tab: activeTab, genealogy: genealogyMode });
     }
     restoreFocus(value.focus);
     Object.keys(typeState).forEach(k => { setType(k as keyof typeof typeState, value.types?.[k] !== false); });
-    document.querySelectorAll<HTMLElement>('#typeChips .chip').forEach(c => { c.classList.toggle('on', typeState[c.dataset.kind]); c.setAttribute('aria-pressed', String(typeState[c.dataset.kind])); });
+    renderTypeChips();
+    setListSort(value.listSort);
     fields.forEach(id => { element(id).value = typeof value.filters?.[id] === 'string' ? value.filters[id] : ''; setFilter(id, element(id).value); });
     element('hopRadius').value = ['', '1', '2', '3', '4', '5'].includes(value.radiusChoice) ? value.radiusChoice : '';
     setRadiusChoice(element('hopRadius').value);
@@ -26,7 +28,6 @@ export function locationState(value?: LocationState) {
     const tabs = [...document.querySelectorAll<HTMLElement>('#tabs button')].map(b => b.dataset.tab);
     gotoTab(tabs.includes(value.tab) ? value.tab : 'overview');
     element('hopFrom').value = currentFocus().id || '';
-    closeClusterPanel();
     hideDetail();
     element('locationStatus').textContent = '';
     if (typeof value.selected === 'string') {
@@ -48,5 +49,6 @@ export function saveLocation() {
         return;
     history.pushState(null, '', locationHash(state));
     lastLocationState = state;
+    renderList();
     element('locationStatus').textContent = '';
 }

@@ -70,17 +70,6 @@ ul.list a:hover{text-decoration:underline}
   #graphWorkspace{flex-direction:column}
   #detail{flex:0 0 38%;width:100%;max-width:none;min-width:0;min-height:0;border-left:0;border-top:1px solid var(--border)}
 }
-#clusterPanel{position:absolute;top:44px;right:12px;z-index:9;width:330px;max-width:92%;max-height:70%;overflow:auto;background:var(--surface-5);border:1px solid var(--border);border-radius:10px;padding:var(--space-10px) var(--space-12px);box-shadow:0 4px 16px var(--surface-6);display:none}
-#clusterPanel.on{display:block}
-#clusterPanel h3{font-size:var(--font-13px);margin:0 0 var(--space-6px)}
-#clusterPanel .sortrow{display:flex;gap:var(--space-6px);margin-bottom:var(--space-8px)}
-#clusterPanel .sortrow button{font-size:var(--font-11px);padding:var(--space-2px) var(--space-8px)}
-#clusterPanel ul{list-style:none;margin:0;padding:0;max-height:46vh;overflow:auto}
-#clusterPanel li{padding:var(--space-4px) var(--space-6px);border-bottom:1px dashed var(--border);font-size:var(--font-12p5px);cursor:pointer}
-#clusterPanel li:hover{background:var(--color-f4f1ea)}
-#clusterPanel .deg{color:var(--muted);font-size:var(--font-11px);float:right}
-#clusterPanel .badge{font-size:var(--font-10px);background:var(--ok);color:var(--color-fff);border-radius:8px;padding:0 var(--space-6px);margin-left:var(--space-6px)}
-#clusterPanel .close{float:right;cursor:pointer;border:0;background:none;font-size:var(--font-16px);line-height:1}
 #detail h3{margin:0 0 var(--space-6px);font-size:var(--font-15px)}
 #detail .sub{color:var(--muted);font-size:var(--font-12px);margin-bottom:var(--space-8px)}
 #detail pre{background:var(--color-f1efe8);border:1px solid var(--border);border-radius:6px;padding:var(--space-8px);overflow:auto;font-size:var(--font-11p5px);white-space:pre-wrap;word-break:break-word}
@@ -175,3 +164,25 @@ a{color:var(--decision);cursor:pointer}
 @media(max-width:1439px){#focusNav{flex-wrap:wrap}#graphStatus{flex-basis:100%}}
 
 .legend-item{display:inline-flex;align-items:center;gap:var(--space-4px)}
+
+/* D-40 / AC-27: a persistent reading table above the supporting graph. */
+#listPane{flex:0 0 42%;min-height:160px;overflow:auto;margin:0;border-bottom:1px solid var(--border);background:var(--panel)}
+#recordList{width:100%;border-collapse:collapse;table-layout:fixed;font-size:var(--font-14px);line-height:1.5}
+#recordList .col-id{width:72px}#recordList .col-type{width:100px}#recordList .col-scope{width:96px}#recordList .col-status{width:156px}#recordList .col-created{width:104px}
+#recordList th{position:sticky;top:0;background:var(--color-f1efe8);z-index:2;text-align:left;padding:0 var(--space-8px)}
+#recordList th button{width:100%;height:var(--control-height);border:0;background:transparent;text-align:left;padding:0;white-space:nowrap}
+#recordList td{padding:var(--space-8px);border-bottom:1px solid var(--border);vertical-align:top;overflow-wrap:anywhere}
+#recordList tbody tr{position:relative}
+#recordList tbody tr:hover,#recordList tbody tr.selected{background:var(--color-eef3f9)}
+#recordList a{color:var(--decision);text-decoration:underline}
+#recordList a::after{content:"";position:absolute;inset:0;cursor:pointer}
+#recordList tr:focus-within{outline:2px solid var(--decision);outline-offset:-2px}
+#listEmpty{padding:var(--space-12px)}
+#filters #q{max-width:200px}
+
+#graphControls button{padding:0 var(--space-4px)}
+#graphControls #hopRadius{width:72px}
+#graphStatus{gap:var(--space-4px)}
+
+#recordList th[aria-sort=ascending] button::after{content:' ↑'}
+#recordList th[aria-sort=descending] button::after{content:' ↓'}

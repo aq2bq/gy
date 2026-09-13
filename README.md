@@ -315,16 +315,16 @@ L6 defaults to `warn`; the others default to `error`. The additional `edges` rul
 
 `render` splits each scope into pages of the configured node count and creates a README index when multiple pages are needed. Output paths must be relative to the ledger directory and cannot point into the directories containing source nodes.
 
-`render --format html` writes a single self-contained HTML file. It embeds the full ledger data, judgments from `lint`, `next`, `handover`, and `stats`, and does not fetch anything from the network, so `file://` works offline. The page shows the first screen (acceptance, states, open questions, lint counts), a graph of all six node types (each with a distinct shape and color) and twelve relationship labels, a node detail panel, filters and full-text search, the `stats` progress axes, and the handover blockers. The graph switches between two views by the number of visible nodes rather than by zoom: with many nodes it draws clusters with aggregated edge counts, and clicking a cluster lists its members to start a neighborhood from; with a small set it draws individual nodes laid out to reflect connectivity. Neighborhood hop count is chosen adaptively so the result fits the individual-view limit. Decisions read as a generation-layered lineage via `narrows` / `widens` / `supersedes` / `completes`, with superseded decisions marked. A count banner always states how many nodes are drawn and how many are hidden, including in search and lineage modes. `html_output` defaults to `gy.html` at the ledger root; writing `{scope}` in it produces one file per scope. `split_threshold` does not apply to HTML, and lint results never change the exit code. Bodies are embedded in full; the graph intentionally shows no body text (read it in the detail panel).
+`render --format html` writes a single self-contained HTML file. It embeds the full ledger data, judgments from `lint`, `next`, `handover`, and `stats`, and does not fetch anything from the network, so `file://` works offline. The page shows the first screen (acceptance, states, open questions, lint counts), a graph of all six node types (each with a distinct shape and color) and twelve relationship labels, a node detail panel, filters and full-text search, the `stats` progress axes, and the handover blockers. A sortable table is the primary reading view, with full wrapping titles and row-wide links to details. It remains visible above the supporting graph and detail panes; table order is restored from the URL hash. The graph switches between two views by the number of visible nodes rather than by zoom: with many nodes it draws clusters with aggregated edge counts, and clicking a cluster filters the permanent table by its scope and type; with a small set it draws individual nodes laid out to reflect connectivity. Neighborhood hop count is chosen adaptively so the result fits the individual-view limit. Decisions read as a generation-layered lineage via `narrows` / `widens` / `supersedes` / `completes`, with superseded decisions marked. A single status strip states the table result count and the graph drawn/hidden counts. `html_output` defaults to `gy.html` at the ledger root; writing `{scope}` in it produces one file per scope. `split_threshold` does not apply to HTML, and lint results never change the exit code. Bodies are embedded in full; the graph intentionally shows no body text (read it in the detail panel).
 
-Clicking an individual node moves the focus to its neighborhood and opens its
-full details beside the graph (below it on narrow screens). **Back** returns one
-focus, and the path above the graph lets you return several steps at once.
-**All nodes** removes the focus while retaining type, scope, state, search, and
-lineage settings; **Reset everything** clears all of them. An isolated focus
-shows “No connections in this graph”. The path retains each
-focus and its automatic hop radius, including a focus hidden by the current
-filters. Closing details keeps the focus; **Details** reopens the panel.
+Clicking an individual node or table row opens its full details beside the
+graph (below it on narrow screens), preserving focus, filters, and layout.
+Use the explicit neighborhood button to move focus. **↶** returns one focus,
+and the path returns several steps at once. **All** removes the focus while
+retaining filters and lineage; **Reset all** clears those settings and restores
+the default table order. An isolated focus shows “No connections in this graph”.
+The path retains each focus and its hop radius, including a hidden focus.
+Closing details keeps the focus; **Read** opens the focused record.
 
 Focus or displayed-node changes refit the graph. Resizing the graph, including
 opening details, refits an automatic view; after manual zoom or pan it preserves

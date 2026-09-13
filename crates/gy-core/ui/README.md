@@ -34,9 +34,9 @@ type checking.
 | --- | --- |
 | `data.ts` | Embedded payload, node index, immutable input facts |
 | `state.ts` | Display-state types, mutation functions, focus traversal, hash codec |
-| `filters.ts` | Search index and filter controls |
+| `filters.ts`, `filters/query.ts` | Filter controls and shared cached predicates |
 | `navigation.ts`, `location.ts` | Focus path and URL-to-UI projection |
-| `list.ts` | Current cluster-member list; future filtered list belongs here |
+| `list.ts` | Permanent sortable table, complete titles, row-wide links |
 | `detail/` | Record details and the existing offline Markdown renderer |
 | `graph/` | Layout, SVG, selection, drawing, clusters, viewport |
 | `survey/` | Overview, Progress, Blockers |

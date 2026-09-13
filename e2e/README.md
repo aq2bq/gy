@@ -37,6 +37,19 @@ previous verbose button labels and move graph controls out of the filter strip;
 existing assertions now inspect both groups and the consolidated status.
 The 1440-pixel default and focused screenshots are retained for visual review.
 
+List checks cover all six columns, full wrapping titles with at least 30 actual
+full-width characters per complete line at 1440px, row-wide native-link clicks,
+shared filter counts, column-order restoration, and 1000-row initial rendering.
+D-40 / AC-27 replace cluster-panel assertions with scope/type and table-row
+assertions. The omitted-node control now reveals an actual omitted row in that
+same table; the test verifies its ID against the focused node's neighbors.
+
+The list reserves vertical space, so a restored tall viewport may still have
+off-screen nodes. The resize test compares its measured original count with
+the restored count and requires the shorter viewport to hide more nodes. Legend
+checks use the SVG clipping rectangle and painted node rectangles; off-canvas
+DOM bounds are not visible overlaps. The legend must be outside the entire SVG.
+
 Tests re-resolve each locator and read its DOM `getBoundingClientRect` after
 scrolling, then send browser
 mouse input. No element click is dispatched from page JavaScript. The cluster
@@ -91,8 +104,8 @@ every device or topology.
 Force layout is capped at 60 nodes and cached by the drawn ID set. Overflow
 selection is ranked with BFS distance, degree, and ID, caching its latest result.
 Pan/zoom therefore does not repeat ranking or force iterations when the set is
-unchanged. Candidate filtering, neighborhood traversal, and edge selection still
-scan ledger data; at most 60 nodes are rebuilt in the SVG DOM. Similar timing at
+unchanged. Toolbar predicates are cached until their values change. Neighborhood traversal,
+row-ID cache checks, and edge selection still scan ledger data; at most 60 nodes are rebuilt in the SVG DOM. Similar timing at
 two scales does not establish scale-independent cost.
 
 ## Viewing generated HTML by hand

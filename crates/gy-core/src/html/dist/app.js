@@ -70,7 +70,6 @@
   var filterState = { scopeSel: "", stateSel: "", qstatus: "", criterion: "" };
   var radiusChoice = "";
   var activeTab = "overview";
-  var clusterSort = "deg";
   var dragging = false;
   var dragStart = null;
   var dragMoved = false;
@@ -137,9 +136,6 @@
   function setActiveTab(value) {
     activeTab = value;
   }
-  function setClusterSort(value) {
-    clusterSort = value;
-  }
   function setDragging(value) {
     dragging = value;
   }
@@ -180,51 +176,13 @@
   function setPositions(value) {
     positions = value;
   }
-
-  // src/list.ts
-  function renderClusterRows(rows, type, scope, g) {
-    const sorter = clusterSort;
-    const list = [...rows].sort((a, b) => {
-      if (sorter === "deg")
-        return b.deg - a.deg || (a.id < b.id ? -1 : 1);
-      if (sorter === "id")
-        return a.id < b.id ? -1 : 1;
-      return (a.title < b.title ? -1 : a.title > b.title ? 1 : 0) || (a.id < b.id ? -1 : 1);
-    });
-    panel.innerHTML = '<button class="close" data-close="1">&times;</button>' + "<h3>" + esc(scope) + " / " + esc(type) + " — " + list.length + " nodes</h3>" + '<div class="sortrow">' + '<button data-sort="deg"' + (sorter === "deg" ? ' style="border-color:var(--accent)"' : "") + ">by degree</button>" + '<button data-sort="title"' + (sorter === "title" ? ' style="border-color:var(--accent)"' : "") + ">by title</button>" + '<button data-sort="id"' + (sorter === "id" ? ' style="border-color:var(--accent)"' : "") + ">by id</button>" + "</div>" + "<ul>" + list.map((r) => '<li data-go="' + esc(r.id) + '"><span class="id">' + esc(r.id) + "</span>" + (r.alive ? '<span class="badge">current</span>' : "") + "<span>" + esc(r.title.length > 46 ? r.title.slice(0, 45) + "…" : r.title) + "</span>" + '<span class="deg">' + r.deg + "</span></li>").join("") + "</ul>";
-    panel.querySelectorAll("button[data-sort]").forEach((b) => b.addEventListener("click", () => {
-      setClusterSort(b.dataset.sort);
-      renderClusterRows(rows, type, scope, g);
-    }));
-    panel.querySelectorAll("li").forEach((li) => li.addEventListener("click", () => {
-      closeClusterPanel();
-      selectNode(li.dataset.go);
-    }));
-    panel.querySelector("[data-close]").addEventListener("click", closeClusterPanel);
+  var listSort = { key: "id", direction: "asc" };
+  function setListSort(value) {
+    const v = value;
+    listSort = v && ["id", "type", "title", "scope", "status", "created"].includes(v.key) && ["asc", "desc"].includes(v.direction) ? { key: v.key, direction: v.direction } : { key: "id", direction: "asc" };
   }
-
-  // src/graph/clusters.ts
-  var panel = element("clusterPanel");
-  function openClusterPanel(g, members) {
-    const [scope, type] = g.split("\x00");
-    openNodePanel(members, type, scope, g);
-  }
-  function openOmittedPanel(members) {
-    panel.dataset.members = JSON.stringify(members);
-    openNodePanel(members, "omitted nodes", currentFocus().id, "omitted");
-  }
-  function openNodePanel(members, type, scope, g) {
-    panel.classList.add("on");
-    panel.dataset.g = g;
-    const rows = members.map((id) => {
-      const n = byId[id];
-      const deg = Object.keys(adj[id] || {}).length;
-      return { id, title: n ? n.title : "", deg, alive: n && n.type === "decision" && !(n.superseded_by && n.superseded_by.length) };
-    });
-    renderClusterRows(rows, type, scope, g);
-  }
-  function closeClusterPanel() {
-    panel.classList.remove("on");
+  function selectType(kind) {
+    Object.keys(typeState).forEach((k) => setType(k, kind === "all" || k === kind));
   }
 
   // src/graph/layout.ts
@@ -375,7 +333,21 @@
     setGenealogyLayout(layout);
   }
 
-  // src/graph/selection.ts
+  // src/filters/query.ts
+  function haystack(n) {
+    let parts = [n.id, n.title, n.type, n.scope, n.status || ""];
+    for (const [k, v] of Object.entries(n.attrs))
+      parts.push(k + "=" + String(v));
+    parts.push(n.body || "");
+    return parts.join(`
+`).toLowerCase();
+  }
+  function computeMatches(q) {
+    if (!q)
+      return null;
+    const lq = q.toLowerCase();
+    return new Set(NODES.filter((n) => haystack(n).includes(lq)).map((n) => n.id));
+  }
   function setVisible(n) {
     if (typeState[n.type] !== true)
       return false;
@@ -397,20 +369,24 @@
     }
     return true;
   }
-  function candidateNodes() {
-    let ids = NODES.filter(setVisible).map((n) => n.id);
-    if (genealogyMode) {
-      ids = ids.filter((id) => byId[id] && byId[id].type === "decision");
-    }
-    if (searchText) {
+  var previousKey = "";
+  var matches = [];
+  function filteredNodes() {
+    const key = JSON.stringify([typeState, filterState, searchText]);
+    if (key !== previousKey) {
       const hits = computeMatches(searchText);
       setSearchHits(hits);
-      if (hits.size === 0) {
-        return [];
-      }
-      ids = ids.filter((id) => hits.has(id));
-    } else {
-      setSearchHits(null);
+      matches = NODES.filter((n) => setVisible(n) && (!hits || hits.has(n.id)));
+      previousKey = key;
+    }
+    return matches;
+  }
+
+  // src/graph/selection.ts
+  function candidateNodes() {
+    let ids = filteredNodes().map((n) => n.id);
+    if (genealogyMode) {
+      ids = ids.filter((id) => byId[id] && byId[id].type === "decision");
     }
     const focus = currentFocus();
     if (focus.id) {
@@ -655,18 +631,17 @@
   var scopeSel = element("scopeSel");
   var stateSel = element("stateSel");
   function initFilters() {
-    ["need", "question", "decision", "requirement", "criterion", "gate"].forEach((k) => {
+    ["all", "need", "question", "decision", "requirement", "criterion", "gate"].forEach((k) => {
       const chip = document.createElement("button");
       chip.type = "button";
       chip.setAttribute("aria-pressed", "true");
       chip.className = "chip on";
       chip.dataset.kind = k;
-      chip.style.borderColor = KIND_COLORS[k];
-      chip.textContent = k;
+      chip.style.borderColor = KIND_COLORS[k] || "var(--border)";
+      chip.textContent = k === "all" ? "All types" : k;
       chip.addEventListener("click", () => {
-        setType(k, !typeState[k]);
-        chip.classList.toggle("on", typeState[k]);
-        chip.setAttribute("aria-pressed", String(typeState[k]));
+        selectType(k);
+        renderTypeChips();
         redraw();
       });
       typeChips.appendChild(chip);
@@ -707,12 +682,13 @@
       setSearchText("");
       ["scopeSel", "stateSel", "qstatus", "criterion"].forEach((id) => setFilter(id, ""));
       setRadiusChoice("");
+      setListSort(null);
+      renderTypeChips();
       truncateFocus(1);
       hideDetail();
       setGenealogyMode(false);
       element("hopRadius").value = "";
       element("hopFrom").value = "";
-      closeClusterPanel();
       redraw();
     });
     element("hopFrom").addEventListener("input", () => {
@@ -737,7 +713,6 @@
       if (genealogyMode) {
         setLod("near");
       }
-      closeClusterPanel();
       redraw();
     });
     element("zin").addEventListener("click", () => zoomBy(1.6));
@@ -754,19 +729,13 @@
     document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
     document.querySelectorAll(".page").forEach((p) => p.classList.toggle("on", p.id === "page-" + t));
   }
-  function haystack(n) {
-    let parts = [n.id, n.title, n.type, n.scope, n.status || ""];
-    for (const [k, v] of Object.entries(n.attrs))
-      parts.push(k + "=" + String(v));
-    parts.push(n.body || "");
-    return parts.join(`
-`).toLowerCase();
-  }
-  function computeMatches(q) {
-    if (!q)
-      return null;
-    const lq = q.toLowerCase();
-    return new Set(NODES.filter((n) => haystack(n).includes(lq)).map((n) => n.id));
+  function renderTypeChips() {
+    const all = Object.values(typeState).every(Boolean);
+    document.querySelectorAll("#typeChips .chip").forEach((chip) => {
+      const on = chip.dataset.kind === "all" ? all : !all && typeState[chip.dataset.kind];
+      chip.classList.toggle("on", on);
+      chip.setAttribute("aria-pressed", String(on));
+    });
   }
 
   // src/navigation.ts
@@ -777,7 +746,6 @@
     if (currentFocus().id !== id || currentFocus().radius !== radius) {
       enterFocus(id, radius);
     }
-    closeClusterPanel();
     showDetail(id);
     redraw();
   }
@@ -785,7 +753,6 @@
     if (!Number.isInteger(index) || index < 0 || index >= focusHistory.length)
       return;
     truncateFocus(index + 1);
-    closeClusterPanel();
     if (currentFocus().id)
       showDetail(currentFocus().id);
     else
@@ -845,364 +812,6 @@
         redraw();
       }
     });
-  }
-
-  // src/graph/draw.ts
-  function overviewGrid(ids) {
-    const cluster = {};
-    ids.forEach((id) => {
-      const n2 = byId[id];
-      const g = n2.scope + "\x00" + n2.type;
-      (cluster[g] = cluster[g] || []).push(id);
-    });
-    const gs = Object.keys(cluster);
-    const cells = {};
-    if (!gs.length)
-      return { cluster, cells };
-    const cellW = 320, cellH = 150;
-    const vp = svg.getBoundingClientRect();
-    const aspect = Math.max(0.2, Math.min(5, (vp.width || 800) / (vp.height || 600)));
-    const n = gs.length;
-    let cols = n, rows = 1, best = Infinity;
-    for (let c = n > 1 ? 2 : 1;c <= n; c++) {
-      const r = Math.ceil(n / c);
-      const score = Math.abs(c * cellW / (r * cellH) - aspect);
-      if (score < best) {
-        best = score;
-        cols = c;
-        rows = r;
-      }
-    }
-    const gridW = cols * cellW, gridH = rows * cellH;
-    gs.forEach((g, i) => {
-      const c = i % cols, r = Math.floor(i / cols);
-      cells[g] = { bx: c * cellW + cellW / 2 - gridW / 2, by: r * cellH + cellH / 2 - gridH / 2 };
-    });
-    return { cluster, cells };
-  }
-  function dotPath(sx, sy, tx, ty) {
-    const dx = tx - sx, dy = ty - sy, d = Math.max(1, Math.hypot(dx, dy));
-    return { x1: sx, y1: sy, x2: tx - dx / d * 16, y2: ty - dy / d * 16 };
-  }
-  function draw() {
-    const { ids, omitted } = focusedSelection();
-    if (panel.dataset.g === "omitted" && panel.dataset.members !== JSON.stringify(omitted))
-      closeClusterPanel();
-    renderNavigation(ids);
-    const viewport = svg.getBoundingClientRect();
-    const focus = currentFocus();
-    const key = JSON.stringify([genealogyMode, focus.id, focus.radius, [...ids].sort()]);
-    if (key !== lastFitKey) {
-      setLastFitKey(key);
-      fitTransform();
-    } else if (lastViewport && (viewport.width !== lastViewport.width || viewport.height !== lastViewport.height)) {
-      if (viewSource === "fit")
-        fitTransform();
-      else {
-        setTranslate({ ...translate, x: translate.x + (viewport.width - lastViewport.width) / 2 });
-        setTranslate({ ...translate, y: translate.y + (viewport.height - lastViewport.height) / 2 });
-        applyTransform();
-      }
-    }
-    setLastViewport({ width: viewport.width, height: viewport.height });
-    const showingAll = ids.length <= MODE_THRESHOLD || genealogyMode;
-    if (!genealogyMode && showingAll && ids.length > 0)
-      ensureForce(ids);
-    const inPositions = genealogyMode ? genealogyLayout : showingAll ? forceLayout : positions;
-    root.innerHTML = "";
-    const culling = element("culling");
-    const setMeta = (drawn, visCount, extra) => {
-      const overview = !showingAll;
-      element("viewCounts").textContent = overview ? drawn + (drawn === 1 ? " cluster" : " clusters") + " · " + ids.length + " nodes" : drawn + " shown";
-      culling.replaceChildren();
-      const off2 = overview ? 0 : Number(visCount) - drawn;
-      const hidden = off2 + omitted.length;
-      if (!hidden)
-        culling.textContent = "0 hidden";
-      if (off2)
-        culling.appendChild(document.createTextNode(off2 + " off-screen at readable zoom"));
-      if (omitted.length) {
-        if (off2)
-          culling.appendChild(document.createTextNode(" · "));
-        const button = document.createElement("button");
-        button.id = "showOmitted";
-        button.textContent = omitted.length + " nodes omitted";
-        button.addEventListener("click", () => openOmittedPanel(omitted));
-        culling.appendChild(button);
-      }
-    };
-    if (genealogyMode) {
-      drawEdgesLayer(inPositions, ids.filter((id) => inPositions[id]), visibleEdges(ids).filter((e) => (e.label === "narrows" || e.label === "supersedes" || e.label === "completes" || e.label === "widens") && inPositions[e.source] && inPositions[e.target]));
-      const n2 = drawNodeLayer(inPositions, ids);
-      const off2 = offscreenCount(inPositions, ids);
-      setMeta(n2 - off2, n2, off2 > 0 ? "Showing " + (n2 - off2) + " of " + n2 + " nodes; " + off2 + " off-screen at readable zoom. Zoom out or pan to reach them." : "");
-      return;
-    }
-    if (!showingAll) {
-      const { cluster, cells } = overviewGrid(ids);
-      const cg = Object.keys(cluster);
-      const pair = {};
-      EDGES.forEach((e) => {
-        if (!ids.includes(e.source) || !ids.includes(e.target))
-          return;
-        const gs = byId[e.source].scope + "\x00" + byId[e.source].type;
-        const gt = byId[e.target].scope + "\x00" + byId[e.target].type;
-        if (gs === gt)
-          return;
-        const k = gs + "|" + gt;
-        (pair[k] = pair[k] || []).push(e.label);
-      });
-      const edgeLayer = document.createElementNS(NS, "g");
-      const pairKeys = Object.keys(pair);
-      pairKeys.forEach((k, i) => {
-        const labels = pair[k];
-        const [gs, gt] = k.split("|");
-        const a = cells[gs] || { bx: 0, by: 0 };
-        const b = cells[gt] || { bx: 0, by: 0 };
-        const { bx: sx, by: sy } = a, tx = b.bx, ty = b.by;
-        const dx = tx - sx, dy = ty - sy, len = Math.max(1, Math.hypot(dx, dy));
-        const ux = -dy / len, uy = dx / len;
-        const side = i % 2 === 0 ? 1 : -1;
-        const dist = 90 + Math.floor(i / 2) * 28;
-        const mx = (sx + tx) / 2 + ux * dist * side;
-        const my = (sy + ty) / 2 + uy * dist * side;
-        const endX = tx - dx / len * 16, endY = ty - dy / len * 16;
-        const path = document.createElementNS(NS, "path");
-        path.setAttribute("d", String("M " + sx + " " + sy + " Q " + mx + " " + my + " " + endX + " " + endY));
-        path.setAttribute("fill", "none");
-        path.setAttribute("stroke", String(token("--color-888")));
-        path.setAttribute("stroke-width", "1.4");
-        path.setAttribute("marker-end", "url(#arr-_agg)");
-        path.setAttribute("opacity", "0.75");
-        path.setAttribute("data-label", String([...new Set(labels)].join(",")));
-        path.setAttribute("data-s", String(gs));
-        path.setAttribute("data-t", String(gt));
-        edgeLayer.appendChild(path);
-        const t = document.createElementNS(NS, "text");
-        t.setAttribute("x", String(mx + ux * 14 * side));
-        t.setAttribute("y", String(my + uy * 14 * side - 4));
-        t.setAttribute("text-anchor", "middle");
-        t.setAttribute("class", "elabel");
-        t.setAttribute("data-count", String(labels.length));
-        t.setAttribute("data-s", String(gs));
-        t.setAttribute("data-t", String(gt));
-        t.textContent = labels.length > 1 ? labels.length + "" : labels[0];
-        edgeLayer.appendChild(t);
-      });
-      root.appendChild(edgeLayer);
-      const internal = {};
-      EDGES.forEach((e) => {
-        if (!ids.includes(e.source) || !ids.includes(e.target))
-          return;
-        const g = byId[e.source].scope + "\x00" + byId[e.source].type;
-        if (g !== byId[e.target].scope + "\x00" + byId[e.target].type)
-          return;
-        (internal[g] = internal[g] || []).push(e.label);
-      });
-      cg.forEach((g) => {
-        const [scope, type] = g.split("\x00");
-        const gp = cells[g] || { bx: 0, by: 0 };
-        const members = cluster[g];
-        const w = Math.min(280, Math.max(120, 40 + members.length * 1.4)), h = 34;
-        const rect = document.createElementNS(NS, "rect");
-        rect.setAttribute("x", String(gp.bx - w / 2));
-        rect.setAttribute("y", String(gp.by - h / 2));
-        rect.setAttribute("width", String(w));
-        rect.setAttribute("height", String(h));
-        rect.setAttribute("rx", "8");
-        rect.setAttribute("fill", String(KIND_COLORS[type]));
-        rect.setAttribute("opacity", "0.6");
-        rect.setAttribute("class", "node");
-        rect.addEventListener("click", () => openClusterPanel(g, members));
-        root.appendChild(rect);
-        const t1 = document.createElementNS(NS, "text");
-        t1.setAttribute("x", String(gp.bx));
-        t1.setAttribute("y", String(gp.by - 1));
-        t1.setAttribute("text-anchor", "middle");
-        t1.setAttribute("class", "nlabel");
-        t1.style.fill = token("--color-111");
-        t1.textContent = scope + " / " + type + " · " + members.length;
-        root.appendChild(t1);
-        const t2 = document.createElementNS(NS, "text");
-        t2.setAttribute("x", String(gp.bx));
-        t2.setAttribute("y", String(gp.by + 13));
-        t2.setAttribute("text-anchor", "middle");
-        t2.setAttribute("class", "elabel");
-        t2.style.fill = token("--accent");
-        t2.textContent = internal[g] ? "internal " + internal[g].length : "";
-        root.appendChild(t2);
-      });
-      setMeta(cg.length, ids.length + " nodes", cg.length + " clusters · " + ids.length + " nodes available");
-      return;
-    }
-    drawEdgesLayer(inPositions, ids, visibleEdges(ids));
-    const n = drawNodeLayer(inPositions, ids);
-    const off = offscreenCount(inPositions, ids);
-    const noted = off > 0 ? "Showing " + (n - off) + " of " + n + " nodes; " + off + " off-screen at readable zoom. Zoom out or pan to reach them." : "";
-    setMeta(n - off, n, noted);
-  }
-  function offscreenCount(layout, ids) {
-    const rect = svg.getBoundingClientRect();
-    let off = 0;
-    ids.forEach((id) => {
-      const p = layout[id];
-      if (!p)
-        return;
-      const sx = p.x * scale + translate.x;
-      const sy = p.y * scale + translate.y;
-      if (sx < -20 || sx > rect.width + 20 || sy < -20 || sy > rect.height + 20)
-        off++;
-    });
-    return off;
-  }
-  function drawEdgesLayer(inPositions, ids, drawEdges) {
-    const edgeLayer = document.createElementNS(NS, "g");
-    const wantLabels = !genealogyMode && ids.length <= EDGE_LABEL_MAX;
-    drawEdges.forEach((e, idx) => {
-      const a = inPositions[e.source], b = inPositions[e.target];
-      if (!a || !b)
-        return;
-      const line = document.createElementNS(NS, "line");
-      const p = dotPath(a.x, a.y, b.x, b.y);
-      line.setAttribute("x1", String(p.x1));
-      line.setAttribute("y1", String(p.y1));
-      line.setAttribute("x2", String(p.x2));
-      line.setAttribute("y2", String(p.y2));
-      line.setAttribute("stroke", String(edgeColor(e.label)));
-      line.setAttribute("stroke-width", "1.2");
-      line.setAttribute("marker-end", String("url(#arr-" + e.label.replace(/\W/g, "_") + ")"));
-      line.setAttribute("opacity", "0.5");
-      line.setAttribute("data-lbl", String(e.label));
-      line.setAttribute("data-idx", String(idx));
-      edgeLayer.appendChild(line);
-      if (wantLabels) {
-        const t = document.createElementNS(NS, "text");
-        t.setAttribute("x", String((p.x1 + p.x2) / 2));
-        t.setAttribute("y", String((p.y1 + p.y2) / 2 - 3));
-        t.setAttribute("text-anchor", "middle");
-        t.setAttribute("class", "elabel");
-        t.textContent = e.label;
-        edgeLayer.appendChild(t);
-      }
-    });
-    root.appendChild(edgeLayer);
-  }
-  function drawNodeLayer(inPositions, ids) {
-    const nodeLayer = document.createElementNS(NS, "g");
-    const placed = [];
-    let drawn = 0;
-    ids.forEach((id) => {
-      const n = byId[id];
-      const p = inPositions[id];
-      if (!p)
-        return;
-      const isSelected = selected === id;
-      const isHit = searchHits && searchHits.has(id);
-      const g = document.createElementNS(NS, "g");
-      g.setAttribute("transform", String("translate(" + p.x + "," + p.y + ")"));
-      g.setAttribute("class", "node");
-      if (isSelected) {
-        const ring = document.createElementNS(NS, "circle");
-        ring.setAttribute("r", "13");
-        ring.setAttribute("class", "ring");
-        ring.setAttribute("fill", "none");
-        ring.setAttribute("stroke", "var(--hl)");
-        ring.setAttribute("stroke-width", "3");
-        g.appendChild(ring);
-      }
-      if (isHit) {
-        const hit = document.createElementNS(NS, "circle");
-        hit.setAttribute("r", "15");
-        hit.setAttribute("fill", "none");
-        hit.setAttribute("stroke", String(token("--color-ffb000")));
-        hit.setAttribute("stroke-width", "2");
-        g.appendChild(hit);
-      }
-      const r = lod === "near" ? 11 : 8;
-      const path = document.createElementNS(NS, "path");
-      path.setAttribute("d", String(shapeOf(n.type)));
-      path.setAttribute("fill", String(isSelected ? token("--hl") : KIND_COLORS[n.type]));
-      path.setAttribute("stroke", String(token("--color-222")));
-      path.setAttribute("stroke-width", "0.8");
-      path.setAttribute("transform", String("scale(" + r / 8 + ")"));
-      g.appendChild(path);
-      if (n.type === "requirement" && n.status === "complete") {
-        const ck = document.createElementNS(NS, "text");
-        ck.setAttribute("x", String(0));
-        ck.setAttribute("y", String(3));
-        ck.setAttribute("text-anchor", "middle");
-        ck.style.fontSize = token("--font-9px");
-        ck.style.fill = token("--color-fff");
-        ck.textContent = "✓";
-        g.appendChild(ck);
-      }
-      if (n.type === "decision" && n.superseded_by && n.superseded_by.length) {
-        const x = document.createElementNS(NS, "text");
-        x.setAttribute("x", String(0));
-        x.setAttribute("y", String(3));
-        x.setAttribute("text-anchor", "middle");
-        x.style.fontSize = token("--font-9px");
-        x.style.fill = token("--color-fff");
-        x.textContent = "×";
-        x.setAttribute("transform", "scale(0.8)");
-        g.appendChild(x);
-      }
-      const probe = document.createElementNS(NS, "text");
-      probe.setAttribute("text-anchor", "middle");
-      probe.setAttribute("class", "nlabel");
-      svg.appendChild(probe);
-      const full = lod === "near" ? n.id + " · " + n.title + (n.status ? " · " + n.status : "") : n.id;
-      probe.textContent = full;
-      let tw = probe.getComputedTextLength() || full.length * 6;
-      const budget = levelW();
-      while (tw > budget && probe.textContent.length > 4) {
-        probe.textContent = probe.textContent.slice(0, probe.textContent.length - 2) + "…";
-        tw = probe.getComputedTextLength() || probe.textContent.length * 6;
-      }
-      const finalText = probe.textContent;
-      svg.removeChild(probe);
-      const pad = 6;
-      const bb = { x: p.x - tw / 2, y: p.y + r + 3, w: tw + pad, h: 13 + pad };
-      const collides = placed.some((q) => !(bb.x + bb.w < q.x || q.x + q.w < bb.x || bb.y + bb.h < q.y || q.y + q.h < bb.y));
-      if (!collides && tw <= budget) {
-        const t = document.createElementNS(NS, "text");
-        t.setAttribute("x", String(0));
-        t.setAttribute("y", String(r + 13));
-        t.setAttribute("text-anchor", "middle");
-        t.setAttribute("class", "nlabel");
-        t.textContent = finalText;
-        g.appendChild(t);
-        placed.push(bb);
-      }
-      g.dataset.nodeId = id;
-      g.setAttribute("tabindex", "0");
-      g.setAttribute("role", "button");
-      g.setAttribute("aria-label", String("Read " + id + " · " + n.title));
-      g.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (!dragMoved)
-          selectNode(id);
-      });
-      g.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          selectNode(id);
-        }
-      });
-      nodeLayer.appendChild(g);
-      drawn++;
-    });
-    root.appendChild(nodeLayer);
-    return drawn;
-  }
-  function levelW() {
-    return scale >= 1.1 ? MAX_LABEL_W : MAX_LABEL_W * 0.6;
-  }
-
-  // src/components.ts
-  var esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-  function redraw() {
-    draw();
   }
 
   // src/detail/markdown.ts
@@ -1497,7 +1106,6 @@
     return cjk.length > letters.length / 2 ? "prose-ja" : "prose-latin";
   }
   function selectNode(id) {
-    closeClusterPanel();
     showDetail(id);
     redraw();
   }
@@ -1584,6 +1192,387 @@
     });
   }
 
+  // src/graph/clusters.ts
+  function openClusterList(group) {
+    const [scope, type] = group.split("\x00");
+    selectType(type);
+    setFilter("scopeSel", scope);
+    element("scopeSel").value = scope;
+    renderTypeChips();
+    redraw();
+    element("listPane").scrollTop = 0;
+  }
+  function revealOmitted(members) {
+    if (members.length)
+      revealRow(members[0]);
+  }
+
+  // src/graph/draw.ts
+  function overviewGrid(ids) {
+    const cluster = {};
+    ids.forEach((id) => {
+      const n2 = byId[id];
+      const g = n2.scope + "\x00" + n2.type;
+      (cluster[g] = cluster[g] || []).push(id);
+    });
+    const gs = Object.keys(cluster);
+    const cells = {};
+    if (!gs.length)
+      return { cluster, cells };
+    const cellW = 320, cellH = 150;
+    const vp = svg.getBoundingClientRect();
+    const aspect = Math.max(0.2, Math.min(5, (vp.width || 800) / (vp.height || 600)));
+    const n = gs.length;
+    let cols = n, rows = 1, best = Infinity;
+    for (let c = n > 1 ? 2 : 1;c <= n; c++) {
+      const r = Math.ceil(n / c);
+      const score = Math.abs(c * cellW / (r * cellH) - aspect);
+      if (score < best) {
+        best = score;
+        cols = c;
+        rows = r;
+      }
+    }
+    const gridW = cols * cellW, gridH = rows * cellH;
+    gs.forEach((g, i) => {
+      const c = i % cols, r = Math.floor(i / cols);
+      cells[g] = { bx: c * cellW + cellW / 2 - gridW / 2, by: r * cellH + cellH / 2 - gridH / 2 };
+    });
+    return { cluster, cells };
+  }
+  function dotPath(sx, sy, tx, ty) {
+    const dx = tx - sx, dy = ty - sy, d = Math.max(1, Math.hypot(dx, dy));
+    return { x1: sx, y1: sy, x2: tx - dx / d * 16, y2: ty - dy / d * 16 };
+  }
+  function draw() {
+    const { ids, omitted } = focusedSelection();
+    renderList();
+    renderNavigation(ids);
+    const viewport = svg.getBoundingClientRect();
+    const focus = currentFocus();
+    const key = JSON.stringify([genealogyMode, focus.id, focus.radius, [...ids].sort()]);
+    if (key !== lastFitKey) {
+      setLastFitKey(key);
+      fitTransform();
+    } else if (lastViewport && (viewport.width !== lastViewport.width || viewport.height !== lastViewport.height)) {
+      if (viewSource === "fit")
+        fitTransform();
+      else {
+        setTranslate({ ...translate, x: translate.x + (viewport.width - lastViewport.width) / 2 });
+        setTranslate({ ...translate, y: translate.y + (viewport.height - lastViewport.height) / 2 });
+        applyTransform();
+      }
+    }
+    setLastViewport({ width: viewport.width, height: viewport.height });
+    const showingAll = ids.length <= MODE_THRESHOLD || genealogyMode;
+    if (!genealogyMode && showingAll && ids.length > 0)
+      ensureForce(ids);
+    const inPositions = genealogyMode ? genealogyLayout : showingAll ? forceLayout : positions;
+    root.innerHTML = "";
+    const culling = element("culling");
+    const setMeta = (drawn, visCount, extra) => {
+      const overview = !showingAll;
+      element("viewCounts").textContent = overview ? "Graph: " + drawn + (drawn === 1 ? " cluster" : " clusters") : "Graph: " + drawn + " shown";
+      culling.replaceChildren();
+      const off2 = overview ? 0 : Number(visCount) - drawn;
+      const hidden = off2 + omitted.length;
+      if (!hidden)
+        culling.textContent = "0 hidden";
+      if (off2)
+        culling.appendChild(document.createTextNode(off2 + " off-screen at readable zoom"));
+      if (omitted.length) {
+        if (off2)
+          culling.appendChild(document.createTextNode(" · "));
+        const button = document.createElement("button");
+        button.id = "showOmitted";
+        button.textContent = omitted.length + " nodes omitted";
+        button.addEventListener("click", () => revealOmitted(omitted));
+        culling.appendChild(button);
+      }
+    };
+    if (genealogyMode) {
+      drawEdgesLayer(inPositions, ids.filter((id) => inPositions[id]), visibleEdges(ids).filter((e) => (e.label === "narrows" || e.label === "supersedes" || e.label === "completes" || e.label === "widens") && inPositions[e.source] && inPositions[e.target]));
+      const n2 = drawNodeLayer(inPositions, ids);
+      const off2 = offscreenCount(inPositions, ids);
+      setMeta(n2 - off2, n2, off2 > 0 ? "Showing " + (n2 - off2) + " of " + n2 + " nodes; " + off2 + " off-screen at readable zoom. Zoom out or pan to reach them." : "");
+      return;
+    }
+    if (!showingAll) {
+      const { cluster, cells } = overviewGrid(ids);
+      const cg = Object.keys(cluster);
+      const pair = {};
+      EDGES.forEach((e) => {
+        if (!ids.includes(e.source) || !ids.includes(e.target))
+          return;
+        const gs = byId[e.source].scope + "\x00" + byId[e.source].type;
+        const gt = byId[e.target].scope + "\x00" + byId[e.target].type;
+        if (gs === gt)
+          return;
+        const k = gs + "|" + gt;
+        (pair[k] = pair[k] || []).push(e.label);
+      });
+      const edgeLayer = document.createElementNS(NS, "g");
+      const pairKeys = Object.keys(pair);
+      pairKeys.forEach((k, i) => {
+        const labels = pair[k];
+        const [gs, gt] = k.split("|");
+        const a = cells[gs] || { bx: 0, by: 0 };
+        const b = cells[gt] || { bx: 0, by: 0 };
+        const { bx: sx, by: sy } = a, tx = b.bx, ty = b.by;
+        const dx = tx - sx, dy = ty - sy, len = Math.max(1, Math.hypot(dx, dy));
+        const ux = -dy / len, uy = dx / len;
+        const side = i % 2 === 0 ? 1 : -1;
+        const dist = 90 + Math.floor(i / 2) * 28;
+        const mx = (sx + tx) / 2 + ux * dist * side;
+        const my = (sy + ty) / 2 + uy * dist * side;
+        const endX = tx - dx / len * 16, endY = ty - dy / len * 16;
+        const path = document.createElementNS(NS, "path");
+        path.setAttribute("d", String("M " + sx + " " + sy + " Q " + mx + " " + my + " " + endX + " " + endY));
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke", String(token("--color-888")));
+        path.setAttribute("stroke-width", "1.4");
+        path.setAttribute("marker-end", "url(#arr-_agg)");
+        path.setAttribute("opacity", "0.75");
+        path.setAttribute("data-label", String([...new Set(labels)].join(",")));
+        path.setAttribute("data-s", String(gs));
+        path.setAttribute("data-t", String(gt));
+        edgeLayer.appendChild(path);
+        const t = document.createElementNS(NS, "text");
+        t.setAttribute("x", String(mx + ux * 14 * side));
+        t.setAttribute("y", String(my + uy * 14 * side - 4));
+        t.setAttribute("text-anchor", "middle");
+        t.setAttribute("class", "elabel");
+        t.setAttribute("data-count", String(labels.length));
+        t.setAttribute("data-s", String(gs));
+        t.setAttribute("data-t", String(gt));
+        t.textContent = labels.length > 1 ? labels.length + "" : labels[0];
+        edgeLayer.appendChild(t);
+      });
+      root.appendChild(edgeLayer);
+      const internal = {};
+      EDGES.forEach((e) => {
+        if (!ids.includes(e.source) || !ids.includes(e.target))
+          return;
+        const g = byId[e.source].scope + "\x00" + byId[e.source].type;
+        if (g !== byId[e.target].scope + "\x00" + byId[e.target].type)
+          return;
+        (internal[g] = internal[g] || []).push(e.label);
+      });
+      cg.forEach((g) => {
+        const [scope, type] = g.split("\x00");
+        const gp = cells[g] || { bx: 0, by: 0 };
+        const members = cluster[g];
+        const w = Math.min(280, Math.max(120, 40 + members.length * 1.4)), h = 34;
+        const rect = document.createElementNS(NS, "rect");
+        rect.setAttribute("x", String(gp.bx - w / 2));
+        rect.setAttribute("y", String(gp.by - h / 2));
+        rect.setAttribute("width", String(w));
+        rect.setAttribute("height", String(h));
+        rect.setAttribute("rx", "8");
+        rect.setAttribute("fill", String(KIND_COLORS[type]));
+        rect.setAttribute("opacity", "0.6");
+        rect.setAttribute("class", "node");
+        rect.setAttribute("role", "button");
+        rect.setAttribute("tabindex", "0");
+        rect.setAttribute("aria-label", "List " + scope + " / " + type + ": " + members.length + " records");
+        rect.addEventListener("click", () => openClusterList(g));
+        rect.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openClusterList(g);
+          }
+        });
+        root.appendChild(rect);
+        const t1 = document.createElementNS(NS, "text");
+        t1.setAttribute("x", String(gp.bx));
+        t1.setAttribute("y", String(gp.by - 1));
+        t1.setAttribute("text-anchor", "middle");
+        t1.setAttribute("class", "nlabel");
+        t1.style.fill = token("--color-111");
+        t1.textContent = scope + " / " + type + " · " + members.length;
+        root.appendChild(t1);
+        const t2 = document.createElementNS(NS, "text");
+        t2.setAttribute("x", String(gp.bx));
+        t2.setAttribute("y", String(gp.by + 13));
+        t2.setAttribute("text-anchor", "middle");
+        t2.setAttribute("class", "elabel");
+        t2.style.fill = token("--accent");
+        t2.textContent = internal[g] ? "internal " + internal[g].length : "";
+        root.appendChild(t2);
+      });
+      setMeta(cg.length, ids.length + " nodes", cg.length + " clusters · " + ids.length + " nodes available");
+      return;
+    }
+    drawEdgesLayer(inPositions, ids, visibleEdges(ids));
+    const n = drawNodeLayer(inPositions, ids);
+    const off = offscreenCount(inPositions, ids);
+    const noted = off > 0 ? "Showing " + (n - off) + " of " + n + " nodes; " + off + " off-screen at readable zoom. Zoom out or pan to reach them." : "";
+    setMeta(n - off, n, noted);
+  }
+  function offscreenCount(layout, ids) {
+    const rect = svg.getBoundingClientRect();
+    let off = 0;
+    ids.forEach((id) => {
+      const p = layout[id];
+      if (!p)
+        return;
+      const sx = p.x * scale + translate.x;
+      const sy = p.y * scale + translate.y;
+      if (sx < -20 || sx > rect.width + 20 || sy < -20 || sy > rect.height + 20)
+        off++;
+    });
+    return off;
+  }
+  function drawEdgesLayer(inPositions, ids, drawEdges) {
+    const edgeLayer = document.createElementNS(NS, "g");
+    const wantLabels = !genealogyMode && ids.length <= EDGE_LABEL_MAX;
+    drawEdges.forEach((e, idx) => {
+      const a = inPositions[e.source], b = inPositions[e.target];
+      if (!a || !b)
+        return;
+      const line = document.createElementNS(NS, "line");
+      const p = dotPath(a.x, a.y, b.x, b.y);
+      line.setAttribute("x1", String(p.x1));
+      line.setAttribute("y1", String(p.y1));
+      line.setAttribute("x2", String(p.x2));
+      line.setAttribute("y2", String(p.y2));
+      line.setAttribute("stroke", String(edgeColor(e.label)));
+      line.setAttribute("stroke-width", "1.2");
+      line.setAttribute("marker-end", String("url(#arr-" + e.label.replace(/\W/g, "_") + ")"));
+      line.setAttribute("opacity", "0.5");
+      line.setAttribute("data-lbl", String(e.label));
+      line.setAttribute("data-idx", String(idx));
+      edgeLayer.appendChild(line);
+      if (wantLabels) {
+        const t = document.createElementNS(NS, "text");
+        t.setAttribute("x", String((p.x1 + p.x2) / 2));
+        t.setAttribute("y", String((p.y1 + p.y2) / 2 - 3));
+        t.setAttribute("text-anchor", "middle");
+        t.setAttribute("class", "elabel");
+        t.textContent = e.label;
+        edgeLayer.appendChild(t);
+      }
+    });
+    root.appendChild(edgeLayer);
+  }
+  function drawNodeLayer(inPositions, ids) {
+    const nodeLayer = document.createElementNS(NS, "g");
+    const placed = [];
+    let drawn = 0;
+    ids.forEach((id) => {
+      const n = byId[id];
+      const p = inPositions[id];
+      if (!p)
+        return;
+      const isSelected = selected === id;
+      const isHit = searchHits && searchHits.has(id);
+      const g = document.createElementNS(NS, "g");
+      g.setAttribute("transform", String("translate(" + p.x + "," + p.y + ")"));
+      g.setAttribute("class", "node");
+      if (isSelected) {
+        const ring = document.createElementNS(NS, "circle");
+        ring.setAttribute("r", "13");
+        ring.setAttribute("class", "ring");
+        ring.setAttribute("fill", "none");
+        ring.setAttribute("stroke", "var(--hl)");
+        ring.setAttribute("stroke-width", "3");
+        g.appendChild(ring);
+      }
+      if (isHit) {
+        const hit = document.createElementNS(NS, "circle");
+        hit.setAttribute("r", "15");
+        hit.setAttribute("fill", "none");
+        hit.setAttribute("stroke", String(token("--color-ffb000")));
+        hit.setAttribute("stroke-width", "2");
+        g.appendChild(hit);
+      }
+      const r = lod === "near" ? 11 : 8;
+      const path = document.createElementNS(NS, "path");
+      path.setAttribute("d", String(shapeOf(n.type)));
+      path.setAttribute("fill", String(isSelected ? token("--hl") : KIND_COLORS[n.type]));
+      path.setAttribute("stroke", String(token("--color-222")));
+      path.setAttribute("stroke-width", "0.8");
+      path.setAttribute("transform", String("scale(" + r / 8 + ")"));
+      g.appendChild(path);
+      if (n.type === "requirement" && n.status === "complete") {
+        const ck = document.createElementNS(NS, "text");
+        ck.setAttribute("x", String(0));
+        ck.setAttribute("y", String(3));
+        ck.setAttribute("text-anchor", "middle");
+        ck.style.fontSize = token("--font-9px");
+        ck.style.fill = token("--color-fff");
+        ck.textContent = "✓";
+        g.appendChild(ck);
+      }
+      if (n.type === "decision" && n.superseded_by && n.superseded_by.length) {
+        const x = document.createElementNS(NS, "text");
+        x.setAttribute("x", String(0));
+        x.setAttribute("y", String(3));
+        x.setAttribute("text-anchor", "middle");
+        x.style.fontSize = token("--font-9px");
+        x.style.fill = token("--color-fff");
+        x.textContent = "×";
+        x.setAttribute("transform", "scale(0.8)");
+        g.appendChild(x);
+      }
+      const probe = document.createElementNS(NS, "text");
+      probe.setAttribute("text-anchor", "middle");
+      probe.setAttribute("class", "nlabel");
+      svg.appendChild(probe);
+      const full = lod === "near" ? n.id + " · " + n.title + (n.status ? " · " + n.status : "") : n.id;
+      probe.textContent = full;
+      let tw = probe.getComputedTextLength() || full.length * 6;
+      const budget = levelW();
+      while (tw > budget && probe.textContent.length > 4) {
+        probe.textContent = probe.textContent.slice(0, probe.textContent.length - 2) + "…";
+        tw = probe.getComputedTextLength() || probe.textContent.length * 6;
+      }
+      const finalText = probe.textContent;
+      svg.removeChild(probe);
+      const pad = 6;
+      const bb = { x: p.x - tw / 2, y: p.y + r + 3, w: tw + pad, h: 13 + pad };
+      const collides = placed.some((q) => !(bb.x + bb.w < q.x || q.x + q.w < bb.x || bb.y + bb.h < q.y || q.y + q.h < bb.y));
+      if (!collides && tw <= budget) {
+        const t = document.createElementNS(NS, "text");
+        t.setAttribute("x", String(0));
+        t.setAttribute("y", String(r + 13));
+        t.setAttribute("text-anchor", "middle");
+        t.setAttribute("class", "nlabel");
+        t.textContent = finalText;
+        g.appendChild(t);
+        placed.push(bb);
+      }
+      g.dataset.nodeId = id;
+      g.setAttribute("tabindex", "0");
+      g.setAttribute("role", "button");
+      g.setAttribute("aria-label", String("Read " + id + " · " + n.title));
+      g.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!dragMoved)
+          selectNode(id);
+      });
+      g.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          selectNode(id);
+        }
+      });
+      nodeLayer.appendChild(g);
+      drawn++;
+    });
+    root.appendChild(nodeLayer);
+    return drawn;
+  }
+  function levelW() {
+    return scale >= 1.1 ? MAX_LABEL_W : MAX_LABEL_W * 0.6;
+  }
+
+  // src/components.ts
+  var esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  function redraw() {
+    draw();
+  }
+
   // src/location.ts
   var lastLocationState = "";
   function locationState(value) {
@@ -1594,6 +1583,7 @@
         focus: focusHistory,
         types: typeState,
         filters: filterState,
+        listSort,
         search: searchText,
         radiusChoice,
         tab: activeTab,
@@ -1604,10 +1594,8 @@
     Object.keys(typeState).forEach((k) => {
       setType(k, value.types?.[k] !== false);
     });
-    document.querySelectorAll("#typeChips .chip").forEach((c) => {
-      c.classList.toggle("on", typeState[c.dataset.kind]);
-      c.setAttribute("aria-pressed", String(typeState[c.dataset.kind]));
-    });
+    renderTypeChips();
+    setListSort(value.listSort);
     fields.forEach((id) => {
       element(id).value = typeof value.filters?.[id] === "string" ? value.filters[id] : "";
       setFilter(id, element(id).value);
@@ -1620,7 +1608,6 @@
     const tabs = [...document.querySelectorAll("#tabs button")].map((b) => b.dataset.tab);
     gotoTab(tabs.includes(value.tab) ? value.tab : "overview");
     element("hopFrom").value = currentFocus().id || "";
-    closeClusterPanel();
     hideDetail();
     element("locationStatus").textContent = "";
     if (typeof value.selected === "string") {
@@ -1642,7 +1629,83 @@
       return;
     history.pushState(null, "", locationHash(state));
     lastLocationState = state;
+    renderList();
     element("locationStatus").textContent = "";
+  }
+
+  // src/list.ts
+  var columns = [["id", "ID"], ["type", "Type"], ["title", "Title"], ["scope", "Scope"], ["status", "State"], ["created", "Created"]];
+  var compare = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
+  var renderedKey = "";
+  var linkedState = "";
+  function value(node, key) {
+    if (key === "status") {
+      if (node.type === "requirement")
+        return node.state || node.status || "";
+      if (node.type === "question")
+        return node.status === "closed" ? "Closed" : "Open";
+      if (node.type === "criterion")
+        return node.attrs.satisfied ? "Satisfied" : "Not satisfied";
+      return node.status || "";
+    }
+    return String(node[key] ?? "");
+  }
+  function initList() {
+    element("recordList").querySelector("thead tr").innerHTML = columns.map(([key, label]) => '<th scope="col" data-column="' + key + '"><button data-sort="' + key + '" aria-label="Sort by ' + label + '">' + label + "</button></th>").join("");
+    element("recordList").addEventListener("click", (event) => {
+      const target = event.target;
+      const sort = target.closest("[data-sort]");
+      if (sort) {
+        const key = sort.dataset.sort;
+        setListSort({ key, direction: listSort.key === key && listSort.direction === "asc" ? "desc" : "asc" });
+        redraw();
+        return;
+      }
+      const link = target.closest("a[data-record]");
+      if (link && event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
+        event.preventDefault();
+        selectNode(link.dataset.record);
+      }
+    });
+  }
+  function renderList() {
+    const nodes = filteredNodes();
+    element("listCount").textContent = nodes.length + (nodes.length === 1 ? " result" : " results");
+    const key = JSON.stringify([nodes.map((n) => n.id), listSort]);
+    if (key !== renderedKey) {
+      const rows = [...nodes].sort((a, b) => {
+        const order = compare.compare(value(a, listSort.key), value(b, listSort.key));
+        return order * (listSort.direction === "asc" ? 1 : -1) || compare.compare(a.id, b.id);
+      });
+      element("recordList").querySelector("tbody").innerHTML = rows.map((node) => '<tr data-record-id="' + esc(node.id) + '">' + columns.map(([column]) => '<td data-column="' + column + '">' + (column === "id" ? '<a data-record="' + esc(node.id) + '" href="#' + esc(encodeURIComponent(node.id)) + '">' + esc(node.id) + "</a>" : esc(value(node, column))) + "</td>").join("") + "</tr>").join("");
+      element("listEmpty").hidden = nodes.length !== 0;
+      renderedKey = key;
+      linkedState = "";
+    }
+    element("recordList").querySelectorAll("th[data-column]").forEach((th) => {
+      const direction = th.dataset.column === listSort.key ? listSort.direction === "asc" ? "ascending" : "descending" : "none";
+      th.setAttribute("aria-sort", direction);
+    });
+    const snapshot = locationState();
+    if (snapshot !== linkedState) {
+      const view = JSON.parse(snapshot);
+      element("recordList").querySelectorAll("a[data-record]").forEach((link) => {
+        link.href = locationHash(JSON.stringify({ ...view, selected: link.dataset.record }));
+        link.closest("tr").classList.toggle("selected", link.dataset.record === selected);
+        if (link.dataset.record === selected)
+          link.setAttribute("aria-current", "true");
+        else
+          link.removeAttribute("aria-current");
+      });
+      linkedState = snapshot;
+    }
+  }
+  function revealRow(id) {
+    const row = [...element("recordList").querySelectorAll("a[data-record]")].find((link) => link.dataset.record === id);
+    if (row) {
+      row.focus({ preventScroll: true });
+      row.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
   }
 
   // src/survey/blockers.ts
@@ -1788,6 +1851,7 @@
   // src/main.ts
   initSvg();
   initFilters();
+  initList();
   initNavigation();
   initDetail();
   initViewport();

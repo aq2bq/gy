@@ -1,7 +1,6 @@
 import { esc, redraw } from '../components';
 import { DEP, EDGES, byId } from '../data';
 import { element } from '../dom';
-import { closeClusterPanel } from '../graph/clusters';
 import { startHop } from '../navigation';
 import { focusLabel, selected, setSelected } from '../state';
 import { renderBody } from './markdown';
@@ -49,7 +48,7 @@ export function proseClass(text) {
     const cjk = String(text).match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/gu) || [];
     return cjk.length > letters.length / 2 ? 'prose-ja' : 'prose-latin';
 }
-export function selectNode(id) { closeClusterPanel(); showDetail(id); redraw(); }
+export function selectNode(id) { showDetail(id); redraw(); }
 export function showDetail(id) {
     const n = byId[id];
     if (!n)

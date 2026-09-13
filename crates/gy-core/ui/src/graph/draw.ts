@@ -4,7 +4,8 @@ import { element } from '../dom';
 import { renderNavigation } from '../navigation';
 import { EDGE_LABEL_MAX, MAX_LABEL_W, MODE_THRESHOLD, currentFocus, dragMoved, forceLayout, genealogyLayout, genealogyMode, lastFitKey, lastViewport, lod, positions, scale, searchHits, selected, setLastFitKey, setLastViewport, setTranslate, translate, viewSource } from '../state';
 import { KIND_COLORS, token } from '../tokens';
-import { closeClusterPanel, openClusterPanel, openOmittedPanel, panel } from './clusters';
+import { openClusterList, revealOmitted } from './clusters';
+import { renderList } from '../list';
 import { ensureForce } from './layout';
 import { focusedSelection, visibleEdges } from './selection';
 import { NS, edgeColor, root, shapeOf, svg } from './svg';
@@ -49,8 +50,7 @@ export function dotPath(sx, sy, tx, ty) {
 // search/filter, genealogy entry), so the new content is not left outside the viewport.
 export function draw() {
     const { ids, omitted } = focusedSelection();
-    if (panel.dataset.g === 'omitted' && panel.dataset.members !== JSON.stringify(omitted))
-        closeClusterPanel();
+    renderList();
     renderNavigation(ids);
     const viewport = svg.getBoundingClientRect();
     const focus = currentFocus();
@@ -80,8 +80,8 @@ export function draw() {
     const setMeta = (drawn, visCount, extra) => {
         const overview = !showingAll;
         element('viewCounts').textContent = overview
-            ? drawn + (drawn === 1 ? ' cluster' : ' clusters') + ' · ' + ids.length + ' nodes'
-            : drawn + ' shown';
+            ? 'Graph: ' + drawn + (drawn === 1 ? ' cluster' : ' clusters')
+            : 'Graph: ' + drawn + ' shown';
         culling.replaceChildren();
         const off = overview ? 0 : Number(visCount) - drawn;
         const hidden = off + omitted.length;
@@ -92,7 +92,7 @@ export function draw() {
             const button = document.createElement('button');
             button.id = 'showOmitted';
             button.textContent = omitted.length + ' nodes omitted';
-            button.addEventListener('click', () => openOmittedPanel(omitted));
+            button.addEventListener('click', () => revealOmitted(omitted));
             culling.appendChild(button);
         }
     };
@@ -184,7 +184,13 @@ export function draw() {
             rect.setAttribute('fill', String(KIND_COLORS[type]));
             rect.setAttribute('opacity', '0.6');
             rect.setAttribute('class', 'node');
-            rect.addEventListener('click', () => openClusterPanel(g, members));
+            rect.setAttribute('role', 'button');
+            rect.setAttribute('tabindex', '0');
+            rect.setAttribute('aria-label', 'List ' + scope + ' / ' + type + ': ' + members.length + ' records');
+            rect.addEventListener('click', () => openClusterList(g));
+            rect.addEventListener('keydown', event => {
+                if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openClusterList(g); }
+            });
             root.appendChild(rect);
             const t1 = (document.createElementNS(NS, 'text') as SVGTextElement);
             t1.setAttribute('x', String(gp.bx));

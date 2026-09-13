@@ -1,8 +1,8 @@
+import { listSort, selectType, setListSort } from './state';
 import { redraw } from './components';
 import { D, NODES, byId, states } from './data';
 import { hideDetail } from './detail/index';
 import { element } from './dom';
-import { closeClusterPanel } from './graph/clusters';
 import { resetView, zoomBy } from './graph/viewport';
 import { startHop } from './navigation';
 import { focusLabel, genealogyMode, selected, setActiveTab, setFilter, setGenealogyMode, setLod, setRadiusChoice, setSearchText, setType, truncateFocus, typeState } from './state';
@@ -12,18 +12,17 @@ export const scopeSel = element('scopeSel');
 export const stateSel = element('stateSel');
 export function initFilters() {
     // ---------- filters ----------
-    (['need', 'question', 'decision', 'requirement', 'criterion', 'gate'] as const).forEach(k => {
+    (['all', 'need', 'question', 'decision', 'requirement', 'criterion', 'gate'] as const).forEach(k => {
         const chip = document.createElement('button');
         chip.type = 'button';
         chip.setAttribute('aria-pressed', 'true');
         chip.className = 'chip on';
         chip.dataset.kind = k;
-        chip.style.borderColor = KIND_COLORS[k];
-        chip.textContent = k;
+        chip.style.borderColor = KIND_COLORS[k] || 'var(--border)';
+        chip.textContent = k === 'all' ? 'All types' : k;
         chip.addEventListener('click', () => {
-            setType(k as keyof typeof typeState, !typeState[k]);
-            chip.classList.toggle('on', typeState[k]);
-            chip.setAttribute('aria-pressed', String(typeState[k]));
+            selectType(k);
+            renderTypeChips();
             redraw();
         });
         typeChips.appendChild(chip);
@@ -53,12 +52,13 @@ export function initFilters() {
         setSearchText('');
         (['scopeSel', 'stateSel', 'qstatus', 'criterion'] as const).forEach(id => setFilter(id, ''));
         setRadiusChoice('');
+        setListSort(null);
+        renderTypeChips();
         truncateFocus(1);
         hideDetail();
         setGenealogyMode(false);
         element('hopRadius').value = '';
         element('hopFrom').value = '';
-        closeClusterPanel();
         redraw();
     });
     element('hopFrom').addEventListener('input', () => { element('applyHop').textContent = focusLabel(element('hopFrom').value.trim()); });
@@ -81,7 +81,6 @@ export function initFilters() {
         if (genealogyMode) {
             setLod('near');
         }
-        closeClusterPanel();
         redraw();
     });
     element('zin').addEventListener('click', () => zoomBy(1.6));
@@ -95,16 +94,12 @@ export function gotoTab(t) {
     document.querySelectorAll<HTMLElement>('.page').forEach(p => p.classList.toggle('on', p.id === 'page-' + t));
 }
 // ---------- search index ----------
-export function haystack(n) {
-    let parts = [n.id, n.title, n.type, n.scope, n.status || ''];
-    for (const [k, v] of Object.entries(n.attrs))
-        parts.push(k + '=' + String(v));
-    parts.push(n.body || '');
-    return parts.join('\n').toLowerCase();
-}
-export function computeMatches(q) {
-    if (!q)
-        return null;
-    const lq = q.toLowerCase();
-    return new Set(NODES.filter(n => haystack(n).includes(lq)).map(n => n.id));
+
+export function renderTypeChips() {
+    const all = Object.values(typeState).every(Boolean);
+    document.querySelectorAll<HTMLElement>('#typeChips .chip').forEach(chip => {
+        const on = chip.dataset.kind === 'all' ? all : !all && typeState[chip.dataset.kind];
+        chip.classList.toggle('on', on);
+        chip.setAttribute('aria-pressed', String(on));
+    });
 }

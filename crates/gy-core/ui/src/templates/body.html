@@ -71,6 +71,12 @@
   </aside>
 
   <main>
+    <section id="listPane" aria-label="Filtered records">
+      <table id="recordList" aria-label="Records"><colgroup><col class="col-id"><col class="col-type"><col class="col-title"><col class="col-scope"><col class="col-status"><col class="col-created"></colgroup>
+        <thead><tr></tr></thead><tbody></tbody>
+      </table>
+      <p id="listEmpty" hidden>No records match these filters.</p>
+    </section>
     <nav id="focusNav" aria-label="Graph navigation">
       <div id="graphControls" role="toolbar" aria-label="Graph controls">
         <input id="hopFrom" type="text" aria-label="Neighborhood node" placeholder="Node ID">
@@ -84,14 +90,13 @@
       </div>
       <div id="graphStatus" role="status" aria-label="Current view">
         <span id="focusStatus"><span id="focusPath" aria-label="Focus path"></span><span id="focusNote"></span></span>
-        <span id="viewCounts"></span><span id="culling"></span>
+        <span id="listCount"></span><span id="viewCounts"></span><span id="culling"></span>
         <span id="displayStatus"></span><span id="locationStatus"></span>
       </div>
     </nav>
     <div id="graphWorkspace">
     <div id="graphPane">
     <div id="viewer"><svg id="svg" width="100%" height="100%"></svg>
-      <div id="clusterPanel"></div>
     </div>
     </div>
     <div id="detail">

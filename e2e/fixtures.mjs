@@ -47,7 +47,7 @@ generate('high-degree', high, star);
 const ja = 'この決定は記録された条件に基づいて適用する。表示された内容と実際の運用を照合し、変更の理由を確認する。'.repeat(8);
 const en = 'This decision applies to the recorded conditions. Readers can compare the declaration with the explanation and retain the evidence for the next review. '.repeat(8);
 const detailNodes = [
-  {id:'D-501',scope:'reading',attrs:{title:'成立範囲と説明を分けて読む',decision_scope:ja, pr_url:'https://example.test/pr/42', next_evidence:'確認結果を記録する',
+  {id:'D-501',scope:'reading',attrs:{title:'成立範囲と説明を分けて読む'.repeat(6),decision_scope:ja, pr_url:'https://example.test/pr/42', next_evidence:'確認結果を記録する',
     supersedes:[{id:'D-502',mark:'Prior contract'}], custom_false:false, custom_zero:0, custom_null:null,
     custom_nested:{flag:false, count:0, value:null, text:'<img src=x onerror=alert(1)>', list:['終端','none']},
     custom_long:'値を省略せずに保存する'.repeat(150)+'終端確認', custom_url:'javascript:alert(1)'},body:ja+'\n\n## 補足\n短い段落。'},

@@ -1,44 +1,11 @@
 import { EDGES, NODES, byId } from '../data';
-import { computeMatches } from '../filters';
+import { filteredNodes } from '../filters/query';
 import { MODE_THRESHOLD, adj, currentFocus, degree, filterState, genealogyMode, reachable, scale, searchText, setSearchHits, typeState } from '../state';
-export function setVisible(n) {
-    if (typeState[n.type] !== true)
-        return false;
-    if (filterState.scopeSel && n.scope !== filterState.scopeSel)
-        return false;
-    if (n.type === 'requirement') {
-        if (filterState.stateSel && (n.state || '') !== filterState.stateSel)
-            return false;
-    }
-    if (n.type === 'question') {
-        const qs = filterState.qstatus;
-        if (qs && (n.status === 'closed' ? 'closed' : 'open') !== qs)
-            return false;
-    }
-    if (n.type === 'criterion') {
-        const c = filterState.criterion;
-        if (c && String(!!n.attrs.satisfied) !== (c === 'yes' ? 'true' : 'false'))
-            return false;
-    }
-    return true;
-}
 export function candidateNodes() {
-    let ids = NODES.filter(setVisible).map(n => n.id);
+    let ids = filteredNodes().map(n => n.id);
     // Genealogy mode restricts the view to decision nodes.
     if (genealogyMode) {
         ids = ids.filter(id => byId[id] && byId[id].type === 'decision');
-    }
-    // search
-    if (searchText) {
-        const hits = computeMatches(searchText);
-        setSearchHits(hits);
-        if (hits.size === 0) {
-            return [];
-        }
-        ids = ids.filter(id => hits.has(id));
-    }
-    else {
-        setSearchHits(null);
     }
     // neighborhood
     const focus = currentFocus();

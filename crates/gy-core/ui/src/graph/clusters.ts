@@ -1,25 +1,19 @@
-import { byId } from '../data';
+import { redraw } from '../components';
 import { element } from '../dom';
-import { renderClusterRows } from '../list';
-import { adj, currentFocus } from '../state';
-// ---------- cluster panel (H25) ----------
-export const panel = element('clusterPanel');
-export function openClusterPanel(g, members) {
-    const [scope, type] = g.split('\u0000');
-    openNodePanel(members, type, scope, g);
+import { renderTypeChips } from '../filters';
+import { revealRow } from '../list';
+import { NodeKind, selectType, setFilter } from '../state';
+
+export function openClusterList(group: string) {
+    const [scope, type] = group.split('\u0000');
+    selectType(type as NodeKind);
+    setFilter('scopeSel', scope);
+    element('scopeSel').value = scope;
+    renderTypeChips();
+    redraw();
+    element('listPane').scrollTop = 0;
 }
-export function openOmittedPanel(members) {
-    panel.dataset.members = JSON.stringify(members);
-    openNodePanel(members, 'omitted nodes', currentFocus().id, 'omitted');
+
+export function revealOmitted(members: string[]) {
+    if (members.length) revealRow(members[0]);
 }
-export function openNodePanel(members, type, scope, g) {
-    panel.classList.add('on');
-    panel.dataset.g = g;
-    const rows = members.map(id => {
-        const n = byId[id];
-        const deg = Object.keys(adj[id] || {}).length;
-        return { id, title: n ? n.title : '', deg, alive: n && n.type === 'decision' && !(n.superseded_by && n.superseded_by.length) };
-    });
-    renderClusterRows(rows, type, scope, g);
-}
-export function closeClusterPanel() { panel.classList.remove('on'); }
