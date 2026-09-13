@@ -4,6 +4,10 @@
 
 ### Changed
 
+- Split the HTML projection sources by responsibility and assemble them at
+  compile time, preserving the generated HTML byte for byte. HTML generation
+  still requires only the gy binary.
+
 - The HTML graph now switches between two views by the number of visible
   nodes instead of by zoom level. With more than 60 nodes it draws clusters
   with aggregated edge counts (per cluster pair) and internal edge counts per

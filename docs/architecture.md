@@ -87,3 +87,16 @@ The graph renders each of the six node types with a distinct shape and color, so
 Drawing is split into two views by the number of visible nodes, not by zoom level. With more than 60 visible nodes the page draws clusters (scope × type) and aggregated edge counts per cluster pair, plus internal edge counts per cluster; individual nodes and edges are withheld so the overview stays readable. Clicking a cluster opens a member list from which a start node is chosen, and the neighborhood hop count is then computed adaptively: the largest value up to a ceiling whose reachable set fits the individual-view limit, displayed on screen. With the visible set at or below the limit, nodes are drawn individually in a force-directed layout that reflects connectivity, so a short edge means adjacent nodes, and node labels are measured (via `getComputedTextLength`), truncated to the available width, and skipped when they would overlap a neighbour. Edge labels are off by default and appear only for a small individual set or an explicitly selected edge; full titles always remain in the detail panel.
 
 The count banner reports the nodes actually drawn and the visible total in every mode, including search, filters, and genealogy; culling always surfaces how many are hidden rather than silently dropping them. Fit computes the transform from the content's bounding box in the current mode, so the projected content fits the viewport instead of being a fixed scale.
+
+### HTML source assembly
+
+`gy-core/src/html.rs` assembles the HTML sources with `concat!` and
+`include_str!` at compile time, then replaces the payload placeholder with
+escaped JSON. The ordered fragments in `gy-core/src/html/` contain the HTML
+shell, CSS, and JavaScript responsibilities: data, summary, controls, state and
+neighborhood traversal, layout, SVG primitives, selection, drawing, navigation,
+cluster lists, viewport, details, blockers, progress and legend, and startup.
+All JavaScript fragments share one closure; their order in `TEMPLATE` preserves
+initialization order. Fragment boundaries do not add whitespace or script tags.
+The generated artifact remains one offline HTML file, and neither building gy
+nor generating HTML requires a JavaScript bundler or Node.js.
