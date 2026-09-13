@@ -114,6 +114,14 @@ truncated label still keeps a meaningful head rather than a fragment.
 
 Bodies are embedded verbatim so the page carries the ledger's full record. The graph never renders body text; the detail panel shows it, rendered as Markdown on demand. Escaping replaces `<`, `>`, `&`, U+2028, and U+2029 in the embedded payload so a body containing `</script>`, a comment opener, or a line separator cannot terminate or comment out the data script. Unknown attributes are preserved in node payloads alongside their structured values.
 
+The on-demand renderer in `detail.js` reads table headers, delimiter-row
+alignment and cells, nested unordered/ordered lists, fenced code blocks, inline
+code, emphasis, and links. Code contents remain text, including newlines and
+tabs; source HTML is escaped rather than executed. Link destinations are limited
+to HTTP(S), mailto, and local/fragment URLs; unsafe destinations remain visible
+text without an anchor. The renderer adds no external library or network asset.
+
+
 Judgments are the only reason the page carries curated lists; everything else is the ledger's own data. This mirrors the `handover` boundary: derived output is never written back to canonical files, and the page cannot edit the ledger.
 
 The graph renders each of the six node types with a distinct shape and color, so type identification does not depend on color alone. Genealogy mode restricts the displayed set to decision nodes and lays them out by generation, so a supersede chain reads directionally.

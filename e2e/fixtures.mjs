@@ -53,7 +53,7 @@ const detailNodes = [
     custom_long:'値を省略せずに保存する'.repeat(150)+'終端確認', custom_url:'javascript:alert(1)'},body:ja+'\n\n## 補足\n短い段落。'},
   {id:'D-502',scope:'reading',attrs:{title:'Read the declaration and its explanation',decision_scope:en,'superseded-by':[{id:'D-501',mark:'This decision applies to the recorded conditions.'}]},body:en},
   {id:'D-503',scope:'reading',attrs:{'superseded-by':[{id:'D-504',mark:'A passage absent from this body'}]}},
-  {id:'D-504',scope:'reading'},
+  {id:'D-504',scope:'reading',body:"## Structured reading\n\n| Left | Center | Right |\n| :--- | :---: | ---: |\n| **bold** | *emphasis* | `a|b` |\n| escaped\\|pipe | [safe link](https://example.test/docs(topic)#section \"Link title\") | 12 |\n\n- parent\n  1. first child\n     - grandchild\n  2. second child\n- sibling\n\n3. third item\n4. fourth item\n\n```javascript\nconst raw = \"<tag>&\";\n\twindow.__markdownCode = true;\n```\n\nInline `**not bold**` and ***combined emphasis***.\n\n[record link](#D-501) and [unsafe link](javascript:alert(1)).\n\n<script>window.__markdownRan = true;</script><img src=x onerror=\"window.__markdownRan=true\">\n\nSeparators: < > & \u2028 \u2029 end.\n"},
   {id:'N-501',type:'need',scope:'reading'},
   {id:'G-501',type:'gate',scope:'reading'},
   ...['fact','decision','non-decision'].map((method,i)=>({id:`Q-${501+i}`,type:'question',scope:'reading',attrs:{status:'closed',closed_by:method,closure_note:'Recorded reason'}})),

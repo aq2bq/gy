@@ -20,6 +20,10 @@ requirement states (including an unfamiliar value and a status supplement),
 closure and satisfaction variants, reverse-only supersession, matching/missing
 body marks, Japanese/Latin paragraphs, URL values, and false/zero/null/nested
 additional attributes. Width tests cover 1280, 1440, 1920, and 2560 CSS pixels.
+The Markdown reading case measures three header cells and six data cells,
+left/center/right alignment, a three-level mixed list, a multi-line code block
+including a tab, inline code, emphasis, and safe links. Raw HTML and unsafe URL
+schemes remain inert.
 At 1400, 1920, and 2560, DOM Range measurements count actual wrapped characters
 in long applicability/body paragraphs: Japanese 30–45 and Latin 45–90, excluding
 final lines from the lower bound. These are actual glyph positions after padding,

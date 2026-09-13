@@ -151,3 +151,35 @@ test('related node selection preserves layout until explicit focus', async ({pag
   await mouse(page,'#closeDetail');
   await expect(page.locator('#focusStatus')).toContainText('Focus: D-502 ·');
 });
+
+test('Markdown preserves table cells, list hierarchy, code and safe links', async ({page}, info) => {
+  await enter(page, 'D-504');
+  const body = page.locator('#body');
+  await expect(body.locator('table')).toHaveCount(1);
+  await expect(body.locator('th')).toHaveCount(3);
+  await expect(body.locator('td')).toHaveCount(6);
+  expect(await body.locator('th').evaluateAll(es=>es.map(e=>getComputedStyle(e).textAlign))).toEqual(['left','center','right']);
+  await expect(body.locator('td').nth(2)).toHaveText('a|b');
+  await expect(body.locator('td').nth(3)).toHaveText('escaped|pipe');
+  await expect(body.locator(':scope > ul > li')).toHaveCount(2);
+  await expect(body.locator(':scope > ul > li > ol > li')).toHaveCount(2);
+  await expect(body.locator(':scope > ul > li > ol > li > ul > li')).toHaveText('grandchild');
+  await expect(body.locator(':scope > ol')).toHaveAttribute('start', '3');
+  await expect(body.locator('pre')).toHaveCount(1);
+  expect(await body.locator('pre code').textContent()).toBe('const raw = "<tag>&";\n\twindow.__markdownCode = true;\n');
+  await expect(body.locator('pre code')).toHaveClass('language-javascript');
+  await expect(body.locator('code').filter({hasText:'**not bold**'}).locator('strong')).toHaveCount(0);
+  await expect(body.locator('strong em')).toHaveText('combined emphasis');
+  await expect(body.locator('a').filter({hasText:'safe link'})).toHaveAttribute('href','https://example.test/docs(topic)#section');
+  await expect(body.locator('a').filter({hasText:'safe link'})).toHaveAttribute('title','Link title');
+  await expect(body.locator('a[href="#D-501"]')).toHaveText('record link');
+  await expect(body.locator('a[href^="javascript:"]')).toHaveCount(0);
+  await expect(body.locator('script, img')).toHaveCount(0);
+  expect(await page.evaluate(()=>[window.__markdownRan,window.__markdownCode])).toEqual([undefined,undefined]);
+  await expect(body).toContainText('<script>window.__markdownRan = true;</script>');
+  const source = await page.evaluate(()=>window.GY_DATA.nodes.find(n=>n.id==='D-504').body);
+  expect(source).toContain('\u2028'); expect(source).toContain('\u2029');
+  await body.scrollIntoViewIfNeeded();
+  await page.screenshot({path:info.outputPath('markdown.png')});
+  await info.attach('markdown-structure', {body:JSON.stringify({headers:3,cells:6,rootItems:2,orderedChildren:2,maxListDepth:3,codeBlocks:1}),contentType:'application/json'});
+});
