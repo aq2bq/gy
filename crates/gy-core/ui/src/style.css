@@ -172,7 +172,7 @@ a{color:var(--decision);cursor:pointer}
 #recordList th{position:sticky;top:0;background:var(--color-f1efe8);z-index:2;text-align:left;padding:0 var(--space-8px)}
 #recordList th button{width:100%;height:var(--control-height);border:0;background:transparent;text-align:left;padding:0;white-space:nowrap}
 #recordList td{padding:var(--space-8px);border-bottom:1px solid var(--border);vertical-align:top;overflow-wrap:anywhere}
-#recordList tbody tr{position:relative}
+#recordList tbody tr{position:relative;cursor:pointer}
 #recordList tbody tr:hover,#recordList tbody tr.selected{background:var(--color-eef3f9)}
 #recordList a{color:var(--decision);text-decoration:underline}
 #recordList a::after{content:"";position:absolute;inset:0;cursor:pointer}

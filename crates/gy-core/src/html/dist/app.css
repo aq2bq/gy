@@ -1099,6 +1099,7 @@ a {
 
 #recordList tbody tr {
   position: relative;
+  cursor: pointer;
 }
 
 #recordList tbody tr:hover, #recordList tbody tr.selected {

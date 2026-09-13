@@ -65,3 +65,24 @@ test('pointer elements have native actions or registered role handlers',async({p
   }
  }
 });
+
+
+test('all six row cells hit the native record link and open its target',async({page})=>{
+ await page.setViewportSize({width:1440,height:1000});await page.goto(fixture('reading'));
+ const row=page.locator('#recordList tbody tr').first();
+ const id=await row.getAttribute('data-record-id');
+ await expect(row).toHaveRole('row');
+ expect(await row.evaluate(e=>getComputedStyle(e).cursor)).toBe('pointer');
+ for(const column of ['id','type','title','scope','status','created']){
+  const cell=row.locator('[data-column="'+column+'"]');
+  const hit=await cell.evaluate(el=>{
+   const r=el.getBoundingClientRect(),target=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
+   return {native:target instanceof HTMLAnchorElement,href:target.getAttribute('href'),id:target.getAttribute('data-record'),cursor:getComputedStyle(target).cursor};
+  });
+  expect(hit).toMatchObject({native:true,id,cursor:'pointer'});expect(hit.href).toContain('#view=');
+  await mouse(page,cell);await expect(page.locator('.detail-id')).toHaveText(id);
+  await mouse(page,'#closeDetail');await expect(page.locator('.detail-id')).not.toBeVisible();
+ }
+ await expect(page.locator('#recordList tbody tr')).toHaveCount(24);
+ await expect(page.locator('#recordList tbody td')).toHaveCount(144);
+});
