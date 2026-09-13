@@ -166,7 +166,7 @@ a{color:var(--decision);cursor:pointer}
 .legend-item{display:inline-flex;align-items:center;gap:var(--space-4px)}
 
 /* D-40 / AC-27: a persistent reading table above the supporting graph. */
-#listPane{flex:0 0 42%;min-height:160px;overflow:auto;margin:0;border-bottom:1px solid var(--border);background:var(--panel)}
+#listPane{flex:0 0 28%;min-height:160px;overflow:auto;margin:0;border-bottom:1px solid var(--border);background:var(--panel)}
 #recordList{width:100%;border-collapse:collapse;table-layout:fixed;font-size:var(--font-14px);line-height:1.5}
 #recordList .col-id{width:72px}#recordList .col-type{width:100px}#recordList .col-scope{width:96px}#recordList .col-status{width:156px}#recordList .col-created{width:104px}
 #recordList th{position:sticky;top:0;background:var(--color-f1efe8);z-index:2;text-align:left;padding:0 var(--space-8px)}

@@ -1,5 +1,7 @@
+import { svg } from './svg';
+import { labelBounds, packingPlan } from './labels';
 import { EDGES, NODES } from '../data';
-import { forceKey, setForceKey, setForceLayout, setGenealogyLayout, setPositions } from '../state';
+import { forceKey, setLabelWidth, setForceKey, setForceLayout, setGenealogyLayout, setPositions } from '../state';
 // ---------- force-directed layout for the individual mode (H21) ----------
 export function computeForce(ids) {
     const n = ids.length;
@@ -23,7 +25,9 @@ export function computeForce(ids) {
                 const b = pos[ids[j]];
                 let dx = a.x - b.x, dy = a.y - b.y;
                 let d = Math.max(1, Math.hypot(dx, dy));
-                const f = 160000 / (d * d);
+                const aBox=labelBounds(ids[i]), bBox=labelBounds(ids[j]);
+                const separation=Math.max(aBox.right-aBox.left,bBox.right-bBox.left,aBox.bottom-aBox.top,bBox.bottom-bBox.top)+24;
+                const f = 160000 / (d * d) + Math.max(0,separation-d)*0.2;
                 dx /= d;
                 dy /= d;
                 a.vx += dx * f;
@@ -55,20 +59,23 @@ export function computeForce(ids) {
             p.vy = 0;
         });
     }
-    // Normalize the layout to a size proportional to the node count, so that at
-    // fit scale ~1 the labels are readable (H28). Nodes sit ~70 units apart.
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    ids.forEach(id => { const p = pos[id]; minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); });
-    const spanX = maxX - minX, spanY = maxY - minY;
-    const target = Math.max(320, Math.sqrt(n) * 70);
-    const k = target / Math.max(1, Math.max(spanX, spanY));
-    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-    ids.forEach(id => { const p = pos[id]; p.x = (p.x - cx) * k; p.y = (p.y - cy) * k; });
+    // Pack measured rectangles in force-derived row order. The force result
+    // determines neighborhood order; measured cells prevent label suppression.
+    const {width,height,columns}=packingPlan(ids,svg.getBoundingClientRect());
+    const ordered=[...ids].sort((a,b)=>pos[a].y-pos[b].y || pos[a].x-pos[b].x);
+    for(let row=0;row<Math.ceil(n/columns);row++) {
+        const members=ordered.slice(row*columns,(row+1)*columns).sort((a,b)=>pos[a].x-pos[b].x);
+        members.forEach((id,col)=>{const bounds=labelBounds(id);pos[id].x=col*width-bounds.left;pos[id].y=row*height-bounds.top;});
+    }
     return pos;
 }
 export function ensureForce(ids) {
     const key = [...ids].sort().join('|');
     if (forceKey !== key) {
+        for(const width of [156,144,132,120,108,96,84,80]) {
+            setLabelWidth(width);
+            if(packingPlan(ids,svg.getBoundingClientRect()).fit>=1) break;
+        }
         setForceLayout(computeForce(ids));
         setForceKey(key);
     }

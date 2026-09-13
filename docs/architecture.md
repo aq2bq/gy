@@ -126,7 +126,7 @@ Judgments are the only reason the page carries curated lists; everything else is
 
 The graph renders each of the six node types with a distinct shape and color, so type identification does not depend on color alone. Genealogy mode restricts the displayed set to decision nodes and lays them out by generation, so a supersede chain reads directionally.
 
-Drawing is split into two views by the number of visible nodes, not by zoom level. Without a focus, more than 60 visible nodes are drawn as clusters (scope × type) and aggregated edge counts per cluster pair, plus internal edge counts per cluster; individual nodes and edges are withheld so the overview stays readable. Clicking a cluster applies its scope and type to the permanent table; a row link opens details. The explicit neighborhood action chooses a focus with an adaptive hop count: the largest value up to a ceiling whose reachable set fits the individual-view limit, displayed on screen. With the visible set at or below the limit, nodes are drawn individually in a force-directed layout that reflects connectivity, so a short edge means adjacent nodes, and node labels are measured (via `getComputedTextLength`), truncated to the available width, and skipped when they would overlap a neighbour. Edge labels are off by default and appear only for a small individual set or an explicitly selected edge; full titles always remain in the detail panel.
+Drawing is split into two views by the number of visible nodes, not by zoom level. Without a focus, more than 60 visible nodes are drawn as clusters (scope × type) and aggregated edge counts per cluster pair, plus internal edge counts per cluster; individual nodes and edges are withheld so the overview stays readable. Clicking a cluster applies its scope and type to the permanent table; a row link opens details. The explicit neighborhood action chooses a focus with an adaptive hop count: the largest value up to a ceiling whose reachable set fits the individual-view limit, displayed on screen. With the visible set at or below the limit, nodes are drawn individually in measured cells ordered by the force-directed result. Label dimensions contribute to repulsion and packing; titles wrap below IDs for up to three lines, with ellipsis only when needed. Labels are not suppressed to hide collisions. Edge labels are off by default and appear only for a small individual set or an explicitly selected edge; full titles always remain in the detail panel.
 
 The count banner reports the nodes actually drawn and the visible total in every mode, including search, filters, and genealogy; culling always surfaces how many are hidden rather than silently dropping them. Fit computes the transform from the content's bounding box in the current mode, so the projected content fits the viewport instead of being a fixed scale.
 
@@ -181,7 +181,7 @@ same predicates select table rows and graph candidates. Neighborhood and
 lineage controls additionally narrow the graph, leaving the complete filtered
 table available. One status region reports table results and graph counts.
 
-The table occupies the upper part of the main region, prioritizing at least
+The table occupies the upper 28% of the main region (at least 160px high), prioritizing at least
 30 full-width title characters at 1440 CSS pixels. Graph and details remain
 below it, with graph controls directly above the graph. No list/graph toggle is
 introduced. Filter matches are cached by toolbar state; table DOM is rebuilt
@@ -257,7 +257,8 @@ the UI; file concatenation order is no longer a dependency.
 `tokens.css` defines shared spacing, font-size, and color variables with the
 existing values. CSS and the SVG/chart palette in `tokens.ts` use those values.
 The list module renders the permanent record table and links; the shared query
-module applies the same toolbar predicates to table rows and graph candidates. Details retain the existing offline Markdown renderer.
+module applies the same toolbar predicates to table rows and graph candidates.
+The graph labels module shares measured text bounds with layout and fitting. Details retain the existing offline Markdown renderer.
 
 Bun 1.4.0 bundles the modules and CSS into the unminified, committed
 `crates/gy-core/src/html/dist/app.js` and `app.css`. `html.rs` embeds those two
@@ -286,3 +287,26 @@ with pointer cursors and hover feedback. Type chips expose selection through
 The graph navigation band owns the single neighborhood action. Selecting a
 record fills its Node ID input without moving focus; invoking the action moves
 focus. The detail panel does not duplicate that action.
+
+### HTML label bounds and readable fits
+
+Ordinary individual rendering always shows the ID and up to three wrapped title
+lines. Only a title exceeding those lines receives an ellipsis. A measured width
+from 156 down to 80 graph units is chosen for the displayed set, retaining at
+least 20 characters in the tested truncated titles. The list and detail heading
+continue to show the complete title.
+
+The force calculation includes label dimensions in repulsion. Measured cells
+then pack the force-derived row order without suppressing colliding labels.
+Packing chooses columns for the current viewport; the cached layout remains
+stable during selection, pan, and zoom. Automatic fitting includes the full
+label bounds and keeps measured character height at least 11px. Cluster widths
+also include their scope/type/count text, and their grid uses those widths.
+The table retains its full-width reading measure while reserving more vertical
+space for the supporting graph.
+
+Full viewport containment applies to ordinary individual rendering. Lineage
+wraps titles but preserves the generation layout, its minimum readable scale,
+its existing selection limits, and pan access to off-screen records. Unfocused
+lineage is not capped at 60. Its title width is independent of the previously
+visited ordinary view, so URL restoration does not inherit a prior label width.

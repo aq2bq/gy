@@ -14,11 +14,74 @@
     return document.getElementById(id);
   }
 
+  // src/tokens.ts
+  var values = getComputedStyle(document.documentElement);
+  function token(name) {
+    return values.getPropertyValue(name).trim();
+  }
+  var KIND_COLORS = { need: token("--need"), question: token("--question"), decision: token("--decision"), requirement: token("--requirement"), criterion: token("--criterion"), gate: token("--gate") };
+
+  // src/graph/svg.ts
+  var svg = element("svg");
+  var NS = "http:" + "//www.w3.org/2000/svg";
+  var root = document.createElementNS(NS, "g");
+  function initSvg() {
+    svg.appendChild(root);
+  }
+  var defs = null;
+  function makeDefs() {
+    defs = document.createElementNS(NS, "defs");
+    svg.insertBefore(defs, root);
+    const labels = [...new Set(EDGES.map((e) => e.label))];
+    labels.forEach((l) => {
+      const mk = document.createElementNS(NS, "marker");
+      mk.setAttribute("id", String("arr-" + l.replace(/\W/g, "_")));
+      mk.setAttribute("viewBox", "0 -4 8 8");
+      mk.setAttribute("refX", "9");
+      mk.setAttribute("refY", "0");
+      mk.setAttribute("markerWidth", "7");
+      mk.setAttribute("markerHeight", "7");
+      mk.setAttribute("orient", "auto");
+      const p = document.createElementNS(NS, "path");
+      p.setAttribute("d", "M0,-4L8,0L0,4");
+      p.setAttribute("fill", String(edgeColor(l)));
+      mk.appendChild(p);
+      defs.appendChild(mk);
+    });
+    const agg = document.createElementNS(NS, "marker");
+    agg.setAttribute("id", "arr-_agg");
+    agg.setAttribute("viewBox", "0 -4 8 8");
+    agg.setAttribute("refX", "9");
+    agg.setAttribute("refY", "0");
+    agg.setAttribute("markerWidth", "7");
+    agg.setAttribute("markerHeight", "7");
+    agg.setAttribute("orient", "auto");
+    const pa = document.createElementNS(NS, "path");
+    pa.setAttribute("d", "M0,-4L8,0L0,4");
+    pa.setAttribute("fill", String(token("--color-888")));
+    agg.appendChild(pa);
+    defs.appendChild(agg);
+  }
+  function edgeColor(label) {
+    const map = { closes: token("--color-a03b3b"), narrows: token("--decision"), widens: token("--color-3f8f6b"), supersedes: token("--color-8a2b2b"), completes: token("--ok"), targets: token("--criterion"), "spawned-by": token("--gate"), "filed-as": token("--color-7d6c5f"), "depends-on": token("--need"), "relies-on": token("--color-5a5a6e"), raised: token("--color-a8608a"), "measured-by": token("--color-556b7a") };
+    return map[label] || token("--color-666");
+  }
+  function shapeOf(type) {
+    const s = {
+      need: "M0,-7 C4,-7 7,-4 7,0 C7,4 4,7 0,7 C-4,7 -7,4 -7,0 C-7,-4 -4,-7 0,-7 Z",
+      question: "M0,-9 L2.5,-2 L9,0 L2.5,2 L0,9 L-2.5,2 L-9,0 L-2.5,-2 Z",
+      decision: "M-7,-7 L7,-7 L7,7 L-7,7 Z",
+      requirement: "M-7,-4 L0,-7 L7,-4 L7,4 L0,7 L-7,4 Z",
+      criterion: "M0,-7 L7,5 L-7,5 Z",
+      gate: "M0,-8 L7.6,-2.5 L4.7,6.5 L-4.7,6.5 L-7.6,-2.5 Z"
+    };
+    return s[type] || s.decision;
+  }
+
   // src/state.ts
   var MODE_THRESHOLD = 60;
   var HOP_CAP = 5;
   var EDGE_LABEL_MAX = 20;
-  var MAX_LABEL_W = 190;
   var searchText = "";
   var searchHits = null;
   var focusHistory = [{ id: null, radius: null }];
@@ -187,6 +250,86 @@
   var overviewSource = "";
   function setOverviewSource(value) {
     overviewSource = typeof value === "string" && ["next", "lint-error", "lint-warn"].includes(value) ? value : "";
+  }
+  var labelWidth = 156;
+  function setLabelWidth(value) {
+    labelWidth = value;
+  }
+
+  // src/graph/labels.ts
+  var LINE_HEIGHT = 13;
+  var cache = new Map;
+  function nodeLabel(id) {
+    const widthLimit = genealogyMode ? 156 : labelWidth;
+    const key = id + " / " + widthLimit;
+    if (cache.has(key))
+      return cache.get(key);
+    const probe = document.createElementNS(NS, "text");
+    probe.setAttribute("class", "nlabel");
+    svg.appendChild(probe);
+    const chars = Array.from(String(byId[id].title || ""));
+    const lines = [];
+    let i = 0;
+    for (let row = 0;row < 3 && i < chars.length; row++) {
+      let line = "";
+      while (i < chars.length) {
+        probe.textContent = line + chars[i] + (row === 2 && i + 1 < chars.length ? "…" : "");
+        if (line && probe.getComputedTextLength() > widthLimit)
+          break;
+        line += chars[i++];
+      }
+      lines.push(line);
+    }
+    const retained = i, truncated = i < chars.length;
+    if (truncated)
+      lines[lines.length - 1] += "…";
+    let width = 0;
+    for (const line of [id, ...lines]) {
+      probe.textContent = line;
+      width = Math.max(width, probe.getComputedTextLength());
+    }
+    probe.textContent = id;
+    const idWidth = probe.getComputedTextLength(), characterHeight = probe.getBBox().height;
+    probe.remove();
+    const result = { lines, truncated, retained, width, height: LINE_HEIGHT * (1 + lines.length), characterHeight, idWidth };
+    cache.set(key, result);
+    return result;
+  }
+  function labelBounds(id) {
+    const label = nodeLabel(id);
+    return { left: Math.min(-16, 22 - label.width / 2), right: Math.max(16, 22 + label.width / 2, 18 + label.idWidth), top: -16, bottom: 26 + Math.max(0, label.lines.length - 1) * LINE_HEIGHT + 4 };
+  }
+  var clusterWidths = new Map;
+  function clusterWidth(group, count) {
+    const text = group.replace("\x00", " / ") + " · " + count;
+    if (!clusterWidths.has(text)) {
+      const probe = document.createElementNS(NS, "text");
+      probe.setAttribute("class", "nlabel");
+      probe.textContent = text;
+      svg.appendChild(probe);
+      clusterWidths.set(text, Math.max(120, probe.getComputedTextLength() + 24));
+      probe.remove();
+    }
+    return clusterWidths.get(text);
+  }
+  function packingPlan(ids, viewport) {
+    const width = Math.max(...ids.map((id) => {
+      const b = labelBounds(id);
+      return b.right - b.left;
+    })) + 6;
+    const height = Math.max(...ids.map((id) => {
+      const b = labelBounds(id);
+      return b.bottom - b.top;
+    })) + 6;
+    let columns = 1, fit = 0;
+    for (let count = 1;count <= ids.length; count++) {
+      const candidate = Math.min((viewport.width - 12) / (count * width), (viewport.height - 12) / (Math.ceil(ids.length / count) * height));
+      if (candidate > fit) {
+        columns = count;
+        fit = candidate;
+      }
+    }
+    return { width, height, columns, fit };
   }
 
   // src/detail/markdown.ts
@@ -639,7 +782,9 @@
           const b = pos[ids[j]];
           let dx = a.x - b.x, dy = a.y - b.y;
           let d = Math.max(1, Math.hypot(dx, dy));
-          const f = 160000 / (d * d);
+          const aBox = labelBounds(ids[i]), bBox = labelBounds(ids[j]);
+          const separation = Math.max(aBox.right - aBox.left, bBox.right - bBox.left, aBox.bottom - aBox.top, bBox.bottom - bBox.top) + 24;
+          const f = 160000 / (d * d) + Math.max(0, separation - d) * 0.2;
           dx /= d;
           dy /= d;
           a.vx += dx * f;
@@ -671,28 +816,26 @@
         p.vy = 0;
       });
     }
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    ids.forEach((id) => {
-      const p = pos[id];
-      minX = Math.min(minX, p.x);
-      minY = Math.min(minY, p.y);
-      maxX = Math.max(maxX, p.x);
-      maxY = Math.max(maxY, p.y);
-    });
-    const spanX = maxX - minX, spanY = maxY - minY;
-    const target = Math.max(320, Math.sqrt(n) * 70);
-    const k = target / Math.max(1, Math.max(spanX, spanY));
-    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-    ids.forEach((id) => {
-      const p = pos[id];
-      p.x = (p.x - cx) * k;
-      p.y = (p.y - cy) * k;
-    });
+    const { width, height, columns } = packingPlan(ids, svg.getBoundingClientRect());
+    const ordered = [...ids].sort((a, b) => pos[a].y - pos[b].y || pos[a].x - pos[b].x);
+    for (let row = 0;row < Math.ceil(n / columns); row++) {
+      const members = ordered.slice(row * columns, (row + 1) * columns).sort((a, b) => pos[a].x - pos[b].x);
+      members.forEach((id, col) => {
+        const bounds = labelBounds(id);
+        pos[id].x = col * width - bounds.left;
+        pos[id].y = row * height - bounds.top;
+      });
+    }
     return pos;
   }
   function ensureForce(ids) {
     const key = [...ids].sort().join("|");
     if (forceKey !== key) {
+      for (const width of [156, 144, 132, 120, 108, 96, 84, 80]) {
+        setLabelWidth(width);
+        if (packingPlan(ids, svg.getBoundingClientRect()).fit >= 1)
+          break;
+      }
       setForceLayout(computeForce(ids));
       setForceKey(key);
     }
@@ -867,70 +1010,6 @@
     return focusedSelection().ids;
   }
 
-  // src/tokens.ts
-  var values = getComputedStyle(document.documentElement);
-  function token(name) {
-    return values.getPropertyValue(name).trim();
-  }
-  var KIND_COLORS = { need: token("--need"), question: token("--question"), decision: token("--decision"), requirement: token("--requirement"), criterion: token("--criterion"), gate: token("--gate") };
-
-  // src/graph/svg.ts
-  var svg = element("svg");
-  var NS = "http:" + "//www.w3.org/2000/svg";
-  var root = document.createElementNS(NS, "g");
-  function initSvg() {
-    svg.appendChild(root);
-  }
-  var defs = null;
-  function makeDefs() {
-    defs = document.createElementNS(NS, "defs");
-    svg.insertBefore(defs, root);
-    const labels = [...new Set(EDGES.map((e) => e.label))];
-    labels.forEach((l) => {
-      const mk = document.createElementNS(NS, "marker");
-      mk.setAttribute("id", String("arr-" + l.replace(/\W/g, "_")));
-      mk.setAttribute("viewBox", "0 -4 8 8");
-      mk.setAttribute("refX", "9");
-      mk.setAttribute("refY", "0");
-      mk.setAttribute("markerWidth", "7");
-      mk.setAttribute("markerHeight", "7");
-      mk.setAttribute("orient", "auto");
-      const p = document.createElementNS(NS, "path");
-      p.setAttribute("d", "M0,-4L8,0L0,4");
-      p.setAttribute("fill", String(edgeColor(l)));
-      mk.appendChild(p);
-      defs.appendChild(mk);
-    });
-    const agg = document.createElementNS(NS, "marker");
-    agg.setAttribute("id", "arr-_agg");
-    agg.setAttribute("viewBox", "0 -4 8 8");
-    agg.setAttribute("refX", "9");
-    agg.setAttribute("refY", "0");
-    agg.setAttribute("markerWidth", "7");
-    agg.setAttribute("markerHeight", "7");
-    agg.setAttribute("orient", "auto");
-    const pa = document.createElementNS(NS, "path");
-    pa.setAttribute("d", "M0,-4L8,0L0,4");
-    pa.setAttribute("fill", String(token("--color-888")));
-    agg.appendChild(pa);
-    defs.appendChild(agg);
-  }
-  function edgeColor(label) {
-    const map = { closes: token("--color-a03b3b"), narrows: token("--decision"), widens: token("--color-3f8f6b"), supersedes: token("--color-8a2b2b"), completes: token("--ok"), targets: token("--criterion"), "spawned-by": token("--gate"), "filed-as": token("--color-7d6c5f"), "depends-on": token("--need"), "relies-on": token("--color-5a5a6e"), raised: token("--color-a8608a"), "measured-by": token("--color-556b7a") };
-    return map[label] || token("--color-666");
-  }
-  function shapeOf(type) {
-    const s = {
-      need: "M0,-7 C4,-7 7,-4 7,0 C7,4 4,7 0,7 C-4,7 -7,4 -7,0 C-7,-4 -4,-7 0,-7 Z",
-      question: "M0,-9 L2.5,-2 L9,0 L2.5,2 L0,9 L-2.5,2 L-9,0 L-2.5,-2 Z",
-      decision: "M-7,-7 L7,-7 L7,7 L-7,7 Z",
-      requirement: "M-7,-4 L0,-7 L7,-4 L7,4 L0,7 L-7,4 Z",
-      criterion: "M0,-7 L7,5 L-7,5 Z",
-      gate: "M0,-8 L7.6,-2.5 L4.7,6.5 L-4.7,6.5 L-7.6,-2.5 Z"
-    };
-    return s[type] || s.decision;
-  }
-
   // src/graph/viewport.ts
   function initViewport() {
     svg.addEventListener("wheel", (e) => {
@@ -1012,7 +1091,7 @@
       const { cluster, cells } = overviewGrid(ids);
       for (const g of Object.keys(cluster)) {
         const gp = cells[g] || { bx: 0, by: 0 };
-        const w = Math.min(280, Math.max(120, 40 + cluster[g].length * 1.4));
+        const w = clusterWidth(g, cluster[g].length);
         minX = Math.min(minX, gp.bx - w / 2);
         minY = Math.min(minY, gp.by - 20);
         maxX = Math.max(maxX, gp.bx + w / 2);
@@ -1026,25 +1105,26 @@
         const p = layout[id];
         if (!p)
           return;
-        minX = Math.min(minX, p.x);
-        minY = Math.min(minY, p.y);
-        maxX = Math.max(maxX, p.x);
-        maxY = Math.max(maxY, p.y);
+        const bounds = labelBounds(id);
+        minX = Math.min(minX, p.x + bounds.left);
+        minY = Math.min(minY, p.y + bounds.top);
+        maxX = Math.max(maxX, p.x + bounds.right);
+        maxY = Math.max(maxY, p.y + bounds.bottom);
       });
     }
     setViewSource("fit");
     if (minX > maxX)
       return;
     const rect = svg.getBoundingClientRect();
-    const spanX = maxX - minX + 120;
-    const spanY = maxY - minY + 120;
+    const spanX = maxX - minX + 12;
+    const spanY = maxY - minY + 12;
     const fit = Math.min(rect.width / Math.max(1, spanX), rect.height / Math.max(1, spanY));
     setScale(Math.min(over ? 4 : 2, fit));
     if (!over)
-      setScale(Math.max(scale, 1));
+      setScale(Math.max(scale, genealogyMode ? 1 : 11.05 / Math.min(...ids.map((id) => nodeLabel(id).characterHeight))));
     let center = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
     const focus = currentFocus();
-    if (!over && fit < 1 && focus.id && ids.includes(focus.id)) {
+    if (!over && fit < scale && focus.id && ids.includes(focus.id)) {
       center = currentLayout()[focus.id] || center;
     }
     setTranslate({ ...translate, x: rect.width / 2 - center.x * scale });
@@ -1276,15 +1356,14 @@
     const cells = {};
     if (!gs.length)
       return { cluster, cells };
-    const cellW = 320, cellH = 150;
+    const cellW = Math.max(...gs.map((g) => clusterWidth(g, cluster[g].length))) + 24, cellH = 72;
     const vp = svg.getBoundingClientRect();
-    const aspect = Math.max(0.2, Math.min(5, (vp.width || 800) / (vp.height || 600)));
     const n = gs.length;
-    let cols = n, rows = 1, best = Infinity;
-    for (let c = n > 1 ? 2 : 1;c <= n; c++) {
+    let cols = n, rows = 1, best = 0;
+    for (let c = 1;c <= n; c++) {
       const r = Math.ceil(n / c);
-      const score = Math.abs(c * cellW / (r * cellH) - aspect);
-      if (score < best) {
+      const score = Math.min(vp.width / (c * cellW), vp.height / (r * cellH));
+      if (score > best) {
         best = score;
         cols = c;
         rows = r;
@@ -1419,7 +1498,7 @@
         const [scope, type] = g.split("\x00");
         const gp = cells[g] || { bx: 0, by: 0 };
         const members = cluster[g];
-        const w = Math.min(280, Math.max(120, 40 + members.length * 1.4)), h = 34;
+        const w = clusterWidth(g, members.length), h = 34;
         const rect = document.createElementNS(NS, "rect");
         rect.setAttribute("x", String(gp.bx - w / 2));
         rect.setAttribute("y", String(gp.by - h / 2));
@@ -1514,7 +1593,6 @@
   }
   function drawNodeLayer(inPositions, ids) {
     const nodeLayer = document.createElementNS(NS, "g");
-    const placed = [];
     let drawn = 0;
     ids.forEach((id) => {
       const n = byId[id];
@@ -1572,33 +1650,22 @@
         x.setAttribute("transform", "scale(0.8)");
         g.appendChild(x);
       }
-      const probe = document.createElementNS(NS, "text");
-      probe.setAttribute("text-anchor", "middle");
-      probe.setAttribute("class", "nlabel");
-      svg.appendChild(probe);
-      const full = lod === "near" ? n.id + " · " + n.title + (n.status ? " · " + n.status : "") : n.id;
-      probe.textContent = full;
-      let tw = probe.getComputedTextLength() || full.length * 6;
-      const budget = levelW();
-      while (tw > budget && probe.textContent.length > 4) {
-        probe.textContent = probe.textContent.slice(0, probe.textContent.length - 2) + "…";
-        tw = probe.getComputedTextLength() || probe.textContent.length * 6;
-      }
-      const finalText = probe.textContent;
-      svg.removeChild(probe);
-      const pad = 6;
-      const bb = { x: p.x - tw / 2, y: p.y + r + 3, w: tw + pad, h: 13 + pad };
-      const collides = placed.some((q) => !(bb.x + bb.w < q.x || q.x + q.w < bb.x || bb.y + bb.h < q.y || q.y + q.h < bb.y));
-      if (!collides && tw <= budget) {
-        const t = document.createElementNS(NS, "text");
-        t.setAttribute("x", String(0));
-        t.setAttribute("y", String(r + 13));
-        t.setAttribute("text-anchor", "middle");
-        t.setAttribute("class", "nlabel");
-        t.textContent = finalText;
-        g.appendChild(t);
-        placed.push(bb);
-      }
+      const label = nodeLabel(id);
+      const t = document.createElementNS(NS, "text");
+      t.setAttribute("class", "nlabel");
+      t.setAttribute("text-anchor", "middle");
+      t.dataset.truncated = String(label.truncated);
+      t.dataset.retained = String(label.retained);
+      [id, ...label.lines].forEach((line, index) => {
+        const span = document.createElementNS(NS, "tspan");
+        span.setAttribute("x", index === 0 ? "18" : "22");
+        if (index === 0)
+          span.setAttribute("text-anchor", "start");
+        span.setAttribute("y", String(index === 0 ? 4 : 26 + (index - 1) * LINE_HEIGHT));
+        span.textContent = line;
+        t.appendChild(span);
+      });
+      g.appendChild(t);
       g.dataset.nodeId = id;
       g.setAttribute("tabindex", "0");
       g.setAttribute("role", "button");
@@ -1619,9 +1686,6 @@
     });
     root.appendChild(nodeLayer);
     return drawn;
-  }
-  function levelW() {
-    return scale >= 1.1 ? MAX_LABEL_W : MAX_LABEL_W * 0.6;
   }
 
   // src/components.ts

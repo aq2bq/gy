@@ -1,8 +1,9 @@
+import { clusterWidth, nodeLabel, LINE_HEIGHT } from './labels';
 import { EDGES, byId } from '../data';
 import { selectNode } from '../detail/index';
 import { element } from '../dom';
 import { renderNavigation } from '../navigation';
-import { EDGE_LABEL_MAX, MAX_LABEL_W, MODE_THRESHOLD, currentFocus, dragMoved, forceLayout, genealogyLayout, genealogyMode, lastFitKey, lastViewport, lod, positions, scale, searchHits, selected, setLastFitKey, setLastViewport, setTranslate, translate, viewSource } from '../state';
+import { EDGE_LABEL_MAX, MODE_THRESHOLD, currentFocus, dragMoved, forceLayout, genealogyLayout, genealogyMode, lastFitKey, lastViewport, lod, positions, scale, searchHits, selected, setLastFitKey, setLastViewport, setTranslate, translate, viewSource } from '../state';
 import { KIND_COLORS, token } from '../tokens';
 import { openClusterList, revealOmitted } from './clusters';
 import { renderList } from '../list';
@@ -19,17 +20,15 @@ export function overviewGrid(ids) {
     const cells = {};
     if (!gs.length)
         return { cluster, cells };
-    const cellW = 320, cellH = 150;
+    const cellW = Math.max(...gs.map(g=>clusterWidth(g,cluster[g].length)))+24, cellH = 72;
     const vp = svg.getBoundingClientRect();
-    const aspect = Math.max(0.2, Math.min(5, (vp.width || 800) / (vp.height || 600)));
     const n = gs.length;
-    // Prefer at least two columns so inter-cluster edges gain horizontal travel and
-    // their labels do not stack on a single vertical line.
-    let cols = n, rows = 1, best = Infinity;
-    for (let c = (n > 1 ? 2 : 1); c <= n; c++) {
+    // Choose columns from measured cluster widths and available screen space.
+    let cols = n, rows = 1, best = 0;
+    for (let c = 1; c <= n; c++) {
         const r = Math.ceil(n / c);
-        const score = Math.abs((c * cellW) / (r * cellH) - aspect);
-        if (score < best) {
+        const score = Math.min(vp.width/(c*cellW),vp.height/(r*cellH));
+        if (score > best) {
             best = score;
             cols = c;
             rows = r;
@@ -174,7 +173,7 @@ export function draw() {
             const [scope, type] = g.split('\u0000');
             const gp = cells[g] || { bx: 0, by: 0 };
             const members = cluster[g];
-            const w = Math.min(280, Math.max(120, 40 + members.length * 1.4)), h = 34;
+            const w = clusterWidth(g,members.length), h = 34;
             const rect = (document.createElementNS(NS, 'rect') as SVGElement);
             rect.setAttribute('x', String(gp.bx - w / 2));
             rect.setAttribute('y', String(gp.by - h / 2));
@@ -268,7 +267,6 @@ export function drawEdgesLayer(inPositions, ids, drawEdges) {
 }
 export function drawNodeLayer(inPositions, ids) {
     const nodeLayer = (document.createElementNS(NS, 'g') as SVGElement);
-    const placed = [];
     let drawn = 0;
     ids.forEach(id => {
         const n = byId[id];
@@ -326,37 +324,21 @@ export function drawNodeLayer(inPositions, ids) {
             x.setAttribute('transform', 'scale(0.8)');
             g.appendChild(x);
         }
-        // label: fit available width, measured via a live probe, skip on overlap (H22)
-        const probe = (document.createElementNS(NS, 'text') as SVGTextElement);
-        probe.setAttribute('text-anchor', 'middle');
-        probe.setAttribute('class', 'nlabel');
-        svg.appendChild(probe); // must be connected to measure
-        const full = lod === 'near'
-            ? (n.id + ' · ' + n.title + (n.status ? ' · ' + n.status : ''))
-            : n.id;
-        probe.textContent = full;
-        let tw = probe.getComputedTextLength() || full.length * 6;
-        const budget = levelW();
-        while (tw > budget && probe.textContent.length > 4) {
-            probe.textContent = probe.textContent.slice(0, probe.textContent.length - 2) + '…';
-            tw = probe.getComputedTextLength() || probe.textContent.length * 6;
-        }
-        const finalText = probe.textContent;
-        svg.removeChild(probe);
-        // overlap: BBox collision against placed labels
-        const pad = 6;
-        const bb = { x: p.x - tw / 2, y: p.y + r + 3, w: tw + pad, h: 13 + pad };
-        const collides = placed.some(q => !(bb.x + bb.w < q.x || q.x + q.w < bb.x || bb.y + bb.h < q.y || q.y + q.h < bb.y));
-        if (!collides && tw <= budget) {
-            const t = (document.createElementNS(NS, 'text') as SVGTextElement);
-            t.setAttribute('x', String(0));
-            t.setAttribute('y', String(r + 13));
-            t.setAttribute('text-anchor', 'middle');
-            t.setAttribute('class', 'nlabel');
-            t.textContent = finalText;
-            g.appendChild(t);
-            placed.push(bb);
-        }
+        const label=nodeLabel(id);
+        const t=document.createElementNS(NS,'text') as SVGTextElement;
+        t.setAttribute('class','nlabel');
+        t.setAttribute('text-anchor','middle');
+        t.dataset.truncated=String(label.truncated);
+        t.dataset.retained=String(label.retained);
+        [id,...label.lines].forEach((line,index)=>{
+            const span=document.createElementNS(NS,'tspan');
+            span.setAttribute('x',index===0?'18':'22');
+            if(index===0) span.setAttribute('text-anchor','start');
+            span.setAttribute('y',String(index===0?4:26+(index-1)*LINE_HEIGHT));
+            span.textContent=line;
+            t.appendChild(span);
+        });
+        g.appendChild(t);
         g.dataset.nodeId = id;
         g.setAttribute('tabindex', '0');
         g.setAttribute('role', 'button');
@@ -375,4 +357,3 @@ export function drawNodeLayer(inPositions, ids) {
     root.appendChild(nodeLayer);
     return drawn;
 }
-export function levelW() { return scale >= 1.1 ? MAX_LABEL_W : MAX_LABEL_W * 0.6; }

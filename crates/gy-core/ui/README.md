@@ -38,7 +38,7 @@ type checking.
 | `navigation.ts`, `location.ts` | Focus path and URL-to-UI projection |
 | `list.ts` | Permanent sortable table, complete titles, row-wide links |
 | `detail/` | Record details and the existing offline Markdown renderer |
-| `graph/` | Layout, SVG, selection, drawing, clusters, viewport |
+| `graph/` | Layout, measured label bounds, SVG, selection, drawing, clusters, viewport |
 | `survey/` | Overview, Progress, Blockers |
 | `tokens.css`, `tokens.ts` | Shared CSS tokens and their SVG/chart palette |
 | `dom.ts`, `components.ts` | Typed template lookups and shared rendering helpers |
@@ -59,4 +59,4 @@ node --experimental-vm-modules --test tests/html_navigation.test.cjs
 The fixture uses Bun to strip types and Node VM modules to link the real state,
 selection, navigation, and viewport modules with DOM/drawing stubs. Browser hit
 testing, URL history, layout, Markdown, and offline behavior remain covered by
-the unchanged Playwright suite (`cd e2e && npm test`).
+the Playwright suite (`cd e2e && npm test`).

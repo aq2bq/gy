@@ -43,6 +43,9 @@ const high = [{id: 'D-100', scope: 'star'}, ...Array.from({length: 64}, (_, i) =
 const star = Array.from({length: 61}, (_, i) => ['D-100', `D-${i + 1}`]);
 star.push(['D-61', 'D-62'], ['D-61', 'D-63'], ['D-61', 'D-64']);
 generate('high-degree', high, star);
+// A 20-node neighborhood exercises wrapped titles at the requested review size.
+const nearLabels=Array.from({length:20},(_,i)=>({id:`D-${200+i}`,scope:'labels',attrs:{title:i%3===0?'短い判断の記録':'適用する条件と判断した根拠を記録し関係する要求から設計の成立範囲を確かめる'}}));
+generate('near-labels',nearLabels,nearLabels.slice(1).map(n=>['D-200',n.id]));
 // Reading fixture includes all kinds, closed vocabularies, and lossless attributes.
 const ja = 'この決定は記録された条件に基づいて適用する。表示された内容と実際の運用を照合し、変更の理由を確認する。'.repeat(8);
 const en = 'This decision applies to the recorded conditions. Readers can compare the declaration with the explanation and retain the evidence for the next review. '.repeat(8);

@@ -134,3 +134,12 @@ links, URL restoration of the typed next source, and pointer elements against
 native links or registered role handlers. Focus assertions use the single graph
 navigation action after selecting a record; the duplicate detail action is removed.
 The 1440px screenshot includes Overview, the table, and selected type chips.
+
+N-24 adds a 20-node neighborhood with long Japanese titles. The 20-node,
+24-node reading, and capped 60-node views assert ID plus at most three title
+lines, character height >=11px, retained title length >=20 when truncated,
+zero label intersections, and all label bounds inside the SVG viewport.
+Cluster scope/type/count labels receive the same height and containment check.
+Lineage retains its readable pan contract; ordinary full-containment assertions
+are not applied to its uncapped generation layout. Edge-label placement is a
+separate contract from the node-label measurements.

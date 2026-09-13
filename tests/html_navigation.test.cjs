@@ -116,6 +116,7 @@ async function viewportFixture(positions) {
   context.window.GY_DATA = {nodes:ids.map(id=>({id})), edges:[], dependencies:[]};
   await loadModules(context, ['state','graph/viewport'], {
     [join(sourceRoot,'graph/svg.ts')]: 'export const svg = globalThis.svg; export const root = globalThis.root;',
+    [join(sourceRoot,'graph/labels.ts')]: 'export function labelBounds() {return {left:0,right:0,top:0,bottom:0};} export function nodeLabel() {return {characterHeight:11.05};} export function clusterWidth() {return 120;}',
     [join(sourceRoot,'graph/layout.ts')]: 'export const ensureForce = globalThis.ensureForce;',
     [join(sourceRoot,'graph/selection.ts')]: 'export const visibleNodes = globalThis.visibleNodes; export const lodFromScale = globalThis.lodFromScale;',
     [join(sourceRoot,'graph/draw.ts')]: 'export const draw = globalThis.draw; export function overviewGrid() { throw new Error("not an overview fixture"); }'

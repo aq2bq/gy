@@ -1,3 +1,4 @@
+import { clusterWidth, labelBounds, nodeLabel } from './labels';
 import { MODE_THRESHOLD, currentFocus, dragMoved, dragStart, dragging, forceLayout, genealogyLayout, genealogyMode, lod, positions, scale, setDragMoved, setDragStart, setDragging, setLastFitKey, setLod, setScale, setTranslate, setViewSource, translate } from '../state';
 import { draw, overviewGrid } from './draw';
 import { ensureForce } from './layout';
@@ -83,7 +84,7 @@ export function fitTransform() {
         const { cluster, cells } = overviewGrid(ids);
         for (const g of Object.keys(cluster)) {
             const gp = cells[g] || { bx: 0, by: 0 };
-            const w = Math.min(280, Math.max(120, 40 + cluster[g].length * 1.4));
+            const w = clusterWidth(g,cluster[g].length);
             minX = Math.min(minX, gp.bx - w / 2);
             minY = Math.min(minY, gp.by - 20);
             maxX = Math.max(maxX, gp.bx + w / 2);
@@ -98,31 +99,32 @@ export function fitTransform() {
             const p = layout[id];
             if (!p)
                 return;
-            minX = Math.min(minX, p.x);
-            minY = Math.min(minY, p.y);
-            maxX = Math.max(maxX, p.x);
-            maxY = Math.max(maxY, p.y);
+            const bounds=labelBounds(id);
+            minX = Math.min(minX, p.x+bounds.left);
+            minY = Math.min(minY, p.y+bounds.top);
+            maxX = Math.max(maxX, p.x+bounds.right);
+            maxY = Math.max(maxY, p.y+bounds.bottom);
         });
     }
     setViewSource('fit');
     if (minX > maxX)
         return;
     const rect = svg.getBoundingClientRect();
-    const spanX = (maxX - minX) + 120;
-    const spanY = (maxY - minY) + 120;
+    const spanX = (maxX - minX) + 12;
+    const spanY = (maxY - minY) + 12;
     const fit = Math.min(rect.width / Math.max(1, spanX), rect.height / Math.max(1, spanY));
     // Avoid over-enlarging isolated/small neighborhoods; manual zoom still reaches 4.
     setScale(Math.min(over ? 4 : 2, fit));
-    // H28: keep node labels readable (font 11px -> at least 11px on screen).
+    // Keep measured characters readable; lineage retains its minimum scale.
     // If the whole set does not fit at that scale, readability wins and the
     // off-screen count is reported by the banner in draw().
     if (!over)
-        setScale(Math.max(scale, 1.0));
+        setScale(Math.max(scale, genealogyMode ? 1 : 11.05 / Math.min(...ids.map(id=>nodeLabel(id).characterHeight))));
     let center = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
     const focus = currentFocus();
     // At the readable minimum, keep the destination visible even if its
     // neighborhood spans more than the viewport (notably generation layouts).
-    if (!over && fit < 1 && focus.id && ids.includes(focus.id)) {
+    if (!over && fit < scale && focus.id && ids.includes(focus.id)) {
         center = currentLayout()[focus.id] || center;
     }
     setTranslate({ ...translate, x: rect.width / 2 - center.x * scale });

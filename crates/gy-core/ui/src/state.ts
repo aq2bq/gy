@@ -25,7 +25,6 @@ export interface LocationState {
 export const MODE_THRESHOLD = 60; // above this: overview clusters; at/below: individual force layout
 export const HOP_CAP = 5; // adaptive neighborhood ceiling, still clamped to the threshold
 export const EDGE_LABEL_MAX = 20; // draw edge labels only when the individual set is this small
-export const MAX_LABEL_W = 190; // graph units: label width budget at near zoom
 export let searchText = '';
 export let searchHits: ReadonlySet<string> | null = null;
 // Navigation history is independent of filters, search, and genealogy.
@@ -164,3 +163,6 @@ export function selectType(kind: NodeKind | 'all') {
 
 export let overviewSource = '';
 export function setOverviewSource(value: unknown) { overviewSource = typeof value === 'string' && ['next','lint-error','lint-warn'].includes(value) ? value : ''; }
+
+export let labelWidth = 156;
+export function setLabelWidth(value: number) { labelWidth = value; }
