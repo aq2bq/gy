@@ -75,6 +75,17 @@ ul.list a:hover{text-decoration:underline}
 .page.on{display:block}
 #detail{position:absolute;top:0;right:0;bottom:0;width:400px;max-width:88%;z-index:10;background:var(--panel);border-left:1px solid var(--border);overflow:auto;padding:14px;transform:translateX(100%);transition:transform .18s ease;box-shadow:-4px 0 12px rgba(0,0,0,.12)}
 #detail.on{transform:none}
+#clusterPanel{position:absolute;top:44px;right:12px;z-index:9;width:330px;max-width:92%;max-height:70%;overflow:auto;background:rgba(255,255,255,.97);border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:0 4px 16px rgba(0,0,0,.18);display:none}
+#clusterPanel.on{display:block}
+#clusterPanel h3{font-size:13px;margin:0 0 6px}
+#clusterPanel .sortrow{display:flex;gap:6px;margin-bottom:8px}
+#clusterPanel .sortrow button{font-size:11px;padding:2px 8px}
+#clusterPanel ul{list-style:none;margin:0;padding:0;max-height:46vh;overflow:auto}
+#clusterPanel li{padding:4px 6px;border-bottom:1px dashed var(--border);font-size:12.5px;cursor:pointer}
+#clusterPanel li:hover{background:#f4f1ea}
+#clusterPanel .deg{color:var(--muted);font-size:11px;float:right}
+#clusterPanel .badge{font-size:10px;background:var(--ok);color:#fff;border-radius:8px;padding:0 6px;margin-left:6px}
+#clusterPanel .close{float:right;cursor:pointer;border:0;background:none;font-size:16px;line-height:1}
 #detail h3{margin:0 0 6px;font-size:15px}
 #detail .sub{color:var(--muted);font-size:12px;margin-bottom:8px}
 #detail pre{background:#f1efe8;border:1px solid var(--border);border-radius:6px;padding:8px;overflow:auto;font-size:11.5px;white-space:pre-wrap;word-break:break-word}
@@ -95,8 +106,8 @@ ul.list a:hover{text-decoration:underline}
 svg text{user-select:none}
 svg .node{cursor:pointer}
 svg .node:hover .ring{stroke:var(--hl)}
-svg .nlabel{font-size:9px;fill:#333}
-svg .elabel{font-size:8.5px;fill:#555}
+svg .nlabel{font-size:11px;fill:#333;pointer-events:none}
+svg .elabel{font-size:8.5px;fill:#555;pointer-events:none}
 #filters{display:grid;gap:8px}
 .toolbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
 .toolbar button{font-size:12px;padding:3px 8px}
@@ -208,8 +219,10 @@ a{color:var(--decision);cursor:pointer}
   </aside>
 
   <main>
-    <div id="graphMeta"><span id="graphCount"></span> nodes drawn &middot; <span id="graphVisible"></span> visible</div>
-    <div id="viewer"><svg id="svg" width="100%" height="100%"></svg></div>
+    <div id="graphMeta"><span id="graphCount"></span> nodes drawn &middot; <span id="graphVisible"></span> visible &middot; <span id="hopInfo"></span></div>
+    <div id="viewer"><svg id="svg" width="100%" height="100%"></svg>
+      <div id="clusterPanel"></div>
+    </div>
     <div id="culling"></div>
     <div id="legendBox"></div>
     <div id="detail">
@@ -322,15 +335,15 @@ document.getElementById('clearFilter').addEventListener('click', () => {
   document.getElementById('criterion').value = '';
   document.getElementById('q').value = '';
   searchText = '';
-  hopFrom = null; hopN = 1;
+  hopFrom = null; hopN = 1; hopInfo = null;
   genealogyMode = false;
+  closeClusterPanel();
   redraw();
 });
 document.getElementById('applyHop').addEventListener('click', () => {
   const id = document.getElementById('hopFrom').value.trim();
-  hopN = Math.max(1, parseInt(document.getElementById('hopN').value || '1', 10) || 1);
   if (!byId[id]) { alert('Unknown node id: ' + id); return; }
-  hopFrom = id; genealogyMode = false; redraw();
+  startHop(id);
 });
 document.getElementById('genealogy').addEventListener('click', () => {
   genealogyMode = !genealogyMode;
@@ -338,6 +351,7 @@ document.getElementById('genealogy').addEventListener('click', () => {
   if (genealogyMode) {
     lod = 'near';
   }
+  closeClusterPanel();
   resetView();
   redraw();
 });
@@ -365,25 +379,116 @@ function computeMatches(q) {
 }
 
 // ---------- graph state ----------
+const MODE_THRESHOLD = 60;      // above this: overview clusters; at/below: individual force layout
+const HOP_CAP = 5;              // adaptive neighborhood ceiling, still clamped to the threshold
+const EDGE_LABEL_MAX = 20;      // draw edge labels only when the individual set is this small
+const MAX_LABEL_W = 190;        // graph units: label width budget at near zoom
+
 let searchText = '';
 let searchHits = null;
-let hopFrom = null, hopN = 1;
+let hopFrom = null, hopN = 1, hopInfo = null;
 let genealogyMode = false;
 let selected = null;
 let scale = 1, translate = {x:0, y:0};
 let lod = 'far';
-let positions = {};           // id -> {x,y}, global grid
-let drawNodes = [];           // current visible subset (ids)
-let genealogyLayout = {};     // id -> {x,y}
+let positions = {};           // id -> {x,y}, overview cluster-member grid
+let drawNodes = [];           // legacy alias for the current visible subset
+let genealogyLayout = {};     // id -> {x,y}, genealogy (unchanged by H24)
+let forceLayout = {};         // id -> {x,y}, individual mode layout
+let forceKey = '';            // cache key for the current force layout
 const groupPos = {};
 
-// adjacency (undirected) built once
+// adjacency (undirected) built once from the edges the graph actually draws
 const adj = {};
 NODES.forEach(n => adj[n.id] = {});
 EDGES.forEach(e => {
   (adj[e.source] = adj[e.source] || {})[e.target] = e.label;
   (adj[e.target] = adj[e.target] || {})[e.source] = e.reverse;
 });
+
+// ---------- adaptive neighborhood (H27) ----------
+function reachable(start, n) {
+  let seen = new Set([start]);
+  let frontier = [start];
+  for (let i = 0; i < n; i++) {
+    const next = [];
+    frontier.forEach(id => Object.keys(adj[id] || {}).forEach(t => { if (!seen.has(t)) { seen.add(t); next.push(t); } }));
+    frontier = next;
+  }
+  return seen;
+}
+// Largest n in [1..HOP_CAP] whose reachable set fits the threshold.
+// 1 hop is always degree+1 <= 60, so the rule always terminates.
+function pickHop(start) {
+  for (let n = HOP_CAP; n >= 1; n--) {
+    const s = reachable(start, n);
+    if (s.size <= MODE_THRESHOLD) return {n, size: s.size};
+  }
+  const s = reachable(start, 1);
+  return {n: 1, size: s.size};
+}
+
+// ---------- force-directed layout for the individual mode (H21) ----------
+function computeForce(ids) {
+  const n = ids.length;
+  const W = 1400, H = 900;
+  const pos = {};
+  ids.forEach((id, i) => {
+    const angle = 2 * Math.PI * i / Math.max(1, n);
+    const r = Math.min(W, H) * 0.35;
+    pos[id] = {x: W/2 + Math.cos(angle) * r, y: H/2 + Math.sin(angle) * r, vx: 0, vy: 0};
+  });
+  const idSet = new Set(ids);
+  const spring = [];
+  EDGES.forEach(e => {
+    if (idSet.has(e.source) && idSet.has(e.target)) spring.push([e.source, e.target]);
+  });
+  for (let iter = 0; iter < 400; iter++) {
+    for (let i = 0; i < n; i++) {
+      const a = pos[ids[i]];
+      for (let j = i + 1; j < n; j++) {
+        const b = pos[ids[j]];
+        let dx = a.x - b.x, dy = a.y - b.y;
+        let d = Math.max(1, Math.hypot(dx, dy));
+        const f = 160000 / (d * d);
+        dx /= d; dy /= d;
+        a.vx += dx * f; a.vy += dy * f;
+        b.vx -= dx * f; b.vy -= dy * f;
+      }
+    }
+    spring.forEach(([s, t]) => {
+      const a = pos[s], b = pos[t];
+      let dx = a.x - b.x, dy = a.y - b.y;
+      const d = Math.max(1, Math.hypot(dx, dy));
+      const f = 0.03 * (d - 110);
+      dx /= d; dy /= d;
+      a.vx -= dx * f; a.vy -= dy * f;
+      b.vx += dx * f; b.vy += dy * f;
+    });
+    ids.forEach(id => {
+      const p = pos[id];
+      p.vx += (W/2 - p.x) * 0.001;
+      p.vy += (H/2 - p.y) * 0.001;
+      const damp = 0.85;
+      p.x += p.vx * damp; p.y += p.vy * damp;
+      p.vx = 0; p.vy = 0;
+    });
+  }
+  // Normalize the layout to a size proportional to the node count, so that at
+  // fit scale ~1 the labels are readable (H28). Nodes sit ~70 units apart.
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  ids.forEach(id => { const p = pos[id]; minX = Math.min(minX,p.x); minY = Math.min(minY,p.y); maxX = Math.max(maxX,p.x); maxY = Math.max(maxY,p.y); });
+  const spanX = maxX - minX, spanY = maxY - minY;
+  const target = Math.max(320, Math.sqrt(n) * 70);
+  const k = target / Math.max(1, Math.max(spanX, spanY));
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  ids.forEach(id => { const p = pos[id]; p.x = (p.x - cx) * k; p.y = (p.y - cy) * k; });
+  return pos;
+}
+function ensureForce(ids) {
+  const key = [...ids].sort().join('|');
+  if (forceKey !== key) { forceLayout = computeForce(ids); forceKey = key; }
+}
 
 // ---------- layout: global grid by (scope, type) ----------
 function initLayout() {
@@ -464,6 +569,18 @@ function makeDefs() {
     mk.appendChild(p);
     defs.appendChild(mk);
   });
+  // aggregated-edge arrowhead (overview mode)
+  const agg = document.createElementNS(NS, 'marker');
+  agg.setAttribute('id', 'arr-_agg');
+  agg.setAttribute('viewBox', '0 -4 8 8');
+  agg.setAttribute('refX', '9'); agg.setAttribute('refY', '0');
+  agg.setAttribute('markerWidth', '7'); agg.setAttribute('markerHeight', '7');
+  agg.setAttribute('orient', 'auto');
+  const pa = document.createElementNS(NS, 'path');
+  pa.setAttribute('d', 'M0,-4L8,0L0,4');
+  pa.setAttribute('fill', '#888');
+  agg.appendChild(pa);
+  defs.appendChild(agg);
 }
 function edgeColor(label){ const map = {closes:'#a03b3b',narrows:'#4f7fb8',widens:'#3f8f6b',supersedes:'#8a2b2b',completes:'#2f6f45',targets:'#c96f6f','spawned-by':'#4f9aa8','filed-as':'#7d6c5f','depends-on':'#7a9e7e','relies-on':'#5a5a6e',raised:'#a8608a','measured-by':'#556b7a'}; return map[label] || '#666'; }
 
@@ -532,99 +649,226 @@ function visibleEdges(ids) {
 
 function lodFromScale() { return scale < 0.35 ? 'far' : scale < 1.1 ? 'mid' : 'near'; }
 
+// ---------- draw dispatch ----------
+// Compute overview cluster centers so the grid matches the viewport aspect.
+function overviewGrid(ids) {
+  const cluster = {};
+  ids.forEach(id => { const n = byId[id]; const g = n.scope + '\u0000' + n.type; (cluster[g] = cluster[g] || []).push(id); });
+  const gs = Object.keys(cluster);
+  const cells = {};
+  if (!gs.length) return {cluster, cells};
+  const cellW = 320, cellH = 150;
+  const vp = svg.getBoundingClientRect();
+  const aspect = Math.max(0.2, Math.min(5, (vp.width || 800) / (vp.height || 600)));
+  const n = gs.length;
+  // Prefer at least two columns so inter-cluster edges gain horizontal travel and
+  // their labels do not stack on a single vertical line.
+  let cols = n, rows = 1, best = Infinity;
+  for (let c = (n > 1 ? 2 : 1); c <= n; c++) {
+    const r = Math.ceil(n / c);
+    const score = Math.abs((c * cellW) / (r * cellH) - aspect);
+    if (score < best) { best = score; cols = c; rows = r; }
+  }
+  const gridW = cols * cellW, gridH = rows * cellH;
+  gs.forEach((g, i) => {
+    const c = i % cols, r = Math.floor(i / cols);
+    cells[g] = {bx: c * cellW + cellW / 2 - gridW / 2, by: r * cellH + cellH / 2 - gridH / 2};
+  });
+  return {cluster, cells};
+}
+
+function dotPath(sx, sy, tx, ty) {
+  const dx = tx-sx, dy = ty-sy, d = Math.max(1, Math.hypot(dx,dy));
+  return {x1: sx, y1: sy, x2: tx - dx/d*16, y2: ty - dy/d*16};
+}
+
+// Refit automatically whenever the visible set changes (overview <-> neighborhood,
+// search/filter, genealogy entry), so the new content is not left outside the viewport.
+let lastFitKey = '';
 function draw() {
   const ids = visibleNodes();
-  let shownIds = ids;
-  const cap = lod === 'near' ? 700 : lod === 'mid' ? 3000 : 50000;
-  let hidden = 0;
-  if (ids.length > cap) { shownIds = ids.slice(0, cap); hidden = ids.length - cap; }
-  const inPositions = genealogyMode ? genealogyLayout : positions;
-  const drawEdges = genealogyMode
-    ? EDGES.filter(e => (e.label === 'narrows' || e.label === 'supersedes' || e.label === 'completes' || e.label === 'widens') && shownIds.includes(e.source) && shownIds.includes(e.target))
-    : visibleEdges(shownIds);
+  const key = (genealogyMode ? 'g' : '') + ':' + [...ids].sort().join(',');
+  if (key !== lastFitKey) {
+    lastFitKey = key;
+    fitTransform();
+  }
+  const showingAll = ids.length <= MODE_THRESHOLD || genealogyMode;
+  if (!genealogyMode && showingAll && ids.length > 0) ensureForce(ids);
+  const inPositions = genealogyMode ? genealogyLayout : (showingAll ? forceLayout : positions);
 
   // clear
   root.innerHTML = '';
-
-  let drawn = 0;
-  const setDrawn = (n) => { drawn = n; };
-  setDrawn(0);
+  document.getElementById('hopInfo').textContent =
+    (hopFrom && hopInfo) ? ('neighborhood from ' + hopFrom + ' · ' + hopInfo.n + ' hop' + (hopInfo.n>1?'s':'') + ' · ' + hopInfo.size + ' nodes')
+    : (hopFrom ? '' : '');
+  document.getElementById('lodInfo').textContent =
+    showingAll ? 'zoom level: ' + lod + ' (scale ' + scale.toFixed(2) + ') '
+    : 'overview · zoom level: ' + lod + ' (scale ' + scale.toFixed(2) + ')';
 
   const culling = document.getElementById('culling');
-  const updateCounts = () => {
+  const setMeta = (drawn, visCount, extra) => {
     document.getElementById('graphCount').textContent = drawn;
-    document.getElementById('graphVisible').textContent = ids.length + (hidden ? ' (+' + hidden + ' hidden)' : '');
-    if (hidden > 0) {
-      culling.style.display = 'block';
-      culling.textContent = 'Showing ' + drawn + ' of ' + ids.length + ' visible nodes; ' + hidden + ' hidden beyond the zoom limit. Filter or zoom to a neighborhood to see them.';
-    } else {
-      culling.style.display = 'none';
-    }
+    document.getElementById('graphVisible').textContent = visCount;
+    if (extra) { culling.style.display = 'block'; culling.textContent = extra; }
+    else { culling.style.display = 'none'; culling.textContent = ''; }
   };
-  document.getElementById('lodInfo').textContent = 'Zoom level: ' + lod + ' (scale ' + scale.toFixed(2) + ')';
 
-  // edge rendering
+  if (genealogyMode) {
+    drawEdgesLayer(inPositions, ids.filter(id=>inPositions[id]), EDGES.filter(e => (e.label === 'narrows' || e.label === 'supersedes' || e.label === 'completes' || e.label === 'widens') && inPositions[e.source] && inPositions[e.target]));
+    const n = drawNodeLayer(inPositions, ids);
+    setMeta(n, n, '');
+    return;
+  }
+
+  if (!showingAll) {
+    // Overview: clusters + aggregated edges, no individual nodes.  ------
+    const {cluster, cells} = overviewGrid(ids);
+    const cg = Object.keys(cluster);
+    // Aggregated edges between clusters (H19)
+    const pair = {};
+    EDGES.forEach(e => {
+      if (!ids.includes(e.source) || !ids.includes(e.target)) return;
+      const gs = byId[e.source].scope + '\u0000' + byId[e.source].type;
+      const gt = byId[e.target].scope + '\u0000' + byId[e.target].type;
+      if (gs === gt) return;                 // kept as internal count (H26)
+      const k = gs + '|' + gt;
+      (pair[k] = pair[k] || []).push(e.label);
+    });
+    const edgeLayer = document.createElementNS(NS, 'g');
+    const pairKeys = Object.keys(pair);
+    // Fan inter-cluster edges out with quadratic curves so that edges sharing a
+    // lane separate and every label can be traced back to its two clusters (H19).
+    pairKeys.forEach((k, i) => {
+      const labels = pair[k];
+      const [gs, gt] = k.split('|');
+      const a = cells[gs] || {bx:0, by:0};
+      const b = cells[gt] || {bx:0, by:0};
+      const sx = a.bx, sy = a.by, tx = b.bx, ty = b.by;
+      const dx = tx - sx, dy = ty - sy, len = Math.max(1, Math.hypot(dx, dy));
+      // perpendicular unit vector; alternate sides by pair index
+      const ux = -dy / len, uy = dx / len;
+      const side = (i % 2 === 0 ? 1 : -1);
+      const dist = 90 + Math.floor(i / 2) * 28;
+      const mx = (sx + tx) / 2 + ux * dist * side;
+      const my = (sy + ty) / 2 + uy * dist * side;
+      const endX = tx - dx / len * 16, endY = ty - dy / len * 16;
+      const path = document.createElementNS(NS, 'path');
+      path.setAttribute('d', 'M ' + sx + ' ' + sy + ' Q ' + mx + ' ' + my + ' ' + endX + ' ' + endY);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', '#888');
+      path.setAttribute('stroke-width', '1.4');
+      path.setAttribute('marker-end', 'url(#arr-_agg)');
+      path.setAttribute('opacity', '0.75');
+      path.setAttribute('data-label', [...new Set(labels)].join(','));
+      path.setAttribute('data-s', gs);
+      path.setAttribute('data-t', gt);
+      edgeLayer.appendChild(path);
+      const t = document.createElementNS(NS, 'text');
+      t.setAttribute('x', mx + ux * 14 * side); t.setAttribute('y', my + uy * 14 * side - 4);
+      t.setAttribute('text-anchor', 'middle'); t.setAttribute('class', 'elabel');
+      t.setAttribute('data-count', labels.length);
+      t.setAttribute('data-s', gs);
+      t.setAttribute('data-t', gt);
+      t.textContent = labels.length > 1 ? labels.length + '' : labels[0];
+      edgeLayer.appendChild(t);
+    });
+    root.appendChild(edgeLayer);
+
+    // Internal closed edges per cluster (H26)
+    const internal = {};
+    EDGES.forEach(e => {
+      if (!ids.includes(e.source) || !ids.includes(e.target)) return;
+      const g = byId[e.source].scope + '\u0000' + byId[e.source].type;
+      if (g !== byId[e.target].scope + '\u0000' + byId[e.target].type) return;
+      (internal[g] = internal[g] || []).push(e.label);
+    });
+
+    cg.forEach(g => {
+      const [scope, type] = g.split('\u0000');
+      const gp = cells[g] || {bx:0, by:0};
+      const members = cluster[g];
+      const w = Math.min(280, Math.max(120, 40 + members.length * 1.4)), h = 34;
+      const rect = document.createElementNS(NS, 'rect');
+      rect.setAttribute('x', gp.bx - w/2); rect.setAttribute('y', gp.by - h/2);
+      rect.setAttribute('width', w); rect.setAttribute('height', h);
+      rect.setAttribute('rx', '8');
+      rect.setAttribute('fill', KIND_COLORS[type]); rect.setAttribute('opacity', '0.6');
+      rect.setAttribute('class', 'node');
+      rect.addEventListener('click', () => openClusterPanel(g, members));
+      root.appendChild(rect);
+      const t1 = document.createElementNS(NS, 'text');
+      t1.setAttribute('x', gp.bx); t1.setAttribute('y', gp.by - 1);
+      t1.setAttribute('text-anchor', 'middle'); t1.setAttribute('class', 'nlabel'); t1.style.fill = '#111';
+      t1.textContent = scope + ' / ' + type + ' · ' + members.length;
+      root.appendChild(t1);
+      const t2 = document.createElementNS(NS, 'text');
+      t2.setAttribute('x', gp.bx); t2.setAttribute('y', gp.by + 13);
+      t2.setAttribute('text-anchor', 'middle'); t2.setAttribute('class', 'elabel'); t2.style.fill = '#333';
+      t2.textContent = internal[g] ? ('internal ' + internal[g].length) : '';
+      root.appendChild(t2);
+    });
+    setMeta(cg.length, ids.length + ' nodes', cg.length + ' clusters · ' + ids.length + ' nodes available');
+    return;
+  }
+
+  // Individual mode / genealogy / filtered small set: force layout (H21)
+  const drawEdges = genealogyMode
+    ? EDGES.filter(e => (e.label === 'narrows' || e.label === 'supersedes' || e.label === 'completes' || e.label === 'widens') && inPositions[e.source] && inPositions[e.target])
+    : visibleEdges(ids);
+  drawEdgesLayer(inPositions, ids, drawEdges);
+  const n = drawNodeLayer(inPositions, ids);
+  // H28 + H18: at the readable fit scale some nodes may fall outside the viewport.
+  const off = offscreenCount(inPositions, ids);
+  const noted = off > 0 ? ('Showing ' + (n - off) + ' of ' + n + ' nodes; ' + off + ' off-screen at readable zoom. Zoom out or pan to reach them.') : '';
+  setMeta(n - off, n, noted);
+}
+
+function offscreenCount(layout, ids) {
+  const rect = svg.getBoundingClientRect();
+  let off = 0;
+  ids.forEach(id => {
+    const p = layout[id];
+    if (!p) return;
+    const sx = p.x * scale + translate.x;
+    const sy = p.y * scale + translate.y;
+    if (sx < -20 || sx > rect.width + 20 || sy < -20 || sy > rect.height + 20) off++;
+  });
+  return off;
+}
+
+function drawEdgesLayer(inPositions, ids, drawEdges) {
   const edgeLayer = document.createElementNS(NS, 'g');
-  const idSet = new Set(shownIds);
-  drawEdges.forEach(e => {
+  const wantLabels = !genealogyMode && ids.length <= EDGE_LABEL_MAX;
+  drawEdges.forEach((e, idx) => {
     const a = inPositions[e.source], b = inPositions[e.target];
     if (!a || !b) return;
     const line = document.createElementNS(NS, 'line');
-    line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
-    line.setAttribute('x2', b.x); line.setAttribute('y2', b.y);
+    const p = dotPath(a.x, a.y, b.x, b.y);
+    line.setAttribute('x1', p.x1); line.setAttribute('y1', p.y1);
+    line.setAttribute('x2', p.x2); line.setAttribute('y2', p.y2);
     line.setAttribute('stroke', edgeColor(e.label));
     line.setAttribute('stroke-width', '1.2');
     line.setAttribute('marker-end', 'url(#arr-' + e.label.replace(/\W/g, '_') + ')');
-    if (lod === 'near') {
-      line.setAttribute('opacity', '0.75');
-    } else {
-      line.setAttribute('opacity', '0.35');
-    }
+    line.setAttribute('opacity', '0.5');
+    line.setAttribute('data-lbl', e.label);
+    line.setAttribute('data-idx', idx);
     edgeLayer.appendChild(line);
-    if (lod === 'near') {
+    if (wantLabels) {
       const t = document.createElementNS(NS, 'text');
-      t.setAttribute('x', (a.x+b.x)/2); t.setAttribute('y', (a.y+b.y)/2 - 3);
+      t.setAttribute('x', (p.x1+p.x2)/2); t.setAttribute('y', (p.y1+p.y2)/2 - 3);
       t.setAttribute('text-anchor', 'middle'); t.setAttribute('class', 'elabel');
       t.textContent = e.label;
       edgeLayer.appendChild(t);
     }
   });
   root.appendChild(edgeLayer);
+}
 
-  // far clusters (skipped in genealogy mode, which needs individual nodes)
-  if (lod === 'far' && !genealogyMode) {
-    const cluster = {};
-    shownIds.forEach(id => { const n = byId[id]; const g = n.scope + '\u0000' + n.type; (cluster[g] = cluster[g] || []).push(id); });
-    const clusterCount = Object.keys(cluster).length;
-    setDrawn(clusterCount);
-    Object.entries(cluster).forEach(([g, ids2]) => {
-      const [scope, type] = g.split('\u0000');
-      const gp = groupPos[g] || {bx:0, by:0};
-      const w = 40 + ids2.length * 3, h = 30;
-      const rect = document.createElementNS(NS, 'rect');
-      rect.setAttribute('x', gp.bx - 20); rect.setAttribute('y', gp.by - 18);
-      rect.setAttribute('width', w); rect.setAttribute('height', h);
-      rect.setAttribute('rx', '8');
-      rect.setAttribute('fill', KIND_COLORS[type]); rect.setAttribute('opacity', '0.55');
-      rect.setAttribute('class', 'node');
-      rect.addEventListener('click', () => { zoomTo(gp.bx, gp.by); });
-      root.appendChild(rect);
-      const t = document.createElementNS(NS, 'text');
-      t.setAttribute('x', gp.bx - 20 + w/2); t.setAttribute('y', gp.by - 3);
-      t.setAttribute('text-anchor', 'middle'); t.setAttribute('class', 'nlabel');
-      t.style.fill = '#111';
-      t.textContent = scope + ' / ' + type + ' (' + ids2.length + ')';
-      root.appendChild(t);
-    });
-    updateCounts(ids.length, hidden, drawn);
-    return;
-  }
-
-  // node layer
+function drawNodeLayer(inPositions, ids) {
   const nodeLayer = document.createElementNS(NS, 'g');
-  const stateKey = {};
-
-  shownIds.forEach(id => {
+  const placed = [];
+  let drawn = 0;
+  ids.forEach(id => {
     const n = byId[id];
     const p = inPositions[id];
     if (!p) return;
@@ -635,69 +879,134 @@ function draw() {
     g.setAttribute('class', 'node');
     if (isSelected) {
       const ring = document.createElementNS(NS, 'circle');
-      ring.setAttribute('r', '12'); ring.setAttribute('class', 'ring');
+      ring.setAttribute('r', '13'); ring.setAttribute('class', 'ring');
       ring.setAttribute('fill', 'none'); ring.setAttribute('stroke', 'var(--hl)'); ring.setAttribute('stroke-width', '3');
       g.appendChild(ring);
     }
     if (isHit) {
       const hit = document.createElementNS(NS, 'circle');
-      hit.setAttribute('r', '14'); hit.setAttribute('fill', 'none'); hit.setAttribute('stroke', '#ffb000'); hit.setAttribute('stroke-width', '2');
+      hit.setAttribute('r', '15'); hit.setAttribute('fill', 'none'); hit.setAttribute('stroke', '#ffb000'); hit.setAttribute('stroke-width', '2');
       g.appendChild(hit);
     }
-    let r = 8;
-    if (lod === 'near') r = 11;
+    const r = lod === 'near' ? 11 : 8;
     const path = document.createElementNS(NS, 'path');
     path.setAttribute('d', shapeOf(n.type));
     path.setAttribute('fill', isSelected ? '#ffd766' : KIND_COLORS[n.type]);
-    path.setAttribute('stroke', '#222');
-    path.setAttribute('stroke-width', '0.8');
+    path.setAttribute('stroke', '#222'); path.setAttribute('stroke-width', '0.8');
     path.setAttribute('transform', 'scale(' + (r/8) + ')');
     g.appendChild(path);
     if (n.type === 'requirement' && n.status === 'complete') {
       const ck = document.createElementNS(NS, 'text');
-      ck.setAttribute('x', 0); ck.setAttribute('y', 3);
-      ck.setAttribute('text-anchor', 'middle'); ck.style.fontSize = '9px'; ck.style.fill = '#fff';
-      ck.textContent = '✓';
+      ck.setAttribute('x', 0); ck.setAttribute('y', 3); ck.setAttribute('text-anchor', 'middle');
+      ck.style.fontSize = '9px'; ck.style.fill = '#fff'; ck.textContent = '✓';
       g.appendChild(ck);
     }
-    if (n.type === 'decision') {
-      const superseded = !!(n.superseded_by && n.superseded_by.length);
-      if (superseded) {
-        const x = document.createElementNS(NS, 'text');
-        x.setAttribute('x', 0); x.setAttribute('y', 3); x.setAttribute('text-anchor', 'middle');
-        x.style.fontSize = '9px'; x.style.fill = '#fff'; x.textContent = '×';
-        x.setAttribute('transform', 'scale(0.8)');
-        g.appendChild(x);
-      }
+    if (n.type === 'decision' && n.superseded_by && n.superseded_by.length) {
+      const x = document.createElementNS(NS, 'text');
+      x.setAttribute('x', 0); x.setAttribute('y', 3); x.setAttribute('text-anchor', 'middle');
+      x.style.fontSize = '9px'; x.style.fill = '#fff'; x.textContent = '×';
+      x.setAttribute('transform', 'scale(0.8)');
+      g.appendChild(x);
     }
-    if (lod !== 'far') {
+    // label: fit available width, measured via a live probe, skip on overlap (H22)
+    const probe = document.createElementNS(NS, 'text');
+    probe.setAttribute('text-anchor', 'middle');
+    probe.setAttribute('class', 'nlabel');
+    svg.appendChild(probe);               // must be connected to measure
+    const full = lod === 'near'
+      ? (n.id + ' · ' + n.title + (n.status ? ' · ' + n.status : ''))
+      : n.id;
+    probe.textContent = full;
+    let tw = probe.getComputedTextLength() || full.length * 6;
+    const budget = levelW();
+    while (tw > budget && probe.textContent.length > 4) {
+      probe.textContent = probe.textContent.slice(0, probe.textContent.length - 2) + '…';
+      tw = probe.getComputedTextLength() || probe.textContent.length * 6;
+    }
+    const finalText = probe.textContent;
+    svg.removeChild(probe);
+    // overlap: BBox collision against placed labels
+    const pad = 6;
+    const bb = {x: p.x - tw/2, y: p.y + r + 3, w: tw + pad, h: 13 + pad};
+    const collides = placed.some(q => !(bb.x + bb.w < q.x || q.x + q.w < bb.x || bb.y + bb.h < q.y || q.y + q.h < bb.y));
+    if (!collides && tw <= budget) {
       const t = document.createElementNS(NS, 'text');
-      t.setAttribute('x', 0);
-      t.setAttribute('y', r + 10);
-      t.setAttribute('text-anchor', 'middle');
-      t.setAttribute('class', 'nlabel');
-      let lbl = id;
-      if (lod === 'near') {
-        lbl = id + ' · ' + n.title;
-        if (n.status) lbl += ' · ' + n.status;
-      }
-      t.textContent = lbl;
-      if (lod === 'mid') t.style.fill = '#333';
+      t.setAttribute('x', 0); t.setAttribute('y', r + 13);
+      t.setAttribute('text-anchor', 'middle'); t.setAttribute('class', 'nlabel');
+      t.textContent = finalText;
       g.appendChild(t);
+      placed.push(bb);
     }
     const ev = {id};
     g.addEventListener('click', (e) => { e.stopPropagation(); selected = ev.id; showDetail(ev.id); continuousRedraw(); });
-    g.addEventListener('dblclick', () => { hopFrom = id; hopN = 1; redraw(); });
+    g.addEventListener('dblclick', () => { startHop(ev.id); });
     nodeLayer.appendChild(g);
     drawn++;
   });
   root.appendChild(nodeLayer);
-  updateCounts();
+  return drawn;
+}
 
-  // nodes not passing filters but present in genealogy? no.
+function levelW() { return scale >= 1.1 ? MAX_LABEL_W : MAX_LABEL_W * 0.6; }
+
+function startHop(id) {
+  const pick = pickHop(id);           // H27
+  hopFrom = id; hopN = pick.n; hopInfo = pick;
+  genealogyMode = false;
+  redraw();
 }
 
 function continuousRedraw() { draw(); }
+
+// ---------- cluster panel (H25) ----------
+let clusterSort = 'deg';
+const panel = document.getElementById('clusterPanel');
+
+function openClusterPanel(g, members) {
+  const [scope, type] = g.split('\u0000');
+  panel.classList.add('on');
+  panel.dataset.g = g;
+  const rows = members.map(id => {
+    const n = byId[id];
+    const deg = Object.keys(adj[id] || {}).length;
+    return {id, title: n ? n.title : '', deg, alive: n && n.type === 'decision' && !(n.superseded_by && n.superseded_by.length)};
+  });
+  renderClusterRows(rows, type, scope, g);
+}
+
+function renderClusterRows(rows, type, scope, g) {
+  const sorter = clusterSort;
+  const list = [...rows].sort((a,b)=>{
+    if(sorter==='deg') return b.deg-a.deg || (a.id<b.id?-1:1);
+    if(sorter==='id') return (a.id<b.id?-1:1);
+    return (a.title<b.title?-1:a.title>b.title?1:0) || (a.id<b.id?-1:1);
+  });
+  panel.innerHTML =
+    '<button class="close" data-close="1">&times;</button>' +
+    '<h3>' + esc(scope) + ' / ' + esc(type) + ' — ' + list.length + ' nodes</h3>' +
+    '<div class="sortrow">' +
+      '<button data-sort="deg"' + (sorter==='deg'?' style="border-color:var(--accent)"':'') + '>by degree</button>' +
+      '<button data-sort="title"' + (sorter==='title'?' style="border-color:var(--accent)"':'') + '>by title</button>' +
+      '<button data-sort="id"' + (sorter==='id'?' style="border-color:var(--accent)"':'') + '>by id</button>' +
+    '</div>' +
+    '<ul>' + list.map(r =>
+      '<li data-go="' + esc(r.id) + '"><span class="id">' + esc(r.id) + '</span>' +
+      (r.alive ? '<span class="badge">current</span>' : '') +
+      '<span>' + esc(r.title.length > 46 ? r.title.slice(0,45)+'…' : r.title) + '</span>' +
+      '<span class="deg">' + r.deg + '</span></li>'
+    ).join('') + '</ul>';
+  panel.querySelectorAll('button[data-sort]').forEach(b => b.addEventListener('click', () => {
+    clusterSort = b.dataset.sort;
+    renderClusterRows(rows, type, scope, g);
+  }));
+  panel.querySelectorAll('li').forEach(li => li.addEventListener('click', () => {
+    closeClusterPanel();
+    startHop(li.dataset.go);
+  }));
+  panel.querySelector('[data-close]').addEventListener('click', closeClusterPanel);
+}
+
+function closeClusterPanel() { panel.classList.remove('on'); }
 
 // ---------- pan / zoom ----------
 svg.addEventListener('wheel', (e) => {
@@ -740,39 +1049,33 @@ function zoomBy(f) {
   translate.y = cy - ny * scale;
   applyTransform(); updateLod(); draw();
 }
-function zoomTo(x, y) {
-  const rect = svg.getBoundingClientRect();
-  scale = 1;
-  translate.x = rect.width/2 - x * scale;
-  translate.y = rect.height/2 - y * scale;
-  applyTransform(); updateLod(); draw();
+function currentLayout() {
+  const ids = visibleNodes();
+  if (genealogyMode) return genealogyLayout;
+  if (ids.length <= MODE_THRESHOLD) { ensureForce(ids); return forceLayout; }
+  return positions;
 }
-function currentLayout() { return genealogyMode ? genealogyLayout : positions; }
 
-function fitView() {
-  const layout = currentLayout();
-  const visible = visibleNodes().filter(id => layout[id]);
-  const ids = visible.length ? visible : Object.keys(layout);
-  if (!ids.length) return;
+function fitTransform() {
+  const ids = visibleNodes();
+  const over = !genealogyMode && ids.length > MODE_THRESHOLD;
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  const inFarClusters = (lod === 'far' && !genealogyMode);
-  if (inFarClusters) {
-    // The far view draws scope/type clusters that are wider than the node
-    // positions; fit to the actual cluster rectangles including their labels.
-    const cluster = {};
-    ids.forEach(id => { const n = byId[id]; const g = n.scope + '\u0000' + n.type; (cluster[g] = cluster[g] || []).push(id); });
-    Object.values(cluster).forEach(arr => {
-      const g = arr[0] && byId[arr[0]] ? byId[arr[0]].scope + '\u0000' + byId[arr[0]].type : '';
-      const gp = groupPos[g] || {bx:0, by:0};
-      const w = 40 + arr.length * 3, h = 30;
-      const labelW = 120;
-      minX = Math.min(minX, gp.bx - 20);
-      minY = Math.min(minY, gp.by - 18);
-      maxX = Math.max(maxX, gp.bx - 20 + Math.max(w, labelW));
-      maxY = Math.max(maxY, gp.by - 18 + h);
-    });
+  if (over) {
+    // Fit the cluster rectangles of the overview mode.
+    const {cluster, cells} = overviewGrid(ids);
+    for (const g of Object.keys(cluster)) {
+      const gp = cells[g] || {bx:0, by:0};
+      const w = Math.min(280, Math.max(120, 40 + cluster[g].length * 1.4));
+      minX = Math.min(minX, gp.bx - w/2);
+      minY = Math.min(minY, gp.by - 20);
+      maxX = Math.max(maxX, gp.bx + w/2);
+      maxY = Math.max(maxY, gp.by + 20);
+    }
   } else {
-    ids.forEach(id => {
+    const layout = currentLayout();
+    const ids2 = ids.filter(id => layout[id]);
+    const list = ids2.length ? ids2 : Object.keys(layout);
+    list.forEach(id => {
       const p = layout[id];
       if (!p) return;
       minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
@@ -784,13 +1087,16 @@ function fitView() {
   const spanX = (maxX - minX) + 120;
   const spanY = (maxY - minY) + 120;
   const fit = Math.min(rect.width / Math.max(1, spanX), rect.height / Math.max(1, spanY));
-  // Fit may need to shrink below the interactive zoom minimum; only the upper
-  // bound applies here so the whole content is always visible after fit.
   scale = Math.min(4, fit);
+  // H28: keep node labels readable (font 11px -> at least 11px on screen).
+  // If the whole set does not fit at that scale, readability wins and the
+  // off-screen count is reported by the banner in draw().
+  if (!over) scale = Math.max(scale, 1.0);
   translate.x = rect.width / 2 - ((minX + maxX) / 2) * scale;
   translate.y = rect.height / 2 - ((minY + maxY) / 2) * scale;
-  applyTransform(); updateLod(); draw();
+  applyTransform(); updateLod();
 }
+function fitView() { fitTransform(); draw(); }
 
 function resetView() { fitView(); }
 

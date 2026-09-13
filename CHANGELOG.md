@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.3.1
+
+### Changed
+
+- The HTML graph now switches between two views by the number of visible
+  nodes instead of by zoom level. With more than 60 nodes it draws clusters
+  with aggregated edge counts (per cluster pair) and internal edge counts per
+  cluster, without individual nodes or edges. With 60 or fewer it draws
+  individual nodes laid out by a force-directed layout that reflects
+  connectivity, so an edge's length matches its endpoints' proximity.
+- Clicking a cluster opens a member list (sorted by degree, title, or id,
+  with a "current" mark for decisions not superseded); picking a member starts
+  an adaptive neighborhood. The hop count is chosen per start as the largest
+  value up to 5 whose reachable set fits the individual-view limit, and the
+  chosen value is shown on screen.
+- Node labels are measured with `getComputedTextLength`, truncated to the
+  available width, and skipped when they would overlap a neighbour; the full
+  title remains readable in the detail panel. Edge labels are off by default
+  and drawn only when the individual set is small enough (20) or an edge is
+  explicitly selected.
+- Changing what is displayed refits the view, and the fit keeps individual
+  labels at a legible size rather than shrinking them to fit every node; the
+  count banner reports what is drawn in either view.
+- The decision genealogy keeps its generation-layered layout.
+
+### Upgrade
+
+`cargo install gy --version 0.3.1 --locked`. No ledger migration is required
+and the on-disk format and public API are unchanged.
+
 ## 0.3.0
 
 ### Added
