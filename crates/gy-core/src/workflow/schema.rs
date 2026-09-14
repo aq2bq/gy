@@ -76,6 +76,9 @@ pub struct StateGuard {
     pub states: Vec<String>,
     pub records: Vec<String>,
     pub checks: Vec<RecordCheck>,
+    /// Name of a project-defined record that waives this guard when valid.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub waived_by: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -173,6 +176,17 @@ impl WorkflowConfig {
                 {
                     return Err(bad(format!(
                         "{state} requires unknown or non-requirement record {name}"
+                    )));
+                }
+            }
+            if let Some(name) = &guard.waived_by {
+                if !self
+                    .records
+                    .get(name)
+                    .is_some_and(|s| s.kinds.iter().any(|k| k == "requirement"))
+                {
+                    return Err(bad(format!(
+                        "{state} waived_by names unknown or non-requirement record {name}"
                     )));
                 }
             }

@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- A `[workflow.guards.<name>]` entry may set `waived_by` to the name of a
+  project-defined record whose schema applies to requirements. A requirement
+  carrying that record validly is not asked for the guard's `records` or
+  `checks`. The waiver is preserved in the transition snapshot as a `waived`
+  map, and checks from waived guards are not stored. An absent record leaves
+  the guard in force, and an invalid one is reported while the guard still
+  applies. `gy handover --json` includes `waived_by` in `workflow.guards`.
+  A project that does not configure `waived_by` is unaffected.
+
 ## 0.4.1
 
 ### Added

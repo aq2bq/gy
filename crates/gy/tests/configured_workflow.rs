@@ -403,6 +403,10 @@ fn invalid_configuration_fails_before_mutation() {
             "states = [\"awaiting-approval\"]",
             "states = [\"not-a-state\"]",
         ),
+        CONFIG.replace(
+            "[workflow.guards.design]",
+            "[workflow.guards.design]\nwaived_by = \"missing_record\"",
+        ),
         CONFIG.replace("fields]\nrevision", "fields]\nunknown"),
     ] {
         fs::write(p.join("docs/ledger/gy.toml"), invalid).unwrap();
@@ -1089,4 +1093,144 @@ fn declared_scope_configuration_rejects_wrong_operand_shapes_and_keys() {
         fs::write(p.join("docs/ledger/gy.toml"), config).unwrap();
         assert_eq!(invoke(p, &["lint"]).status.code(), Some(3));
     }
+}
+
+const WAIVER_CONFIG: &str = r#"
+[workflow.records.legacy_closure]
+kinds = ["requirement"]
+[workflow.records.legacy_closure.fields]
+reason = { type = "string" }
+evidence = { type = "url" }
+approver = { type = "string" }
+
+[workflow.records.design]
+kinds = ["requirement"]
+[workflow.records.design.fields]
+revision = { type = "string" }
+
+[workflow.records.report]
+kinds = ["requirement"]
+[workflow.records.report.fields]
+summary = { type = "string" }
+
+[workflow.guards.audit]
+states = ["awaiting-audit", "complete"]
+records = ["design"]
+waived_by = "legacy_closure"
+
+[[workflow.guards.audit.checks]]
+kind = "equal"
+left = "design.revision"
+right = "design.revision"
+
+[workflow.guards.delivery]
+states = ["complete"]
+records = ["report"]
+
+[[workflow.guards.delivery.checks]]
+kind = "equal"
+left = "report.summary"
+right = "report.summary"
+"#;
+
+fn waiver_repo() -> tempfile::TempDir {
+    let t = support::baseline("test", None);
+    fs::write(t.path().join("docs/ledger/gy.toml"), WAIVER_CONFIG).unwrap();
+    t
+}
+
+fn legacy_closure() -> Value {
+    json!({"reason":"Closed outside the workflow before the profile existed",
+        "evidence":"https://example.test/issues/5969#issuecomment-1","approver":"human-reviewer"})
+}
+
+fn advance_complete(p: &Path) {
+    run(
+        p,
+        &[
+            "req",
+            "advance",
+            "1",
+            "--to",
+            "complete",
+            "--evidence",
+            "Closed externally",
+            "--data-migration",
+            "false",
+            "--production-only",
+            "false",
+            "--cleanup-done",
+            "true",
+        ],
+    );
+}
+
+#[test]
+fn guard_waiver_needs_a_valid_record_and_does_not_exempt_other_guards() {
+    let t = waiver_repo();
+    let p = t.path();
+    put(p, "#1", "deviations", json!("none"));
+    put(p, "#1", "residual", json!("none"));
+    // No waiver record: the guarded state still requires its own record.
+    reject_advance(p, "complete", "design is required");
+    // A present but schema-invalid waiver is reported and does not exempt.
+    let mut broken = legacy_closure();
+    broken["approver"] = json!("");
+    put(p, "#1", "legacy_closure", broken);
+    reject_advance(p, "complete", "legacy_closure.approver must not be empty");
+    reject_advance(p, "complete", "design is required");
+    // The waiver exempts only the guard that names it.
+    put(p, "#1", "legacy_closure", legacy_closure());
+    reject_advance(p, "complete", "report is required");
+    put(p, "#1", "report", json!({"summary":"Closed upstream"}));
+    advance_complete(p);
+
+    let node = run(p, &["show", "#1"]);
+    let snapshot = &node["node"]["attrs"]["transitions"]
+        .as_array()
+        .unwrap()
+        .last()
+        .unwrap()["workflow"];
+    assert_eq!(snapshot["waived"], json!({"audit":"legacy_closure"}));
+    assert_eq!(
+        snapshot["records"]["legacy_closure"]["approver"],
+        "human-reviewer"
+    );
+    assert!(snapshot["records"]["report"].is_object());
+    let checks = snapshot["checks"].as_array().unwrap();
+    assert_eq!(checks.len(), 1);
+    assert_eq!(checks[0]["left"], "report.summary");
+
+    assert!(lint(p)["diagnostics"].as_array().unwrap().is_empty());
+    let output = invoke(p, &["handover"]);
+    assert_eq!(output.status.code(), Some(0));
+    let handover: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(handover["active_requirements"], 0);
+    assert_eq!(
+        handover["workflow"]["guards"]["audit"]["waived_by"],
+        "legacy_closure"
+    );
+}
+
+#[test]
+fn valid_waiver_clears_current_guard_findings() {
+    let t = waiver_repo();
+    let p = t.path();
+    put(p, "#1", "legacy_closure", legacy_closure());
+    advance(p, "awaiting-audit");
+    // The audit guard is waived, so lint asks for no design record.
+    assert!(
+        !lint(p)["diagnostics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|d| d["rule"] == "workflow")
+    );
+    let output = invoke(p, &["handover"]);
+    assert_eq!(output.status.code(), Some(0));
+    let handover: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(
+        handover["workflow"]["guards"]["audit"]["waived_by"],
+        "legacy_closure"
+    );
 }

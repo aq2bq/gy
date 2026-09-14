@@ -128,6 +128,32 @@ This guard requires schemas named `design_proposal` and `approval`. All guards m
 
 A successful transition stores the applicable checks and all present, validated records and their schemas under `transitions[].workflow`, alongside the transition evidence. Current-state checks also run in lint and handover for ongoing work. Every explicit transition uses the current destination policy, including transitions from a completed requirement or back into `complete`. `[lint] workflow = "warn"` or `"off"` changes lint reporting only; it does not disable transition or submission guards.
 
+### Waiving a guard with a record
+
+A guard can name a project-defined record that waives it. When that record is present on the requirement and valid against its schema, the guard's `records` and `checks` do not apply. This gives a path for work that was closed outside the workflow before the profile existed, without inventing records for work that did not happen.
+
+```toml
+[workflow.records.legacy_closure]
+kinds = ["requirement"]
+
+[workflow.records.legacy_closure.fields]
+reason = { type = "string" }
+evidence = { type = "url" }
+closed_on = { type = "string" }
+approver = { type = "string" }
+
+[workflow.guards.audit]
+states = ["awaiting-audit", "awaiting-pr", "complete"]
+records = ["dispatch", "design_proposal", "approval", "implementation_report", "quality_gates", "deviations"]
+waived_by = "legacy_closure"
+```
+
+A requirement with a valid `legacy_closure` record is not asked for the `audit` guard's records or checks. An absent record leaves the guard in force, and lint does not report its absence; a present record that fails its schema — a missing reason, a blank `evidence` — is reported as a record issue and does not waive the guard, so a broken waiver never hides a missing requirement. `waived_by` must name a configured record that applies to requirements.
+
+The transition stores the waiver. Its `records` include `legacy_closure`, and `waived` maps each waived guard to the record that waived it, for example `{"audit": "legacy_closure"}`; the key is omitted from a record-only submission. Checks from waived guards are not stored, so re-validating the history after completion uses only the checks that actually ran. Current-state lint and handover use the same test, so an ongoing requirement in a guarded state with a valid waiver reports no guard findings.
+
+A project that does not write `waived_by` has no waiver path: every matching guard applies as before. A record marked `required` is still asked for; the waiver removes only the guard's own `records` and `checks`. gy validates the record's shape, not who was allowed to write it; if an approver must sign off, make the approver a required field.
+
 ## Revisions and approval
 
 A design revision stays on the normal route. Update `design_proposal.revision` and the design record, move back to `awaiting-approval`, and record a new approval whose target matches before entering implementation again. The example keeps approval records versioned too.

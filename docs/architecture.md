@@ -45,6 +45,8 @@ A project's current workflow configuration governs ongoing work and new actions.
 
 A new transition always evaluates the current destination guards, including reopening completed work and explicitly entering `complete` again. Explicit record submission also uses the current schema. This distinction is represented by separate passive inspection and current-action validation paths, rather than a per-node exemption flag, import marker, timestamp guess, or compression status.
 
+A guard may name a `waived_by` record, and a requirement carrying that record validly against its schema is not asked for the guard's records or checks. The waiver is a path the current policy defines in `gy.toml`, not a per-node flag or a state. It is authored as an ordinary record, validated through the same current-action path as other records, and preserved in the transition snapshot as the `waived` map so the transition and its history stay readable. A missing or invalid waiver record leaves the guard in force.
+
 Compression is an archival operation, not a work transition. It validates existing historical snapshots and core completion/archive requirements, then preserves the original data. Completed work without workflow snapshots can be archived without constructing a fictional history. Existing snapshots remain subject to their own recorded schemas and checks even if the current profile changes or is removed. Neither absence nor presence of a snapshot proves external approval or correct implementation.
 
 ## Declared file scope

@@ -41,6 +41,11 @@ pub(super) fn history_issues(node: &Node) -> Vec<String> {
                 .get("at")
                 .and_then(Value::as_str)
                 .is_none_or(|s| chrono::DateTime::parse_from_rfc3339(s).is_err())
+            || snapshot.get("waived").is_some_and(|waived| {
+                !waived
+                    .as_object()
+                    .is_some_and(|m| m.values().all(Value::is_string))
+            })
         {
             issues.push(
                 "Malformed workflow history snapshot; preserve the original recorded inputs".into(),

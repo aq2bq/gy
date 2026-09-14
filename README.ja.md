@@ -317,6 +317,8 @@ html_output = "gy.html"
 
 `gy node set` で記録を書き、`gy node submit <ID> --record <name> --evidence <根拠>` で検査して提出します。提出は状態を変えず、検査した値・様式・根拠を `record_history` に保存します。`gy req advance` は遷移先のガードを検査し、通れば `transitions[].workflow` に検査時の記録を保存します。不足は `gy lint` の `workflow` 診断に出て、`gy handover --json` には有効な様式とガードも含まれます。判定対象は報告された記録の整合で、URL 先の実在・実際の PR 差分・テスト結果・承認者が人間かどうかは確かめません。
 
+ガードには `waived_by` でプロジェクト定義の記録名を指定できます。その記録を有効に持つ要求には、そのガードの records と checks を掛けません。免除は遷移の `waived` に残り、記録が無い場合や様式に反する場合は免除になりません。
+
 同梱の設定例は、設計の省略にも承認者・対象版・理由・停止条件を求めます。通常の設計改訂は経路を変えずに版を更新し、新しい版への承認を要します。品質ゲートの検査は、失敗・実行不能・既存違反も区別して記録させるもので、全件成功を要求する設定ではありません。通過だけを許す運用では、許可する結果を設定で限定してください。設計の時点で名前が確定しないファイルは `matches-declared-files` で、固定ディレクトリ・ファイル名の接頭辞と接尾辞・生成部分の文字種と長さを宣言し、各宣言と報告ファイルが1対1で対応することを検査します。母数の概念がないゲートは `passed-without-population` で記録でき、`passed` の母数必須は変わりません。
 
 既存の利用者は、自分の設定と過去の記録を保ったまま、台帳の `gy.toml` に新しい variant を足します。[詳しい手順](docs/workflows.md)、[設定例](crates/gy/examples/workflow.toml)、[対応する架空の記録例](crates/gy/examples/workflow-records.json)、[0.4 の移行手順](docs/migration-0.4.md)、[母数のあるゲートとないゲートの使い分け](docs/workflows.md#quality-gates-with-and-without-a-population)を参照してください。現在の設定が適用されるのは、未完了の作業と新たな遷移・提出です。完了済み要求に新しい様式を遡って要求することはなく、保存済みの履歴は当時の様式・照合条件で検査します。

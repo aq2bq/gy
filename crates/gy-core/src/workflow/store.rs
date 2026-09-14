@@ -45,6 +45,20 @@ impl Store {
         self.current_workflow_issues(node, state)
     }
 
+    /// A guard is waived only when its waiver record is present and valid
+    /// against the configured schema. An absent record leaves the guard in
+    /// force without reporting the absence; an invalid one is reported as a
+    /// record issue while the guard still applies.
+    fn guard_waiver(&self, node: &Node, guard: &StateGuard) -> Option<String> {
+        let name = guard.waived_by.as_ref()?;
+        if !node.attrs.contains_key(name) {
+            return None;
+        }
+        self.record_issues(node, name)
+            .is_empty()
+            .then(|| name.clone())
+    }
+
     fn current_workflow_issues(&self, node: &Node, state: Option<&str>) -> Vec<String> {
         let history_issues = history_issues(node);
         let mut names: BTreeSet<String> = self
@@ -68,16 +82,26 @@ impl Store {
                     && state.is_some_and(|s| guard.states.iter().any(|g| g == s))
             })
             .collect();
+        let mut checks = vec![];
         for guard in &guards {
+            // Include a present waiver record so its own schema defects are
+            // reported even when they stop it from waiving the guard.
+            if let Some(name) = &guard.waived_by {
+                if node.attrs.contains_key(name) {
+                    names.insert(name.clone());
+                }
+            }
+            if self.guard_waiver(node, guard).is_some() {
+                continue;
+            }
             names.extend(guard.records.iter().cloned());
+            checks.extend(guard.checks.iter().cloned());
         }
         let mut issues: Vec<_> = history_issues
             .into_iter()
             .chain(names.iter().flat_map(|name| self.record_issues(node, name)))
             .collect();
-        for guard in guards {
-            issues.extend(check_records(node, &guard.checks));
-        }
+        issues.extend(check_records(node, &checks));
         issues
     }
 
@@ -87,6 +111,7 @@ impl Store {
         names: &[String],
         checks: &[RecordCheck],
         evidence: &str,
+        waived: Option<&Value>,
     ) -> Value {
         let records: Map<_, _> = names
             .iter()
@@ -96,8 +121,12 @@ impl Store {
             .iter()
             .map(|name| (name, &self.config.workflow.records[name]))
             .collect();
-        json!({"at": today(), "evidence": evidence, "records": records, "schemas": schemas, "checks": checks,
-            "note": "Recorded inputs checked for internal consistency; external facts were not verified."})
+        let mut snapshot = json!({"at": today(), "evidence": evidence, "records": records, "schemas": schemas, "checks": checks,
+            "note": "Recorded inputs checked for internal consistency; external facts were not verified."});
+        if let Some(waived) = waived {
+            snapshot["waived"] = waived.clone();
+        }
+        snapshot
     }
 
     pub fn transition_workflow(
@@ -125,17 +154,27 @@ impl Store {
             })
             .map(|(name, _)| name.clone())
             .collect();
-        let checks: Vec<_> = self
-            .config
-            .workflow
-            .guards
-            .values()
-            .filter(|g| g.states.iter().any(|s| s == state))
-            .flat_map(|g| g.checks.iter().cloned())
-            .collect();
-        Ok(Some(
-            self.workflow_snapshot(node, &names, &checks, evidence),
-        ))
+        let mut checks = vec![];
+        let mut waived = Map::new();
+        for (guard_name, guard) in &self.config.workflow.guards {
+            if !guard.states.iter().any(|s| s == state) {
+                continue;
+            }
+            match self.guard_waiver(node, guard) {
+                Some(record) => {
+                    waived.insert(guard_name.clone(), Value::String(record));
+                }
+                None => checks.extend(guard.checks.iter().cloned()),
+            }
+        }
+        let waived = Value::Object(waived);
+        Ok(Some(self.workflow_snapshot(
+            node,
+            &names,
+            &checks,
+            evidence,
+            Some(&waived),
+        )))
     }
 
     pub fn submit_record(&mut self, id: &str, name: &str, evidence: &str) -> Result<Value> {
@@ -153,7 +192,7 @@ impl Store {
         if !issues.is_empty() {
             return Err(Error::input(issues.join("\n")));
         }
-        let snapshot = self.workflow_snapshot(node, &[name.to_string()], &[], evidence);
+        let snapshot = self.workflow_snapshot(node, &[name.to_string()], &[], evidence, None);
         let node = self.nodes.get_mut(id).unwrap();
         let history = node
             .attrs
