@@ -69,4 +69,3 @@ for (const [scenario, size, ledger] of [['overview',1000,'large'], ['focused-sta
   // Round-trip p95 is diagnostic only: shared-runner driver/IPC costs vary.
   expect(report.frameP95Ms).toBeLessThan(100);
 });
-
