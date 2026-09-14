@@ -59,4 +59,5 @@ node --experimental-vm-modules --test tests/html_navigation.test.cjs
 The fixture uses Bun to strip types and Node VM modules to link the real state,
 selection, navigation, and viewport modules with DOM/drawing stubs. Browser hit
 testing, URL history, layout, Markdown, and offline behavior remain covered by
-the Playwright suite (`cd e2e && npm test`).
+the Playwright suite (`cd e2e && npm run test:all`). Local `npm test` runs the
+functional checks; `npm run test:perf` runs the performance gates alone.

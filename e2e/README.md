@@ -7,9 +7,26 @@ its downloaded browsers are development tools, not gy runtime dependencies.
 The supported test target is Chromium. Firefox and Safari are outside the current
 support scope.
 
+Local `npm test` runs the 42 functional checks without the performance spec.
+Use `npm run test:all` for all 45 checks and completion reports, and
+`npm run test:perf` for the three performance checks alone. For a single spec,
+run `npm run test:spec -- tests/location.spec.mjs`. Every entry prepares fixtures.
+Local runs use half the available CPUs, capped at four workers. CI keeps all 45
+checks even through `npm test`, with one worker and zero retries.
+`performance.spec.mjs` runs its three scenarios serially in one worker; other
+specs can run concurrently in local `test:all` runs. Performance samples and
+thresholds are unchanged.
+
 `fixtures.mjs` builds the local CLI, writes synthetic Markdown ledgers, and uses
 that CLI to generate offline HTML. It checks embedded node and edge counts so an
-empty fixture cannot pass. No private or real ledger is checked into this suite.
+empty fixture cannot pass. `.generated/stamp.json` records SHA-256 hashes of the
+CLI binary and generator source. Matching inputs reuse the generated HTML and
+`measurements.json`; generation measurements describe the cached generation,
+not a new render. Missing outputs or a missing/invalid stamp trigger regeneration.
+Run `npm run prepare:fixtures -- --force` to regenerate explicitly. Preparation
+finishes before Playwright workers start. Tests only read shared fixtures; mutated
+HTML, traces, screenshots and attachments use per-test output paths. No private
+or real ledger is checked into this suite.
 The 1000-node fixture contains disjoint 15-node chains across six scopes. The
 1000-node star also exercises a capped focused view with 940 omitted nodes. The
 high-degree fixture has 65 nodes, 64 edges, and a center with 61 immediate

@@ -4,7 +4,12 @@
   "type": "module",
   "scripts": {
     "prepare:fixtures": "node fixtures.mjs",
-    "test": "npm run prepare:fixtures && playwright test"
+    "test": "npm run prepare:fixtures && playwright test --config playwright.functional.config.mjs",
+    "test:spec": "npm run prepare:fixtures && playwright test",
+    "test:all": "npm run prepare:fixtures && playwright test",
+    "test:perf": "npm run prepare:fixtures && playwright test tests/performance.spec.mjs --workers=1"
   },
-  "devDependencies": {"@playwright/test": "1.63.0"}
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
 }

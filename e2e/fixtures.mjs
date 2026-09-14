@@ -1,4 +1,5 @@
-import {mkdirSync, writeFileSync, readFileSync} from 'node:fs';
+import {mkdirSync, writeFileSync, readFileSync, existsSync, rmSync} from 'node:fs';
+import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {resolve, join} from 'node:path';
 import {execFileSync} from 'node:child_process';
@@ -6,9 +7,26 @@ const here = fileURLToPath(new URL('.', import.meta.url));
 const repo = resolve(here, '..');
 execFileSync('cargo', ['build', '--locked', '-p', 'gy'], {cwd: repo, stdio: 'inherit'});
 const bin = join(repo, 'target/debug', process.platform === 'win32' ? 'gy.exe' : 'gy');
+const generated = join(here, '.generated');
+const stampPath = join(generated, 'stamp.json');
+const hash = path => createHash('sha256').update(readFileSync(path)).digest('hex');
+const inputs = {binary: hash(bin), source: hash(fileURLToPath(import.meta.url))};
+let previous;
+try { previous = JSON.parse(readFileSync(stampPath, 'utf8')); } catch {}
+if (!process.argv.includes('--force') && previous?.binary === inputs.binary && previous?.source === inputs.source
+    && Array.isArray(previous.outputs) && previous.outputs.length > 0
+    && previous.outputs.every(path => existsSync(join(generated, path)))
+    && existsSync(join(generated, 'measurements.json'))) {
+  console.log('Fixtures reused: binary and source hashes match.');
+  process.exit(0);
+}
+mkdirSync(generated, {recursive:true});
+rmSync(stampPath, {force:true});
 const measurements = {};
+const outputs = [];
 function generate(name, nodes, edges) {
   const ledger = join(here, '.generated', name);
+  rmSync(ledger, {recursive: true, force: true});
   mkdirSync(ledger, {recursive: true});
   const scopes = [...new Set(nodes.map(n => n.scope))];
   writeFileSync(join(ledger, 'gy.toml'), scopes.map(s => `[scopes.${s}]\nparent_issue = 1\n`).join('\n'));
@@ -29,6 +47,7 @@ function generate(name, nodes, edges) {
   const html = readFileSync(join(ledger, 'gy.html'), 'utf8');
   const payload = JSON.parse(html.split('window.GY_DATA = ')[1].split(';\n</script>')[0]);
   if (payload.nodes.length !== nodes.length || payload.edges.length !== edges.length) throw Error(`Empty or incomplete fixture: ${name}`);
+  outputs.push(name + '/gy.html');
   measurements[name] = {nodes: nodes.length, edges: edges.length, bytes: Buffer.byteLength(html), generationMs: performance.now() - start};
 }
 // Disjoint 15-node chains: overview exceeds the threshold, neighborhoods do not.
@@ -67,3 +86,5 @@ const detailNodes = [
 generate('reading', detailNodes, [['D-501','D-502']]);
 writeFileSync(join(here, '.generated/measurements.json'), JSON.stringify(measurements, null, 2) + '\n');
 console.log(measurements);
+
+writeFileSync(stampPath, JSON.stringify({...inputs, outputs}, null, 2) + '\n');

@@ -1,8 +1,9 @@
+import {availableParallelism} from 'node:os';
 import {defineConfig} from '@playwright/test';
 export default defineConfig({
   testDir: './tests',
-  fullyParallel: false,
-  workers: 1,
+  fullyParallel: true,
+  workers: process.env.CI ? 1 : Math.max(1, Math.min(4, Math.floor(availableParallelism() / 2))),
   retries: 0,
   forbidOnly: !!process.env.CI,
   timeout: 30000,
