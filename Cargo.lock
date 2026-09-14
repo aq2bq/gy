@@ -245,7 +245,7 @@ dependencies = [
 
 [[package]]
 name = "gy"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "clap",
  "clap_complete",
@@ -257,7 +257,7 @@ dependencies = [
 
 [[package]]
 name = "gy-core"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "chrono",
  "fs2",
