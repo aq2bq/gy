@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 
 ### Breaking
 
@@ -19,10 +19,6 @@
   also returns a summary without `archive`; obtain the full archival text with
   `gy req compress <issue>` before supplying evidence. That read-only preview
   and other query results are unchanged.
-
-## 0.4.0
-
-### Breaking
 
 - Add `CheckKind::MatchesDeclaredFiles` and mark `DependencyRole`, `RuleConfig`,
   `FieldType`, and `CheckKind` as `#[non_exhaustive]`. Downstream matches must
@@ -45,6 +41,18 @@
 
 ### Added
 
+- Restore HTML reading state from the URL hash, including filters, the selected
+  record, tab, focus path, and view controls. Browser Back/Forward and reload
+  restore the corresponding view; missing IDs are reported explicitly.
+- Keep a permanent toolbar and sortable record table available while reading
+  graph neighborhoods and details. Overview counts link to their corresponding
+  record sets, derived from the HTML's embedded ledger data.
+- Render Markdown tables, nested lists, fenced code, emphasis, and safe links
+  in record bodies while retaining the offline, self-contained HTML boundary.
+- Provide fixture caching keyed by CLI binary and generator SHA-256 hashes,
+  explicit forced regeneration, and `test:spec`, `test:all`, and `test:perf`
+  E2E entry points.
+
 - Optional `description` strings on workflow records and fields appear in
   handover JSON and saved schemas without affecting checks or record revisions.
   Existing data needs no migration. Upgrade every ledger reader before using
@@ -57,7 +65,34 @@
   and ambiguous entries fail. No glob interpretation or file lookup occurs;
   existing `equal`, `same-set`, and `subset` semantics remain unchanged.
 
+### Changed
+
+- Record links open details; neighborhood navigation remains an explicit
+  action. Cluster links filter the permanent table. Selected type chips,
+  Lineage on/off, and a single status strip make the active view visible.
+- Split the private workflow implementation into internal modules without
+  changing existing `gy_core` public paths or type shapes.
+- Organize HTML source as TypeScript modules and templates under `ui/`.
+  Commit and package the Bun-built `app.js` and `app.css` embedded by Rust;
+  end users do not need Bun, Node.js, or a browser automation installation.
+- Run local `npm test` as 42 parallel functional checks. Use
+  `npm run test:all` for the complete 45-check release/completion gate, or
+  `npm run test:perf` for the three unchanged serial performance checks.
+  CI continues to run all checks with one worker and zero retries.
+
 ### Fixed
+
+- Align pointer cursors and visible controls with native links or registered
+  button actions, including actual mouse hit targets across every table column.
+- Wrap graph titles below IDs for up to three lines and include their measured
+  bounds when fitting ordinary individual views. Preserve readable Lineage
+  generation layout and panning. Full titles remain available in the table
+  and details.
+- Place individual edge labels away from node labels, omitting them when no
+  nearby placement fits. All relationships remain available in node details;
+  no edge-selection mode is introduced.
+- Wait for URL persistence before history traversal in browser tests, then
+  verify the destination URL, displayed tab, and unchanged history length.
 
 - The example workflow accepts successful gates without a population through
   `passed-without-population`, requiring a reason and execution evidence.
@@ -68,6 +103,23 @@
   in their ledger configuration, preserving `passed`, local guards and past
   records. Use it only when no population concept exists; see the
   [workflow migration guide](docs/workflows.md#quality-gates-with-and-without-a-population).
+
+### Migration
+
+- Consumers that previously read a full node from a mutation response must use
+  the returned ID to query `gy show <ID> --json`; read attributes and body from
+  that query's `node`. See the Breaking section above for affected containers.
+  This applies equally to CLI and MCP clients. For workflow profiles and saved
+  records, follow the 0.4 migration steps described above; upgrade all readers before using the new
+  schema descriptions or file comparison.
+- Regenerate existing projections with `gy render --format html` to obtain the
+  new UI. It is safe to repeat: rendering replaces derived HTML and does not
+  change ledger records. Previously exported HTML retains its embedded UI.
+- Contributors must use `npm run test:all` for completion evidence; local
+  `npm test` intentionally omits performance checks. After editing `ui/`, run
+  its `bun run build` and include the updated bundle in the change. See
+  [the UI guide](crates/gy-core/ui/README.md) and
+  [E2E commands](e2e/README.md).
 
 ## 0.3.1
 

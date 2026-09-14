@@ -335,6 +335,7 @@ opening details, refits an automatic view; after manual zoom or pan it preserves
 the scale and the graph point at the center. Automatic individual views cap zoom
 at 2; manual zoom can reach 4. Regenerate existing HTML with
 `gy render --format html` to use the new navigation; ledger files need no migration.
+Rendering is safe to repeat: it replaces derived HTML without changing ledger records.
 
 On wide screens, details share the available width equally with the graph.
 Type, scope, state, satisfaction, closure, and supersession appear as badges;
