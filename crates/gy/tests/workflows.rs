@@ -1663,10 +1663,17 @@ fn import_maps_scope_sections_and_reports_missing_values() {
         .as_array()
         .unwrap()
         .iter()
-        .filter(|d| d["rule"] == "L7")
+        .filter(|d| d["rule"] == "L14")
         .map(|d| d["id"].clone())
         .collect();
     assert_eq!(missing, vec![json!("D-2"), json!("D-3")]);
+    assert!(
+        !lint["diagnostics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|d| d["rule"] == "L7")
+    );
 
     let other = repo();
     let result = run(
@@ -1799,6 +1806,139 @@ fn imported_missing_marks_remain_l6_and_are_distinct_from_new_links() {
             .as_str()
             .unwrap()
             .contains("Imported relationship")
+    );
+}
+
+#[test]
+fn imported_decision_nodes_are_marked_and_l14_replaces_l7() {
+    let t = repo();
+    let p = t.path();
+    let dir = p.join("legacy");
+    fs::create_dir(&dir).unwrap();
+    fs::write(
+        dir.join("0001.md"),
+        "---\nid: D-1\ndecision_scope: Production only\n---\nBody\n",
+    )
+    .unwrap();
+    fs::write(dir.join("0002.md"), "# Missing scope\n\nBody\n").unwrap();
+    run(p, &["import", "legacy", "--scope", "a"]);
+
+    assert_eq!(run(p, &["show", "D-1"])["node"]["attrs"]["imported"], true);
+    assert_eq!(run(p, &["show", "D-2"])["node"]["attrs"]["imported"], true);
+
+    let out = invoke(p, &["lint"]);
+    assert_eq!(out.status.code(), Some(0));
+    let lint: Value = serde_json::from_slice(&out.stdout).unwrap();
+    let diagnostics = lint["diagnostics"].as_array().unwrap();
+    assert!(!diagnostics.iter().any(|d| d["rule"] == "L7"));
+    let l14: Vec<_> = diagnostics.iter().filter(|d| d["rule"] == "L14").collect();
+    assert_eq!(l14.len(), 1);
+    assert_eq!(l14[0]["id"], "D-2");
+    assert_eq!(l14[0]["severity"], "warn");
+    assert!(
+        l14[0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("Imported decision")
+    );
+
+    let out = invoke(p, &["handover"]);
+    assert_eq!(out.status.code(), Some(0));
+    let handover: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert!(
+        handover["lint"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|d| d["rule"] == "L14")
+    );
+
+    run(
+        p,
+        &[
+            "node",
+            "set",
+            "D-2",
+            "--set",
+            "decision_scope=Migrated scope",
+        ],
+    );
+    assert!(
+        !run(p, &["lint"])["diagnostics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|d| d["rule"] == "L14")
+    );
+}
+
+#[test]
+fn l14_severity_is_configurable_and_unmarked_decisions_keep_l7() {
+    let t = repo();
+    let p = t.path();
+    let dir = p.join("legacy");
+    fs::create_dir(&dir).unwrap();
+    fs::write(dir.join("0001.md"), "# No scope\n").unwrap();
+    run(p, &["import", "legacy", "--scope", "a"]);
+
+    let cfg = p.join("docs/ledger/gy.toml");
+    let base = fs::read_to_string(&cfg).unwrap();
+
+    fs::write(&cfg, base.replace("[lint]", "[lint]\nL14 = \"error\"")).unwrap();
+    let out = invoke(p, &["lint"]);
+    assert_eq!(out.status.code(), Some(1));
+    let lint: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert!(
+        lint["diagnostics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|d| d["rule"] == "L14" && d["severity"] == "error")
+    );
+
+    fs::write(&cfg, base.replace("[lint]", "[lint]\nL14 = false")).unwrap();
+    assert!(
+        !run(p, &["lint"])["diagnostics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|d| d["rule"] == "L14")
+    );
+
+    // A decision imported before the node mark existed carries no
+    // `imported: true`, so its empty scope stays an L7 error.
+    edit_node(p, "a/decisions/D-1.md", |n| {
+        n.attrs.remove("imported");
+    });
+    let out = invoke(p, &["lint"]);
+    assert_eq!(out.status.code(), Some(1));
+    let lint: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert!(
+        lint["diagnostics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|d| d["rule"] == "L7" && d["severity"] == "error")
+    );
+    assert!(
+        !lint["diagnostics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|d| d["rule"] == "L14")
+    );
+
+    // The documented migration marks an existing imported decision, which
+    // moves it from L7 to L14.
+    fs::write(&cfg, &base).unwrap();
+    run(p, &["node", "set", "D-1", "--set", "imported=true"]);
+    let lint = run(p, &["lint"]);
+    let diagnostics = lint["diagnostics"].as_array().unwrap();
+    assert!(!diagnostics.iter().any(|d| d["rule"] == "L7"));
+    assert!(
+        diagnostics
+            .iter()
+            .any(|d| d["rule"] == "L14" && d["severity"] == "warn")
     );
 }
 

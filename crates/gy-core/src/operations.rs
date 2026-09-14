@@ -521,6 +521,10 @@ impl Store {
                 node = Node::new(&id, "decision", title, scope);
                 node.body = raw;
             }
+            // `imported` records that the decision came from an external ledger.
+            // It is the node-level counterpart of the edge marker and lets lint
+            // separate migration work from a decision created without a scope.
+            node.put("imported", true);
             if node.get("decision_scope").trim().is_empty() {
                 if let Some(section) = &self.config.import.scope_note_section {
                     if let Some(contents) = import_section(&node.body, section)? {

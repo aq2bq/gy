@@ -91,7 +91,7 @@ pub enum Commands {
         #[command(subcommand)]
         command: NodeCommand,
     },
-    /// Check L1–L13 and inverse links; exit 1 on errors. Incomplete q records fail even with L8/L9 disabled
+    /// Check L1–L14 and inverse links; exit 1 on errors. Incomplete q records fail even with L8/L9 disabled
     Lint,
     /// Generate ledger pages based on node count. Configure output and threshold in gy.toml [render]. --format html writes a single self-contained file
     Render {

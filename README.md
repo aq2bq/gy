@@ -276,8 +276,9 @@ html_output = "gy.html"
 | L11 | Missing or inconsistent completion and compression records |
 | L12 | Question bundles without a rationale |
 | L13 | References to nonexistent nodes |
+| L14 | Imported decisions without applicability conditions |
 
-L6 defaults to `warn`; the others default to `error`. Outside the table, the `edges` rule checks inverse links, edge types, and matching marks. A question created with `q` and left incomplete reports what is missing as an error regardless of the L8 / L9 settings.
+L6 and L14 default to `warn`; the others default to `error`. Outside the table, the `edges` rule checks inverse links, edge types, and matching marks. A question created with `q` and left incomplete reports what is missing as an error regardless of the L8 / L9 settings.
 
 Every rule works from explicit frontmatter. L1 reads `waiting-on` and `unresolved`; L2 reads the optional nonnegative integer `bearer_count` and the `targets` links. Neither infers a declaration from body text. A declaration that exists only in prose should be verified and moved into an attribute.
 
@@ -321,11 +322,15 @@ scope_note_section = "Applicability"
 scope_note_placeholders = ["Not recorded during migration"]
 ```
 
-The section is an ATX heading such as `## Applicability`, in any language, including its subsections and ending at the next heading of the same or higher level. Headings inside fenced code blocks are ignored, and a repeated matching heading rejects the import as ambiguous. An existing nonempty `decision_scope` is kept. When the section is missing, empty, or contains only a configured placeholder, the attribute stays unfilled and L7 reports it. Placeholders match exactly after trimming surrounding whitespace. Whether the text describes a meaningful condition is for people and agents to judge.
+The section is an ATX heading such as `## Applicability`, in any language, including its subsections and ending at the next heading of the same or higher level. Headings inside fenced code blocks are ignored, and a repeated matching heading rejects the import as ambiguous. An existing nonempty `decision_scope` is kept. When the section is missing, empty, or contains only a configured placeholder, the attribute stays unfilled and L14 reports it. Placeholders match exactly after trimming surrounding whitespace. Whether the text describes a meaningful condition is for people and agents to judge.
 
 The result includes `import_summary` with the count and IDs of missing `decision_scope` values and the count and relationships of missing marks, and the same counts are printed as a warning. The import completes regardless; run `gy lint` afterward.
 
 `narrows` and `supersedes` entries imported from frontmatter carry `imported: true`, and L6 reports their missing marks as migration work at the usual severity. Read the older decision and run `gy link <new-ID> <relationship> <old-ID> --mark "<affected passage>"`; both sides are updated and the import provenance of that relationship is replaced by the ordinary operation. Import never infers relationships or marks from prose or Markdown links.
+
+Every decision node created by `import` also carries the node attribute `imported: true`, whether or not `decision_scope` was filled. An imported decision whose applicability conditions are empty reports L14 instead of L7, so a legacy ledger taken in with intentionally empty scopes no longer turns `gy lint` and `gy handover` red. L14 defaults to `warn` and is configured like any other rule, for example `[lint] L14 = "error"` or `L14 = false`. Setting `decision_scope` with `gy node set` clears the finding.
+
+Decisions imported with gy 0.4.0 or earlier carry no node mark, so their empty applicability conditions still report L7 as errors. Collect the L7 IDs from `gy lint --json` and mark each imported decision: `gy node set <ID> --set imported=true`. Mark only decisions this ledger imported; a decision created with `gy decide` and left without a scope is new work, and L7 is the correct finding for it.
 
 ## MCP and bundled skills
 

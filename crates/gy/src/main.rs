@@ -476,7 +476,7 @@ fn execute(cli: &Cli) -> Result<Output> {
             let human = format!(
                 "{}\n{}\n",
                 if ds.is_empty() {
-                    "lint: no findings (L1–L13, inverse links, and configured workflow)".into()
+                    "lint: no findings (L1–L14, inverse links, and configured workflow)".into()
                 } else {
                     ds.iter()
                         .map(|d| format!("{} {} {}: {}", d.severity, d.rule, d.id, d.message))

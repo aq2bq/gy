@@ -63,11 +63,12 @@ Search, output, and checks:
   gy show D-1 / gy show D-1 --graph
   gy lint --json / gy render / gy stats --days 7
   Reads cover all scopes by default. Filter with --scope <name>.
-  Configure L1–L13 and edges in [lint] as true / false / "error" / "warn" / "off".
+  Configure L1–L14 and edges in [lint] as true / false / "error" / "warn" / "off".
   Exit codes: 0 success, 1 failed check, 2 invalid input or guard violation, 3 ledger corruption.
   gy import docs/adr --scope demo preserves IDs. Set [import] scope_note_section to map a body heading into decision_scope.
   scope_note_placeholders lists exact placeholder-only texts to leave unfilled. Review import_summary for missing scope and marks.
   Imported narrows/supersedes entries carry imported=true; L6 distinguishes their missing marks without changing severity.
+  Imported decision nodes carry imported=true; an empty decision_scope on them is L14 (warn) rather than L7 (error). Mark pre-0.4 imports with gy node set <ID> --set imported=true.
   gy skills install .agents/skills / gy mcp serve / gy completions zsh
 
 Compressing completed requirements:

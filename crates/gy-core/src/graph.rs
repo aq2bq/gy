@@ -104,6 +104,9 @@ pub fn edge_mark(node: &Node, key: &str, id: &str) -> Option<String> {
         .filter(|s| !s.trim().is_empty())
         .map(str::to_owned)
 }
+pub fn imported_node(node: &Node) -> bool {
+    node.attrs.get("imported").and_then(Value::as_bool) == Some(true)
+}
 pub fn imported_edge(node: &Node, key: &str, id: &str) -> bool {
     let Some(value) = node.attrs.get(key) else {
         return false;
@@ -220,7 +223,11 @@ impl Store {
             if scope.is_some_and(|s| s != node.scope()) {
                 return;
             }
-            let default = if rule == "L6" { "warn" } else { "error" };
+            let default = if rule == "L6" || rule == "L14" {
+                "warn"
+            } else {
+                "error"
+            };
             let severity = if force {
                 Some("error")
             } else {
@@ -333,7 +340,11 @@ impl Store {
             }
             if n.kind() == "decision" {
                 if n.get("decision_scope").trim().is_empty() {
-                    emit("L7", n, "Applicability conditions are empty. Record the applicable paths and conditions so later users do not apply the decision too broadly".into(), false);
+                    if imported_node(n) {
+                        emit("L14", n, "Imported decision has no applicability conditions. Review the original decision and record the applicable paths and conditions with gy node set, or leave it as migration work".into(), false);
+                    } else {
+                        emit("L7", n, "Applicability conditions are empty. Record the applicable paths and conditions so later users do not apply the decision too broadly".into(), false);
+                    }
                 }
                 for key in ["narrows", "supersedes"] {
                     for id in n.refs(key) {

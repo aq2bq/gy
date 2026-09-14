@@ -240,7 +240,7 @@ impl Store {
             .map_err(|e| Error::corrupt(format!("gy.toml: {e}")))?;
         config.workflow.validate()?;
         for (rule, setting) in &config.lint {
-            if !(1..=13).any(|n| rule == &format!("L{n}")) && rule != "edges" && rule != "workflow"
+            if !(1..=14).any(|n| rule == &format!("L{n}")) && rule != "edges" && rule != "workflow"
             {
                 return Err(Error::corrupt(format!("Unknown lint rule: {rule}")));
             }

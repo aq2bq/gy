@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `gy import` marks every decision node it creates with the node attribute
+  `imported: true`, whether or not `decision_scope` was filled. An imported
+  decision whose applicability conditions are empty is reported as L14
+  (default `warn`) instead of L7, so a legacy ledger taken in with
+  intentionally empty scopes no longer fails `gy lint` and `gy handover`.
+  L14 is configured with `[lint] L14` like any other rule. Decisions imported
+  before this release carry no mark; collect their IDs from L7 findings in
+  `gy lint --json` and run `gy node set <ID> --set imported=true` to bring
+  them under the rule. Setting `decision_scope` clears the finding.
+
 ## 0.4.0
 
 ### Breaking

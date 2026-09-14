@@ -64,6 +64,7 @@ The matcher reads the two arrays for the current comparison only. For D declarat
 | L1 and question-close warnings | `waiting-on` / `unresolved` references and the target question's `status` | An explicit unresolved reference conflicts with a closed question |
 | L2 | Optional nonnegative integer `bearer_count` and needs' `targets` edges | A declared count must have the right type and equal the supporting-need count |
 | L5 | Current requirement decision dependencies and recorded `supersedes` / `superseded-by` edges | Work still to be done depends on a replaced decision |
+| L7 / L14 | `decision_scope` and the decision node's `imported` mark | An empty applicability scope is new work (L7) or migration provenance (L14) |
 | Workflow lint on completed requirements | Saved workflow inputs, schemas, and comparisons | Check historical records without retroactive application of the current profile |
 | New transitions and submissions | Current workflow configuration and supplied records | Validate the action now, regardless of the node's previous completion state |
 | L10 / L11 / L13 / `edges` | State, completion records, references, and edge declarations | Structural integrity continues to apply to completed work |
