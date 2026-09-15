@@ -1,4 +1,5 @@
 //! The routes: plain functions over `http`, testable without a socket (ac-a49a).
+pub mod now;
 pub mod shell;
 
 use crate::assets;
@@ -13,6 +14,7 @@ pub fn route<S: Store>(repo: &Repository<S>, req: &Request) -> Response {
     match req.path.as_str() {
         "/" | "/index.html" => index(req),
         "/api/shell" => shell::shell(repo, req),
+        "/api/now" => now::answer(repo, req),
         _ => static_file(req),
     }
 }

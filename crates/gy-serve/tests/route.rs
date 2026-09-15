@@ -1,6 +1,6 @@
 use gy_ledger::{
     Actor, ClosedBy, CriterionSatisfy, DecisionScope, FormatVersion, MemoryStore, NeedClose, Node,
-    NodeId, NodeKind, Operation, Repository,
+    NodeId, NodeKind, Operation, QuestionAdd, Repository, ReqAdd,
 };
 use gy_serve::api::route;
 use gy_serve::http::Request;
@@ -114,6 +114,80 @@ fn a_traversal_or_unknown_path_is_not_found() {
     for path in ["/assets/../Cargo.toml", "/assets/missing.js", "/nope"] {
         assert_eq!(route(&ledger(), &get(path, None)).status, 404, "{path}");
     }
+}
+
+#[test]
+fn now_matches_the_view() {
+    let mut repo = ledger();
+    QuestionAdd {
+        scope: "a".to_string(),
+        title: "who decides".to_string(),
+        decider: "master".to_string(),
+        options: vec!["x".to_string(), "y".to_string()],
+    }
+    .run(&mut repo)
+    .unwrap();
+    ReqAdd {
+        scope: "a".to_string(),
+        title: "a requirement".to_string(),
+        needs: vec![id(NodeKind::Need, "0001")],
+        relies_on: Vec::new(),
+        targets: Vec::new(),
+        reference: None,
+    }
+    .run(&mut repo)
+    .unwrap();
+
+    let view = gy_ledger::now(&repo, None).unwrap();
+    let answer = json(&route(&repo, &get("/api/now", None)));
+    assert_eq!(answer["seq"], view.seq);
+    assert!(answer["at"].as_str().unwrap().starts_with("20"));
+    assert_eq!(
+        answer["waiting"].as_array().unwrap().len(),
+        view.waiting.len()
+    );
+    assert_eq!(json_ids(&answer["in_progress"]), row_ids(&view.in_progress));
+    assert_eq!(
+        json_ids(&answer["open_questions"]),
+        row_ids(&view.open_questions)
+    );
+    assert_eq!(json_ids(&answer["unmet"]), row_ids(&view.unmet));
+    assert_eq!(
+        answer["recent"].as_array().unwrap().len(),
+        view.recent.len()
+    );
+
+    let scoped = json(&route(&repo, &get("/api/now", Some("scope=b"))));
+    let view_b = gy_ledger::now(&repo, Some("b")).unwrap();
+    assert_eq!(scoped["scope"], "b");
+    assert_eq!(
+        json_ids(&scoped["in_progress"]),
+        row_ids(&view_b.in_progress)
+    );
+    assert_eq!(
+        json_ids(&scoped["open_questions"]),
+        row_ids(&view_b.open_questions)
+    );
+}
+
+/// One response's body as JSON.
+fn json(res: &gy_serve::http::Response) -> serde_json::Value {
+    serde_json::from_slice(&res.body).unwrap()
+}
+
+/// The id column of a row array in an answer.
+fn json_ids(value: &serde_json::Value) -> Vec<String> {
+    value
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|row| row["id"].as_str().unwrap().to_string())
+        .collect()
+}
+
+/// The ids of a view's rows, in their order.
+fn row_ids(rows: &[gy_ledger::NodeRow]) -> Vec<String> {
+    rows.iter().map(|row| row.id.clone()).collect()
 }
 
 #[test]

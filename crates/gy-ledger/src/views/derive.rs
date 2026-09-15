@@ -24,6 +24,12 @@ pub fn requirement_in_progress(requirement: &Node) -> bool {
     )
 }
 
+/// Whether a question is still open; only an open question can wait on the
+/// master (d-995c, n-688a). handover reads the same thing for itself.
+pub(super) fn question_open(node: &Node) -> bool {
+    matches!(node.data(), NodeData::Question(data) if data.closure.is_none())
+}
+
 /// The derived state of one need, looking up its filed requirements in `all`.
 pub fn need_state(need: &Node, all: &[Node]) -> NeedState {
     if let NodeData::Need(data) = need.data() {
