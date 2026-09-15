@@ -4,6 +4,8 @@ English | [日本語](README.ja.md)
 
 gy records the state before a requirement is confirmed. It holds the needs, questions, decisions, requirements, and acceptance criteria that a piece of work rests on, as a graph of nodes and edges, with one way to use it and almost nothing to configure. Agents write it as they work, and `publish` writes the record to a file that is committed and read back later. The canonical ledger lives outside the repository, and gy makes no network calls.
 
+The screenshots show a demo ledger built by `scripts/demo-ledger.sh`; run it and `gy serve` to try the same.
+
 The now page
 
 <img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-now-en.png" alt="The now page" width="100%">

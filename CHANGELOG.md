@@ -10,6 +10,8 @@
   graph. Every read takes `at=<seq>`; the HTTP layer is the standard
   library alone; the end-to-end tests live under `e2e/`. It opens the
   browser when started from a terminal. Twenty-two terminal commands.
+- `scripts/demo-ledger.sh` builds a small English demo ledger to try
+  `serve` on.
 
 ### Fixed
 
