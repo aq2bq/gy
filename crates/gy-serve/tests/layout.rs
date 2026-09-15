@@ -3,6 +3,7 @@ use gy_ledger::{
     Actor, FormatVersion, MemoryStore, Node, NodeId, NodeKind, Operation, Relation, Repository,
 };
 use gy_serve::layout::{Graph, layout};
+use std::collections::HashMap;
 
 const DATE: &str = "2026-09-15";
 
@@ -59,13 +60,14 @@ fn distance(a: (f64, f64), b: (f64, f64)) -> f64 {
 #[test]
 fn the_same_nodes_give_the_same_picture() {
     let nodes = ledger();
-    assert_eq!(layout(&nodes, 7), layout(&nodes, 7));
+    let states = HashMap::new();
+    assert_eq!(layout(&nodes, &states, 7), layout(&nodes, &states, 7));
 }
 
 #[test]
 fn the_bubbles_hold_their_nodes_and_clear_each_other() {
     let nodes = ledger();
-    let graph: Graph = layout(&nodes, 7);
+    let graph: Graph = layout(&nodes, &HashMap::new(), 7);
     assert_eq!(graph.bubbles.len(), 2);
 
     for (at, bubble) in graph.bubbles.iter().enumerate() {
@@ -85,7 +87,7 @@ fn the_bubbles_hold_their_nodes_and_clear_each_other() {
 #[test]
 fn the_edges_and_degrees_match_the_ledger() {
     let nodes = ledger();
-    let graph = layout(&nodes, 7);
+    let graph = layout(&nodes, &HashMap::new(), 7);
     assert_eq!(graph.edges.len(), 20);
     assert_eq!(graph.cross.len(), 3);
     // One degree per end of every edge inside a scope.
@@ -106,7 +108,7 @@ fn the_edges_and_degrees_match_the_ledger() {
 
 #[test]
 fn an_empty_ledger_has_an_empty_picture() {
-    let graph = layout(&[], 3);
+    let graph = layout(&[], &HashMap::new(), 3);
     assert_eq!(graph.seq, 3);
     assert!(graph.bubbles.is_empty());
     assert!(graph.nodes.is_empty());

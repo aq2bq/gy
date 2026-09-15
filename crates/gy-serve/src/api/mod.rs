@@ -1,5 +1,6 @@
 //! The routes: plain functions over `http`, testable without a socket (ac-a49a).
 pub mod graph;
+pub mod labels;
 pub mod list;
 pub mod node;
 pub mod now;
@@ -21,6 +22,7 @@ pub fn route<S: Store>(repo: &Repository<S>, req: &Request) -> Response {
         "/" | "/index.html" => index(req),
         "/api/shell" => shell::shell(repo, req),
         "/api/now" => now::answer(repo, req),
+        "/api/labels" => labels::labels(repo, req),
         "/api/list" => list::rows(repo, req),
         "/api/search" => search::search(repo, req),
         "/api/ticks" => ticks::ticks(repo, req),

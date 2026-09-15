@@ -28,6 +28,8 @@ pub struct Placed {
     pub kind: NodeKind,
     pub scope: String,
     pub degree: usize,
+    /// The state word the list view prints; `null` for a decision.
+    pub state: Option<String>,
     pub x: f64,
     pub y: f64,
 }
@@ -52,8 +54,8 @@ pub struct Graph {
 }
 
 /// Lay out every scope of `nodes` (d-b93b); only its stored edges count.
-pub fn layout(nodes: &[Node], seq: u64) -> Graph {
-    let (bubbles, placed, edges) = assemble(nodes);
+pub fn layout(nodes: &[Node], states: &HashMap<String, String>, seq: u64) -> Graph {
+    let (bubbles, placed, edges) = assemble(nodes, states);
     Graph {
         seq,
         bubbles,
@@ -64,7 +66,10 @@ pub fn layout(nodes: &[Node], seq: u64) -> Graph {
 }
 
 /// Every scope's bubble, its nodes in world coordinates, and its edges.
-fn assemble(nodes: &[Node]) -> (Vec<Bubble>, Vec<Placed>, Vec<(String, String)>) {
+fn assemble(
+    nodes: &[Node],
+    states: &HashMap<String, String>,
+) -> (Vec<Bubble>, Vec<Placed>, Vec<(String, String)>) {
     let mut bubbles = Vec::new();
     let mut placed = Vec::new();
     let mut edges = Vec::new();
@@ -86,6 +91,7 @@ fn assemble(nodes: &[Node]) -> (Vec<Bubble>, Vec<Placed>, Vec<(String, String)>)
                 kind: node.kind(),
                 scope: scope.clone(),
                 degree: local.degree[at],
+                state: states.get(&node.id().to_string()).cloned(),
                 x: x + local.pos[at].0,
                 y: y + local.pos[at].1,
             });

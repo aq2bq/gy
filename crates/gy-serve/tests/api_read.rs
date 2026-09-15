@@ -212,8 +212,7 @@ fn query_and_path_values_are_decoded() {
     assert_eq!(node["aliases"][0], "#5896");
 }
 
-/// The graph answer for one ledger (the server branches to the handler before
-/// the router, so there is no route to call).
+/// The graph answer for one ledger (the server branches before the router).
 fn graph(
     repo: &Repository<MemoryStore>,
     cache: &GraphCache,
@@ -222,19 +221,35 @@ fn graph(
     serde_json::from_slice(&graph_api::graph(repo, cache, scope).body).unwrap()
 }
 
-fn json_of(res: &gy_serve::http::Response) -> serde_json::Value {
-    serde_json::from_slice(&res.body).unwrap()
-}
-
-/// How many rows one key of an answer holds.
 fn count(value: &serde_json::Value, key: &str) -> usize {
     value[key].as_array().unwrap().len()
 }
 
-/// An opener whose ledger holds the first `at` nodes, one write each, so the
-/// sequence of the answer is the point that was asked for.
-fn growing(nodes: Vec<Node>) -> Opener {
-    Box::new(move |at| {
+#[test]
+fn the_graph_carries_no_titles_and_answers_for_a_point() {
+    let repo = ledger();
+    let cache = GraphCache::new();
+    let all = graph(&repo, &cache, None);
+    for node in all["nodes"].as_array().unwrap() {
+        assert!(
+            node.get("title").is_none() && node.get("body").is_none(),
+            "{node}"
+        );
+        assert!(node.get("state").is_some(), "{node}");
+    }
+    let scoped = graph(&repo, &cache, Some("b"));
+    assert!(count(&scoped, "nodes") < count(&all, "nodes"));
+    // The second ask answers the same point: the cache's job.
+    assert_eq!(graph(&repo, &cache, None)["seq"], all["seq"]);
+
+    // A point in the log: the opener's ledger holds the first `at` nodes.
+    let nodes: Vec<Node> = (0..4)
+        .map(|index| {
+            let hash = format!("2{index:03}");
+            Node::need(id(NodeKind::Need, &hash), "a", DATE, "a need").unwrap()
+        })
+        .collect();
+    let open: Opener = Box::new(move |at| {
         let limit = at.map_or(nodes.len(), |seq| (seq as usize).min(nodes.len()));
         let store = MemoryStore::with_actor(FormatVersion::CURRENT, Actor::new("e2e").unwrap());
         let mut repo = Repository::new(store);
@@ -243,47 +258,38 @@ fn growing(nodes: Vec<Node>) -> Opener {
                 .unwrap();
         }
         Ok(Opened::At(repo))
-    })
-}
-
-#[test]
-fn the_graph_carries_no_titles_and_caches() {
-    let repo = ledger();
-    let cache = GraphCache::new();
-    let all = graph(&repo, &cache, None);
-    assert!(count(&all, "bubbles") >= 2);
-    for node in all["nodes"].as_array().unwrap() {
-        assert!(
-            node.get("title").is_none() && node.get("body").is_none(),
-            "{node}"
-        );
-        assert!(node.get("degree").is_some(), "{node}");
-    }
-
-    let scoped = graph(&repo, &cache, Some("b"));
-    assert!(count(&scoped, "nodes") < count(&all, "nodes"));
-
-    // The second ask answers the same point and size: the cache's job.
-    let again = graph(&repo, &cache, None);
-    assert_eq!(again["seq"], all["seq"]);
-    assert_eq!(count(&again, "nodes"), count(&all, "nodes"));
-}
-
-#[test]
-fn the_graph_follows_the_point_in_the_log() {
-    let nodes: Vec<Node> = (0..4)
-        .map(|index| {
-            let hash = format!("2{index:03}");
-            Node::need(id(NodeKind::Need, &hash), "a", DATE, "a need").unwrap()
-        })
-        .collect();
-    let open = growing(nodes);
-    let cache = GraphCache::new();
+    });
     let request = || Request::new("GET", "/api/graph", None, &[]);
-    let early = json_of(&graph_api::answer(&open, &cache, Some(2), &request()));
-    let head = json_of(&graph_api::answer(&open, &cache, None, &request()));
-    assert_eq!(early["seq"], 2);
-    assert_eq!(count(&early, "nodes"), 2);
-    assert_eq!(head["seq"], 4);
-    assert_eq!(count(&head, "nodes"), 4);
+    let ask = |at| {
+        let body = graph_api::answer(&open, &cache, at, &request()).body;
+        serde_json::from_slice::<serde_json::Value>(&body).unwrap()
+    };
+    let (early, head) = (ask(Some(2)), ask(None));
+    assert_eq!(
+        (early["seq"].as_u64(), count(&early, "nodes")),
+        (Some(2), 2)
+    );
+    assert_eq!((head["seq"].as_u64(), count(&head, "nodes")), (Some(4), 4));
+}
+
+#[test]
+fn labels_answer_alias_and_title() {
+    let repo = ledger();
+    let decision = id(NodeKind::Decision, "0005").to_string();
+    let json = answer(
+        &repo,
+        "/api/labels",
+        Some(&format!("ids={decision},n-zzzz")),
+    );
+    let labels = json["labels"].as_object().unwrap();
+    // An id that is not here is left out; the one that is carries both words.
+    assert_eq!(labels.len(), 1, "{json}");
+    assert_eq!(labels[&decision]["alias"], "D-85");
+    assert_eq!(labels[&decision]["title"], "publish the list page");
+
+    let many = (0..201)
+        .map(|at| format!("n-{at:04}"))
+        .collect::<Vec<_>>()
+        .join(",");
+    assert_eq!(status("/api/labels", Some(&format!("ids={many}"))), 400);
 }

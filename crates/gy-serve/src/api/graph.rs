@@ -4,7 +4,8 @@ use crate::graph_cache::GraphCache;
 use crate::http::{Request, Response};
 use crate::layout::{self};
 use crate::server::{Opened, Opener};
-use gy_ledger::{Node, Repository, Store};
+use gy_ledger::{Filter, Listing, Node, Repository, Store, list};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 /// `at` picks the point; `scope` narrows it.
@@ -33,7 +34,19 @@ pub fn graph<S: Store>(repo: &Repository<S>, cache: &GraphCache, scope: Option<&
         .into_iter()
         .filter(|node| scope.is_none_or(|scope| node.scope() == scope))
         .collect();
-    let graph = Arc::new(layout::layout(&nodes, seq));
+    let graph = Arc::new(layout::layout(&nodes, &states(repo), seq));
     cache.put(key, Arc::clone(&graph));
     Response::json(&*graph)
+}
+
+/// Every node's state word, straight from the list view, so the picture shows
+/// what is still open without judging it here (a decision has no word).
+fn states<S: Store>(repo: &Repository<S>) -> HashMap<String, String> {
+    match list(repo, &Filter::default()) {
+        Ok(Listing::Nodes(rows)) => rows
+            .into_iter()
+            .filter_map(|row| row.status.map(|state| (row.id, state)))
+            .collect(),
+        _ => HashMap::new(),
+    }
 }

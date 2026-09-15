@@ -72,12 +72,17 @@ function route() {
   const crumb = document.getElementById('crumb');
   const list = hash.match(/^#\/list\/(\w+)$/);
   const node = hash.match(/^#\/n\/(.+)$/);
+  const graph = hash.match(/^#\/graph(?:\/(.+))?$/);
+  document.getElementById('main').className = '';
   if (hash === '' || hash === '#/') {
     crumb.innerHTML = `<span>${word('now')}</span>`;
     if (window.GyNow) window.GyNow.draw();
   } else if (list) {
     crumb.innerHTML = `<a href="#/">${word('now')}</a><span>›</span><span>${plural(list[1])}</span>`;
     if (window.GyList) window.GyList.draw(list[1]);
+  } else if (graph) {
+    crumb.innerHTML = `<a href="#/">${word('now')}</a><span>›</span><span>${word('graph')}</span>`;
+    if (window.GyGraph) window.GyGraph.draw(graph[1] ? decodeURIComponent(graph[1]) : null);
   } else if (node) {
     if (window.GyNode) window.GyNode.draw(decodeURIComponent(node[1]));
   } else {
