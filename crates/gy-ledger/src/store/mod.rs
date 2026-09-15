@@ -73,6 +73,28 @@ impl Actor {
     }
 }
 
+/// What an undo inverted: an ordinary write, or another undo and its sequence
+/// (n-162c). The operation turns this into what the caller should know.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UndoneKind {
+    Write,
+    Undo { seq: u64 },
+}
+
+/// The why an undo transaction carries, so the next undo can tell it from a
+/// write (n-162c). The operation passes it; a store reads it back from the log.
+pub(crate) const UNDO_WHY: &str = "undo";
+
+/// Whether a transaction with this why and sequence was a write or an undo
+/// (n-162c). An undo's why marks it, so a reopened store reads it the same way.
+pub(crate) fn undone_kind(why: &str, seq: u64) -> UndoneKind {
+    if why == UNDO_WHY {
+        UndoneKind::Undo { seq }
+    } else {
+        UndoneKind::Write
+    }
+}
+
 /// One appended change: the transaction it belongs to, when, who, which node,
 /// what, why, and the source. Every entry of one transaction shares `seq`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -111,10 +133,24 @@ pub trait Store: IdSource {
     fn commit(&mut self) -> Result<()>;
     fn rollback(&mut self);
     fn record(&mut self, node: &str, what: &str, why: &str, source: &str);
+    /// The kind of change a staged value is for a key: `created` for a new id,
+    /// `updated` for a known one, `deleted` for an empty value (D-82). `put`
+    /// and `commit` share this, so an open repository's history reads the same
+    /// as a reopened one's (n-0a82).
+    fn what_for(&self, key: &str, removed: bool) -> &'static str {
+        if removed {
+            "deleted"
+        } else if self.get(key).is_some() {
+            "updated"
+        } else {
+            "created"
+        }
+    }
     fn history(&self) -> &[HistoryEntry];
     /// Invert the last transaction as a new transaction with this why and
-    /// source (D-82). Nothing to invert is an error.
-    fn undo(&mut self, why: &str, source: &str) -> Result<()>;
+    /// source (D-82). Nothing to invert is an error, and whether it inverted a
+    /// write or an undo is returned (n-162c).
+    fn undo(&mut self, why: &str, source: &str) -> Result<UndoneKind>;
 }
 
 /// The 32-bit FNV-1a hash used for short IDs and the location key (D-74, D-82).

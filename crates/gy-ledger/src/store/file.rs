@@ -1,8 +1,8 @@
 //! The file-backed store: an append-only JSONL event log with an exclusive
 //! lock, sequence-based conflict detection, and replay on open (D-82).
 use super::{
-    Actor, Error, FormatVersion, HistoryEntry, IdSource, Result, Store, format, log, replay,
-    snapshot,
+    Actor, Error, FormatVersion, HistoryEntry, IdSource, Result, Store, UndoneKind, format, log,
+    replay, snapshot, undone_kind,
 };
 use fs2::FileExt;
 use serde_json::Value;
@@ -91,21 +91,11 @@ impl FileStore {
                 serde_json::from_slice(&item.value)
                     .map_err(|_| Error::invalid("a staged node is not valid JSON"))?
             };
-            let change = if item.value.is_empty() {
-                log::Change::Deleted {
-                    node: item.node.clone(),
-                    value,
-                }
-            } else if self.nodes.contains_key(&item.node) {
-                log::Change::Updated {
-                    node: item.node.clone(),
-                    value,
-                }
-            } else {
-                log::Change::Created {
-                    node: item.node.clone(),
-                    value,
-                }
+            let node = item.node.clone();
+            let change = match self.what_for(&item.node, item.value.is_empty()) {
+                "deleted" => log::Change::Deleted { node, value },
+                "updated" => log::Change::Updated { node, value },
+                _ => log::Change::Created { node, value },
             };
             changes.push(change);
         }
@@ -247,11 +237,12 @@ impl Store for FileStore {
     /// log is never rewritten; the undo is one more transaction with the given
     /// why and source. A created node is deleted, an updated node returns to
     /// its earlier value, and a deleted node comes back.
-    fn undo(&mut self, why: &str, source: &str) -> Result<()> {
+    fn undo(&mut self, why: &str, source: &str) -> Result<UndoneKind> {
         let (events, _) = log::read(&self.dir)?;
         let last = events
             .last()
             .ok_or_else(|| Error::invalid("there is nothing to undo"))?;
+        let kind = undone_kind(&last.why, last.seq);
         let mut before = BTreeMap::new();
         for event in &events[..events.len() - 1] {
             replay::apply(&mut before, event);
@@ -281,7 +272,8 @@ impl Store for FileStore {
                 }
             }
         }
-        self.commit()
+        self.commit()?;
+        Ok(kind)
     }
 }
 impl IdSource for FileStore {

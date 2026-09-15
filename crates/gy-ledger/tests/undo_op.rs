@@ -102,6 +102,25 @@ fn the_file_store_undoes_the_same_way() {
 }
 
 #[test]
+fn undo_says_whether_the_next_one_is_a_redo() {
+    let mut repo = memory();
+    add_need(&mut repo);
+    let outcome = undo("mistake").run(&mut repo).unwrap();
+    assert_eq!(outcome.next.len(), 1);
+    assert!(
+        outcome.next[0].contains("もう一度 undo"),
+        "{:?}",
+        outcome.next
+    );
+    let outcome = undo("again").run(&mut repo).unwrap();
+    assert!(
+        outcome.next[0].contains("redo になった"),
+        "{:?}",
+        outcome.next
+    );
+}
+
+#[test]
 fn undo_keeps_the_why_and_source() {
     let mut repo = memory();
     add_need(&mut repo);

@@ -57,7 +57,7 @@ gy holds nothing about the work after approval except these four records. Where 
 
 The canonical ledger is an append-only event log outside the repository, under `$XDG_DATA_HOME/gy/<hash of the repository root>/`. The repository itself holds only `gy.toml`. Every write is one transaction appended to the log with the sequence number, time, actor, reason, and source; nothing is edited in place.
 
-`undo --reason <text>` inverts the last transaction as a new one, so the history keeps both the mistake and the correction. The log is the ledger; a snapshot file alongside it only speeds up opening and can be deleted.
+`undo --reason <text>` inverts the last transaction as a new one, so the history keeps both the mistake and the correction. It undoes one transaction only; a second undo undoes the first undo (a redo). The log is the ledger; a snapshot file alongside it only speeds up opening and can be deleted.
 
 ## The twenty operations
 

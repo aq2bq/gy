@@ -1,6 +1,8 @@
 //! The in-memory implementation for the skeleton and tests.
 use super::id::{id_seed, unique_hash};
-use super::{Actor, Error, FormatVersion, HistoryEntry, IdSource, Result, Store};
+use super::{
+    Actor, Error, FormatVersion, HistoryEntry, IdSource, Result, Store, UndoneKind, undone_kind,
+};
 use serde_json::Value;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -176,17 +178,22 @@ impl Store for MemoryStore {
     }
     /// Re-apply the previous value of every node the last commit touched, as a
     /// new transaction so the undo itself is history (D-82).
-    fn undo(&mut self, why: &str, source: &str) -> Result<()> {
+    fn undo(&mut self, why: &str, source: &str) -> Result<UndoneKind> {
         let frame = self
             .undo_stack
             .pop()
             .ok_or_else(|| Error::invalid("there is nothing to undo"))?;
+        let kind = match self.history.last() {
+            Some(entry) => undone_kind(&entry.why, entry.seq),
+            None => UndoneKind::Write,
+        };
         self.begin();
         for (key, previous) in frame {
             self.stage(key.clone(), previous.unwrap_or_default());
             self.record(&key, "undone", why, source);
         }
-        self.commit()
+        self.commit()?;
+        Ok(kind)
     }
 }
 impl IdSource for MemoryStore {

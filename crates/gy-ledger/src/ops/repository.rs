@@ -76,8 +76,9 @@ impl<S: Store> Repository<S> {
     pub fn put(&mut self, node: &Node) -> Result<()> {
         let bytes = encode(node)?;
         let id = node.id().to_string();
+        let what = self.store.what_for(&id, false);
         self.store.stage(id.clone(), bytes);
-        self.store.record(&id, "put", &self.why, &self.source);
+        self.store.record(&id, what, &self.why, &self.source);
         Ok(())
     }
     pub fn remove(&mut self, id: &NodeId) -> Result<()> {

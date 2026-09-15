@@ -1,6 +1,6 @@
 use gy_ledger::{
-    Actor, FileStore, FormatVersion, MemoryStore, Node, NodeData, NodeId, NodeKind, Ref,
-    Repository, RequirementState,
+    Actor, ClosedBy, Edit, FileStore, FormatVersion, MemoryStore, NeedAdd, NeedClose, Node,
+    NodeData, NodeId, NodeKind, Operation, Ref, Repository, RequirementState, Store,
 };
 
 const SCOPE: &str = "a";
@@ -122,6 +122,58 @@ fn a_file_store_survives_reopen() {
     drop(repo);
     let reopened = Repository::new(FileStore::open_with(temp.path(), actor).unwrap());
     assert_eq!(reopened.get(node.id()).unwrap().unwrap(), node);
+}
+
+#[test]
+fn the_live_history_matches_a_reopened_one() {
+    let temp = tempfile::tempdir().unwrap();
+    gy_ledger::format::write(temp.path(), FormatVersion::CURRENT).unwrap();
+    let actor = |_: &str| Some("piko".to_string());
+    let mut repo = Repository::new(FileStore::open_with(temp.path(), actor).unwrap());
+    let criterion = criterion("0001");
+    let target = criterion.id().clone();
+    repo.transaction("seed", "test", |repo| repo.put(&criterion))
+        .unwrap();
+    let id = NeedAdd {
+        scope: SCOPE.into(),
+        title: "a need".into(),
+        targets: vec![target],
+        spawned_by: None,
+    }
+    .run(&mut repo)
+    .unwrap()
+    .value;
+    Edit {
+        id: id.clone(),
+        reason: "clarify".into(),
+        title: Some("renamed".into()),
+        body: None,
+        set: Vec::new(),
+        append: Vec::new(),
+    }
+    .run(&mut repo)
+    .unwrap();
+    NeedClose {
+        id,
+        by: ClosedBy::Fact,
+        evidence: "verified".into(),
+    }
+    .run(&mut repo)
+    .unwrap();
+    let live = history_whys(repo.store());
+    assert!(!live.iter().any(|(_, what)| what == "put"), "{live:?}");
+    assert!(live.iter().any(|(_, what)| what == "updated"), "{live:?}");
+    drop(repo);
+    let reopened = FileStore::open_with(temp.path(), actor).unwrap();
+    assert_eq!(live, history_whys(&reopened));
+}
+
+fn history_whys(store: &impl Store) -> Vec<(String, String)> {
+    store
+        .history()
+        .iter()
+        .map(|entry| (entry.node.clone(), entry.what.clone()))
+        .collect()
 }
 
 fn requirement(hash: &str, reference: &str) -> Node {
