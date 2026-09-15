@@ -1,6 +1,6 @@
 //! next: the needs ready to work, with how many of their criteria are
 //! satisfied and which requirements they became. The agent picks one (D-62).
-use super::derive::{edges, find, ready};
+use super::derive::{edges, find, ready, reference};
 use crate::model::{Node, NodeData, NodeKind, Relation};
 use crate::ops::repository::{Repository, Result, Store};
 use serde::Serialize;
@@ -94,12 +94,5 @@ fn row(need: &Node, all: &[Node]) -> NextRow {
         satisfied,
         targets: targets.len(),
         requirements,
-    }
-}
-
-fn reference(node: &Node) -> Option<String> {
-    match node.data() {
-        NodeData::Requirement(data) => data.reference.as_ref().map(|ref_| ref_.0.clone()),
-        _ => None,
     }
 }

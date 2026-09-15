@@ -2,11 +2,13 @@
 //! the store directly (D-76). N-57 brings show, N-58 list, N-59 (2a) derive
 //! and next; handover and publish follow.
 mod derive;
+mod handover;
 mod list;
 mod next;
 mod show;
 
 pub use derive::{NeedState, requirement_in_progress};
+pub use handover::{Handover, ProgressRow, Warning, handover};
 pub use list::{Filter, Listing, LogRow, Row, list};
 pub use next::{NextRow, RequirementLine, next};
 pub use show::{EdgeLine, Shown, show};

@@ -106,3 +106,11 @@ pub(super) fn edges(node: &Node, relation: Relation) -> Vec<NodeId> {
 pub(super) fn find<'a>(all: &'a [Node], id: &NodeId) -> Option<&'a Node> {
     all.iter().find(|node| node.id() == id)
 }
+
+/// A requirement's outward reference, if the node is one.
+pub(super) fn reference(node: &Node) -> Option<String> {
+    match node.data() {
+        NodeData::Requirement(data) => data.reference.as_ref().map(|ref_| ref_.0.clone()),
+        _ => None,
+    }
+}

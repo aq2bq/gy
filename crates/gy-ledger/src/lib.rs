@@ -25,6 +25,6 @@ pub use store::{
     file, format, location, log,
 };
 pub use views::{
-    EdgeLine, Filter, Listing, LogRow, NeedState, NextRow, RequirementLine, Row, Shown, list, next,
-    requirement_in_progress, show,
+    EdgeLine, Filter, Handover, Listing, LogRow, NeedState, NextRow, ProgressRow, RequirementLine,
+    Row, Shown, Warning, handover, list, next, requirement_in_progress, show,
 };
