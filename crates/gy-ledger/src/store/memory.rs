@@ -1,6 +1,7 @@
 //! The in-memory implementation for the skeleton and tests.
-use super::file::{id_seed, unique_hash};
+use super::id::{id_seed, unique_hash};
 use super::{Actor, Error, FormatVersion, HistoryEntry, IdSource, Result, Store};
+use serde_json::Value;
 use std::{
     collections::{BTreeMap, BTreeSet},
     time::{SystemTime, UNIX_EPOCH},
@@ -13,6 +14,7 @@ pub struct MemoryStore {
     actor: Actor,
     committed: BTreeMap<String, Vec<u8>>,
     staged: Vec<(String, Vec<u8>)>,
+    staged_rename: Option<(String, String, usize)>,
     history: Vec<HistoryEntry>,
     staged_history: Vec<HistoryEntry>,
     undo_stack: Vec<Vec<(String, Option<Vec<u8>>)>>,
@@ -38,6 +40,7 @@ impl MemoryStore {
             actor,
             committed: BTreeMap::new(),
             staged: Vec::new(),
+            staged_rename: None,
             history: Vec::new(),
             staged_history: Vec::new(),
             undo_stack: Vec::new(),
@@ -72,10 +75,22 @@ impl Store for MemoryStore {
     }
     fn begin(&mut self) {
         self.staged.clear();
+        self.staged_rename = None;
         self.staged_history.clear();
     }
     fn stage(&mut self, key: impl Into<String>, value: impl Into<Vec<u8>>) {
         self.staged.push((key.into(), value.into()));
+    }
+    /// Stage a scope rename for the open transaction (n-ff2b). Returns how many
+    /// committed nodes carry the old scope.
+    fn rename_scope(&mut self, from: &str, to: &str) -> Result<usize> {
+        let nodes = self
+            .committed
+            .values()
+            .filter(|bytes| scope_of(bytes).as_deref() == Some(from))
+            .count();
+        self.staged_rename = Some((from.to_string(), to.to_string(), nodes));
+        Ok(nodes)
     }
     fn commit(&mut self) -> Result<()> {
         let mut before = Vec::new();
@@ -91,6 +106,23 @@ impl Store for MemoryStore {
             self.undo_stack.push(before);
             self.seq += 1;
         }
+        if let Some((from, to, _)) = self.staged_rename.take() {
+            let mut frame = Vec::new();
+            for (key, bytes) in self.committed.iter_mut() {
+                let mut value: Value = serde_json::from_slice(bytes)
+                    .map_err(|_| Error::invalid("a node is not valid JSON"))?;
+                if !super::replay::rename_value(&mut value, &from, &to) {
+                    continue;
+                }
+                frame.push((key.clone(), Some(bytes.clone())));
+                *bytes = serde_json::to_vec(&value)
+                    .map_err(|_| Error::invalid("a node is not valid JSON"))?;
+            }
+            if !frame.is_empty() {
+                self.undo_stack.push(frame);
+                self.seq += 1;
+            }
+        }
         for entry in &mut self.staged_history {
             entry.seq = self.seq;
         }
@@ -99,6 +131,7 @@ impl Store for MemoryStore {
     }
     fn rollback(&mut self) {
         self.staged.clear();
+        self.staged_rename = None;
         self.staged_history.clear();
     }
     fn record(&mut self, node: &str, what: &str, why: &str, source: &str) {
@@ -138,6 +171,12 @@ impl IdSource for MemoryStore {
         unique_hash(prefix, &seed, &used)
     }
 }
+fn scope_of(bytes: &[u8]) -> Option<String> {
+    serde_json::from_slice::<Value>(bytes)
+        .ok()
+        .and_then(|value| super::replay::scope_of(&value))
+}
+
 fn now() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)

@@ -1,31 +1,82 @@
 //! Replaying the event log: node state and history (D-82).
 use super::{Actor, Error, HistoryEntry, Result, log, snapshot};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{collections::BTreeMap, path::Path};
 
-/// Apply an event's changes to a node map: deleted removes, anything else
-/// inserts the carried value.
+/// The node's scope field, so the store renames it without a string key.
+#[derive(Serialize, Deserialize)]
+struct Scoped {
+    scope: String,
+    #[serde(flatten)]
+    rest: serde_json::Map<String, Value>,
+}
+
+/// The scope a stored node carries, or `None` when it is not a node.
+pub(super) fn scope_of(value: &Value) -> Option<String> {
+    serde_json::from_value::<Scoped>(value.clone())
+        .ok()
+        .map(|scoped| scoped.scope)
+}
+
+/// Move one stored node to another scope; returns whether it carried the old
+/// scope.
+pub(super) fn rename_value(value: &mut Value, from: &str, to: &str) -> bool {
+    let Ok(mut scoped) = serde_json::from_value::<Scoped>(value.clone()) else {
+        return false;
+    };
+    if scoped.scope != from {
+        return false;
+    }
+    scoped.scope = to.to_string();
+    match serde_json::to_value(&scoped) {
+        Ok(updated) => {
+            *value = updated;
+            true
+        }
+        Err(_) => false,
+    }
+}
+
+/// Apply an event's changes to a node map. A deletion removes, another node
+/// change inserts the carried value, and a scope rename repoints every node
+/// that carries the old scope.
 pub fn apply(nodes: &mut BTreeMap<String, Value>, event: &log::Event) {
     for change in &event.changes {
-        if change.change == "deleted" {
-            nodes.remove(&change.node);
-        } else {
-            nodes.insert(change.node.clone(), change.value.clone());
+        match change {
+            log::Change::Created { node, value } | log::Change::Updated { node, value } => {
+                nodes.insert(node.clone(), value.clone());
+            }
+            log::Change::Deleted { node, .. } => {
+                nodes.remove(node);
+            }
+            log::Change::ScopeRenamed { from, to, .. } => {
+                for value in nodes.values_mut() {
+                    rename_value(value, from, to);
+                }
+            }
         }
     }
 }
 
-/// Rebuild the history from every event, in order (AC-46).
+/// Rebuild the history from every event, in order (AC-46). A scope rename is
+/// one entry with an empty node and the kind `scope-renamed`.
 pub fn history(events: &[log::Event]) -> Result<Vec<HistoryEntry>> {
     let mut history = Vec::new();
     for event in events {
         for change in &event.changes {
+            let (node, what) = match change {
+                log::Change::Created { node, .. } => (node.clone(), "created"),
+                log::Change::Updated { node, .. } => (node.clone(), "updated"),
+                log::Change::Deleted { node, .. } => (node.clone(), "deleted"),
+                log::Change::ScopeRenamed { .. } => (String::new(), "scope-renamed"),
+            };
             history.push(HistoryEntry {
                 seq: event.seq,
                 at: event.at,
                 actor: Actor::new(event.actor.clone())?,
-                node: change.node.clone(),
-                what: change.change.clone(),
+                node,
+                what: what.to_string(),
                 why: event.why.clone(),
                 source: event.source.clone(),
             });

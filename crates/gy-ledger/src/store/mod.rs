@@ -2,6 +2,7 @@
 //! and where the canonical ledger lives. It uses no other layer (D-76).
 pub mod file;
 pub mod format;
+pub mod id;
 pub mod location;
 pub mod log;
 mod memory;
@@ -40,7 +41,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FormatVersion(pub u32);
 impl FormatVersion {
-    pub const CURRENT: Self = Self(1);
+    pub const CURRENT: Self = Self(2);
     pub fn supported(self) -> bool {
         self.0 <= Self::CURRENT.0
     }
@@ -102,6 +103,10 @@ pub trait Store: IdSource {
     fn begin(&mut self);
     /// Stage a node value under its key. An empty value removes the node.
     fn stage(&mut self, key: impl Into<String>, value: impl Into<Vec<u8>>);
+    /// Stage a scope rename for the open transaction (n-ff2b): every node that
+    /// carries the old scope moves to the new one, as one log change. Returns
+    /// how many nodes it affects.
+    fn rename_scope(&mut self, from: &str, to: &str) -> Result<usize>;
     fn commit(&mut self) -> Result<()>;
     fn rollback(&mut self);
     fn record(&mut self, node: &str, what: &str, why: &str, source: &str);

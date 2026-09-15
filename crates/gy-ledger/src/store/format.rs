@@ -38,11 +38,28 @@ pub fn write(dir: &Path, version: FormatVersion) -> Result<()> {
 }
 
 /// Migrate the ledger in place. A version bump keeps a copy of the old form
-/// and applies the whole migration in one transaction (D-77). N-41 fills this
-/// in; only a same-version call is a no-op today.
-pub fn migrate(from: FormatVersion, to: FormatVersion) -> Result<()> {
+/// before writing the new version (D-77): format 1 to 2 copies `format` and
+/// `events.jsonl` to `*.1.bak` (n-ff2b).
+pub fn migrate(dir: &Path, from: FormatVersion, to: FormatVersion) -> Result<()> {
     if from == to {
         return Ok(());
     }
-    Err(Error::invalid("ledger migration arrives with N-41"))
+    if from.0 == 1 && to.0 == 2 {
+        backup(dir, FILE)?;
+        backup(dir, super::log::FILE)?;
+        return write(dir, to);
+    }
+    Err(Error::invalid(format!(
+        "cannot migrate format {} to {}",
+        from.0, to.0
+    )))
+}
+
+/// Keep a copy of a file as `<name>.1.bak` before the version 1 to 2 migration.
+fn backup(dir: &Path, name: &str) -> Result<()> {
+    let source = dir.join(name);
+    if source.is_file() {
+        std::fs::copy(&source, dir.join(format!("{name}.1.bak")))?;
+    }
+    Ok(())
 }
