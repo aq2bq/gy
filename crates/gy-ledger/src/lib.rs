@@ -16,5 +16,8 @@ pub use model::{
     bearer_count, free_attribute,
 };
 pub use ops::Intent;
-pub use store::{Actor, Error, FormatVersion, HistoryEntry, IdSource, MemoryStore, Result, Store};
+pub use store::{
+    Actor, Error, FormatVersion, HistoryEntry, IdSource, MemoryStore, Result, Store, format,
+    location,
+};
 pub use views::{View, reads};

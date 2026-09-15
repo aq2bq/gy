@@ -271,6 +271,9 @@ dependencies = [
 [[package]]
 name = "gy-ledger"
 version = "0.4.2"
+dependencies = [
+ "tempfile",
+]
 
 [[package]]
 name = "hashbrown"
