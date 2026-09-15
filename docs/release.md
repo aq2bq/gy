@@ -14,6 +14,9 @@
 2. 移行の案内にあるコード例を、下流のクレートから実行して確かめる。読める例とコンパイルが通る例は別である。`#[non_exhaustive]` の型は、定義したクレートの外では構造体リテラルと `..Default::default()` を受け付けない。下流は `Default::default()` を作って公開フィールドへ代入する。
 3. `cargo fmt --all -- --check`、`cargo clippy --workspace --all-targets --locked -- -D warnings`、`cargo test --workspace --locked` を実行する。
 4. `cargo publish --workspace --dry-run --locked` を実行する。`gy-ledger` と `gy` を依存の向きの順に package して検証する（`publish = false` の `gy-migrate` と `gy-core` は対象外）。`--allow-dirty` はコミット前の確認にだけ使い、公開はきれいな検証済みのコミットから行う。
+
+> 同じ版番号で dry-run を繰り返すと、前回の検証で組んだ gy-ledger の成果物（`target/` と `~/.cargo/registry/src/*/gy-ledger-<版>`）が再利用され、`gy` の検証が古い API で失敗することがある。その場合は `cargo clean` と当該ディレクトリの削除の後に dry-run をやり直す（2026-09-15 の 0.5.0 の準備で確認）。
+
 5. クレートごとに `cargo package --list` を実行し、埋め込んだファイルが package に含まれることを確かめる。欠けたファイルは手元のビルドを通り、公開したクレートでだけ壊れる。
 6. 版を揃えたコミットを行う。
 
