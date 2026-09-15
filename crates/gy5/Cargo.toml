@@ -1,0 +1,22 @@
+[package]
+name = "gy5"
+description = "gy5 — the new gy ledger CLI over gy-ledger"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "gy5"
+path = "src/main.rs"
+
+[dependencies]
+gy-ledger = { path = "../gy-ledger" }
+serde.workspace = true
+serde_json.workspace = true
+clap.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
