@@ -20,6 +20,11 @@ impl<S: Store> Repository<S> {
     pub fn store(&self) -> &S {
         &self.store
     }
+    /// The store beneath this repository, for operations that own their own
+    /// transaction such as undo.
+    pub fn store_mut(&mut self) -> &mut S {
+        &mut self.store
+    }
     pub fn next_id(&mut self, kind: NodeKind) -> Result<NodeId> {
         NodeId::mint(kind, &mut self.store)
     }

@@ -44,9 +44,13 @@ pub struct Decision {
 pub struct Requirement {
     pub state: RequirementState,
     pub reference: Option<Ref>,
+    #[serde(default)]
     pub approval: Option<Approval>,
+    #[serde(default)]
     pub revisions: Vec<Revision>,
+    #[serde(default)]
     pub completion: Option<Completion>,
+    #[serde(default)]
     pub cancellation: Option<Cancellation>,
 }
 
@@ -216,6 +220,15 @@ impl Node {
     pub fn set_body(&mut self, body: impl Into<String>) {
         self.body = body.into();
     }
+    /// Retitle a node. An empty title is rejected (invariant).
+    pub fn set_title(&mut self, title: impl Into<String>) -> Result<()> {
+        let title = title.into();
+        if title.trim().is_empty() {
+            return Err(Error::invalid("a node needs a nonempty title"));
+        }
+        self.title = title;
+        Ok(())
+    }
     pub fn add_alias(&mut self, alias: Alias) {
         self.aliases.push(alias);
     }
@@ -224,6 +237,14 @@ impl Node {
     }
     pub fn set_free(&mut self, name: impl Into<String>, value: impl Into<String>) {
         self.free.insert(name.into(), value.into());
+    }
+    /// Append to a free attribute, joined by a newline; create it if absent.
+    pub fn append_free(&mut self, name: &str, value: &str) {
+        let joined = match self.free.get(name) {
+            Some(current) => format!("{current}\n{value}"),
+            None => value.to_string(),
+        };
+        self.free.insert(name.to_string(), joined);
     }
     pub fn state(&self) -> Option<RequirementState> {
         match &self.data {

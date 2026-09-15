@@ -3,6 +3,7 @@ pub mod config;
 pub mod criterion_add;
 pub mod criterion_satisfy;
 pub mod decide;
+pub mod edit;
 pub mod link;
 mod marks;
 pub mod need_add;
@@ -15,10 +16,12 @@ pub mod req_approve;
 pub mod req_cancel;
 pub mod req_done;
 pub mod req_revise;
+pub mod undo;
 
 pub use criterion_add::CriterionAdd;
 pub use criterion_satisfy::CriterionSatisfy;
 pub use decide::Decide;
+pub use edit::Edit;
 pub use need_add::NeedAdd;
 pub use need_close::NeedClose;
 pub use question_add::QuestionAdd;
@@ -29,6 +32,7 @@ pub use req_approve::ReqApprove;
 pub use req_cancel::ReqCancel;
 pub use req_done::ReqDone;
 pub use req_revise::ReqRevise;
+pub use undo::Undo;
 
 use crate::model::{Node, NodeId, NodeKind};
 use crate::store::{Error, Result, Store};

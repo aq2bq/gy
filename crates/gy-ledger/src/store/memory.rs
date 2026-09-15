@@ -1,5 +1,5 @@
 //! The in-memory implementation for the skeleton and tests.
-use super::{Actor, FormatVersion, HistoryEntry, IdSource, Result, Store};
+use super::{Actor, Error, FormatVersion, HistoryEntry, IdSource, Result, Store};
 use std::{
     collections::BTreeMap,
     time::{SystemTime, UNIX_EPOCH},
@@ -14,6 +14,7 @@ pub struct MemoryStore {
     staged: Vec<(String, Vec<u8>)>,
     history: Vec<HistoryEntry>,
     staged_history: Vec<HistoryEntry>,
+    undo_stack: Vec<Vec<(String, Option<Vec<u8>>)>>,
     salt: u64,
 }
 impl MemoryStore {
@@ -37,6 +38,7 @@ impl MemoryStore {
             staged: Vec::new(),
             history: Vec::new(),
             staged_history: Vec::new(),
+            undo_stack: Vec::new(),
             salt: 0,
         }
     }
@@ -73,12 +75,17 @@ impl Store for MemoryStore {
         self.staged.push((key.into(), value.into()));
     }
     fn commit(&mut self) -> Result<()> {
+        let mut before = Vec::new();
         for (key, value) in self.staged.drain(..) {
+            before.push((key.clone(), self.committed.get(&key).cloned()));
             if value.is_empty() {
                 self.committed.remove(&key);
             } else {
                 self.committed.insert(key, value);
             }
+        }
+        if !before.is_empty() {
+            self.undo_stack.push(before);
         }
         self.history.append(&mut self.staged_history);
         Ok(())
@@ -99,6 +106,20 @@ impl Store for MemoryStore {
     }
     fn history(&self) -> &[HistoryEntry] {
         &self.history
+    }
+    /// Re-apply the previous value of every node the last commit touched, as a
+    /// new transaction so the undo itself is history (D-82).
+    fn undo(&mut self, why: &str, source: &str) -> Result<()> {
+        let frame = self
+            .undo_stack
+            .pop()
+            .ok_or_else(|| Error::invalid("there is nothing to undo"))?;
+        self.begin();
+        for (key, previous) in frame {
+            self.stage(key.clone(), previous.unwrap_or_default());
+            self.record(&key, "undone", why, source);
+        }
+        self.commit()
     }
 }
 impl IdSource for MemoryStore {

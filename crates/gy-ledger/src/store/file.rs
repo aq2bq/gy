@@ -109,36 +109,6 @@ impl FileStore {
         }
         Ok(changes)
     }
-    /// Append the inverse of the last transaction as a new line (D-82). The
-    /// log is never rewritten; the undo is one more transaction with the given
-    /// why and source. A created node is deleted, an updated node returns to
-    /// its earlier value, and a deleted node comes back.
-    pub fn undo(&mut self, why: &str, source: &str) -> Result<()> {
-        let (events, _) = log::read(&self.dir)?;
-        let last = events
-            .last()
-            .ok_or_else(|| Error::invalid("there is nothing to undo"))?;
-        let mut before = BTreeMap::new();
-        for event in &events[..events.len() - 1] {
-            replay::apply(&mut before, event);
-        }
-        self.begin();
-        for change in &last.changes {
-            let value = match change.change.as_str() {
-                "created" => Vec::new(),
-                "updated" => replay::encode(
-                    before
-                        .get(&change.node)
-                        .ok_or_else(|| Error::invalid("the updated node has no earlier value"))?,
-                )?,
-                "deleted" => replay::encode(&change.value)?,
-                _ => return Err(Error::invalid("the log has an unknown change kind")),
-            };
-            self.stage(change.node.clone(), value);
-            self.record(&change.node, change.change.as_str(), why, source);
-        }
-        self.commit()
-    }
     /// Commit on `Ok`, roll back on `Err`, so a half-finished change writes nothing.
     pub fn transaction<T>(&mut self, f: impl FnOnce(&mut Self) -> Result<T>) -> Result<T> {
         self.begin();
@@ -239,6 +209,36 @@ impl Store for FileStore {
     }
     fn history(&self) -> &[HistoryEntry] {
         &self.history
+    }
+    /// Append the inverse of the last transaction as a new line (D-82). The
+    /// log is never rewritten; the undo is one more transaction with the given
+    /// why and source. A created node is deleted, an updated node returns to
+    /// its earlier value, and a deleted node comes back.
+    fn undo(&mut self, why: &str, source: &str) -> Result<()> {
+        let (events, _) = log::read(&self.dir)?;
+        let last = events
+            .last()
+            .ok_or_else(|| Error::invalid("there is nothing to undo"))?;
+        let mut before = BTreeMap::new();
+        for event in &events[..events.len() - 1] {
+            replay::apply(&mut before, event);
+        }
+        self.begin();
+        for change in &last.changes {
+            let value = match change.change.as_str() {
+                "created" => Vec::new(),
+                "updated" => replay::encode(
+                    before
+                        .get(&change.node)
+                        .ok_or_else(|| Error::invalid("the updated node has no earlier value"))?,
+                )?,
+                "deleted" => replay::encode(&change.value)?,
+                _ => return Err(Error::invalid("the log has an unknown change kind")),
+            };
+            self.stage(change.node.clone(), value);
+            self.record(&change.node, change.change.as_str(), why, source);
+        }
+        self.commit()
     }
 }
 impl IdSource for FileStore {

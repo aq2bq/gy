@@ -104,6 +104,9 @@ pub trait Store: IdSource {
     fn rollback(&mut self);
     fn record(&mut self, node: &str, what: &str, why: &str, source: &str);
     fn history(&self) -> &[HistoryEntry];
+    /// Invert the last transaction as a new transaction with this why and
+    /// source (D-82). Nothing to invert is an error.
+    fn undo(&mut self, why: &str, source: &str) -> Result<()>;
 }
 
 /// The 32-bit FNV-1a hash used for short IDs and the location key (D-74, D-82).

@@ -16,8 +16,9 @@ pub use model::{
     Question, Ref, Relation, Requirement, RequirementState, Revision, bearer_count, free_attribute,
 };
 pub use ops::{
-    CriterionAdd, CriterionSatisfy, Decide, NeedAdd, NeedClose, Operation, Outcome, QuestionAdd,
-    QuestionClose, Repository, ReqAdd, ReqApprove, ReqCancel, ReqDone, ReqRevise, config, link,
+    CriterionAdd, CriterionSatisfy, Decide, Edit, NeedAdd, NeedClose, Operation, Outcome,
+    QuestionAdd, QuestionClose, Repository, ReqAdd, ReqApprove, ReqCancel, ReqDone, ReqRevise,
+    Undo, config, link,
 };
 pub use store::{
     Actor, Error, FileStore, FormatVersion, HistoryEntry, IdSource, MemoryStore, Result, Store,
