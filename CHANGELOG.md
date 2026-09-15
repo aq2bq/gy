@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.6.1 - 2026-09-16
+
+### Added
+
+- `serve`: a read-only web view of the ledger on 127.0.0.1. It answers
+  the six questions first, then shows now, lists, one node, search on
+  `/`, a time band that replays the log, live updates, and a fractal
+  graph. Every read takes `at=<seq>`; the HTTP layer is the standard
+  library alone; the end-to-end tests live under `e2e/`. Twenty-two
+  terminal commands.
+
+### Fixed
+
+- An open repository's history no longer says `put`: a write is
+  `created` or `updated`, and a live history reads the same as a
+  reopened one.
+- `undo` says whether the next undo would be a redo, and the cheatsheet
+  explains that a second undo undoes the first.
+
 ## 0.6.0 - 2026-09-15
 
 ### Changed (incompatible)

@@ -70,7 +70,7 @@ Reads (6):
 | `next` | The needs whose prerequisites are settled |
 | `handover` | In-progress requirements and the counts a session needs to resume |
 | `publish [--scope] [--since] [--out]` | Write the record at a point and range into a directory: one file per node and a scope index |
-| `serve` | Read the ledger in a browser, on 127.0.0.1 until stopped |
+| `serve` | Read the ledger in a browser, on 127.0.0.1 (GET only, no write path), until stopped |
 
 Writes (16):
 
