@@ -1,9 +1,10 @@
 //! How a requirement moves and how a question closes.
 use crate::store::{Error, Result};
+use serde::{Deserialize, Serialize};
 
 /// The four requirement states (D-70). `Filed` is "起票済み": the request has
 /// been filed but the design is not yet approved.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum RequirementState {
     #[default]
     Filed,
@@ -39,7 +40,7 @@ impl RequirementState {
 }
 
 /// How a question closed (fact / decision / non-decision).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Closure {
     Fact,
     Decision,

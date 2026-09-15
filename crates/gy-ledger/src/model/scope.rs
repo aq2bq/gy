@@ -1,9 +1,10 @@
 //! A decision's applicability conditions.
 use crate::store::{Error, Result};
+use serde::{Deserialize, Serialize};
 
 /// An empty scope needs the unrecorded marker, which only the migration sets
 /// (proposal-v2 §7, N-41).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DecisionScope {
     text: String,
     unrecorded: bool,

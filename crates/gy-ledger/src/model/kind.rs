@@ -1,8 +1,9 @@
 //! Node identity: the kind, the short-hash ID, old aliases, and the outward ref.
 use crate::store::{Error, IdSource, Result};
+use serde::{Deserialize, Serialize};
 
 /// The five node kinds. A gate is not a kind (D-68).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum NodeKind {
     #[default]
     Need,
@@ -29,7 +30,7 @@ impl NodeKind {
 
 /// A node identity: the kind and a short hash. There is no central counter
 /// (D-74); a collision mints a longer hash, which N-38 implements.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NodeId {
     kind: NodeKind,
     hash: String,
@@ -45,7 +46,7 @@ impl NodeId {
     pub fn mint(kind: NodeKind, ids: &mut dyn IdSource) -> Result<Self> {
         Ok(Self {
             kind,
-            hash: ids.next_hash(kind.name())?,
+            hash: ids.next_hash(kind.prefix())?,
         })
     }
     pub fn kind(&self) -> NodeKind {
@@ -62,9 +63,9 @@ impl std::fmt::Display for NodeId {
 }
 
 /// An old ID, kept so a renamed node stays reachable (D-74, N-41).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Alias(pub String);
 
 /// An opaque outward reference. gy never reads its target (D-73).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Ref(pub String);

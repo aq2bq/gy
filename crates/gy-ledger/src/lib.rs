@@ -17,7 +17,7 @@ pub use model::{
 };
 pub use ops::Intent;
 pub use store::{
-    Actor, Error, FormatVersion, HistoryEntry, IdSource, MemoryStore, Result, Store, format,
-    location,
+    Actor, Error, FileStore, FormatVersion, HistoryEntry, IdSource, MemoryStore, Result, Store,
+    file, format, location, log,
 };
 pub use views::{View, reads};

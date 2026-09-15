@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 
 use super::{Alias, Closure, DecisionScope, Link, NodeId, NodeKind, Ref, RequirementState};
 use crate::store::{Error, Result};
+use serde::{Deserialize, Serialize};
 
 /// Free attributes carried verbatim. This is the model's only string-keyed
 /// storage; every other node field is typed.
@@ -18,36 +19,36 @@ pub fn free_attribute<'a>(attributes: &'a Attributes, name: &str) -> Option<&'a 
     attributes.get("attributes").and_then(|bag| bag.get(name))
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Need {
     pub targets: Vec<NodeId>,
     pub spawned_by: Vec<NodeId>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Question {
     pub closure: Option<Closure>,
     pub decider: Option<String>,
     pub options: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Decision {
     pub scope: DecisionScope,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Requirement {
     pub state: RequirementState,
     pub reference: Option<Ref>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Criterion {
     pub satisfied: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NodeData {
     Need(Need),
     Question(Question),
@@ -69,7 +70,7 @@ impl NodeData {
 
 /// A node. Its fields are typed; `free_attribute` is the single boundary that
 /// reads a free attribute by string key.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Node {
     id: NodeId,
     title: String,

@@ -95,9 +95,9 @@ impl Store for MemoryStore {
     }
 }
 impl IdSource for MemoryStore {
-    fn next_hash(&mut self, kind: &str) -> Result<String> {
+    fn next_hash(&mut self, prefix: &str) -> Result<String> {
         self.salt += 1;
-        let seed = format!("{kind}:{}:{}", now(), self.salt);
+        let seed = format!("{prefix}:{}:{}", now(), self.salt);
         Ok(format!("{:04x}", super::fnv1a(&seed) & 0xffff))
     }
 }

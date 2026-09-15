@@ -1,9 +1,12 @@
 //! The store layer: transactions, ID generation, history, the format version,
 //! and where the canonical ledger lives. It uses no other layer (D-76).
+pub mod file;
 pub mod format;
 pub mod location;
+pub mod log;
 mod memory;
 
+pub use file::FileStore;
 pub use memory::MemoryStore;
 use std::env;
 
@@ -78,9 +81,10 @@ pub struct HistoryEntry {
 }
 
 /// A source of short ID hashes. Minting is the store's job and the ID type is
-/// the model's (D-74); a collision mints a longer hash, which N-38 implements.
+/// the model's (D-74); a collision mints a longer hash (N-38). The prefix
+/// separates kinds and lets the store check the ids already in use.
 pub trait IdSource {
-    fn next_hash(&mut self, kind: &str) -> Result<String>;
+    fn next_hash(&mut self, prefix: &str) -> Result<String>;
 }
 
 /// Transactional storage. `commit` applies every staged change or, on error,

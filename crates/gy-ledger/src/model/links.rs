@@ -2,10 +2,11 @@
 //! directions.
 use super::{NodeId, NodeKind};
 use crate::store::{Error, Result};
+use serde::{Deserialize, Serialize};
 
 /// The closed set of canonical relationships (D-76). Each has an inverse name,
 /// so a link derives the other direction rather than being handed it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Relation {
     Closes,
     Narrows,
@@ -64,7 +65,7 @@ impl Relation {
 
 /// A directed edge. `label` is the relation and `reversed` marks the inverse
 /// side, so the name is derived from the relation and never stored.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Edge {
     pub from: NodeId,
     pub label: Relation,
@@ -82,7 +83,7 @@ impl Edge {
 }
 
 /// A relationship carrying both directions, so a one-sided edge cannot exist.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Link {
     forward: Edge,
     reverse: Edge,
