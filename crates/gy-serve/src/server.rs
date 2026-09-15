@@ -2,6 +2,7 @@
 //! one thread per connection, and the two conversions. GET only; the request
 //! line and the headers are read, the body never is.
 use crate::api;
+use crate::graph_cache::GraphCache;
 use crate::http;
 use crate::watch::Watch;
 use gy_ledger::{Error, FileStore, MemoryStore, Repository, Result};
@@ -41,12 +42,14 @@ pub fn serve(open: Opener, ledger: PathBuf) -> Result<()> {
 pub fn run(listener: TcpListener, open: Opener, ledger: PathBuf) -> Result<()> {
     let open = Arc::new(open);
     let watch = Watch::start(ledger);
+    let cache = GraphCache::new();
     for stream in listener.incoming() {
         let Ok(stream) = stream else { continue };
         let open = open.clone();
         let watch = watch.clone();
+        let cache = cache.clone();
         std::thread::spawn(move || {
-            let _ = connection(&open, &watch, stream);
+            let _ = connection(&open, &watch, &cache, stream);
         });
     }
     Ok(())
@@ -69,7 +72,12 @@ pub fn bind() -> Result<(TcpListener, u16)> {
 
 /// One connection: read the request, answer, close. A failure here ends this
 /// thread only.
-fn connection(open: &Opener, watch: &Watch, mut stream: TcpStream) -> std::io::Result<()> {
+fn connection(
+    open: &Opener,
+    watch: &Watch,
+    cache: &GraphCache,
+    mut stream: TcpStream,
+) -> std::io::Result<()> {
     let _ = stream.set_read_timeout(Some(READ_TIMEOUT));
     let session = match read_request(&mut stream) {
         Read::Request(request) => request,
@@ -80,6 +88,11 @@ fn connection(open: &Opener, watch: &Watch, mut stream: TcpStream) -> std::io::R
     };
     let answer = if session.path == "/api/wait" {
         api::wait::wait(watch, &session)
+    } else if session.path == "/api/graph" {
+        match requested_at(&session) {
+            Ok(at) => api::graph::answer(open, cache, at, &session),
+            Err(response) => response,
+        }
     } else {
         answer(open, &session)
     };
@@ -90,21 +103,29 @@ fn connection(open: &Opener, watch: &Watch, mut stream: TcpStream) -> std::io::R
 /// and a broken one is 400. The scrubber always sees the whole log, so
 /// `/api/ticks` ignores `at` (n-10e1).
 pub fn answer(open: &Opener, session: &http::Request) -> http::Response {
-    let at = if session.path == "/api/ticks" {
-        None
-    } else {
-        match session.param("at") {
-            Some(text) => match text.parse::<u64>() {
-                Ok(seq) => Some(seq),
-                Err(_) => return http::Response::text(400, "at is not a sequence"),
-            },
-            None => None,
-        }
+    let at = match requested_at(session) {
+        Ok(at) => at,
+        Err(response) => return response,
     };
     match open(at) {
         Ok(Opened::Now(repo)) => api::route(&repo, session),
         Ok(Opened::At(repo)) => api::route(&repo, session),
         Err(error) => http::Response::text(500, &error.to_string()),
+    }
+}
+
+/// The point in the log a request asks for: `at` when it is there and sound.
+/// The scrubber always sees the whole log, so `/api/ticks` ignores it.
+pub fn requested_at(session: &http::Request) -> std::result::Result<Option<u64>, http::Response> {
+    if session.path == "/api/ticks" {
+        return Ok(None);
+    }
+    match session.param("at") {
+        Some(text) => match text.parse::<u64>() {
+            Ok(seq) => Ok(Some(seq)),
+            Err(_) => Err(http::Response::text(400, "at is not a sequence")),
+        },
+        None => Ok(None),
     }
 }
 

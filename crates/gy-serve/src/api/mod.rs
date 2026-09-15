@@ -1,4 +1,5 @@
 //! The routes: plain functions over `http`, testable without a socket (ac-a49a).
+pub mod graph;
 pub mod list;
 pub mod node;
 pub mod now;
