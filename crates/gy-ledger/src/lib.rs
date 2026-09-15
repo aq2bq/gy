@@ -24,4 +24,4 @@ pub use store::{
     Actor, Error, FileStore, FormatVersion, HistoryEntry, IdSource, MemoryStore, Result, Store,
     file, format, location, log,
 };
-pub use views::{EdgeLine, Shown, show};
+pub use views::{EdgeLine, Filter, Listing, LogRow, Row, Shown, list, show};

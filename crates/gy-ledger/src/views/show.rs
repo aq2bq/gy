@@ -1,5 +1,6 @@
 //! show: one node, or several, in the verbatim a kind calls for, or in full
 //! (proposal-v3 4). A requirement always shows its id with its ref beside it.
+use super::open_or_closed;
 use crate::model::{Criterion, Edge, Node, NodeData, NodeKind};
 use crate::ops::repository::{Error, Repository, Result, Store};
 use serde::Serialize;
@@ -148,10 +149,6 @@ pub fn show<S: Store>(repo: &Repository<S>, texts: &[String], full: bool) -> Res
         out.push(Shown::new(&node, &incoming, full));
     }
     Ok(out)
-}
-
-fn open_or_closed(closed: bool) -> &'static str {
-    if closed { "closed" } else { "open" }
 }
 
 fn criterion_line(data: &Criterion) -> String {
