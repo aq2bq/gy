@@ -1,5 +1,8 @@
 //! The routes: plain functions over `http`, testable without a socket (ac-a49a).
+pub mod list;
+pub mod node;
 pub mod now;
+pub mod search;
 pub mod shell;
 
 use crate::assets;
@@ -15,7 +18,12 @@ pub fn route<S: Store>(repo: &Repository<S>, req: &Request) -> Response {
         "/" | "/index.html" => index(req),
         "/api/shell" => shell::shell(repo, req),
         "/api/now" => now::answer(repo, req),
-        _ => static_file(req),
+        "/api/list" => list::rows(repo, req),
+        "/api/search" => search::search(repo, req),
+        _ => match req.path.strip_prefix("/api/node/") {
+            Some(id) => node::node(repo, id),
+            None => static_file(req),
+        },
     }
 }
 
