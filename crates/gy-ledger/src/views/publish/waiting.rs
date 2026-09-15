@@ -65,7 +65,8 @@ pub(super) fn undecided<S: Store>(
     Ok(out)
 }
 
-/// The handover warnings and errors, listed for a human reader.
+/// The handover warnings and errors as counts by kind; the list itself is not
+/// shown (D-87: read it with `handover` or `show`).
 pub(super) fn attention<S: Store>(
     repository: &Repository<S>,
     scope: Option<&str>,
@@ -73,15 +74,60 @@ pub(super) fn attention<S: Store>(
     let report = handover(repository, scope)?;
     let mut out = String::new();
     for warning in &report.warnings {
-        let _ = writeln!(out, "- {}: {}", warning.label, warning.count);
+        let _ = writeln!(
+            out,
+            "- {}: {}",
+            warning_label(&warning.label),
+            warning.count
+        );
     }
-    for error in &report.errors {
-        let _ = writeln!(out, "- エラー: {error}");
+    for (kind, count) in error_counts(&report.errors) {
+        let _ = writeln!(out, "- {kind}: {count}");
     }
     if report.warnings.is_empty() && report.errors.is_empty() {
         out.push_str("注意は無し。\n");
     }
     Ok(out)
+}
+
+/// Integrity errors grouped by kind. The two shapes come from the handover
+/// integrity check; anything else is kept in one more bucket.
+fn error_counts(errors: &[String]) -> Vec<(&'static str, usize)> {
+    let (mut dangling, mut filed, mut other) = (0, 0, 0);
+    for error in errors {
+        if error.contains(" missing ") {
+            dangling += 1;
+        } else if error.contains(" is filed as ") {
+            filed += 1;
+        } else {
+            other += 1;
+        }
+    }
+    let mut out = Vec::new();
+    for (kind, count) in [
+        ("参照先の無い辺", dangling),
+        ("filed-as の先が要求でない", filed),
+        ("その他の整合エラー", other),
+    ] {
+        if count > 0 {
+            out.push((kind, count));
+        }
+    }
+    out
+}
+
+/// The warning kind in the words of the reader; an unknown label is kept.
+fn warning_label(label: &str) -> &str {
+    match label {
+        "in-progress requirements relying on a superseded decision" => {
+            "置き換えられた決定に依拠する進行中の要求"
+        }
+        "in-progress requirements relying on an unrecorded decision scope" => {
+            "成立範囲が未記録の決定に依拠する進行中の要求"
+        }
+        "criteria with an empty body" => "本文が空の受け入れ条件",
+        other => other,
+    }
 }
 
 fn question_item(out: &mut String, node: &Node) {

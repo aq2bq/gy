@@ -3,7 +3,7 @@ mod common;
 use common::{criterion, fixture, stderr, stdout};
 
 #[test]
-fn publish_prints_the_reading() {
+fn publish_prints_the_one_page_reading() {
     let fx = fixture();
     fx.seed(&[criterion("0001", "a criterion")]);
 
@@ -11,8 +11,29 @@ fn publish_prints_the_reading() {
     assert!(out.status.success(), "{}", stderr(&out));
     let text = stdout(&out);
     assert!(text.contains("# gy の公開物"), "{text}");
-    assert!(text.contains("## ノード"), "{text}");
+    assert!(text.contains("## いま判断待ち"), "{text}");
+    assert!(text.contains("## 未決の論点"), "{text}");
+    assert!(text.contains("## 注意"), "{text}");
+    assert!(!text.contains("## ノード"), "{text}");
+    assert!(!text.contains("a criterion"), "{text}");
+}
+
+#[test]
+fn publish_describes_the_named_node_only() {
+    let fx = fixture();
+    fx.seed(&[criterion("0001", "a criterion")]);
+
+    let out = fx.run(&["publish", "ac-0001"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    let text = stdout(&out);
     assert!(text.contains("a criterion"), "{text}");
+    assert!(!text.contains("# gy の公開物"), "{text}");
+    assert!(
+        !text
+            .lines()
+            .any(|line| line.starts_with("## ") && !line.starts_with("### ")),
+        "{text}"
+    );
 }
 
 #[test]

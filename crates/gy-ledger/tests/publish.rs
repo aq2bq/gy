@@ -1,6 +1,6 @@
 use gy_ledger::{
     Actor, Alias, DecisionScope, FormatVersion, Link, MemoryStore, Node, NodeData, NodeId,
-    NodeKind, Ref, Relation, Repository, RequirementState, Store, publish,
+    NodeKind, Ref, Relation, Repository, RequirementState, Store, describe, publish,
 };
 
 const SCOPE: &str = "a";
@@ -69,6 +69,7 @@ fn publish_answers_the_master_questions() {
     assert!(text.contains("## いま判断待ち"), "{text}");
     assert!(text.contains("## 未決の論点"), "{text}");
     assert!(text.contains("## 注意"), "{text}");
+    assert!(!text.contains("## ノード"), "{text}");
 
     let planned: Vec<&str> = text
         .lines()
@@ -168,17 +169,41 @@ fn lineage_ledger() -> Repository<MemoryStore> {
 }
 
 #[test]
-fn publish_shows_nodes_with_relationships_and_provenance() {
+fn describe_shows_only_the_named_nodes() {
     let repo = lineage_ledger();
-    let text = publish(&repo, None, None).unwrap();
-    assert!(text.contains("## ノード"), "{text}");
-    assert!(text.contains("### "), "{text}");
+    let ids = [
+        id(NodeKind::Decision, "0011"),
+        id(NodeKind::Requirement, "0013"),
+    ];
+    let text = describe(&repo, &ids).unwrap();
+    assert!(
+        !text
+            .lines()
+            .any(|line| line.starts_with("## ") && !line.starts_with("### ")),
+        "{text}"
+    );
+    let headings = text.lines().filter(|line| line.starts_with("### ")).count();
+    assert_eq!(headings, 2, "{text}");
     assert!(text.contains("狭める"), "{text}");
     assert!(text.contains("mark: the changed part"), "{text}");
     assert!(text.contains("来歴:"), "{text}");
     assert!(text.contains("- ニーズ: "), "{text}");
     assert!(text.contains("- 依拠する決定: "), "{text}");
     assert!(text.contains("- 状態: filed"), "{text}");
+}
+
+#[test]
+fn attention_counts_without_listing() {
+    let mut repo = repo();
+    let mut need = Node::need(id(NodeKind::Need, "0020"), SCOPE, DATE, "dangling").unwrap();
+    let missing = id(NodeKind::Criterion, "9999");
+    need.link(Link::new(need.id().clone(), Relation::Targets, missing).unwrap());
+    seed(&mut repo, &[need]);
+
+    let text = publish(&repo, None, None).unwrap();
+    assert!(text.contains("## 注意"), "{text}");
+    assert!(text.contains("参照先の無い辺: 1"), "{text}");
+    assert!(!text.contains("missing"), "{text}");
 }
 
 #[test]

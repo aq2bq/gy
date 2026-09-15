@@ -1,14 +1,15 @@
-//! publish: the human-facing reading that answers the master's six questions
-//! (D-85, D-71). Every id is printed beside its title (D-62).
+//! publish: the human-facing reading (D-85, D-87). The default is a one-page
+//! reading — what waits on the master, the undecided questions, the attention
+//! counts, and the period's changes. Naming nodes adds their descriptions.
 mod changes;
 mod nodes;
 mod waiting;
 
-use crate::model::{Node, NodeData};
+use crate::model::{Node, NodeData, NodeId};
 use crate::ops::repository::{Repository, Result, Store};
 
-/// The Markdown reading for `scope`, with a change section when `since` is
-/// given.
+/// The default one-page reading. The node descriptions are not included; name
+/// nodes with `describe` to get them.
 pub fn publish<S: Store>(
     repository: &Repository<S>,
     scope: Option<&str>,
@@ -19,15 +20,18 @@ pub fn publish<S: Store>(
     out.push_str(&waiting::judgement(repository, scope)?);
     out.push_str("\n## 未決の論点\n");
     out.push_str(&waiting::undecided(repository, scope)?);
-    out.push_str("\n## ノード\n");
-    out.push_str(&nodes::nodes(repository, scope)?);
+    out.push_str("\n## 注意\n");
+    out.push_str(&waiting::attention(repository, scope)?);
     if let Some(since) = since {
         out.push_str("\n## この期間の変更\n");
         out.push_str(&changes::changes(repository, since)?);
     }
-    out.push_str("\n## 注意\n");
-    out.push_str(&waiting::attention(repository, scope)?);
     Ok(out)
+}
+
+/// The description of the named nodes only, with nothing else (D-87).
+pub fn describe<S: Store>(repository: &Repository<S>, ids: &[NodeId]) -> Result<String> {
+    nodes::describe(repository, ids)
 }
 
 /// The new id with its old aliases and, for a requirement, its reference beside

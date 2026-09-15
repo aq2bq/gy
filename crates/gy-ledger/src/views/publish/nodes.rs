@@ -1,20 +1,20 @@
-//! The node section: every node with its title, state, verbatim, and its
-//! relationships in human words (D-85 questions 1, 3, 4).
+//! The node description: one named node with its title, state, verbatim, and
+//! its relationships in human words (D-85 questions 1, 3, 4; D-87 names the
+//! nodes).
 use super::super::show::show;
-use super::{in_scope, label};
-use crate::model::{Node, NodeData, NodeKind, Relation, Requirement};
-use crate::ops::repository::{Repository, Result, Store};
+use super::label;
+use crate::model::{Node, NodeData, NodeId, NodeKind, Relation, Requirement};
+use crate::ops::repository::{Error, Repository, Result, Store};
 use std::fmt::Write;
 
-pub(super) fn nodes<S: Store>(repository: &Repository<S>, scope: Option<&str>) -> Result<String> {
+/// The description of each named node, and nothing else.
+pub(super) fn describe<S: Store>(repository: &Repository<S>, ids: &[NodeId]) -> Result<String> {
     let mut out = String::new();
-    for node in repository.all()? {
-        if in_scope(&node, scope) {
-            out.push_str(&section(repository, &node)?);
-        }
-    }
-    if out.is_empty() {
-        out.push_str("ノードは無し。\n");
+    for id in ids {
+        let node = repository
+            .get(id)?
+            .ok_or_else(|| Error::invalid(format!("{id} does not exist")))?;
+        out.push_str(&section(repository, &node)?);
     }
     Ok(out)
 }

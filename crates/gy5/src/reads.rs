@@ -3,7 +3,7 @@
 use crate::output::emit;
 use crate::repo;
 use crate::{Cli, Command};
-use gy_ledger::{Error, Filter, NodeKind, Result, config, list, publish};
+use gy_ledger::{Error, Filter, NodeKind, Result, config, describe, list, publish};
 use std::path::{Path, PathBuf};
 
 pub fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
@@ -33,16 +33,26 @@ pub fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
     emit(cli.json, &list(&repository, &filter)?)
 }
 
-/// The reading goes to `--out`, else gy.toml's `output`, else stdout.
+/// The reading goes to `--out`, else gy.toml's `output`, else stdout. Naming
+/// nodes switches to their description only (D-87).
 pub fn write_publish(
     cli: &Cli,
     root: &Path,
     ledger: &Path,
+    ids: &[String],
     since: Option<u64>,
     out: Option<&Path>,
 ) -> Result<()> {
     let repository = repo::open(ledger)?;
-    let text = publish(&repository, cli.scope.as_deref(), since)?;
+    let text = if ids.is_empty() {
+        publish(&repository, cli.scope.as_deref(), since)?
+    } else {
+        let resolved = ids
+            .iter()
+            .map(|text| repository.resolve(text))
+            .collect::<Result<Vec<_>>>()?;
+        describe(&repository, &resolved)?
+    };
     let path = match out {
         Some(path) => Some(path.to_path_buf()),
         None => output_path(root)?,

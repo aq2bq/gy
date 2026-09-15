@@ -61,8 +61,11 @@ pub enum Command {
     Next,
     /// What a session needs to resume: in-progress requirements and counts.
     Handover,
-    /// Write the human-facing reading of the ledger.
+    /// Write the human-facing reading of the ledger, or describe named nodes.
     Publish {
+        /// Describe these nodes instead of the one-page reading.
+        #[arg(value_name = "ID")]
+        ids: Vec<String>,
         /// Include the changes after this write sequence.
         #[arg(long, value_name = "SEQ")]
         since: Option<u64>,
@@ -181,8 +184,8 @@ fn run(cli: &Cli) -> Result<()> {
             let repository = repo::open(&ledger)?;
             emit(cli.json, &handover(&repository, cli.scope.as_deref())?)
         }
-        Command::Publish { since, out } => {
-            reads::write_publish(cli, &root, &ledger, *since, out.as_deref())
+        Command::Publish { ids, since, out } => {
+            reads::write_publish(cli, &root, &ledger, ids, *since, out.as_deref())
         }
         Command::Need { action } => write_need(cli, &root, &ledger, action),
         Command::Question { action } => write_question(cli, &root, &ledger, action),

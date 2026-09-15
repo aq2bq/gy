@@ -26,5 +26,5 @@ pub use store::{
 };
 pub use views::{
     EdgeLine, Filter, Handover, Listing, LogRow, NeedState, NextRow, ProgressRow, RequirementLine,
-    Row, Shown, Warning, handover, list, next, publish, requirement_in_progress, show,
+    Row, Shown, Warning, describe, handover, list, next, publish, requirement_in_progress, show,
 };
