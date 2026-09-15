@@ -1,88 +1,65 @@
-# Ledger semantics and derived views
+# 新しい gy の設計
 
-## Authority
+この文書は、新しい gy（0.5）の設計契約をまとめる。利用の契約は [README](README.ja.md)、0.4 からの移行は [migration-0.5](migration-0.5.md)、公開の手順は [release](release.md) にある。
 
-The canonical node file contains two different kinds of information:
+## 4 つの層と依存の向き
 
-- Frontmatter declares node identity, lifecycle state, relationships, and structured records. Core rules and configured workflow schemas define the meaning of those declarations.
-- The Markdown body explains decisions, supplies context, and quotes evidence or code. Its vocabulary does not declare graph relationships, lifecycle states, or counts.
+クレート `gy-ledger` は 4 つの層に分かれる。`store`（永続・トランザクション・ID の採番・履歴・形式の版）→ `model`（5 種のノードと不変条件）→ `ops`（操作 = 意図）→ `views`（show / list / next / handover / publish の投影）。依存はこの向きだけに流れる。`views` は `store` を直接読まず、`ops` は `views` を呼ばない。CLI（`gy`）は `views` と `ops` を呼ぶだけである。
 
-A consistency check evaluates declared records. It must not silently substitute a guess from prose when a declaration is absent. In particular, `waiting_checkout?`, a sentence saying a question is unresolved, and a quotation of an old report cannot create a `waiting-on` edge. Missing declarations cannot be detected by pretending that a prose inference is a declaration.
+層ごとの責務は次のとおり。`store` は他の層を使わない。`model` は `store` だけを使う。`ops` は `store` と `model` を使う。`views` は `model` と `ops` を使う。同じ層の内側では `super::` で参照する。
 
-Body search remains available through `find`. Import may explicitly extract a configured section into an attribute; the import result is persisted and reported before later checks read it. `mark` is an explicit locator into body text: display and link warnings may inspect the body to locate it, without inferring a new relationship. Compression archives original records and generates its summary from declared attributes.
+## 常に妥当
 
-Unknown extension attributes are preserved. The existing L13 convention treats exact node-ID-valued attributes as references; it does not extract references from arbitrary prose strings. Workflow snapshot schemas are configuration, while their recorded values and evidence remain data.
+不正な状態は、後から検査する工程ではなく、書き込みの時点で拒む。台帳に載るノードはすべて、その時点の不変条件を満たしている。
 
-## Scope relabeling
+ノードを組み立てるときに拒むもの: スコープが空、題名が空、`created` が `YYYY-MM-DD` でない、決定の成立範囲が空（移行だけが付ける未記録の印を除く）、関係が許さないノードの組、`narrows` と `supersedes` の mark が古い決定の本文か成立範囲に見つからない、同じ辺の二重登録、閉じた論点の再閉じ、`closes` を `link` で張ること、存在しないノードへの辺。
 
-A scope is a label, not a node identity. Its canonical representations are the directory name, each member node's `scope` attribute, and the `[scopes]` entry in `gy.toml`; loading requires the directory and attribute to agree. `scope rename` changes all three together, so node IDs, relationships, lifecycle state, records, and history are preserved. Relationships are keyed by node ID and never embed a scope name, so cross-scope edges survive unchanged.
+書き込みはすべて 1 トランザクションである。1 つの意図が 1 つのコマンドに対応し、途中で失敗すれば何も書かない。変更の履歴も同じトランザクションに載せ、確定とともに残し、失敗すれば捨てる。
 
-Renaming rejects a destination that already exists or a name that is not a safe directory component. A collision is not a merge. Free text, `decision_scope`, and arbitrary attributes that mention the old name are author declarations rather than scope references, so rename does not rewrite them; later users verify any such reference. The operation applies the new files and the old directory removal in one transaction, so an interrupted update replays to a consistent state.
+## イベントログとスナップショットと形式の版
 
-## Dependency meaning and lifecycle
+正本は `events.jsonl` という追記専用のログで、1 トランザクションが 1 行に対応する。行は `seq`・`at`・`actor`・`why`・`source`・`changes` を持ち、`changes` の各項が 1 ノードの変更（`node`・`change`・`value`）を表す。`change` は `created`・`updated`・`deleted` のいずれかである。
 
-`requirement --relies-on--> decision` records the decision on which that requirement's work was based. The edge remains part of the ledger after completion or supersession. `supersedes` declares that a decision has replaced another decision; it does not retroactively replace the decisions used by earlier work.
+原子性は 1 行の追記と `fsync` で得る。途中で切れた末尾は、次に開くときに捨てる。同時に書く書き手の競合は、排他ロックと `seq` の比較で検出する。履歴はログそのもので、`undo` は直前のトランザクションを逆にたどる行を新しく追記する。
 
-The role of a requirement's decision dependencies is derived from its declared lifecycle:
+`snapshot.json` は派生で、現在のノードと `seq` を持つ。開くのを速くするだけで、消してもログだけから同じ結果に戻る。`format` ファイルは形式の版を持ち、台帳は生まれた時からこの版を持つ。このビルドが対応しない版を開くとエラーになる。
 
-| Requirement state | Dependency role | Superseded target |
-| --- | --- | --- |
-| Any recognized state except `complete` | Current work dependency | L5 reports the conflict; `next` does not offer work blocked by it |
-| `complete`, including parenthesized context | Historical basis of completed work | Preserve and display it as history, not an L5 conflict |
-| Missing or invalid state | Treated as current for dependency checks | L10 also reports the invalid state; malformed state cannot exempt a dependency |
+正本の置き場所は `$XDG_DATA_HOME/gy/<リポジトリのルートのハッシュ>/` である。リポジトリに置くのは `gy.toml` だけである。
 
-`Node::is_complete_requirement` defines the completion boundary. `Store::decision_dependencies` is the shared projection of recorded edges into current or historical dependencies and their recorded superseding decisions. Lint, scheduling, display, and handover consume this projection. Neither role nor an acknowledgement flag is written back to the node.
+## ID の生成と衝突
 
-`next` stops traversing work prerequisites when it reaches a completed requirement. Historical decisions and questions from finished work must not become new prerequisites of later work. This does not waive structural checks: missing targets, inverse-link inconsistencies, explicit unresolved references, and invalid completion records remain independently diagnosable.
+ID は種類の接頭辞と短いハッシュで作る。中央の採番器を持たないので、複数のエージェントが同時に書いてもよい。種には接頭辞・ナノ秒の時刻・プロセス ID・ノード数・ソルトを混ぜ、桁ごとに別の種をハッシュする。衝突したら 4 桁から 6 桁、8 桁へと広げる。同じ 32 ビットの下位を切り出すだけでは、短い桁で衝突が残るためである。
 
-Reopening a requirement changes its dependency role back to current without editing its edges. Compression preserves the edges and completion state, so it preserves their historical role. Updating a live product after earlier work has completed belongs to another active requirement, or to an explicitly reopened requirement; a completed task is not a declaration that its resulting behavior must remain in production forever.
+0.4 の ID は別名として保つ。`show` は完全な ID・0 埋めの ID・別名・要求の外への参照を、完全一致か末尾一致で解決する。要求の参照（`ref`）は不透明な値で、gy はその先を読まない。
 
-This classification does not establish that a decision was valid at the time of completion, that an implementation changed, or that someone reviewed a supersession. The ledger cannot reconstruct unrecorded past events from today's state. Historical display is not a verification claim.
+## 辺は from 側だけに置く
 
-## Workflow policy over time
+ノードは自分が始点の辺だけを持つ。逆向きは保存せず、`Repository::incoming` が全ノードを走査して組み立てる。同じ辺を 2 か所に書かない。
 
-A project's current workflow configuration governs ongoing work and new actions. Introducing or changing a profile does not establish obligations for already completed work. Lint inspects completed requirements' recorded workflow snapshots using the schemas and comparisons saved with those snapshots. It does not demand new records from the current profile, including records marked `required`.
+関係は 12 値の閉じた集合で、逆名は導出する。許されるノード種の組は 1 つの表にまとめ、表に無い辺は組み立ての時点で拒む。`mark` は `narrows` と `supersedes` の forward 側だけが持ち、逆向きを組み立てるときも引き継ぐ。
 
-A new transition always evaluates the current destination guards, including reopening completed work and explicitly entering `complete` again. Explicit record submission also uses the current schema. This distinction is represented by separate passive inspection and current-action validation paths, rather than a per-node exemption flag, import marker, timestamp guess, or compression status.
+## 導出する値
 
-A guard may name a `waived_by` record, and a requirement carrying that record validly against its schema is not asked for the guard's records or checks. The waiver is a path the current policy defines in `gy.toml`, not a per-node flag or a state. It is authored as an ordinary record, validated through the same current-action path as other records, and preserved in the transition snapshot as the `waived` map so the transition and its history stay readable. A missing or invalid waiver record leaves the guard in force.
+保存せず、毎回グラフから計算する値がある。
 
-Compression is an archival operation, not a work transition. It validates existing historical snapshots and core completion/archive requirements, then preserves the original data. Completed work without workflow snapshots can be archived without constructing a fictional history. Existing snapshots remain subject to their own recorded schemas and checks even if the current profile changes or is removed. Neither absence nor presence of a snapshot proves external approval or correct implementation.
+- ニーズの状態: 閉じていれば `closed`、`filed-as` の要求がすべて `done` なら `done`、それ以外は `open`。
+- 着手できるか（`next` の条件）: `open` で、`depends-on` のニーズが `closed` か `done` で、`waits-on` の論点が閉じている。
+- `bearer_count`: その受け入れ条件を `targets` に持つニーズの数。
+- 進行中の要求: `filed` か `approved` の要求。
 
-## Declared file scope
+## handover と next の判定
 
-The opt-in `matches-declared-files` comparison treats the design's right-hand array as declarations and the implementation's left-hand array as concrete paths. A declaration identifies either an exact path or one variable filename token bounded by a fixed directory, prefix/suffix, ASCII character class, and positive exact length. At least one filename prefix/suffix must be nonempty. gy does not interpret globs or inspect external files.
+`handover` は、エラー（存在しないノードへの辺、`filed-as` の先が要求でない辺）、進行中の要求（`ref`・状態・`next_evidence`・`responsible`）、開いている論点の数、着手できるニーズの数、警告の件数を出す。警告にするのは、置き換えられた決定に依拠する進行中の要求、成立範囲が未記録の決定に依拠する進行中の要求、本文が空の受け入れ条件である。注意が要る状態を、人が読める順に並べる。
 
-The comparison requires a one-to-one match in both directions. Unknown or malformed declarations, unmatched entries, duplicates, and overlapping matches fail. The existing string-set comparisons retain their exact-string and duplicate-elimination semantics. Record data, not explanatory descriptions, supplies every operand. Configured schemas govern whether empty arrays are allowed.
+`next` は着手できるニーズを `created` と ID の順に並べる。優先度は持たない。どのニーズから進めるかはエージェントが選び、マスターに差し出す。
 
-Current state guards and stored historical checks use the same core matcher. A failed transition does not write the node or append history; derived output does not rewrite declarations. Adopting a new design shape is a current revision change, and cannot rewrite an old approval or convert an old historical comparison. Explicit record submission retains its existing schema-only scope.
+## publish が答える問い
 
-The matcher reads the two arrays for the current comparison only. For D declarations, F reported files and path length L, matching takes O(D × F × L) with O(D × L + F × L) input data and O(F) matching counters. It does not add a graph or history traversal; the existing callers invoke it for each applicable current or saved comparison.
+`publish` が答える問いは 6 つある。既定の 1 ページは、そのうち 2・6 と注意の件数、`--since` を与えたときは 5 に答える。1・3・4 はノードについての問いで、`publish <ID>...` と指定したノードだけに答える。全ノードを書き出す既定は持たない。ID は必ず題名の隣に並べ、ID だけの行を作らない。
 
-## Rule contracts
-
-| Consumer | Authoritative input | Result |
-| --- | --- | --- |
-| L1 and question-close warnings | `waiting-on` / `unresolved` references and the target question's `status` | An explicit unresolved reference conflicts with a closed question |
-| L2 | Optional nonnegative integer `bearer_count` and needs' `targets` edges | A declared count must have the right type and equal the supporting-need count |
-| L5 | Current requirement decision dependencies and recorded `supersedes` / `superseded-by` edges | Work still to be done depends on a replaced decision |
-| L7 / L14 | `decision_scope` and the decision node's `imported` mark | An empty applicability scope is new work (L7) or migration provenance (L14) |
-| Workflow lint on completed requirements | Saved workflow inputs, schemas, and comparisons | Check historical records without retroactive application of the current profile |
-| New transitions and submissions | Current workflow configuration and supplied records | Validate the action now, regardless of the node's previous completion state |
-| L10 / L11 / L13 / `edges` | State, completion records, references, and edge declarations | Structural integrity continues to apply to completed work |
-| `show` | The dependency projection | Label superseded dependencies as current or historical without modifying canonical files |
-| `handover` | The same projection and lint results | Separate `historical_superseded_dependencies` from actionable diagnostics |
-
-Handover's historical entries and show's `decision_dependencies` contain `requirement`, `decision`, `role`, and `superseded_by`. They are derived output, not replacement frontmatter. Historical entries do not affect handover's exit code. Recorded successors are collected from both edge directions so a broken inverse link cannot silently erase supersession; the `edges` rule still reports that structural defect.
-
-CLI and MCP invoke the same core operations. New checks should define their authoritative fields, relationship meaning, lifecycle applicability, and consuming views before implementation. Verification should test those contracts across consumers, including changes that must leave results invariant, rather than only a reported example.
-
-## Compatibility and rejected approaches
-
-L1 no longer interprets body keywords, and L2 no longer reads a prose `bearers 3` count. Users who intend those assertions must explicitly record `waiting-on`, `unresolved`, or `bearer_count`. No automated rewrite can reliably distinguish an assertion from a quote, code identifier, or negated sentence, so this change does not fabricate attributes during migration. Use `find` to review prose and write declarations based on evidence.
-
-A word-boundary adjustment would retain two competing sources of authority. A separate heuristic review feature could be designed later with explicit provenance and separate results, but it does not belong in these integrity rules.
-
-A per-node L5 acknowledgement would obscure whether a dependency is historical or current. Treating every completed node as exempt from all lint would instead hide broken history. The lifecycle projection avoids both: it preserves recorded relationships and applies each rule according to the meaning of its assertion.
-
-The regression contract covers prose-edit invariance, structured assertions overriding prose, completion and reopening, scoped historical output, scheduling through completed work, and persistence of structural errors. Existing compression, workflow, and MCP tests verify the shared storage and execution paths.
+1. これは何で、何と関係があるか。指定したノードの状態・逐語・関係を人の言葉で示す。
+2. 今マスター待ちは何か。決定者がマスターの開いた論点と、起票済みの要求を出す。
+3. どの決定がどの決定を置き換え、どこが変わったか。指定したノードの関係に、mark 付きの両向きとして出す。
+4. 指定した要求が何のニーズから来て、どの決定に依拠し、どこまで進んだか。来歴として出す。
+5. 指定した期間に誰が何を決め、何を閉じたか。`--since` を与えたときに、書き込み単位を時系列で出す。
+6. まだ決まっていない論点は何で、誰が決めるか。決定者ごとにまとめる。

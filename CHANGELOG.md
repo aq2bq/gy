@@ -1,23 +1,70 @@
 # Changelog
 
-## Unreleased
+## Unreleased (0.5.0)
+
+0.5 is incompatible with 0.4 in the storage format, the operation set, and the
+configuration. A 0.4 ledger moves in one run of `gy-migrate`; see
+[docs/migration-0.5.md](docs/migration-0.5.md).
 
 ### Removed
 
-- The `render` subcommand in all three formats (`markdown`, `dot`, `html`),
-  the bundled HTML projection (`crates/gy-core/src/html.rs`, its committed
-  `dist` bundle, and the `ui/` TypeScript source), the `e2e/` Playwright suite,
-  the `html_render` test, and the `gy_render` MCP tool. Human-facing projection
-  is planned to return as a reading view built from `publish`.
-- `gy init` no longer writes the `[render]` table into `gy.toml` and no longer
-  appends the HTML output to the ledger `.gitignore`.
+- The per-node Markdown ledger with YAML frontmatter and its dedicated git
+  repository and worktree. The canonical ledger is now an append-only JSONL
+  event log under `$XDG_DATA_HOME/gy/<hash of the repository root>/`; the
+  repository keeps only `gy.toml`.
+- `render` and the HTML projection (already removed). Human-facing output is
+  `publish` now.
+- The configurable workflow: `[workflow.records]`, `[workflow.guards]`,
+  `waived_by`, and per-rule severities. No key other than `[scopes.<name>]` and
+  `output` is accepted in `gy.toml`.
+- The lint pass and its L1–L14 rules. Invalid state is refused when it is
+  written, and what needs attention is counted by `handover`.
+- The `req advance`, `req compress`, `node set`, `node submit`, `q`, `find`,
+  `stats`, `init`, `scope rename`, `gate`, `import`, `cheatsheet`,
+  `completions`, `skills`, and `mcp` subcommands, together with `--quiet` and
+  `--verbose`. The closed set is 20 leaf operations (15 writes, 5 reads).
+- Gates as a node kind, `parent_issue`, Issue-number requirement IDs, the
+  `pr_url` / `pr_base` / `pr_files` requirement fields, and `bearer_count` as a
+  stored value.
+- The eleven requirement states and the per-transition records, guards, and
+  snapshots.
 
 ### Changed
 
-- `gy.toml` still accepts the `[render]` table, and its values are still read
-  and validated so an existing ledger opens unchanged; the table is dropped
-  whenever gy writes `gy.toml` back, and the keys will be rejected in a later
-  change.
+- The operation set is closed at 20 leaves: `show`, `list`, `next`, `handover`,
+  `publish`; `need add` / `need close`, `question add` / `question close`,
+  `criterion add` / `criterion satisfy`, `req add` / `req approve` /
+  `req revise` / `req done` / `req cancel`, `decide`, `link`, `edit`, `undo`.
+- A requirement has four states: `filed` → `approved` → `done`, and
+  `cancelled`. After approval gy keeps only the revision, completion, and
+  cancellation records.
+- A requirement has a gy-issued ID and one opaque `ref`. gy never reads the
+  reference.
+- IDs are a kind prefix and a short hash (`n-3f9a`), minted locally with no
+  central counter; a collision mints a longer hash. Old IDs are kept as aliases
+  and resolve through `show`.
+- Edges are stored on the node they start from; the reverse is derived. The
+  set of relations is closed, and `waits-on` (need → question) replaces the
+  dependency on a gate.
+- Every write is one transaction in the log, carrying the sequence, time,
+  actor, reason, and source. `undo --reason` inverts the last transaction.
+- Every write names its actor in `GY_ACTOR`; an unset value is an error.
+- Every write prints what it changed, what the node still lacks, and the shape
+  of the command that could follow.
+- `show` prints what a node still lacks. `publish` writes a one-page reading;
+  naming nodes adds their descriptions.
+- The workspace is `gy-ledger`, `gy`, and `gy-migrate`.
+
+### Migration
+
+- Run `gy-migrate <0.4 ledger> --root <repository root> --ref-base <Issue URL
+  prefix> --publication <directory>`. It writes the new ledger in one
+  transaction, freezes post-approval records as a publication, maps the eleven
+  states to four, and generates `[scopes.<name>]` in `gy.toml`.
+- Old IDs resolve as aliases (`show D-164`, `show '#6027'`). `--ref-base`
+  turns an old `#N` into the requirement's `ref`.
+- Follow [docs/migration-0.5.md](docs/migration-0.5.md) for the full steps and
+  for what cannot be carried.
 
 ## 0.4.2
 
