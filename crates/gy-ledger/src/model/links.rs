@@ -63,13 +63,14 @@ impl Relation {
     }
 }
 
-/// A directed edge. `label` is the relation and `reversed` marks the inverse
-/// side, so the name is derived from the relation and never stored.
+/// A directed edge. `label` is the relation, `reversed` marks the inverse
+/// side, and `mark` names the affected passage for narrows / supersedes.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Edge {
     pub from: NodeId,
     pub label: Relation,
     pub reversed: bool,
+    pub mark: Option<String>,
     pub to: NodeId,
 }
 impl Edge {
@@ -105,15 +106,23 @@ impl Link {
                 from: from.clone(),
                 label: relation,
                 reversed: false,
+                mark: None,
                 to: to.clone(),
             },
             reverse: Edge {
                 from: to,
                 label: relation,
                 reversed: true,
+                mark: None,
                 to: from,
             },
         })
+    }
+    /// Set the mark on the forward edge (the passage a narrows / supersedes
+    /// affects).
+    pub fn with_mark(mut self, mark: Option<String>) -> Self {
+        self.forward.mark = mark;
+        self
     }
     pub fn forward(&self) -> &Edge {
         &self.forward

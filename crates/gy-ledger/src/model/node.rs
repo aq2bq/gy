@@ -201,6 +201,10 @@ impl Node {
     pub fn link(&mut self, link: Link) {
         self.links.push(link.forward().clone());
     }
+    /// Drop the edge at `index`, returning it if it existed.
+    pub fn unlink(&mut self, index: usize) -> Option<Edge> {
+        (index < self.links.len()).then(|| self.links.remove(index))
+    }
     pub fn set_body(&mut self, body: impl Into<String>) {
         self.body = body.into();
     }

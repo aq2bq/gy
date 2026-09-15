@@ -46,6 +46,7 @@ impl<S: Store> Repository<S> {
                         from: id.clone(),
                         label: edge.label,
                         reversed: true,
+                        mark: edge.mark.clone(),
                         to: edge.from.clone(),
                     });
                 }

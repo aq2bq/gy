@@ -2,6 +2,9 @@
 pub mod config;
 pub mod criterion_add;
 pub mod criterion_satisfy;
+pub mod decide;
+pub mod link;
+mod marks;
 pub mod need_add;
 pub mod need_close;
 pub mod question_add;
@@ -10,6 +13,7 @@ pub mod repository;
 
 pub use criterion_add::CriterionAdd;
 pub use criterion_satisfy::CriterionSatisfy;
+pub use decide::Decide;
 pub use need_add::NeedAdd;
 pub use need_close::NeedClose;
 pub use question_add::QuestionAdd;
