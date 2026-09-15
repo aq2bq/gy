@@ -24,8 +24,11 @@ pub(super) fn history<S: Store>(
         if since.is_some_and(|since| entry.seq <= since) {
             continue;
         }
-        let Some(node) = known.get(&entry.node).filter(|node| node.scope() == scope) else {
-            continue;
+        let label = match known.get(&entry.node) {
+            Some(node) if node.scope() == scope => reference(node),
+            Some(_) => continue,
+            None if entry.node.is_empty() => String::new(),
+            None => continue,
         };
         count += 1;
         let _ = writeln!(
@@ -34,7 +37,7 @@ pub(super) fn history<S: Store>(
             entry.seq,
             time(entry.at),
             cell(entry.actor.name()),
-            cell(&reference(node)),
+            cell(&label),
             cell(&entry.what),
             cell(&entry.why),
             cell(&entry.source)

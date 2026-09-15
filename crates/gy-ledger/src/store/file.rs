@@ -275,8 +275,8 @@ impl Store for FileStore {
                     self.record(node, "deleted", why, source);
                 }
                 log::Change::ScopeRenamed { from, to, .. } => {
-                    self.rename_scope(to, from)?;
-                    self.record("", "scope-renamed", why, source);
+                    let nodes = self.rename_scope(to, from)?;
+                    self.record("", &super::rename_line(to, from, nodes), why, source);
                 }
             }
         }

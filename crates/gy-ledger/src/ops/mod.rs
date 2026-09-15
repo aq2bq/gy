@@ -17,6 +17,7 @@ pub mod req_approve;
 pub mod req_cancel;
 pub mod req_done;
 pub mod req_revise;
+pub mod scope_rename;
 pub mod undo;
 
 pub use criterion_add::CriterionAdd;
@@ -33,6 +34,7 @@ pub use req_approve::ReqApprove;
 pub use req_cancel::ReqCancel;
 pub use req_done::ReqDone;
 pub use req_revise::ReqRevise;
+pub use scope_rename::ScopeRename;
 pub use undo::Undo;
 
 use crate::model::{Node, NodeId, NodeKind};

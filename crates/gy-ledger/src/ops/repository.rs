@@ -86,6 +86,18 @@ impl<S: Store> Repository<S> {
         self.store.record(&key, "deleted", &self.why, &self.source);
         Ok(())
     }
+    /// Rename a scope in every node that carries it, as one change (n-ff2b).
+    /// The caller rewrites gy.toml after the transaction commits.
+    pub fn rename_scope(&mut self, from: &str, to: &str) -> Result<usize> {
+        let nodes = self.store.rename_scope(from, to)?;
+        self.store.record(
+            "",
+            &crate::store::rename_line(from, to, nodes),
+            &self.why,
+            &self.source,
+        );
+        Ok(nodes)
+    }
     /// Resolve an exact id, an alias (a zero-padded old id, so `D-6` = `D-06`),
     /// or a requirement's outward reference by exact or suffix match. An exact
     /// id wins, and the zero-padding is only among aliases, never a hash id. An

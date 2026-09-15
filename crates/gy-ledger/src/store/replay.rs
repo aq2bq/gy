@@ -66,17 +66,19 @@ pub fn history(events: &[log::Event]) -> Result<Vec<HistoryEntry>> {
     for event in events {
         for change in &event.changes {
             let (node, what) = match change {
-                log::Change::Created { node, .. } => (node.clone(), "created"),
-                log::Change::Updated { node, .. } => (node.clone(), "updated"),
-                log::Change::Deleted { node, .. } => (node.clone(), "deleted"),
-                log::Change::ScopeRenamed { .. } => (String::new(), "scope-renamed"),
+                log::Change::Created { node, .. } => (node.clone(), "created".to_string()),
+                log::Change::Updated { node, .. } => (node.clone(), "updated".to_string()),
+                log::Change::Deleted { node, .. } => (node.clone(), "deleted".to_string()),
+                log::Change::ScopeRenamed { from, to, nodes } => {
+                    (String::new(), super::rename_line(from, to, *nodes))
+                }
             };
             history.push(HistoryEntry {
                 seq: event.seq,
                 at: event.at,
                 actor: Actor::new(event.actor.clone())?,
                 node,
-                what: what.to_string(),
+                what,
                 why: event.why.clone(),
                 source: event.source.clone(),
             });

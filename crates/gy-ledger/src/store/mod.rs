@@ -122,3 +122,9 @@ pub(crate) fn fnv1a(text: &str) -> u32 {
         (hash ^ u32::from(byte)).wrapping_mul(0x0100_0193)
     })
 }
+
+/// The history line one scope rename leaves: `scope renamed <from> → <to> (n
+/// nodes)` (n-ff2b).
+pub(crate) fn rename_line(from: &str, to: &str, nodes: usize) -> String {
+    format!("scope renamed {from} → {to} ({nodes} nodes)")
+}
