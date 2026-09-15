@@ -12,6 +12,9 @@ pub struct Report {
     pub links: usize,
     pub dropped: Vec<String>,
     pub unmapped: Vec<String>,
+    pub frozen: usize,
+    pub publication: Option<String>,
+    pub requirements: Vec<String>,
 }
 
 impl fmt::Display for Report {
@@ -24,6 +27,14 @@ impl fmt::Display for Report {
         writeln!(f, "edges: {}", self.links)?;
         writeln!(f, "unmapped requirement status: {}", self.unmapped.len())?;
         for entry in &self.unmapped {
+            writeln!(f, "  {entry}")?;
+        }
+        writeln!(f, "frozen records: {}", self.frozen)?;
+        if let Some(publication) = &self.publication {
+            writeln!(f, "publication: {publication}")?;
+        }
+        writeln!(f, "requirement states:")?;
+        for entry in &self.requirements {
             writeln!(f, "  {entry}")?;
         }
         writeln!(f, "dropped attributes: {}", self.dropped.join(", "))

@@ -14,6 +14,19 @@ const DROPPED: &[&str] = &[
     "parent_issue",
 ];
 
+/// The 0.4 requirement attributes that are frozen as a publication (N-69).
+const RECORDS: &[&str] = &[
+    "transitions",
+    "record_history",
+    "deviations",
+    "artifacts",
+    "cleanup_done",
+    "data_migration",
+    "quality_gates",
+    "implementation_report",
+    "dispatch",
+];
+
 /// One recorded state change of a 0.4 requirement.
 #[derive(Debug, Clone, Default)]
 pub struct LegacyTransition {
@@ -32,6 +45,8 @@ pub struct LegacyNode {
     pub created: String,
     pub title: String,
     pub body: String,
+    /// The original file text, for the frozen publication.
+    pub raw: String,
     /// Scalar attributes as text.
     pub attrs: BTreeMap<String, String>,
     /// List attributes (ids or words).
@@ -43,27 +58,9 @@ pub struct LegacyNode {
 
 impl LegacyNode {
     pub(super) fn of(node: &gy_core::Node) -> Self {
-        let mut attrs = BTreeMap::new();
-        let mut lists = BTreeMap::new();
-        for (key, value) in &node.attrs {
-            if value.is_array() {
-                lists.insert(key.clone(), gy_core::ids(Some(value)));
-            } else if !value.is_object() {
-                attrs.insert(key.clone(), gy_core::text(value));
-            }
-        }
+        let (attrs, lists) = attribute_bags(node);
         let kind = node.kind().to_string();
-        let mut links = BTreeMap::new();
-        for relation in RELATIONS {
-            // 0.4 stores `closes` on both sides; the question side is the edge.
-            if *relation == "closes" && kind == "decision" {
-                continue;
-            }
-            let edges = node.attrs.get(*relation).map(edges_of).unwrap_or_default();
-            if !edges.is_empty() {
-                links.insert((*relation).to_string(), edges);
-            }
-        }
+        let links = links_of(node, &kind);
         let transitions = node
             .attrs
             .get("transitions")
@@ -76,6 +73,7 @@ impl LegacyNode {
             created: node.get("created").to_string(),
             title: node.get("title").to_string(),
             body: node.body.clone(),
+            raw: std::fs::read_to_string(&node.path).unwrap_or_default(),
             attrs,
             lists,
             links,
@@ -209,6 +207,16 @@ impl LegacyNode {
         self.kind == "decision" && self.decision_scope().is_none()
     }
 
+    /// A requirement that carries records to freeze (N-69).
+    pub fn has_records(&self) -> bool {
+        self.kind == "requirement"
+            && self.attrs.keys().chain(self.lists.keys()).any(|name| {
+                RECORDS.contains(&name.as_str())
+                    || name.starts_with("production_")
+                    || name.starts_with("pr_")
+            })
+    }
+
     pub(super) fn dropped(&self) -> Vec<String> {
         DROPPED
             .iter()
@@ -231,6 +239,38 @@ impl LegacyNode {
     fn list(&self, name: &str) -> &[String] {
         self.lists.get(name).map(Vec::as_slice).unwrap_or(&[])
     }
+}
+
+/// Split the attribute map into scalar text and list values.
+fn attribute_bags(
+    node: &gy_core::Node,
+) -> (BTreeMap<String, String>, BTreeMap<String, Vec<String>>) {
+    let mut attrs = BTreeMap::new();
+    let mut lists = BTreeMap::new();
+    for (key, value) in &node.attrs {
+        if value.is_array() {
+            lists.insert(key.clone(), gy_core::ids(Some(value)));
+        } else if !value.is_object() {
+            attrs.insert(key.clone(), gy_core::text(value));
+        }
+    }
+    (attrs, lists)
+}
+
+/// The forward edges, leaving out the decision side's copy of `closes` (0.4
+/// stores it on both sides).
+fn links_of(node: &gy_core::Node, kind: &str) -> BTreeMap<String, Vec<LegacyLink>> {
+    let mut links = BTreeMap::new();
+    for relation in RELATIONS {
+        if *relation == "closes" && kind == "decision" {
+            continue;
+        }
+        let edges = node.attrs.get(*relation).map(edges_of).unwrap_or_default();
+        if !edges.is_empty() {
+            links.insert((*relation).to_string(), edges);
+        }
+    }
+    links
 }
 
 fn transitions_of(value: &serde_json::Value) -> Vec<LegacyTransition> {

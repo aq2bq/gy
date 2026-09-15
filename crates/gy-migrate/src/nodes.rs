@@ -145,7 +145,7 @@ fn completion(legacy: &LegacyNode) -> Completion {
 }
 
 /// The 0.4 requirement states, reduced to the four of D-70.
-fn state(status: &str) -> RequirementState {
+pub fn state(status: &str) -> RequirementState {
     match status {
         "awaiting-implementation"
         | "awaiting-audit"

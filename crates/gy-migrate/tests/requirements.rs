@@ -7,6 +7,7 @@ struct Fixture {
     ledger: PathBuf,
     root: PathBuf,
     data: PathBuf,
+    publication: PathBuf,
 }
 
 fn md(id: &str, extra: &str) -> String {
@@ -50,11 +51,13 @@ fn fixture() -> Fixture {
     std::fs::create_dir_all(&root).unwrap();
     let data = temp.path().join("data");
     std::fs::create_dir_all(&data).unwrap();
+    let publication = temp.path().join("pub");
     Fixture {
         _temp: temp,
         ledger,
         root,
         data,
+        publication,
     }
 }
 
@@ -133,4 +136,32 @@ fn requirement_states_and_records_are_mapped() {
     let completion = done.completion.as_ref().unwrap();
     assert_eq!(completion.evidence, "https://pr/1");
     assert_eq!(completion.at, "2026-09-12");
+}
+
+#[test]
+fn records_are_frozen_and_the_report_is_written() {
+    let fx = fixture();
+    let publication = fx.publication.display().to_string();
+    let out = fx.run(&[
+        "--ref-base",
+        "https://example/",
+        "--publication",
+        &publication,
+    ]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    let text = stdout(&out);
+    assert!(text.contains("frozen records: 2"), "{text}");
+    assert!(text.contains("requirement states:"), "{text}");
+    assert!(text.contains("#8 reported -> filed"), "{text}");
+
+    let frozen = std::fs::read_to_string(fx.publication.join("a/#5.md")).unwrap();
+    assert!(frozen.contains("transitions:"), "{frozen}");
+    let report = std::fs::read_to_string(fx.publication.join("migration-report.md")).unwrap();
+    assert!(report.contains("frozen records: 2"), "{report}");
+
+    let node = node(&fx.open(), "#5");
+    assert_eq!(
+        node.free("legacy_records").map(String::as_str),
+        Some("a/#5.md")
+    );
 }
