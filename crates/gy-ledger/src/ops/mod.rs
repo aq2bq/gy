@@ -10,6 +10,7 @@ pub mod need_close;
 pub mod question_add;
 pub mod question_close;
 pub mod repository;
+pub mod req_add;
 
 pub use criterion_add::CriterionAdd;
 pub use criterion_satisfy::CriterionSatisfy;
@@ -19,9 +20,21 @@ pub use need_close::NeedClose;
 pub use question_add::QuestionAdd;
 pub use question_close::QuestionClose;
 pub use repository::Repository;
+pub use req_add::ReqAdd;
 
-use crate::model::NodeId;
-use crate::store::{Result, Store};
+use crate::model::{Node, NodeId, NodeKind};
+use crate::store::{Error, Result, Store};
+
+/// Load a node of the expected kind, or an error naming what is wrong.
+pub fn node_of<S: Store>(repo: &Repository<S>, id: &NodeId, kind: NodeKind) -> Result<Node> {
+    let node = repo
+        .get(id)?
+        .ok_or_else(|| Error::invalid(format!("{id} does not exist")))?;
+    if node.kind() != kind {
+        return Err(Error::invalid(format!("{id} is not a {}", kind.name())));
+    }
+    Ok(node)
+}
 
 /// What an operation produced: the node it touched, what it changed, what is
 /// missing, and what could follow (N-39).

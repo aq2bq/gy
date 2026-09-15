@@ -17,7 +17,7 @@ pub use model::{
 };
 pub use ops::{
     CriterionAdd, CriterionSatisfy, Decide, NeedAdd, NeedClose, Operation, Outcome, QuestionAdd,
-    QuestionClose, Repository, config, link,
+    QuestionClose, Repository, ReqAdd, config, link,
 };
 pub use store::{
     Actor, Error, FileStore, FormatVersion, HistoryEntry, IdSource, MemoryStore, Result, Store,

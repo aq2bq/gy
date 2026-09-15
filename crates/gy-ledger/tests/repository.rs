@@ -1,4 +1,7 @@
-use gy_ledger::{Actor, FileStore, FormatVersion, MemoryStore, Node, NodeId, NodeKind, Repository};
+use gy_ledger::{
+    Actor, FileStore, FormatVersion, MemoryStore, Node, NodeData, NodeId, NodeKind, Ref,
+    Repository, RequirementState,
+};
 
 const SCOPE: &str = "a";
 const DATE: &str = "2026-09-15";
@@ -99,4 +102,52 @@ fn a_file_store_survives_reopen() {
     drop(repo);
     let reopened = Repository::new(FileStore::open_with(temp.path(), actor).unwrap());
     assert_eq!(reopened.get(node.id()).unwrap().unwrap(), node);
+}
+
+fn requirement(hash: &str, reference: &str) -> Node {
+    let mut node = Node::requirement(
+        NodeId::from_hash(NodeKind::Requirement, hash).unwrap(),
+        SCOPE,
+        DATE,
+        "a requirement",
+        RequirementState::Filed,
+    )
+    .unwrap();
+    if let NodeData::Requirement(data) = node.data_mut() {
+        data.reference = Some(Ref(reference.into()));
+    }
+    node
+}
+
+#[test]
+fn resolve_finds_a_requirement_by_its_reference() {
+    let mut repo = repo();
+    let node = requirement("0001", "https://tracker/6027");
+    repo.transaction("add", "test", |repo| repo.put(&node))
+        .unwrap();
+    assert_eq!(
+        repo.resolve("https://tracker/6027").unwrap(),
+        node.id().clone()
+    );
+    assert_eq!(repo.resolve("6027").unwrap(), node.id().clone());
+    assert!(repo.resolve("9999").is_err());
+}
+
+#[test]
+fn resolve_reports_ambiguous_references() {
+    let mut repo = repo();
+    let (first, second) = (
+        requirement("0001", "https://one/6027"),
+        requirement("0002", "https://two/6027"),
+    );
+    repo.transaction("add", "test", |repo| {
+        repo.put(&first)?;
+        repo.put(&second)
+    })
+    .unwrap();
+    let error = repo.resolve("6027").unwrap_err().to_string();
+    assert!(
+        error.contains("r-0001") && error.contains("r-0002"),
+        "{error}"
+    );
 }
