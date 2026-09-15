@@ -1,15 +1,23 @@
-//! The one file where tiny_http appears (ac-a49a): bind, accept, conversions.
+//! The HTTP layer, on the standard library alone (d-e6c4): a bound listener,
+//! one thread per connection, and the two conversions. GET only; the request
+//! line and the headers are read, the body never is.
 use crate::api;
 use crate::http;
 use crate::watch::Watch;
 use gy_ledger::{Error, FileStore, MemoryStore, Repository, Result};
+use std::io::{BufRead, BufReader, Write};
+use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
 use std::sync::Arc;
-use tiny_http::{Header, Request, Response, Server};
+use std::time::Duration;
 
 /// The ports gy serve may take: the first that binds, 7331 first (ac-f5c4).
 const FIRST_PORT: u16 = 7331;
 const LAST_PORT: u16 = 7400;
+/// A connection may take this long to send its request line and headers.
+const READ_TIMEOUT: Duration = Duration::from_secs(5);
+/// The most a request's headers may hold before it is refused (431).
+const HEAD_LIMIT: usize = 64 * 1024;
 
 /// The ledger a request reads: the head, or a point in the log (n-10e1).
 pub enum Opened {
@@ -24,31 +32,58 @@ pub type Opener = Box<dyn Fn(Option<u64>) -> Result<Opened> + Send + Sync>;
 /// Serve until stopped, printing the one line the master needs to open. The
 /// watch follows `ledger`'s log so a request can wait for the next write.
 pub fn serve(open: Opener, ledger: PathBuf) -> Result<()> {
-    let (server, port) = bind()?;
+    let (listener, port) = bind()?;
     println!("gy serve  http://127.0.0.1:{port}/");
+    run(listener, open, ledger)
+}
+
+/// The same, on a listener the caller already holds (a test wants the port).
+pub fn run(listener: TcpListener, open: Opener, ledger: PathBuf) -> Result<()> {
     let open = Arc::new(open);
     let watch = Watch::start(ledger);
-    for request in server.incoming_requests() {
+    for stream in listener.incoming() {
+        let Ok(stream) = stream else { continue };
         let open = open.clone();
         let watch = watch.clone();
-        std::thread::spawn(move || handle(&open, &watch, request));
+        std::thread::spawn(move || {
+            let _ = connection(&open, &watch, stream);
+        });
     }
     Ok(())
 }
 
-/// The first port of the range that binds. tiny_http refuses a taken port, so
-/// this needs no probe (d-8a24).
-pub fn bind() -> Result<(Server, u16)> {
+/// The first port of the range that binds. A taken port is refused, so this
+/// needs no probe (d-8a24).
+pub fn bind() -> Result<(TcpListener, u16)> {
     let mut refused = String::new();
     for port in FIRST_PORT..=LAST_PORT {
-        match Server::http(("127.0.0.1", port)) {
-            Ok(server) => return Ok((server, port)),
+        match TcpListener::bind(("127.0.0.1", port)) {
+            Ok(listener) => return Ok((listener, port)),
             Err(error) => refused = error.to_string(),
         }
     }
     Err(Error::invalid(format!(
         "no free port in {FIRST_PORT}..={LAST_PORT}: {refused}"
     )))
+}
+
+/// One connection: read the request, answer, close. A failure here ends this
+/// thread only.
+fn connection(open: &Opener, watch: &Watch, mut stream: TcpStream) -> std::io::Result<()> {
+    let _ = stream.set_read_timeout(Some(READ_TIMEOUT));
+    let session = match read_request(&mut stream) {
+        Read::Request(request) => request,
+        Read::Refuse(status) => {
+            return respond(stream, http::Response::text(status, reason(status)));
+        }
+        Read::Silent => return Ok(()),
+    };
+    let answer = if session.path == "/api/wait" {
+        api::wait::wait(watch, &session)
+    } else {
+        answer(open, &session)
+    };
+    respond(stream, answer)
 }
 
 /// The answer to one framework-free request: `at` picks the point in the log,
@@ -73,35 +108,102 @@ pub fn answer(open: &Opener, session: &http::Request) -> http::Response {
     }
 }
 
-/// tiny_http's request in, tiny_http's response out; the route sees neither.
-/// Waiting for the next write is the one route that does not touch the ledger.
-fn handle(open: &Opener, watch: &Watch, request: Request) {
-    let session = convert(&request);
-    let answer = if session.path == "/api/wait" {
-        api::wait::wait(watch, &session)
-    } else {
-        answer(open, &session)
-    };
-    let header = Header::from_bytes("Content-Type", answer.content_type).expect("static header");
-    let _ = request.respond(
-        Response::from_data(answer.body)
-            .with_status_code(answer.status)
-            .with_header(header),
-    );
+/// What the reader came back with.
+enum Read {
+    Request(http::Request),
+    Refuse(u16),
+    /// The peer left, or said nothing this server can answer: close quietly.
+    Silent,
 }
 
-/// The request shape `crate::http` defines, from tiny_http's request.
-fn convert(request: &Request) -> http::Request {
-    let url = request.url();
-    let (path, query) = match url.split_once('?') {
-        Some((path, query)) => (path, Some(query)),
-        None => (url, None),
+/// Read the request line and the headers of one GET. The body is left in the
+/// socket, since a GET has none and this server closes the connection.
+fn read_request(stream: &mut TcpStream) -> Read {
+    let mut reader = BufReader::new(&mut *stream);
+    let Some(line) = read_line(&mut reader) else {
+        return Read::Silent;
     };
-    let mut headers = Vec::new();
-    for header in request.headers() {
-        let field = header.field.as_str().as_str().to_string();
-        let value = header.value.as_str().to_string();
-        headers.push((field, value));
+    let parts: Vec<&str> = line.split_whitespace().collect();
+    if parts.len() != 3 || !matches!(parts[2], "HTTP/1.0" | "HTTP/1.1") {
+        return Read::Refuse(400);
     }
-    http::Request::new(request.method().as_str(), path, query, &headers)
+    let headers = match read_headers(&mut reader, line.len()) {
+        Headers::Given(headers) => headers,
+        Headers::TooLarge => return Read::Refuse(431),
+        Headers::Gone => return Read::Silent,
+    };
+    if parts[0] != "GET" {
+        return Read::Refuse(405);
+    }
+    let (path, query) = match parts[1].split_once('?') {
+        Some((path, query)) => (path, Some(query)),
+        None => (parts[1], None),
+    };
+    Read::Request(http::Request::new(parts[0], path, query, &headers))
+}
+
+/// One line of text, without its newline.
+fn read_line(reader: &mut impl BufRead) -> Option<String> {
+    let mut line = String::new();
+    match reader.read_line(&mut line) {
+        Ok(0) | Err(_) => None,
+        Ok(_) => Some(line.trim_end().to_string()),
+    }
+}
+
+/// What reading the headers came back with.
+enum Headers {
+    Given(Vec<(String, String)>),
+    /// The headers grew past the limit: 431.
+    TooLarge,
+    /// The peer left, or stopped sending: say nothing.
+    Gone,
+}
+
+/// The headers up to the blank line, with the names lowered and the values
+/// trimmed, as `http::Request` takes them.
+fn read_headers(reader: &mut impl BufRead, mut held: usize) -> Headers {
+    let mut headers = Vec::new();
+    loop {
+        let Some(line) = read_line(reader) else {
+            return Headers::Gone;
+        };
+        held += line.len() + 2;
+        if held > HEAD_LIMIT {
+            return Headers::TooLarge;
+        }
+        if line.is_empty() {
+            return Headers::Given(headers);
+        }
+        if let Some((name, value)) = line.split_once(':') {
+            headers.push((name.trim().to_ascii_lowercase(), value.trim().to_string()));
+        }
+    }
+}
+
+/// Write the answer and close: the length is known, so no chunking is needed.
+fn respond(mut stream: TcpStream, answer: http::Response) -> std::io::Result<()> {
+    let head = format!(
+        "HTTP/1.1 {} {}\r\nContent-Type: {}\r\nContent-Length: {}\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n",
+        answer.status,
+        reason(answer.status),
+        answer.content_type,
+        answer.body.len()
+    );
+    stream.write_all(head.as_bytes())?;
+    stream.write_all(&answer.body)?;
+    stream.flush()
+}
+
+/// The reason phrase of every status this server answers with.
+fn reason(status: u16) -> &'static str {
+    match status {
+        200 => "OK",
+        400 => "Bad Request",
+        404 => "Not Found",
+        405 => "Method Not Allowed",
+        431 => "Request Header Fields Too Large",
+        500 => "Internal Server Error",
+        _ => "Unknown",
+    }
 }
