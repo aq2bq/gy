@@ -2,8 +2,8 @@
 //! mapping, the old id as an alias, and the requirement reference.
 use crate::legacy::LegacyNode;
 use gy_ledger::{
-    Alias, Closed, ClosedBy, Closure, DecisionScope, Error, Node, NodeData, NodeId, NodeKind, Ref,
-    RequirementState, Result,
+    Alias, Approval, Closed, ClosedBy, Closure, Completion, DecisionScope, Error, Node, NodeData,
+    NodeId, NodeKind, Ref, RequirementState, Result,
 };
 
 /// The gy-ledger kind a new node uses.
@@ -104,17 +104,44 @@ fn decision(legacy: &LegacyNode, id: NodeId) -> Result<Node> {
 }
 
 fn requirement(legacy: &LegacyNode, id: NodeId, ref_base: Option<&str>) -> Result<Node> {
-    let mut node = Node::requirement(
-        id,
-        &legacy.scope,
-        &legacy.created,
-        &legacy.title,
-        state(legacy.status()),
-    )?;
+    let state = state(legacy.status());
+    let mut node = Node::requirement(id, &legacy.scope, &legacy.created, &legacy.title, state)?;
     if let NodeData::Requirement(data) = node.data_mut() {
         data.reference = reference(legacy, ref_base);
+        if state != RequirementState::Filed {
+            data.approval = Some(approval(legacy));
+        }
+        if state == RequirementState::Done {
+            data.completion = Some(completion(legacy));
+        }
     }
     Ok(node)
+}
+
+/// The approval the 0.4 approval transition carried (D-70).
+fn approval(legacy: &LegacyNode) -> Approval {
+    let design = legacy
+        .transition_evidence("awaiting-implementation")
+        .unwrap_or("migrated");
+    Approval {
+        design: design.to_string(),
+        heard_by: "migrated".to_string(),
+        evidence: design.to_string(),
+        at: legacy
+            .transition_at("awaiting-implementation")
+            .unwrap_or(&legacy.created)
+            .to_string(),
+    }
+}
+
+fn completion(legacy: &LegacyNode) -> Completion {
+    Completion {
+        evidence: legacy.pr_url().unwrap_or("migrated").to_string(),
+        at: legacy
+            .transition_at("complete")
+            .unwrap_or(&legacy.created)
+            .to_string(),
+    }
 }
 
 /// The 0.4 requirement states, reduced to the four of D-70.

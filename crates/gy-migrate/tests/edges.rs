@@ -69,13 +69,19 @@ fn fixture() -> Fixture {
                 "Q-4",
                 "question",
                 "question four",
-                "decider: master\noptions:\n- a\n- b\n",
+                "decider: master\noptions:\n- a\n- b\ncloses:\n- D-5\n",
                 "body of Q-4",
             ),
         ),
         (
             "a/decisions/D-5.md",
-            md("D-5", "decision", "decision five", "", "the old text here"),
+            md(
+                "D-5",
+                "decision",
+                "decision five",
+                "closes:\n- Q-4\n",
+                "the old text here",
+            ),
         ),
         (
             "a/decisions/D-6.md",
@@ -167,7 +173,7 @@ fn edges_marks_and_waits_on_are_written_and_the_rest_reported() {
     let out = fx.run(&["--ref-base", "https://example/"]);
     assert!(out.status.success(), "{}", stderr(&out));
     let text = stdout(&out);
-    assert!(text.contains("edges written: 3"), "{text}");
+    assert!(text.contains("edges written: 4"), "{text}");
     assert!(text.contains("edges missing a target: 1"), "{text}");
     assert!(text.contains("edges not allowed by kind: 1"), "{text}");
     assert!(text.contains("waits-on written: 2"), "{text}");
@@ -191,4 +197,15 @@ fn edges_marks_and_waits_on_are_written_and_the_rest_reported() {
         .find(|edge| edge.label == Relation::Narrows)
         .unwrap();
     assert_eq!(narrows.mark.as_deref(), Some("old text"));
+
+    // 0.4 stores closes on both sides; only the question side is an edge.
+    let question = node(&repository, "Q-4");
+    assert!(edge_target(&repository, &question, Relation::Closes, "D-5"));
+    let reversed = node(&repository, "D-5");
+    assert!(
+        !reversed
+            .links()
+            .iter()
+            .any(|edge| edge.label == Relation::Closes)
+    );
 }

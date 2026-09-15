@@ -11,6 +11,7 @@ pub struct Report {
     pub waiting_on: usize,
     pub links: usize,
     pub dropped: Vec<String>,
+    pub unmapped: Vec<String>,
 }
 
 impl fmt::Display for Report {
@@ -21,6 +22,10 @@ impl fmt::Display for Report {
         writeln!(f, "unrecorded decision scope: {}", self.unrecorded)?;
         writeln!(f, "waiting-on ids: {}", self.waiting_on)?;
         writeln!(f, "edges: {}", self.links)?;
+        writeln!(f, "unmapped requirement status: {}", self.unmapped.len())?;
+        for entry in &self.unmapped {
+            writeln!(f, "  {entry}")?;
+        }
         writeln!(f, "dropped attributes: {}", self.dropped.join(", "))
     }
 }
