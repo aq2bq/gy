@@ -24,6 +24,14 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .side{position:sticky;top:0;height:100vh;border-right:1px solid var(--line-soft);padding:22px 18px 110px;display:flex;flex-direction:column;gap:18px;overflow:auto}
 .wordmark{font-family:var(--sans);font-weight:600;font-size:26px;letter-spacing:.06em;line-height:1;display:flex;align-items:baseline;gap:10px}
 .wordmark small{font-family:var(--mono);font-size:10px;color:var(--paper-3);letter-spacing:.12em}
+/* The logo: the gothic gy, the band's ticks, and a live dot (d-4e65). */
+.wordmark .logo text{fill:var(--paper);font-family:var(--sans);font-weight:600}
+.wordmark .logo .tick{fill:var(--paper-3)}
+.wordmark .logo .tick-live{fill:var(--decision)}
+.wordmark .logo .logo-dot{fill:var(--decision);animation:logoPulse 2.4s ease-in-out infinite}
+.wordmark .logo.off .logo-dot{fill:var(--paper-3);animation:none}
+@keyframes logoPulse{0%,100%{r:5}50%{r:6}}
+@media (prefers-reduced-motion: reduce){.wordmark .logo .logo-dot{animation:none}}
 .nav{display:flex;flex-direction:column;gap:2px}
 .nav .h{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--paper-3);text-transform:uppercase;margin:10px 0 6px}
 .nav a,.nav button{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:7px;color:var(--paper-2);font-size:14px;text-align:left;width:100%}

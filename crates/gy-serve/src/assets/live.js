@@ -8,7 +8,12 @@
   let known = null;
 
   const dot = () => document.querySelector('.live');
-  const setLive = on => dot() && dot().classList.toggle('off', !on);
+  const setLive = on => {
+    const mark = document.querySelector('.wordmark .logo');
+    if (mark) mark.classList.toggle('off', !on);
+    const d = dot();
+    if (d) d.classList.toggle('off', !on);
+  };
   const pause = ms => new Promise(done => setTimeout(done, ms));
 
   /* The sequence the page is showing now. */

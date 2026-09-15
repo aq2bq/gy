@@ -12,6 +12,8 @@
   browser when started from a terminal. Twenty-two terminal commands.
 - `scripts/demo-ledger.sh` builds a small English demo ledger to try
   `serve` on.
+- A logo: the gothic `gy` with the history band's ticks and a live dot,
+  as the sidebar mark, the favicon, and the README head.
 
 ### Fixed
 

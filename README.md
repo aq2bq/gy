@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/logo.svg" alt="gy" width="200">
+
 # gy — good,yes
 
 English | [日本語](README.ja.md)
