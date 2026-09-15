@@ -177,6 +177,26 @@ fn list_returns_history_for_actor_and_since() {
 }
 
 #[test]
+fn history_entries_of_one_transaction_share_the_seq() {
+    let mut repo = repo();
+    seed(
+        &mut repo,
+        &[
+            Node::need(id(NodeKind::Need, "0010"), SCOPE, DATE, "one").unwrap(),
+            Node::need(id(NodeKind::Need, "0011"), SCOPE, DATE, "two").unwrap(),
+        ],
+    );
+    let since = Filter {
+        since: Some(0),
+        ..Filter::default()
+    };
+    let rows = log_rows(&repo, &since);
+    assert_eq!(rows.len(), 2);
+    assert_eq!(rows[0].seq, 1);
+    assert_eq!(rows[1].seq, 1);
+}
+
+#[test]
 fn list_is_empty_when_nothing_matches() {
     let repo = repo();
     assert!(node_rows(&repo, &Filter::default()).is_empty());

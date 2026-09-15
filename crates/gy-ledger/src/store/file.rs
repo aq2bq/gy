@@ -150,6 +150,9 @@ impl FileStore {
         };
         log::append(&self.dir, &event)?;
         self.seq += 1;
+        for entry in &mut self.staged_history {
+            entry.seq = self.seq;
+        }
         replay::apply(&mut self.nodes, &event);
         self.history.append(&mut self.staged_history);
         self.staged.clear();
@@ -199,6 +202,7 @@ impl Store for FileStore {
     }
     fn record(&mut self, node: &str, what: &str, why: &str, source: &str) {
         self.staged_history.push(HistoryEntry {
+            seq: 0,
             at: now(),
             actor: self.actor.clone(),
             node: node.into(),

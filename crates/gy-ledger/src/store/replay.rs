@@ -21,6 +21,7 @@ pub fn history(events: &[log::Event]) -> Result<Vec<HistoryEntry>> {
     for event in events {
         for change in &event.changes {
             history.push(HistoryEntry {
+                seq: event.seq,
                 at: event.at,
                 actor: Actor::new(event.actor.clone())?,
                 node: change.node.clone(),

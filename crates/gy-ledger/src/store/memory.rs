@@ -15,6 +15,7 @@ pub struct MemoryStore {
     history: Vec<HistoryEntry>,
     staged_history: Vec<HistoryEntry>,
     undo_stack: Vec<Vec<(String, Option<Vec<u8>>)>>,
+    seq: u64,
     salt: u64,
 }
 impl MemoryStore {
@@ -39,6 +40,7 @@ impl MemoryStore {
             history: Vec::new(),
             staged_history: Vec::new(),
             undo_stack: Vec::new(),
+            seq: 0,
             salt: 0,
         }
     }
@@ -86,6 +88,10 @@ impl Store for MemoryStore {
         }
         if !before.is_empty() {
             self.undo_stack.push(before);
+            self.seq += 1;
+        }
+        for entry in &mut self.staged_history {
+            entry.seq = self.seq;
         }
         self.history.append(&mut self.staged_history);
         Ok(())
@@ -96,6 +102,7 @@ impl Store for MemoryStore {
     }
     fn record(&mut self, node: &str, what: &str, why: &str, source: &str) {
         self.staged_history.push(HistoryEntry {
+            seq: 0,
             at: now(),
             actor: self.actor.clone(),
             node: node.into(),

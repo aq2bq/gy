@@ -101,13 +101,13 @@ pub fn list<S: Store>(repo: &Repository<S>, filter: &Filter) -> Result<Listing> 
     Ok(Listing::Nodes(rows))
 }
 
-/// The history as write units, filtered by actor and by sequence (strictly
-/// after `since`). The history carries no sequence, so the position is it.
+/// The history as write units, filtered by actor and by the transaction
+/// sequence (strictly after `since`). Every entry of one transaction shares
+/// the sequence.
 fn history<S: Store>(repo: &Repository<S>, filter: &Filter) -> Vec<LogRow> {
     let mut rows = Vec::new();
-    for (index, entry) in repo.store().history().iter().enumerate() {
-        let seq = index as u64 + 1;
-        if filter.since.is_some_and(|since| seq <= since) {
+    for entry in repo.store().history() {
+        if filter.since.is_some_and(|since| entry.seq <= since) {
             continue;
         }
         if filter
@@ -118,7 +118,7 @@ fn history<S: Store>(repo: &Repository<S>, filter: &Filter) -> Vec<LogRow> {
             continue;
         }
         rows.push(LogRow {
-            seq,
+            seq: entry.seq,
             at: entry.at,
             actor: entry.actor.name().to_string(),
             node: entry.node.clone(),

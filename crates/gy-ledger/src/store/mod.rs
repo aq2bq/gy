@@ -71,9 +71,11 @@ impl Actor {
     }
 }
 
-/// One appended change: when, who, which node, what, why, and the source.
+/// One appended change: the transaction it belongs to, when, who, which node,
+/// what, why, and the source. Every entry of one transaction shares `seq`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HistoryEntry {
+    pub seq: u64,
     pub at: u64,
     pub actor: Actor,
     pub node: String,
