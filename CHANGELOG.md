@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.1 - 2026-09-15
+
+### Changed
+
+- A need may wait on a requirement as well as a question (`waits-on`);
+  the wait resolves once the requirement is done or cancelled.
+- `gy-migrate` turns a 0.4 need's `waiting-on` entries that point at a
+  requirement, and a question's `belongs-to`, into `waits-on` edges, so
+  `next` excludes exactly what 0.4 excluded.
+
 ## 0.5.0 - 2026-09-15
 
 0.5 is incompatible with 0.4 in the storage format, the operation set, and the
