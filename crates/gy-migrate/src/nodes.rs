@@ -1,6 +1,6 @@
 //! Turning intermediate 0.4 nodes into gy-ledger nodes (N-67): the kind
 //! mapping, the old id as an alias, and the requirement reference.
-use crate::legacy::LegacyNode;
+use crate::legacy::{LegacyNode, free};
 use gy_ledger::{
     Alias, Approval, Closed, ClosedBy, Closure, Completion, DecisionScope, Error, Node, NodeData,
     NodeId, NodeKind, Ref, RequirementState, Result,
@@ -179,20 +179,7 @@ fn criterion(legacy: &LegacyNode, id: NodeId) -> Result<Node> {
 }
 
 fn free(node: &mut Node, legacy: &LegacyNode) {
-    for (name, value) in [
-        ("next_evidence", legacy.next_evidence()),
-        ("responsible", legacy.responsible()),
-        ("remaining_work", legacy.remaining_work()),
-        ("residual", legacy.residual()),
-        ("unresolved", legacy.unresolved()),
-    ] {
-        if let Some(value) = value {
-            node.set_free(name, value);
-        }
-    }
-    if legacy.new_kind() == "requirement" {
-        if let Some(evidence) = legacy.evidence() {
-            node.set_free("evidence", evidence);
-        }
+    for (name, value) in free::attributes(legacy) {
+        node.set_free(name, value);
     }
 }

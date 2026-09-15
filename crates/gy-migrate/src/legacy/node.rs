@@ -3,7 +3,7 @@ use super::links::{LegacyLink, RELATIONS, edges_of};
 use std::collections::BTreeMap;
 
 /// Attributes the migration drops (a publication keeps them in a later step).
-const DROPPED: &[&str] = &[
+pub(super) const DROPPED: &[&str] = &[
     "imported",
     "legacy_status",
     "source_file",
@@ -15,7 +15,7 @@ const DROPPED: &[&str] = &[
 ];
 
 /// The 0.4 requirement attributes that are frozen as a publication (N-69).
-const RECORDS: &[&str] = &[
+pub(super) const RECORDS: &[&str] = &[
     "transitions",
     "record_history",
     "deviations",
@@ -53,6 +53,9 @@ pub struct LegacyNode {
     pub lists: BTreeMap<String, Vec<String>>,
     /// Relationship name to its edges.
     pub links: BTreeMap<String, Vec<LegacyLink>>,
+    /// Every attribute rendered as text (an array joins by newline an object is
+    /// JSON), for the free-attribute carry (n-9198).
+    pub values: BTreeMap<String, String>,
     pub transitions: Vec<LegacyTransition>,
 }
 
@@ -61,6 +64,11 @@ impl LegacyNode {
         let (attrs, lists) = attribute_bags(node);
         let kind = node.kind().to_string();
         let links = links_of(node, &kind);
+        let values = node
+            .attrs
+            .iter()
+            .map(|(name, value)| (name.clone(), super::free::render(value)))
+            .collect();
         let transitions = node
             .attrs
             .get("transitions")
@@ -77,6 +85,7 @@ impl LegacyNode {
             attrs,
             lists,
             links,
+            values,
             transitions,
         }
     }
@@ -153,26 +162,6 @@ impl LegacyNode {
 
     pub fn dropped_reason(&self) -> Option<&str> {
         self.text("dropped_reason")
-    }
-
-    pub fn next_evidence(&self) -> Option<&str> {
-        self.text("next_evidence")
-    }
-
-    pub fn responsible(&self) -> Option<&str> {
-        self.text("responsible")
-    }
-
-    pub fn remaining_work(&self) -> Option<&str> {
-        self.text("remaining_work")
-    }
-
-    pub fn residual(&self) -> Option<&str> {
-        self.text("residual")
-    }
-
-    pub fn unresolved(&self) -> Option<&str> {
-        self.text("unresolved")
     }
 
     /// The owning nodes of a 0.4 question: a need means it waits on the

@@ -11,6 +11,8 @@ pub struct Report {
     pub waiting_on: usize,
     pub links: usize,
     pub dropped: Vec<String>,
+    /// Free attributes carried per name, and how many nodes had each (n-9198).
+    pub free: BTreeMap<String, usize>,
     pub unmapped: Vec<String>,
     pub frozen: usize,
     pub publication: Option<String>,
@@ -30,6 +32,15 @@ impl fmt::Display for Report {
             writeln!(f, "  {entry}")?;
         }
         writeln!(f, "frozen records: {}", self.frozen)?;
+        writeln!(
+            f,
+            "free attributes: {} names, {} values",
+            self.free.len(),
+            self.free.values().sum::<usize>()
+        )?;
+        for (name, count) in &self.free {
+            writeln!(f, "  {name}: {count}")?;
+        }
         if let Some(publication) = &self.publication {
             writeln!(f, "publication: {publication}")?;
         }

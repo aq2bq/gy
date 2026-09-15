@@ -88,7 +88,7 @@ gy はその終盤のためにあります。計画も日程も持ちません�
 | `req cancel <ID> --reason <文> --source <文>` | 完了しなかった要求を中止する |
 | `decide "<題>" --scope-note <文> [--body-file <path>] [--closes <Q>]... [--relate <関係> <D> --mark <文>]` | 決定を作り、論点を閉じ、系譜の辺を 1 つ記録する |
 | `link <from> <関係> <to> [--mark <文>] [--remove]` | 辺を 1 つ追加または削除する |
-| `edit <ID> --reason <文> [--title] [--body-file] [--set k=v] [--append k=v]` | 題名・本文・自由属性を変える |
+| `edit <ID> --reason <文> [--title] [--body-file] [--set k=v] [--append k=v]` | 題名・本文・自由属性を変える。自由属性は文字列で、`--set` は上書き、`--append` は改行区切りで 1 行足す |
 | `undo --reason <文>` | 直前のトランザクションを打ち消す |
 
 書き込みはどれも、変えたもの、そのノードにまだ無いもの、次に打てるコマンドの形を出力します。次の一手は別の手順書を見なくても分かります。`--json` を付けると同じ内容をデータで返します。

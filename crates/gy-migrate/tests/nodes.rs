@@ -36,7 +36,7 @@ fn fixture() -> Fixture {
                 "N-1",
                 "need",
                 "need one",
-                "next_evidence: watch\nresponsible: master\nremaining_work: half\n",
+                "next_evidence: watch\nresponsible: master\nremaining_work: half\nhandoff_notes: a handoff note\nadditional-decisions:\n- D-1\n- D-2\n",
             ),
         ),
         (
@@ -212,6 +212,35 @@ fn nodes_are_transferred_with_aliases_and_refs() {
         }
         _ => panic!("not a criterion"),
     }
+}
+
+#[test]
+fn unknown_attributes_carry_as_free_attributes() {
+    let fx = fixture();
+    let out = fx.run(&["--ref-base", "https://example/issues/"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+
+    let repository = fx.open();
+    let need = node(&repository, "N-1");
+    assert_eq!(
+        need.free("handoff_notes").map(String::as_str),
+        Some("a handoff note")
+    );
+    assert_eq!(
+        need.free("additional-decisions").map(String::as_str),
+        Some("D-1\nD-2")
+    );
+}
+
+#[test]
+fn the_report_lists_the_free_attributes() {
+    let fx = fixture();
+    let out = fx.run(&["--ref-base", "https://example/issues/"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    let text = String::from_utf8(out.stdout.clone()).unwrap();
+    assert!(text.contains("free attributes:"), "{text}");
+    assert!(text.contains("handoff_notes: 1"), "{text}");
+    assert!(text.contains("additional-decisions: 1"), "{text}");
 }
 
 #[test]

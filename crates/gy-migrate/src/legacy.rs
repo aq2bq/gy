@@ -1,6 +1,7 @@
 //! Reading a 0.4 ledger into an intermediate form. This module (with its
 //! `node` and `links` children) is the only place that touches gy-core's
 //! string keys: every key becomes a typed accessor.
+pub(crate) mod free;
 mod links;
 mod node;
 
@@ -77,6 +78,9 @@ impl Legacy {
             }
             report.waiting_on += node.waiting_on().len();
             report.links += node.links.values().map(Vec::len).sum::<usize>();
+            for (name, _) in free::attributes(node) {
+                *report.free.entry(name).or_default() += 1;
+            }
             for name in node.dropped() {
                 if !report.dropped.contains(&name) {
                     report.dropped.push(name);
