@@ -9,6 +9,8 @@ const ENTRIES = [['#/', 'now', '◉'], ['#/graph', 'graph', '✦'], ['#/history'
 let words = null;
 let shell = { seq: 0, at: '', scopes: [], kinds: [] };
 let scope = sessionStorage.getItem(SCOPE_KEY) || 'all';
+/* The point in the log every read asks for; null is the head (n-32a9). */
+let at = null;
 
 /* ?lang= wins, then the stored choice, then what the server sent (ac-b9b1). */
 function pickLang() {
@@ -87,17 +89,29 @@ function route() {
 function draw() {
   document.getElementById('crumb').textContent = word('now');
   document.getElementById('searchlbl').textContent = word('searchLbl');
-  document.getElementById('clock').innerHTML =
-    `<span class="live"></span>${word('canon')} <b>${shell.seq}</b><br>${stamp(shell.at)}`;
+  /* While a past point is chosen the band owns the clock (n-32a9). */
+  if (at === null) {
+    document.getElementById('clock').innerHTML =
+      `<span class="live"></span>${word('canon')} <b>${shell.seq}</b><br>${stamp(shell.at)}`;
+  }
   document.querySelectorAll('#lang button').forEach(button => {
     button.classList.toggle('on', button.dataset.l === lang);
   });
   drawNav();
+  if (window.GyTime) window.GyTime.labels();
   route();
 }
 
+/* The one place a read goes out: it carries the point in the log when one is
+   chosen, so every page answers for that moment (n-32a9). */
+function read(path) {
+  if (at === null) return fetch(path);
+  const join = path.includes('?') ? '&' : '?';
+  return fetch(`${path}${join}at=${at}`);
+}
+
 async function refresh() {
-  const res = await fetch(`/api/shell?scope=${encodeURIComponent(scope)}`);
+  const res = await read(`/api/shell?scope=${encodeURIComponent(scope)}`);
   shell = await res.json();
   draw();
 }
@@ -124,12 +138,23 @@ function wire() {
   });
 }
 
-/* What a page script (now.js, list.js, node.js, palette.js) needs. */
+/* What a page script (now.js, list.js, node.js, palette.js, time.js) needs. */
 window.GyShell = {
   t: word,
   lang: () => lang,
   scope: () => scope,
   plural: kind => word(PLURAL[kind] || kind),
+  /* The point in the log, or null for the head. */
+  get at() {
+    return at;
+  },
+  set at(seq) {
+    at = seq;
+  },
+  /* A read with the point attached; every page fetches through this. */
+  read,
+  /* Fetch the shell again and redraw what is on screen. */
+  reload: refresh,
 };
 
 async function start() {

@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="/assets/list.css">
 <link rel="stylesheet" href="/assets/node.css">
 <link rel="stylesheet" href="/assets/palette.css">
+<link rel="stylesheet" href="/assets/time.css">
 </head>
 <body>
 <div class="app">
@@ -34,6 +35,15 @@
 <script src="/assets/now.js"></script>
 <script src="/assets/list.js"></script>
 <script src="/assets/node.js"></script>
+<div class="scrub">
+  <div class="bar">
+    <span class="lbl"><span id="t-rewind"></span> <b id="scrub-at"></b></span>
+    <span class="lbl" id="scrub-seq"></span>
+    <button class="now" id="scrub-now"></button>
+  </div>
+  <div class="track" id="track"><svg id="ticks"></svg><div class="shade" id="shade"></div><div class="head" id="head"></div></div>
+</div>
 <script src="/assets/palette.js"></script>
+<script src="/assets/time.js"></script>
 </body>
 </html>

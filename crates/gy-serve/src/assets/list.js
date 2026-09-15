@@ -30,7 +30,7 @@
     filter = 'open';
     const scope = window.GyShell.scope();
     const only = scope && scope !== 'all' ? `&scope=${encodeURIComponent(scope)}` : '';
-    const res = await fetch(`/api/list?kind=${encodeURIComponent(kind)}${only}`);
+    const res = await window.GyShell.read(`/api/list?kind=${encodeURIComponent(kind)}${only}`);
     rows = (await res.json()).rows || [];
     render();
   }

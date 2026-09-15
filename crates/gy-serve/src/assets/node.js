@@ -33,7 +33,7 @@
   const stateWord = () => t(`st.${node.kind}.${state()}`);
 
   async function draw(id) {
-    const res = await fetch(`/api/node/${encodeURIComponent(id)}`);
+    const res = await window.GyShell.read(`/api/node/${encodeURIComponent(id)}`);
     if (!res.ok) {
       crumb(id, null);
       document.getElementById('main').innerHTML = `<div class="hero"><h1>${esc(id)} — ${t('notFound')}</h1></div>`;

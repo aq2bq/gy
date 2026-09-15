@@ -137,7 +137,7 @@
   async function draw() {
     const scope = window.GyShell.scope();
     const only = scope && scope !== 'all' ? `?scope=${encodeURIComponent(scope)}` : '';
-    const res = await fetch(`/api/now${only}`);
+    const res = await window.GyShell.read(`/api/now${only}`);
     data = await res.json();
     actors = [];
     document.getElementById('main').innerHTML =

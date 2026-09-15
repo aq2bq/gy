@@ -33,7 +33,7 @@
       draw();
       return;
     }
-    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+    const res = await window.GyShell.read(`/api/search?q=${encodeURIComponent(query)}`);
     const body = await res.json();
     hits = body.hits || [];
     selected = 0;

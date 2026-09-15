@@ -31,6 +31,8 @@ fn the_read_pages_are_embedded_and_served() {
         "node.js",
         "palette.css",
         "palette.js",
+        "time.css",
+        "time.js",
     ] {
         let (body, kind) = assets::get(name).unwrap();
         assert!(!body.is_empty(), "{name} is empty");
@@ -52,6 +54,8 @@ fn the_index_references_the_embedded_files() {
         "list.js",
         "node.js",
         "palette.js",
+        "time.css",
+        "time.js",
     ] {
         assert!(
             html.contains(&format!("assets/{name}")),

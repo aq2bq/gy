@@ -11,9 +11,11 @@ const LIST_CSS: &str = include_str!("assets/list.css");
 const LIST_JS: &str = include_str!("assets/list.js");
 const NODE_CSS: &str = include_str!("assets/node.css");
 const NODE_JS: &str = include_str!("assets/node.js");
+const TIME_CSS: &str = include_str!("assets/time.css");
+const TIME_JS: &str = include_str!("assets/time.js");
 
 /// Every embedded file: its name and its text.
-pub const FILES: [(&str, &str); 12] = [
+pub const FILES: [(&str, &str); 14] = [
     ("index.html", INDEX),
     ("app.css", CSS),
     ("shell.js", JS),
@@ -26,6 +28,8 @@ pub const FILES: [(&str, &str); 12] = [
     ("list.js", LIST_JS),
     ("node.css", NODE_CSS),
     ("node.js", NODE_JS),
+    ("time.css", TIME_CSS),
+    ("time.js", TIME_JS),
 ];
 
 /// The one HTML document, with `%LANG%` still in place.
