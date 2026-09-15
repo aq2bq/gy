@@ -128,7 +128,7 @@ Each agent writes its own records with its own name, so the history shows who ch
 
 ## IDs, aliases, and refs
 
-gy allocates each ID itself, as a kind prefix and a short hash, such as `n-3f9a`. No counter is shared, so two agents writing at once cannot collide; a collision just mints a longer hash. `show` also accepts a zero-padded ID, an alias, or a requirement's outward reference by exact or suffix match.
+gy allocates each ID itself, as a kind prefix and a short hash, such as `n-3f9a`. A hash always contains at least one letter a–f, so it never looks like an old ID. No counter is shared, so two agents writing at once cannot collide; a collision just mints a longer hash. `show` accepts the exact ID, an alias (zero-padding and case are ignored, so `D-8` = `D-08`), or a requirement's outward reference by exact or suffix match.
 
 An existing ledger keeps its old IDs as aliases, so `show D-164` and `show '#6027'` both reach the renamed node. A requirement's reference (`--ref`) is opaque: gy stores it and never reads what it points at.
 

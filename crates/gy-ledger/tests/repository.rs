@@ -48,16 +48,36 @@ fn remove_drops_the_node() {
 }
 
 #[test]
-fn resolve_handles_full_ids_zero_padding_and_aliases() {
+fn resolve_handles_full_ids_and_zero_padded_aliases() {
     let mut repo = repo();
     let mut node = criterion("0001");
     node.add_alias(gy_ledger::Alias("AC-7".into()));
     repo.transaction("add", "test", |repo| repo.put(&node))
         .unwrap();
     assert_eq!(repo.resolve("ac-0001").unwrap(), node.id().clone());
-    assert_eq!(repo.resolve("AC-1").unwrap(), node.id().clone());
+    assert_eq!(repo.resolve("AC-7").unwrap(), node.id().clone());
     assert_eq!(repo.resolve("ac-7").unwrap(), node.id().clone());
+    assert_eq!(repo.resolve("AC-07").unwrap(), node.id().clone());
+    // The zero-padding is only among aliases, never a hash id.
+    assert!(repo.resolve("ac-1").is_err());
     assert!(repo.resolve("ac-9999").is_err());
+}
+
+#[test]
+fn an_exact_hash_id_wins_over_a_zero_padded_alias() {
+    let mut repo = repo();
+    let hashed = criterion("0008");
+    let mut aliased = criterion("0009");
+    aliased.add_alias(gy_ledger::Alias("AC-8".into()));
+    let (hashed_id, aliased_id) = (hashed.id().clone(), aliased.id().clone());
+    repo.transaction("add", "test", |repo| {
+        repo.put(&hashed)?;
+        repo.put(&aliased)
+    })
+    .unwrap();
+    assert_eq!(repo.resolve("ac-0008").unwrap(), hashed_id);
+    assert_eq!(repo.resolve("AC-8").unwrap(), aliased_id);
+    assert_eq!(repo.resolve("AC-08").unwrap(), aliased_id);
 }
 
 #[test]

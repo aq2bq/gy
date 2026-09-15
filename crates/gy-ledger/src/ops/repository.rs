@@ -74,30 +74,42 @@ impl<S: Store> Repository<S> {
         self.store.record(&key, "deleted", &self.why, &self.source);
         Ok(())
     }
-    /// Resolve a full id, a zero-padded id (D-6 = D-06), or an alias. An
+    /// Resolve an exact id, an alias (a zero-padded old id, so `D-6` = `D-06`),
+    /// or a requirement's outward reference by exact or suffix match. An exact
+    /// id wins, and the zero-padding is only among aliases, never a hash id. An
     /// unknown text is an error, and an ambiguous one lists the candidates.
-    /// Resolve a full id, a zero-padded id (D-6 = D-06), an alias, or a
-    /// requirement's outward reference by exact or suffix match (proposal-v3
-    /// 11). An unknown text is an error, and an ambiguous one lists the
-    /// candidates.
     pub fn resolve(&self, text: &str) -> Result<NodeId> {
-        let wanted = normalize(text);
-        let (mut by_id, mut by_ref) = (Vec::new(), Vec::new());
+        let wanted = text.to_lowercase();
+        let old = normalize(text);
+        let (mut by_id, mut by_alias, mut by_ref) = (Vec::new(), Vec::new(), Vec::new());
         for key in self.store.keys() {
             let Some(node) = self.load(&key)? else {
                 continue;
             };
-            let aliased = node
+            if key.to_lowercase() == wanted {
+                by_id.push(node.id().clone());
+            } else if node
                 .aliases()
                 .iter()
-                .any(|alias| normalize(&alias.0) == wanted);
-            if normalize(&key) == wanted || aliased {
-                by_id.push(node.id().clone());
+                .any(|alias| normalize(&alias.0) == old)
+            {
+                by_alias.push(node.id().clone());
             } else if referenced(&node).is_some_and(|ref_| ref_ == text || ref_.ends_with(text)) {
                 by_ref.push(node.id().clone());
             }
         }
-        choose(text, if by_id.is_empty() { by_ref } else { by_id })
+        if by_id.is_empty() {
+            choose(
+                text,
+                if by_alias.is_empty() {
+                    by_ref
+                } else {
+                    by_alias
+                },
+            )
+        } else {
+            choose(text, by_id)
+        }
     }
     /// Run `f` as one transaction with the given why and source. A failed
     /// commit rolls back, so nothing is written (AC-45).

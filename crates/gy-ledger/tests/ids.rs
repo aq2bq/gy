@@ -20,6 +20,18 @@ fn two_processes_in_the_same_second_mint_distinct_short_ids() {
 }
 
 #[test]
+fn minted_ids_always_carry_a_letter() {
+    let mut store = MemoryStore::with_actor(FormatVersion::CURRENT, Actor::new("piko").unwrap());
+    for _ in 0..100 {
+        let id = NodeId::mint(NodeKind::Need, &mut store).unwrap();
+        assert!(
+            id.hash().bytes().any(|byte| byte.is_ascii_alphabetic()),
+            "{id}"
+        );
+    }
+}
+
+#[test]
 fn the_memory_store_mints_the_same_way() {
     let mut first = MemoryStore::with_actor(FormatVersion::CURRENT, Actor::new("piko").unwrap());
     let mut second = MemoryStore::with_actor(FormatVersion::CURRENT, Actor::new("piko").unwrap());
