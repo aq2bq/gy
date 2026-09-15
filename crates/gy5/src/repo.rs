@@ -1,6 +1,6 @@
 //! Finding the repository root and opening its ledger for reading. Reads never
 //! create a ledger; the first write does (N-63).
-use gy_ledger::{Error, FileStore, Repository, Result, format};
+use gy_ledger::{Error, FileStore, FormatVersion, Repository, Result, format};
 use std::path::{Path, PathBuf};
 
 /// A placeholder actor for reads. Only a write names the real `GY_ACTOR`.
@@ -34,4 +34,14 @@ pub fn open(ledger: &Path) -> Result<Repository<FileStore>> {
     }
     let store = FileStore::open_with(ledger, |_| Some(READ_ACTOR.to_string()))?;
     Ok(Repository::new(store))
+}
+
+/// Open the ledger for writing, creating it on first use. The actor comes from
+/// `GY_ACTOR`; an unset actor is an error.
+pub fn open_write(ledger: &Path) -> Result<Repository<FileStore>> {
+    if !ledger.join(format::FILE).is_file() {
+        std::fs::create_dir_all(ledger)?;
+        format::write(ledger, FormatVersion::CURRENT)?;
+    }
+    Ok(Repository::new(FileStore::open(ledger)?))
 }

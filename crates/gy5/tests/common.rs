@@ -33,6 +33,14 @@ pub fn stderr(output: &Output) -> String {
     String::from_utf8(output.stderr.clone()).unwrap()
 }
 
+pub fn first_line(output: &Output) -> String {
+    stdout(output)
+        .lines()
+        .next()
+        .unwrap_or_default()
+        .to_string()
+}
+
 impl Fixture {
     pub fn ledger(&self) -> PathBuf {
         location::dir_in(&self.data, &self.root)

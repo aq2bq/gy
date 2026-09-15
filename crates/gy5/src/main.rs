@@ -1,12 +1,17 @@
 //! gy5: the new gy CLI. It wires the gy-ledger views and ops to commands and
 //! does nothing else (D-76).
+mod output;
 mod repo;
+mod write;
 
 use clap::{Parser, Subcommand};
-use gy_ledger::{Error, Filter, NodeKind, Result, handover, list, location, next, show};
-use serde::Serialize;
-use std::fmt::Display;
-use std::path::PathBuf;
+use gy_ledger::{
+    CriterionAdd, CriterionSatisfy, Error, Filter, NeedAdd, NeedClose, NodeKind, Operation,
+    QuestionAdd, QuestionClose, Result, handover, list, location, next, show,
+};
+use output::{emit, emit_list, report};
+use std::path::{Path, PathBuf};
+use write::Written;
 
 #[derive(Parser)]
 #[command(name = "gy5", version, about = "The new gy ledger")]
@@ -53,6 +58,77 @@ enum Command {
     Next,
     /// What a session needs to resume: in-progress requirements and counts.
     Handover,
+    /// File or close a need.
+    Need {
+        #[command(subcommand)]
+        action: NeedAction,
+    },
+    /// Open or close a question.
+    Question {
+        #[command(subcommand)]
+        action: QuestionAction,
+    },
+    /// Add an acceptance criterion, or record it satisfied.
+    Criterion {
+        #[command(subcommand)]
+        action: CriterionAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum NeedAction {
+    /// File a need against existing criteria.
+    Add {
+        title: String,
+        #[arg(long, value_name = "AC", required = true)]
+        targets: Vec<String>,
+        #[arg(long, value_name = "D")]
+        spawned_by: Option<String>,
+    },
+    /// Close a need by a fact or an external tracker.
+    Close {
+        id: String,
+        #[arg(long, value_name = "KIND")]
+        by: String,
+        #[arg(long, value_name = "TEXT")]
+        evidence: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum QuestionAction {
+    /// Open a question with a decider and at least two options.
+    Add {
+        title: String,
+        #[arg(long, value_name = "NAME")]
+        decider: String,
+        #[arg(long = "options", value_name = "OPTION", required = true)]
+        options: Vec<String>,
+    },
+    /// Close a question by a fact, a decision, or neither.
+    Close {
+        id: String,
+        #[arg(long, value_name = "KIND")]
+        by: String,
+        #[arg(long, value_name = "TEXT")]
+        evidence: String,
+        #[arg(long, value_name = "D")]
+        decision: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+enum CriterionAction {
+    /// Add an acceptance criterion.
+    Add { title: String },
+    /// Record evidence that a criterion holds, or revoke it.
+    Satisfy {
+        id: String,
+        #[arg(long, value_name = "TEXT")]
+        evidence: String,
+        #[arg(long)]
+        revoke: bool,
+    },
 }
 
 fn main() {
@@ -71,28 +147,7 @@ fn run(cli: &Cli) -> Result<()> {
             let repository = repo::open(&ledger)?;
             emit_list(cli.json, &show(&repository, ids, *full)?)
         }
-        Command::List {
-            kind,
-            status,
-            targets,
-            grep,
-            actor,
-            since,
-        } => {
-            let repository = repo::open(&ledger)?;
-            let filter = Filter {
-                kind: kind.as_deref().map(parse_kind).transpose()?,
-                status: status.clone(),
-                targets: targets
-                    .as_deref()
-                    .map(|text| repository.resolve(text))
-                    .transpose()?,
-                grep: grep.clone(),
-                actor: actor.clone(),
-                since: *since,
-            };
-            emit(cli.json, &list(&repository, &filter)?)
-        }
+        Command::List { .. } => read_list(cli, &ledger),
         Command::Next => {
             let repository = repo::open(&ledger)?;
             emit_list(cli.json, &next(&repository, cli.scope.as_deref())?)
@@ -101,7 +156,113 @@ fn run(cli: &Cli) -> Result<()> {
             let repository = repo::open(&ledger)?;
             emit(cli.json, &handover(&repository, cli.scope.as_deref())?)
         }
+        Command::Need { action } => write_need(cli, &root, &ledger, action),
+        Command::Question { action } => write_question(cli, &root, &ledger, action),
+        Command::Criterion { action } => write_criterion(cli, &root, &ledger, action),
     }
+}
+
+fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
+    let Command::List {
+        kind,
+        status,
+        targets,
+        grep,
+        actor,
+        since,
+    } = &cli.command
+    else {
+        return Err(Error::invalid("not a list"));
+    };
+    let repository = repo::open(ledger)?;
+    let filter = Filter {
+        kind: kind.as_deref().map(parse_kind).transpose()?,
+        status: status.clone(),
+        targets: targets
+            .as_deref()
+            .map(|text| repository.resolve(text))
+            .transpose()?,
+        grep: grep.clone(),
+        actor: actor.clone(),
+        since: *since,
+    };
+    emit(cli.json, &list(&repository, &filter)?)
+}
+
+fn write_need(cli: &Cli, root: &Path, ledger: &Path, action: &NeedAction) -> Result<()> {
+    let mut repository = repo::open_write(ledger)?;
+    let outcome = match action {
+        NeedAction::Add {
+            title,
+            targets,
+            spawned_by,
+        } => NeedAdd {
+            scope: write::scope(root, cli.scope.as_deref())?,
+            title: title.clone(),
+            targets: write::resolve_all(&repository, targets)?,
+            spawned_by: write::resolve_opt(&repository, spawned_by.as_deref())?,
+        }
+        .run(&mut repository)?,
+        NeedAction::Close { id, by, evidence } => NeedClose {
+            id: repository.resolve(id)?,
+            by: write::closed_by(by)?,
+            evidence: evidence.clone(),
+        }
+        .run(&mut repository)?,
+    };
+    emit(cli.json, &Written::of(&outcome))
+}
+
+fn write_question(cli: &Cli, root: &Path, ledger: &Path, action: &QuestionAction) -> Result<()> {
+    let mut repository = repo::open_write(ledger)?;
+    let outcome = match action {
+        QuestionAction::Add {
+            title,
+            decider,
+            options,
+        } => QuestionAdd {
+            scope: write::scope(root, cli.scope.as_deref())?,
+            title: title.clone(),
+            decider: decider.clone(),
+            options: options.clone(),
+        }
+        .run(&mut repository)?,
+        QuestionAction::Close {
+            id,
+            by,
+            evidence,
+            decision,
+        } => QuestionClose {
+            id: repository.resolve(id)?,
+            by: write::closure(by)?,
+            evidence: evidence.clone(),
+            decision: write::resolve_opt(&repository, decision.as_deref())?,
+        }
+        .run(&mut repository)?,
+    };
+    emit(cli.json, &Written::of(&outcome))
+}
+
+fn write_criterion(cli: &Cli, root: &Path, ledger: &Path, action: &CriterionAction) -> Result<()> {
+    let mut repository = repo::open_write(ledger)?;
+    let outcome = match action {
+        CriterionAction::Add { title } => CriterionAdd {
+            scope: write::scope(root, cli.scope.as_deref())?,
+            title: title.clone(),
+        }
+        .run(&mut repository)?,
+        CriterionAction::Satisfy {
+            id,
+            evidence,
+            revoke,
+        } => CriterionSatisfy {
+            id: repository.resolve(id)?,
+            evidence: evidence.clone(),
+            revoke: *revoke,
+        }
+        .run(&mut repository)?,
+    };
+    emit(cli.json, &Written::of(&outcome))
 }
 
 fn parse_kind(text: &str) -> Result<NodeKind> {
@@ -109,39 +270,4 @@ fn parse_kind(text: &str) -> Result<NodeKind> {
         .into_iter()
         .find(|kind| kind.name() == text || kind.prefix() == text)
         .ok_or_else(|| Error::invalid(format!("unknown type {text}")))
-}
-
-fn emit<T: Display + Serialize>(json: bool, value: &T) -> Result<()> {
-    if json {
-        println!("{}", to_json(value)?);
-    } else {
-        print!("{value}");
-    }
-    Ok(())
-}
-
-fn emit_list<T: Display + Serialize>(json: bool, values: &[T]) -> Result<()> {
-    if json {
-        println!("{}", to_json(values)?);
-    } else {
-        for value in values {
-            print!("{value}");
-        }
-    }
-    Ok(())
-}
-
-fn to_json<T: Serialize + ?Sized>(value: &T) -> Result<String> {
-    serde_json::to_string(value).map_err(|error| Error::invalid(error.to_string()))
-}
-
-fn report(json: bool, error: &Error) {
-    if json {
-        println!(
-            "{}",
-            serde_json::json!({"code": 2, "message": error.message})
-        );
-    } else {
-        eprintln!("{}", error.message);
-    }
 }
