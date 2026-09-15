@@ -1,11 +1,10 @@
 //! Relationships: the closed set of edge labels, and a link that carries both
 //! directions.
-use super::NodeId;
+use super::{NodeId, NodeKind};
+use crate::store::{Error, Result};
 
 /// The closed set of canonical relationships (D-76). Each has an inverse name,
-/// so a link derives the other direction rather than being handed it. Whether
-/// a kind may carry a relation (a question closing a decision, for example) is
-/// checked in N-37.
+/// so a link derives the other direction rather than being handed it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Relation {
     Closes,
@@ -34,11 +33,32 @@ impl Relation {
         ("relies-on", "relied-on-by"),
         ("raised", "raised-by"),
     ];
+    /// The (from kind, to kind) pairs each relation allows. One table, in the
+    /// model, so an edge that breaks a kind pairing cannot be built (D-75).
+    const ALLOWED: &'static [(Self, NodeKind, NodeKind)] = &[
+        (Self::Closes, NodeKind::Question, NodeKind::Decision),
+        (Self::Narrows, NodeKind::Decision, NodeKind::Decision),
+        (Self::Widens, NodeKind::Decision, NodeKind::Decision),
+        (Self::Supersedes, NodeKind::Decision, NodeKind::Decision),
+        (Self::Completes, NodeKind::Decision, NodeKind::Decision),
+        (Self::Targets, NodeKind::Need, NodeKind::Criterion),
+        (Self::Targets, NodeKind::Requirement, NodeKind::Criterion),
+        (Self::SpawnedBy, NodeKind::Need, NodeKind::Decision),
+        (Self::FiledAs, NodeKind::Need, NodeKind::Requirement),
+        (Self::DependsOn, NodeKind::Need, NodeKind::Need),
+        (Self::ReliesOn, NodeKind::Requirement, NodeKind::Decision),
+        (Self::Raised, NodeKind::Requirement, NodeKind::Question),
+    ];
     pub fn name(self) -> &'static str {
         Self::PAIRS[self as usize].0
     }
     pub fn inverse(self) -> &'static str {
         Self::PAIRS[self as usize].1
+    }
+    fn allows(self, from: NodeKind, to: NodeKind) -> bool {
+        Self::ALLOWED
+            .iter()
+            .any(|(relation, source, target)| *relation == self && *source == from && *target == to)
     }
 }
 
@@ -68,8 +88,18 @@ pub struct Link {
     reverse: Edge,
 }
 impl Link {
-    pub fn new(from: NodeId, relation: Relation, to: NodeId) -> Self {
-        Self {
+    /// Build both directions of a relationship, rejecting a pair whose kinds
+    /// the relation does not allow (D-75).
+    pub fn new(from: NodeId, relation: Relation, to: NodeId) -> Result<Self> {
+        if !relation.allows(from.kind(), to.kind()) {
+            return Err(Error::invalid(format!(
+                "{} may not {} {}",
+                from.kind().name(),
+                relation.name(),
+                to.kind().name()
+            )));
+        }
+        Ok(Self {
             forward: Edge {
                 from: from.clone(),
                 label: relation,
@@ -82,7 +112,7 @@ impl Link {
                 reversed: true,
                 to: from,
             },
-        }
+        })
     }
     pub fn forward(&self) -> &Edge {
         &self.forward

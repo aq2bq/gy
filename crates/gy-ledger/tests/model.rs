@@ -63,7 +63,7 @@ fn only_the_four_states_and_the_allowed_transitions() {
 fn a_link_sets_both_directions() {
     let need = id(NodeKind::Need, "0001");
     let criterion = id(NodeKind::Criterion, "0002");
-    let link = Link::new(need.clone(), Relation::Targets, criterion.clone());
+    let link = Link::new(need.clone(), Relation::Targets, criterion.clone()).unwrap();
     assert_eq!(
         (
             &link.forward().from,
@@ -80,6 +80,25 @@ fn a_link_sets_both_directions() {
         ),
         (&criterion, &need, "targeted-by")
     );
+}
+
+#[test]
+fn allowed_kind_pairs_build() {
+    let need = id(NodeKind::Need, "0001");
+    let criterion = id(NodeKind::Criterion, "0002");
+    let question = id(NodeKind::Question, "0003");
+    let decision = id(NodeKind::Decision, "0004");
+    assert!(Link::new(need, Relation::Targets, criterion).is_ok());
+    assert!(Link::new(question, Relation::Closes, decision).is_ok());
+}
+
+#[test]
+fn a_disallowed_kind_pair_is_rejected() {
+    let need = id(NodeKind::Need, "0001");
+    let criterion = id(NodeKind::Criterion, "0002");
+    let decision = id(NodeKind::Decision, "0004");
+    assert!(Link::new(criterion.clone(), Relation::Closes, need.clone()).is_err());
+    assert!(Link::new(need, Relation::Narrows, decision).is_err());
 }
 
 #[test]
