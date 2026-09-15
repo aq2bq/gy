@@ -6,7 +6,7 @@ canvas#g.grab{cursor:grabbing}
 .gpanel{position:absolute;right:28px;top:14px;width:320px;background:rgba(20,27,45,.92);border:1px solid var(--line);border-radius:12px;padding:14px 16px;backdrop-filter:blur(6px);display:none;box-shadow:0 20px 60px rgba(0,0,0,.4)}
 .gpanel.on{display:block}
 .gpanel .kk{font-family:var(--mono);font-size:11px;color:var(--paper-3);display:flex;gap:10px;align-items:center}
-.gpanel .tt{font-family:var(--serif);font-size:17px;line-height:1.5;margin:6px 0 8px}
+.gpanel .tt{font-family:var(--sans);font-weight:500;font-size:17px;line-height:1.5;margin:6px 0 8px}
 .gpanel .rel{font-size:12px;color:var(--paper-2);display:flex;flex-direction:column;gap:3px;max-height:180px;overflow:auto}
 .gpanel .rel a:hover{color:#fff;text-decoration:underline;text-underline-offset:3px}
 .gpanel .rel .rl{font-family:var(--mono);font-size:10px;color:var(--paper-3);margin-right:6px;letter-spacing:.06em}

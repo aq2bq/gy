@@ -84,7 +84,7 @@ fn the_stylesheet_defines_the_frame_variables() {
     ] {
         assert!(css.contains(&format!("{name}:")), "{name} is not defined");
     }
-    for name in ["--serif", "--sans", "--mono"] {
+    for name in ["--sans", "--mono"] {
         assert!(css.contains(&format!("{name}:")), "{name} is not defined");
     }
 }

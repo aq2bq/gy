@@ -2,7 +2,7 @@
 .pal{position:fixed;inset:0;z-index:20;background:rgba(6,9,18,.7);display:none;align-items:flex-start;justify-content:center;padding-top:14vh;backdrop-filter:blur(3px)}
 .pal.on{display:flex}
 .pal .box{width:min(720px,92vw);background:var(--ink-2);border:1px solid var(--line);border-radius:12px;box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden}
-.pal input{width:100%;font:inherit;font-size:20px;font-family:var(--serif);background:transparent;border:0;outline:0;color:var(--paper);padding:18px 22px;border-bottom:1px solid var(--line)}
+.pal input{width:100%;font:inherit;font-size:20px;font-family:var(--sans);background:transparent;border:0;outline:0;color:var(--paper);padding:18px 22px;border-bottom:1px solid var(--line)}
 .pal input::placeholder{color:var(--paper-3)}
 .pal .res{max-height:50vh;overflow:auto}
 .pal .r{display:grid;grid-template-columns:20px 74px minmax(0,1fr) auto;gap:12px;align-items:baseline;padding:10px 22px;cursor:pointer}

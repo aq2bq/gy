@@ -1,5 +1,5 @@
 /* The list page's own rules: the prototype's list block and the wide row. */
-.list h1{font-family:var(--serif);font-weight:400;font-size:28px;margin:16px 0 4px}
+.list h1{font-family:var(--sans);font-weight:600;font-size:28px;margin:16px 0 4px}
 .list .sub{color:var(--paper-3);font-size:13px;margin-bottom:16px}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
 .chips button{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--paper-2)}

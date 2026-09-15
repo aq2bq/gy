@@ -45,3 +45,11 @@ test('the language switch redraws without a reload', async ({ page }) => {
   await expect(heading).not.toHaveText(english);
   expect(await page.evaluate(() => (window as unknown as { kept?: boolean }).kept)).toBe(true);
 });
+
+test('the wordmark returns to the now page from a list', async ({ page }) => {
+  await page.goto(`${gy.url}#/list/Need`);
+  await page.locator('.wordmark').click();
+
+  await expect(page).toHaveURL(/#\/$/);
+  await expect(page.locator('.hero h1')).toBeVisible();
+});

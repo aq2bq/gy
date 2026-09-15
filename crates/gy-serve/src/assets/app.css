@@ -5,7 +5,6 @@
   --ink:#0d1220; --ink-2:#141b2d; --ink-3:#1c2438; --line:#2a3450; --line-soft:#212a40;
   --paper:#ece6d8; --paper-2:#b9b3a6; --paper-3:#7e7a70;
   --need:#e9a63a; --question:#b79cff; --decision:#5fd3c7; --requirement:#f28ba0; --criterion:#8fd18f;
-  --serif:"Hiragino Mincho ProN","Yu Mincho","YuMincho","Noto Serif JP","Iowan Old Style","Palatino",serif;
   --sans:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",system-ui,sans-serif;
   --mono:"SF Mono","Menlo","JetBrains Mono",ui-monospace,monospace;
   --side:232px;
@@ -23,7 +22,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 /* frame */
 .app{display:grid;grid-template-columns:var(--side) minmax(0,1fr);min-height:100vh}
 .side{position:sticky;top:0;height:100vh;border-right:1px solid var(--line-soft);padding:22px 18px 110px;display:flex;flex-direction:column;gap:18px;overflow:auto}
-.wordmark{font-family:var(--serif);font-size:26px;letter-spacing:.06em;line-height:1;display:flex;align-items:baseline;gap:10px}
+.wordmark{font-family:var(--sans);font-weight:600;font-size:26px;letter-spacing:.06em;line-height:1;display:flex;align-items:baseline;gap:10px}
 .wordmark small{font-family:var(--mono);font-size:10px;color:var(--paper-3);letter-spacing:.12em}
 .nav{display:flex;flex-direction:column;gap:2px}
 .nav .h{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--paper-3);text-transform:uppercase;margin:10px 0 6px}
