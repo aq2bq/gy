@@ -168,7 +168,7 @@ cargo install gy --locked
 
 チェックアウトから入れるなら `cargo install --path crates/gy --locked` を実行します。バイナリ名は `gy` です。
 
-0.4 から来る場合は `gy-migrate` で台帳を移します。[docs/migration-0.5.md](docs/migration-0.5.md) を参照してください。
+0.4 から来る場合は台帳を一度だけ移します。手順と写せないものは [docs/migration-0.5.md](docs/migration-0.5.md) にあります。
 
 ## 開発
 
@@ -178,4 +178,4 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 ```
 
-ワークスペースは `gy-ledger`（保存・モデル・操作）と `gy`（CLI）で構成します。`gy-migrate` とその下請けの `gy-core` は、残る 0.4 の台帳を移し終えるまで残し、そのあとで消します。CI は Linux で検証し、他のプラットフォームは未検証です。`gy serve` の画面には `e2e/`（Playwright、chromium）の E2E があり、[e2e/README.md](e2e/README.md) を読みます。`cargo test` には入りません。
+ワークスペースは `gy-ledger`（保存・モデル・操作）、`gy-serve`（読み取り専用の Web 表示）、`gy`（CLI）で構成します。CI は Linux で検証し、他のプラットフォームは未検証です。`gy serve` の画面には `e2e/`（Playwright、chromium）の E2E があり、[e2e/README.md](e2e/README.md) を読みます。`cargo test` には入りません。

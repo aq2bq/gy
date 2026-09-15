@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/gy", "crates/gy-core", "crates/gy-ledger", "crates/gy-migrate", "crates/gy-serve"]
+members = ["crates/gy", "crates/gy-ledger", "crates/gy-serve"]
 resolver = "2"
 
 [workspace.package]

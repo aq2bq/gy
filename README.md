@@ -168,7 +168,7 @@ cargo install gy --locked
 
 From a checkout, run `cargo install --path crates/gy --locked`. The binary is `gy`.
 
-Coming from 0.4, move the ledger with `gy-migrate`; see [docs/migration-0.5.md](docs/migration-0.5.md).
+Coming from 0.4, move the ledger once; [docs/migration-0.5.md](docs/migration-0.5.md) has the command and what cannot be carried over.
 
 ## Development
 
@@ -178,4 +178,4 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 ```
 
-The workspace holds `gy-ledger` (the store, model, and operations) and `gy` (the CLI). `gy-migrate` and its private `gy-core` reader stay until the remaining 0.4 ledgers have moved, then are removed. CI tests on Linux; other platforms are unverified. The screens of `gy serve` have their own end-to-end tests under `e2e/` (Playwright, chromium): see [e2e/README.md](e2e/README.md); they are not part of `cargo test`.
+The workspace holds `gy-ledger` (the store, model, and operations), `gy-serve` (the read-only web view), and `gy` (the CLI). CI tests on Linux; other platforms are unverified. The screens of `gy serve` have their own end-to-end tests under `e2e/` (Playwright, chromium): see [e2e/README.md](e2e/README.md); they are not part of `cargo test`.
