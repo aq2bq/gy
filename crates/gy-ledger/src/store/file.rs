@@ -77,9 +77,6 @@ impl FileStore {
             replayed,
         })
     }
-    pub fn get(&self, node: &str) -> Option<&Value> {
-        self.nodes.get(node)
-    }
     /// How many log events the last open replayed: 0 when the snapshot covered
     /// the whole log.
     pub fn replayed(&self) -> usize {
@@ -193,6 +190,14 @@ impl FileStore {
 impl Store for FileStore {
     fn version(&self) -> FormatVersion {
         self.version
+    }
+    fn get(&self, node: &str) -> Option<Vec<u8>> {
+        self.nodes
+            .get(node)
+            .and_then(|value| serde_json::to_vec(value).ok())
+    }
+    fn keys(&self) -> Vec<String> {
+        self.nodes.keys().cloned().collect()
     }
     fn begin(&mut self) {
         self.staged.clear();

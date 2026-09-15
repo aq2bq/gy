@@ -6,7 +6,13 @@ fn actor(_: &str) -> Option<String> {
 }
 
 fn node(hash: &str, title: &str) -> Vec<u8> {
-    let node = Node::need(NodeId::from_hash(NodeKind::Need, hash).unwrap(), title).unwrap();
+    let node = Node::need(
+        NodeId::from_hash(NodeKind::Need, hash).unwrap(),
+        "a",
+        "2026-09-15",
+        title,
+    )
+    .unwrap();
     serde_json::to_vec(&node).unwrap()
 }
 
@@ -137,6 +143,6 @@ fn a_record_only_commit_is_an_error() {
     assert!(log::read(temp.path()).unwrap().0.is_empty());
 }
 
-fn text(value: Option<&serde_json::Value>) -> String {
-    serde_json::to_string(&value.expect("a node")).unwrap()
+fn text(value: Option<Vec<u8>>) -> String {
+    String::from_utf8(value.expect("a node")).unwrap()
 }

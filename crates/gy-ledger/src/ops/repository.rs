@@ -1,0 +1,138 @@
+//! Typed node access over a store: get, all, put, remove, id resolution, and
+//! one intent per transaction (D-69, D-75).
+use crate::model::{Node, NodeId, NodeKind};
+use crate::store::{Error, Result, Store};
+
+pub struct Repository<S: Store> {
+    store: S,
+    why: String,
+    source: String,
+}
+impl<S: Store> Repository<S> {
+    pub fn new(store: S) -> Self {
+        Self {
+            store,
+            why: String::new(),
+            source: String::new(),
+        }
+    }
+    /// The store beneath this repository.
+    pub fn store(&self) -> &S {
+        &self.store
+    }
+    pub fn next_id(&mut self, kind: NodeKind) -> Result<NodeId> {
+        NodeId::mint(kind, &mut self.store)
+    }
+    pub fn get(&self, id: &NodeId) -> Result<Option<Node>> {
+        self.load(&id.to_string())
+    }
+    pub fn all(&self) -> Result<Vec<Node>> {
+        let mut nodes = Vec::new();
+        for key in self.store.keys() {
+            if let Some(node) = self.load(&key)? {
+                nodes.push(node);
+            }
+        }
+        Ok(nodes)
+    }
+    pub fn put(&mut self, node: &Node) -> Result<()> {
+        let bytes = encode(node)?;
+        let id = node.id().to_string();
+        self.store.stage(id.clone(), bytes);
+        self.store.record(&id, "put", &self.why, &self.source);
+        Ok(())
+    }
+    pub fn remove(&mut self, id: &NodeId) -> Result<()> {
+        let key = id.to_string();
+        self.store.stage(key.clone(), Vec::new());
+        self.store.record(&key, "deleted", &self.why, &self.source);
+        Ok(())
+    }
+    /// Resolve a full id, a zero-padded id (D-6 = D-06), or an alias. An
+    /// unknown text is an error, and an ambiguous one lists the candidates.
+    pub fn resolve(&self, text: &str) -> Result<NodeId> {
+        let wanted = normalize(text);
+        let mut matches = Vec::new();
+        for key in self.store.keys() {
+            let Some(node) = self.load(&key)? else {
+                continue;
+            };
+            let aliased = node
+                .aliases()
+                .iter()
+                .any(|alias| normalize(&alias.0) == wanted);
+            if normalize(&key) == wanted || aliased {
+                matches.push(node.id().clone());
+            }
+        }
+        match matches.len() {
+            0 => Err(Error::invalid(format!("no node matches {text}"))),
+            1 => Ok(matches.remove(0)),
+            _ => Err(Error::invalid(format!(
+                "{text} matches several nodes: {}",
+                names(&matches)
+            ))),
+        }
+    }
+    /// Run `f` as one transaction with the given why and source. A failed
+    /// commit rolls back, so nothing is written (AC-45).
+    pub fn transaction<T>(
+        &mut self,
+        why: &str,
+        source: &str,
+        f: impl FnOnce(&mut Self) -> Result<T>,
+    ) -> Result<T> {
+        self.why = why.to_string();
+        self.source = source.to_string();
+        self.store.begin();
+        match f(self) {
+            Ok(value) => match self.store.commit() {
+                Ok(()) => Ok(value),
+                Err(error) => {
+                    self.store.rollback();
+                    Err(error)
+                }
+            },
+            Err(error) => {
+                self.store.rollback();
+                Err(error)
+            }
+        }
+    }
+    fn load(&self, key: &str) -> Result<Option<Node>> {
+        match self.store.get(key) {
+            Some(bytes) => Ok(Some(
+                serde_json::from_slice(&bytes).map_err(|e| Error::invalid(e.to_string()))?,
+            )),
+            None => Ok(None),
+        }
+    }
+}
+
+fn encode(node: &Node) -> Result<Vec<u8>> {
+    serde_json::to_vec(node).map_err(|error| Error::invalid(error.to_string()))
+}
+
+fn names(matches: &[NodeId]) -> String {
+    matches
+        .iter()
+        .map(|id| id.to_string())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// Lowercase the kind and drop leading zeros from an all-digit suffix, so
+/// `D-06` and `d-6` name the same old id.
+fn normalize(text: &str) -> String {
+    match text.rsplit_once('-') {
+        Some((kind, suffix)) if suffix.bytes().all(|byte| byte.is_ascii_digit()) => {
+            let digits = suffix.trim_start_matches('0');
+            format!(
+                "{}-{}",
+                kind.to_lowercase(),
+                if digits.is_empty() { "0" } else { digits }
+            )
+        }
+        _ => text.to_lowercase(),
+    }
+}

@@ -73,6 +73,8 @@ impl NodeData {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Node {
     id: NodeId,
+    scope: String,
+    created: String,
     title: String,
     body: String,
     aliases: Vec<Alias>,
@@ -81,14 +83,21 @@ pub struct Node {
     data: NodeData,
 }
 impl Node {
-    fn build(id: NodeId, title: impl Into<String>, data: NodeData) -> Result<Self> {
-        let title = title.into();
+    fn build(id: NodeId, scope: &str, created: &str, title: &str, data: NodeData) -> Result<Self> {
+        if scope.trim().is_empty() {
+            return Err(Error::invalid("a node needs a scope"));
+        }
+        if !valid_date(created) {
+            return Err(Error::invalid("created must be YYYY-MM-DD"));
+        }
         if title.trim().is_empty() {
             return Err(Error::invalid("a node needs a nonempty title"));
         }
         Ok(Self {
             id,
-            title,
+            scope: scope.to_string(),
+            created: created.to_string(),
+            title: title.to_string(),
             body: String::new(),
             aliases: Vec::new(),
             free: FreeAttributes::new(),
@@ -96,22 +105,46 @@ impl Node {
             data,
         })
     }
-    pub fn need(id: NodeId, title: impl Into<String>) -> Result<Self> {
-        Self::build(id, title, NodeData::Need(Need::default()))
+    pub fn need(id: NodeId, scope: &str, created: &str, title: &str) -> Result<Self> {
+        Self::build(id, scope, created, title, NodeData::Need(Need::default()))
     }
-    pub fn question(id: NodeId, title: impl Into<String>) -> Result<Self> {
-        Self::build(id, title, NodeData::Question(Question::default()))
+    pub fn question(id: NodeId, scope: &str, created: &str, title: &str) -> Result<Self> {
+        Self::build(
+            id,
+            scope,
+            created,
+            title,
+            NodeData::Question(Question::default()),
+        )
     }
-    pub fn decision(id: NodeId, title: impl Into<String>, scope: DecisionScope) -> Result<Self> {
-        Self::build(id, title, NodeData::Decision(Decision { scope }))
+    pub fn decision(
+        id: NodeId,
+        scope: &str,
+        created: &str,
+        title: &str,
+        decision_scope: DecisionScope,
+    ) -> Result<Self> {
+        Self::build(
+            id,
+            scope,
+            created,
+            title,
+            NodeData::Decision(Decision {
+                scope: decision_scope,
+            }),
+        )
     }
     pub fn requirement(
         id: NodeId,
-        title: impl Into<String>,
+        scope: &str,
+        created: &str,
+        title: &str,
         state: RequirementState,
     ) -> Result<Self> {
         Self::build(
             id,
+            scope,
+            created,
             title,
             NodeData::Requirement(Requirement {
                 state,
@@ -119,11 +152,23 @@ impl Node {
             }),
         )
     }
-    pub fn criterion(id: NodeId, title: impl Into<String>) -> Result<Self> {
-        Self::build(id, title, NodeData::Criterion(Criterion::default()))
+    pub fn criterion(id: NodeId, scope: &str, created: &str, title: &str) -> Result<Self> {
+        Self::build(
+            id,
+            scope,
+            created,
+            title,
+            NodeData::Criterion(Criterion::default()),
+        )
     }
     pub fn id(&self) -> &NodeId {
         &self.id
+    }
+    pub fn scope(&self) -> &str {
+        &self.scope
+    }
+    pub fn created(&self) -> &str {
+        &self.created
     }
     pub fn kind(&self) -> NodeKind {
         self.data.kind()
@@ -177,6 +222,18 @@ impl Node {
             _ => Err(Error::invalid("only a requirement has a state")),
         }
     }
+}
+
+/// A `created` date in `YYYY-MM-DD` form.
+fn valid_date(text: &str) -> bool {
+    let bytes = text.as_bytes();
+    text.len() == 10
+        && bytes[4] == b'-'
+        && bytes[7] == b'-'
+        && bytes
+            .iter()
+            .enumerate()
+            .all(|(index, byte)| index == 4 || index == 7 || byte.is_ascii_digit())
 }
 
 /// Needs that target a criterion, derived rather than stored (N-36).

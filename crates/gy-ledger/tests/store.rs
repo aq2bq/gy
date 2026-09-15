@@ -34,7 +34,7 @@ fn a_committed_transaction_is_visible() {
             Ok(())
         })
         .unwrap();
-    assert_eq!(store.get("a"), Some(&b"1"[..]));
+    assert_eq!(store.get("a").as_deref(), Some(&b"1"[..]));
 }
 
 #[test]

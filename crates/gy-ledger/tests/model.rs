@@ -5,33 +5,50 @@ use gy_ledger::{
     RequirementState, bearer_count, free_attribute,
 };
 
+const DATE: &str = "2026-09-15";
+const SCOPE: &str = "a";
+
 fn id(kind: NodeKind, hash: &str) -> NodeId {
     NodeId::from_hash(kind, hash).unwrap()
+}
+
+fn need(hash: &str, title: &str) -> Node {
+    Node::need(id(NodeKind::Need, hash), SCOPE, DATE, title).unwrap()
+}
+
+fn question(hash: &str, title: &str) -> Node {
+    Node::question(id(NodeKind::Question, hash), SCOPE, DATE, title).unwrap()
 }
 
 #[test]
 fn five_kinds_build_and_a_gate_is_not_one() {
     assert_eq!(NodeKind::ALL.len(), 5);
-    Node::need(id(NodeKind::Need, "0001"), "a need").unwrap();
-    Node::question(id(NodeKind::Question, "0002"), "a question").unwrap();
+    need("0001", "a need");
+    question("0002", "a question");
     Node::decision(
         id(NodeKind::Decision, "0003"),
-        "d",
+        SCOPE,
+        DATE,
+        "a decision",
         DecisionScope::recorded("applies in production").unwrap(),
     )
     .unwrap();
     Node::requirement(
         id(NodeKind::Requirement, "0004"),
-        "r",
+        SCOPE,
+        DATE,
+        "a requirement",
         RequirementState::Filed,
     )
     .unwrap();
-    Node::criterion(id(NodeKind::Criterion, "0005"), "c").unwrap();
+    Node::criterion(id(NodeKind::Criterion, "0005"), SCOPE, DATE, "a criterion").unwrap();
 }
 
 #[test]
-fn an_empty_title_is_rejected() {
-    assert!(Node::need(id(NodeKind::Need, "0001"), "   ").is_err());
+fn an_empty_title_scope_or_bad_date_is_rejected() {
+    assert!(Node::need(id(NodeKind::Need, "0001"), SCOPE, DATE, "   ").is_err());
+    assert!(Node::need(id(NodeKind::Need, "0001"), "  ", DATE, "a need").is_err());
+    assert!(Node::need(id(NodeKind::Need, "0001"), SCOPE, "2026/09/15", "a need").is_err());
 }
 
 #[test]
@@ -39,13 +56,14 @@ fn a_decision_needs_scope_or_the_migration_marker() {
     assert!(DecisionScope::recorded("   ").is_err());
     let scope = DecisionScope::migration_unrecorded();
     assert!(scope.is_unrecorded() && scope.text().is_empty());
-    assert!(Node::decision(id(NodeKind::Decision, "0003"), "d", scope).is_ok());
+    assert!(Node::decision(id(NodeKind::Decision, "0003"), SCOPE, DATE, "d", scope).is_ok());
 }
 
 #[test]
 fn only_the_four_states_and_the_allowed_transitions() {
     use RequirementState::*;
-    let mut requirement = Node::requirement(id(NodeKind::Requirement, "0004"), "r", Filed).unwrap();
+    let mut requirement =
+        Node::requirement(id(NodeKind::Requirement, "0004"), SCOPE, DATE, "r", Filed).unwrap();
     requirement.advance(Approved).unwrap();
     requirement.advance(Filed).unwrap();
     requirement.advance(Approved).unwrap();
@@ -54,7 +72,8 @@ fn only_the_four_states_and_the_allowed_transitions() {
     assert!(Filed.advance(Done).is_err());
     assert!(Done.advance(Filed).is_err());
     assert!(Cancelled.advance(Approved).is_err());
-    let mut cancelled = Node::requirement(id(NodeKind::Requirement, "0005"), "r", Filed).unwrap();
+    let mut cancelled =
+        Node::requirement(id(NodeKind::Requirement, "0005"), SCOPE, DATE, "r", Filed).unwrap();
     cancelled.advance(Cancelled).unwrap();
     assert!(requirement.advance(Cancelled).is_err());
 }
@@ -122,15 +141,16 @@ fn free_attributes_pass_through_one_boundary() {
     );
     assert_eq!(free_attribute(&raw, "missing"), None);
 
-    let mut node = Node::need(id(NodeKind::Need, "0001"), "n").unwrap();
+    let mut node = need("0001", "n");
     node.set_free("owner", "team-a");
     assert_eq!(node.free("owner").map(String::as_str), Some("team-a"));
+    assert_eq!((node.scope(), node.created()), (SCOPE, DATE));
 }
 
 #[test]
 fn a_question_closes_in_three_ways() {
     for closure in [Closure::Fact, Closure::Decision, Closure::NonDecision] {
-        let mut question = Node::question(id(NodeKind::Question, "0002"), "q").unwrap();
+        let mut question = question("0002", "q");
         if let NodeData::Question(data) = question.data_mut() {
             data.closure = Some(closure);
         }
@@ -144,11 +164,11 @@ fn a_question_closes_in_three_ways() {
 #[test]
 fn bearer_count_is_derived_not_stored() {
     let criterion = id(NodeKind::Criterion, "0002");
-    let mut first = Node::need(id(NodeKind::Need, "0001"), "n").unwrap();
+    let mut first = need("0001", "n");
     match first.data_mut() {
         NodeData::Need(data) => data.targets.push(criterion.clone()),
         _ => panic!("not a need"),
     }
-    let second = Node::need(id(NodeKind::Need, "0003"), "n").unwrap();
+    let second = need("0003", "n");
     assert_eq!(bearer_count(&[first, second], &criterion), 1);
 }

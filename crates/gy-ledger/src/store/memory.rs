@@ -40,9 +40,6 @@ impl MemoryStore {
             salt: 0,
         }
     }
-    pub fn get(&self, key: &str) -> Option<&[u8]> {
-        self.committed.get(key).map(Vec::as_slice)
-    }
     /// Commit on `Ok`, roll back on `Err`, so a half-finished change writes nothing.
     pub fn transaction<T>(&mut self, f: impl FnOnce(&mut Self) -> Result<T>) -> Result<T> {
         self.begin();
@@ -62,6 +59,12 @@ impl Store for MemoryStore {
     fn version(&self) -> FormatVersion {
         self.version
     }
+    fn get(&self, key: &str) -> Option<Vec<u8>> {
+        self.committed.get(key).cloned()
+    }
+    fn keys(&self) -> Vec<String> {
+        self.committed.keys().cloned().collect()
+    }
     fn begin(&mut self) {
         self.staged.clear();
         self.staged_history.clear();
@@ -71,7 +74,11 @@ impl Store for MemoryStore {
     }
     fn commit(&mut self) -> Result<()> {
         for (key, value) in self.staged.drain(..) {
-            self.committed.insert(key, value);
+            if value.is_empty() {
+                self.committed.remove(&key);
+            } else {
+                self.committed.insert(key, value);
+            }
         }
         self.history.append(&mut self.staged_history);
         Ok(())

@@ -93,7 +93,12 @@ pub trait IdSource {
 /// none (AC-45); history records why and from where (AC-46).
 pub trait Store: IdSource {
     fn version(&self) -> FormatVersion;
+    /// The stored bytes for a node id, or `None`.
+    fn get(&self, key: &str) -> Option<Vec<u8>>;
+    /// Every stored node id.
+    fn keys(&self) -> Vec<String>;
     fn begin(&mut self);
+    /// Stage a node value under its key. An empty value removes the node.
     fn stage(&mut self, key: impl Into<String>, value: impl Into<Vec<u8>>);
     fn commit(&mut self) -> Result<()>;
     fn rollback(&mut self);

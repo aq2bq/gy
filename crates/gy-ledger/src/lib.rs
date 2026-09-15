@@ -15,7 +15,7 @@ pub use model::{
     Need, Node, NodeData, NodeId, NodeKind, Question, Ref, Relation, Requirement, RequirementState,
     bearer_count, free_attribute,
 };
-pub use ops::Intent;
+pub use ops::{NeedAdd, Operation, Outcome, Repository, config};
 pub use store::{
     Actor, Error, FileStore, FormatVersion, HistoryEntry, IdSource, MemoryStore, Result, Store,
     file, format, location, log,
