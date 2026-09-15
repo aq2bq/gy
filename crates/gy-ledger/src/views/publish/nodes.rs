@@ -1,192 +1,179 @@
-//! The node description: one named node with its title, state, verbatim, and
-//! its relationships in human words (D-85 questions 1, 3, 4; D-87 names the
-//! nodes).
-use super::super::show::show;
-use super::label;
-use crate::model::{Node, NodeData, NodeId, NodeKind, Relation, Requirement};
-use crate::ops::repository::{Error, Repository, Result, Store};
+//! The record: every node in range, verbatim, in a deterministic order
+//! (d-edb0). Nothing is summarized or reworded, and every reference carries its
+//! target's title so the document stands alone.
+use super::super::show::{Shown, show};
+use super::{in_scope, reference};
+use crate::model::{ClosedBy, Need, Node, NodeData, NodeKind, Question, Requirement};
+use crate::ops::repository::{Repository, Result, Store};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write;
 
-/// The description of each named node, and nothing else.
-pub(super) fn describe<S: Store>(repository: &Repository<S>, ids: &[NodeId]) -> Result<String> {
-    let mut out = String::new();
-    for id in ids {
-        let node = repository
-            .get(id)?
-            .ok_or_else(|| Error::invalid(format!("{id} does not exist")))?;
-        out.push_str(&section(repository, &node)?);
-    }
-    Ok(out)
-}
-
-fn section<S: Store>(repository: &Repository<S>, node: &Node) -> Result<String> {
-    let mut out = format!("### {} {}\n", label(node), node.title());
-    if let Some(shown) = show(repository, &[node.id().to_string()], false)?.first() {
-        out.push_str(&shown.verbatim());
-    }
-    out.push_str(&relationships(repository, node)?);
-    if let NodeData::Requirement(data) = node.data() {
-        out.push_str(&provenance(repository, node, data)?);
-    }
-    out.push('\n');
-    Ok(out)
-}
-
-/// Every edge of this node, forward and reverse, as a sentence (question 3 is
-/// the narrows / supersedes part of this with its mark).
-fn relationships<S: Store>(repository: &Repository<S>, node: &Node) -> Result<String> {
-    let mut out = String::from("関係:\n");
-    let mut count = 0;
-    for edge in node.links() {
-        if let Some(other) = repository.get(&edge.to)? {
-            let _ = writeln!(
-                out,
-                "- {}",
-                phrase(node.kind(), &other, edge.name(), edge.mark.as_deref())
-            );
-            count += 1;
-        }
-    }
-    for edge in repository.incoming(node.id())? {
-        if let Some(other) = repository.get(&edge.to)? {
-            let _ = writeln!(
-                out,
-                "- {}",
-                phrase(node.kind(), &other, edge.name(), edge.mark.as_deref())
-            );
-            count += 1;
-        }
-    }
-    if count == 0 {
-        out.push_str("- 無し\n");
-    }
-    Ok(out)
-}
-
-fn phrase(kind: NodeKind, other: &Node, name: &str, mark: Option<&str>) -> String {
-    let (particle, verb) = words(name);
-    let base = format!(
-        "この{}は {} {} {particle}{verb}",
-        kind_word(kind),
-        label(other),
-        other.title()
-    );
-    match mark {
-        Some(mark) => format!("{base}（mark: {mark}）"),
-        None => base,
-    }
-}
-
-/// The requirements provenance: its needs, the decisions it relies on, and its
-/// state records (question 4).
-fn provenance<S: Store>(
+pub(super) fn nodes<S: Store>(
     repository: &Repository<S>,
-    node: &Node,
-    data: &Requirement,
+    scope: Option<&str>,
+    since: Option<u64>,
 ) -> Result<String> {
-    let mut out = String::from("来歴:\n");
-    origins(repository, node, &mut out)?;
-    records(data, &mut out);
+    let all = repository.all()?;
+    let targets: BTreeMap<String, &Node> = all
+        .iter()
+        .map(|node| (node.id().to_string(), node))
+        .collect();
+    let ids: Vec<String> = ordered(repository, &all, scope, since)
+        .iter()
+        .map(|node| node.id().to_string())
+        .collect();
+
+    let mut out = String::new();
+    for shown in show(repository, &ids, true)? {
+        out.push_str(&block(&shown, &targets));
+    }
+    if out.is_empty() {
+        out.push_str("（記録は無し）\n");
+    }
     Ok(out)
 }
 
-/// The needs this requirement came from and the decisions it relies on.
-fn origins<S: Store>(repository: &Repository<S>, node: &Node, out: &mut String) -> Result<()> {
-    for edge in repository.incoming(node.id())? {
-        if edge.label == Relation::FiledAs {
-            if let Some(need) = repository.get(&edge.to)? {
-                let _ = writeln!(out, "- ニーズ: {} {}", label(&need), need.title());
-            }
-        }
-    }
-    for edge in node.links() {
-        if edge.label == Relation::ReliesOn {
-            if let Some(decision) = repository.get(&edge.to)? {
-                let _ = writeln!(
-                    out,
-                    "- 依拠する決定: {} {}{}",
-                    label(&decision),
-                    decision.title(),
-                    unrecorded(&decision)
-                );
-            }
-        }
-    }
-    Ok(())
+/// Scope, then kind, then creation date and ID: one fixed order, so two
+/// publications can be diffed.
+fn ordered<'a, S: Store>(
+    repository: &Repository<S>,
+    all: &'a [Node],
+    scope: Option<&str>,
+    since: Option<u64>,
+) -> Vec<&'a Node> {
+    let changed = changed_ids(repository, since);
+    let mut nodes: Vec<&Node> = all
+        .iter()
+        .filter(|node| in_scope(node, scope))
+        .filter(|node| since.is_none() || changed.contains(&node.id().to_string()))
+        .collect();
+    nodes.sort_by_key(|node| key(node));
+    nodes
 }
 
-fn records(data: &Requirement, out: &mut String) {
-    let _ = writeln!(out, "- 状態: {}", data.state.name());
+fn changed_ids<S: Store>(repository: &Repository<S>, since: Option<u64>) -> BTreeSet<String> {
+    let Some(since) = since else {
+        return BTreeSet::new();
+    };
+    repository
+        .store()
+        .history()
+        .iter()
+        .filter(|entry| entry.seq > since)
+        .map(|entry| entry.node.clone())
+        .collect()
+}
+
+fn key(node: &Node) -> (String, usize, String, String) {
+    (
+        node.scope().to_string(),
+        NodeKind::ALL
+            .iter()
+            .position(|kind| *kind == node.kind())
+            .unwrap_or(0),
+        node.created().to_string(),
+        node.id().to_string(),
+    )
+}
+
+fn block(shown: &Shown, targets: &BTreeMap<String, &Node>) -> String {
+    let mut out = format!("### {} {}\n", heading(shown), shown.title);
+    out.push_str(&shown.verbatim());
+    if let Some(scope) = &shown.scope {
+        let _ = writeln!(out, "scope: {scope}");
+    }
+    if let Some(created) = &shown.created {
+        let _ = writeln!(out, "created: {created}");
+    }
+    for (name, value) in &shown.attributes {
+        let _ = writeln!(out, "{name}: {value}");
+    }
+    for edge in &shown.edges {
+        let target = targets
+            .get(&edge.to)
+            .map(|node| reference(node))
+            .unwrap_or_else(|| edge.to.clone());
+        let mark = edge
+            .mark
+            .as_deref()
+            .map(|mark| format!("（mark: {mark}）"))
+            .unwrap_or_default();
+        let _ = writeln!(out, "  {} {target}{mark}", edge.name);
+    }
+    if !shown.body.is_empty() {
+        let _ = writeln!(out, "{}", shown.body);
+    }
+    records(&shown.data, &mut out);
+    out.push('\n');
+    out
+}
+
+/// The id with its old aliases and, for a requirement, its reference (D-62).
+fn heading(shown: &Shown) -> String {
+    let mut extra = shown.aliases.clone();
+    if let Some(reference) = &shown.reference {
+        extra.push(reference.clone());
+    }
+    if extra.is_empty() {
+        shown.id.clone()
+    } else {
+        format!("{} ({})", shown.id, extra.join(", "))
+    }
+}
+
+fn records(data: &NodeData, out: &mut String) {
+    match data {
+        NodeData::Requirement(data) => requirement_records(data, out),
+        NodeData::Question(data) => question_records(data, out),
+        NodeData::Need(data) => need_records(data, out),
+        _ => {}
+    }
+}
+
+fn requirement_records(data: &Requirement, out: &mut String) {
     if let Some(approval) = &data.approval {
         let _ = writeln!(
             out,
-            "- 承認: design={}, heard_by={}, evidence={}, at={}",
+            "承認: design={}, heard_by={}, evidence={}, at={}",
             approval.design, approval.heard_by, approval.evidence, approval.at
         );
     }
     for revision in &data.revisions {
         let _ = writeln!(
             out,
-            "- 改訂: {}（出典: {}、{}）",
+            "改訂: {}（出典: {}、{}）",
             revision.reason, revision.source, revision.at
         );
     }
     if let Some(completion) = &data.completion {
-        let _ = writeln!(out, "- 完了: {}（{}）", completion.evidence, completion.at);
+        let _ = writeln!(out, "完了: {}（{}）", completion.evidence, completion.at);
     }
     if let Some(cancellation) = &data.cancellation {
         let _ = writeln!(
             out,
-            "- 中止: {}（出典: {}、{}）",
+            "中止: {}（出典: {}、{}）",
             cancellation.reason, cancellation.source, cancellation.at
         );
     }
 }
 
-fn unrecorded(node: &Node) -> &'static str {
-    match node.data() {
-        NodeData::Decision(data) if data.scope.is_unrecorded() => "（成立範囲: 未記録）",
-        _ => "",
-    }
+fn question_records(data: &Question, out: &mut String) {
+    let evidence = data.evidence.clone().unwrap_or_default();
+    let line = match data.closure {
+        Some(crate::model::Closure::Fact) => format!("閉じ方: 事実（{evidence}）"),
+        Some(crate::model::Closure::Decision) => format!("閉じ方: 決定（{evidence}）"),
+        Some(crate::model::Closure::NonDecision) => format!("閉じ方: 決定を伴わない（{evidence}）"),
+        None => "閉じ方: 開いている".to_string(),
+    };
+    let _ = writeln!(out, "{line}");
 }
 
-fn kind_word(kind: NodeKind) -> &'static str {
-    match kind {
-        NodeKind::Need => "ニーズ",
-        NodeKind::Question => "論点",
-        NodeKind::Decision => "決定",
-        NodeKind::Requirement => "要求",
-        NodeKind::Criterion => "受け入れ条件",
-    }
-}
-
-/// The particle and verb a relation phrase uses, from this node's side.
-fn words(name: &str) -> (&'static str, &'static str) {
-    match name {
-        "closes" => ("を", "閉じる"),
-        "closed-by" => ("に", "閉じられている"),
-        "narrows" => ("を", "狭める"),
-        "narrowed-by" => ("に", "狭められている"),
-        "widens" => ("を", "広げる"),
-        "widened-by" => ("に", "広げられている"),
-        "supersedes" => ("を", "置き換える"),
-        "superseded-by" => ("に", "置き換えられている"),
-        "completes" => ("を", "完成させる"),
-        "completed-by" => ("に", "完成させられている"),
-        "targets" => ("を", "対象にする"),
-        "targeted-by" => ("に", "対象にされている"),
-        "spawns" => ("を", "生む"),
-        "spawned-by" => ("から", "生まれた"),
-        "files" => ("を", "起票元にする"),
-        "filed-as" => ("として", "起票した"),
-        "depends-on" => ("に", "依存する"),
-        "depended-on-by" => ("から", "依存されている"),
-        "relies-on" => ("に", "依拠する"),
-        "relied-on-by" => ("から", "依拠されている"),
-        "raised" => ("を", "提起した"),
-        "raised-by" => ("から", "提起されている"),
-        "waits-on" => ("を", "待つ"),
-        "awaited-by" => ("から", "待たれている"),
-        _ => ("を", "関係する"),
+fn need_records(data: &Need, out: &mut String) {
+    if let Some(closed) = &data.closed {
+        let by = match closed.by {
+            ClosedBy::Fact => "事実",
+            ClosedBy::External => "外部",
+        };
+        let _ = writeln!(out, "閉じた理由: {by}（{}）", closed.evidence);
     }
 }

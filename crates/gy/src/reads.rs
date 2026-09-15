@@ -3,7 +3,7 @@
 use crate::output::{emit, write};
 use crate::repo;
 use crate::{Cli, Command};
-use gy_ledger::{Error, Filter, NodeKind, Result, config, describe, list, publish};
+use gy_ledger::{Actor, Error, Filter, NodeKind, Result, config, list, log_seq, publish};
 use std::path::{Path, PathBuf};
 
 pub fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
@@ -33,34 +33,38 @@ pub fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
     emit(cli.json, &list(&repository, &filter)?)
 }
 
-/// The reading goes to `--out`, else gy.toml's `output`, else stdout. Naming
-/// nodes switches to their description only (D-87).
+/// The publication goes to `--out`, else gy.toml's `output`, else stdout. A
+/// `{seq}` in the path becomes the write sequence.
 pub fn write_publish(
     cli: &Cli,
     root: &Path,
     ledger: &Path,
-    ids: &[String],
     since: Option<u64>,
     out: Option<&Path>,
 ) -> Result<()> {
     let repository = repo::open(ledger)?;
-    let text = if ids.is_empty() {
-        publish(&repository, cli.scope.as_deref(), since)?
-    } else {
-        let resolved = ids
-            .iter()
-            .map(|text| repository.resolve(text))
-            .collect::<Result<Vec<_>>>()?;
-        describe(&repository, &resolved)?
-    };
+    let writer = Actor::from_env()
+        .map(|actor| actor.name().to_string())
+        .unwrap_or_else(|_| "unknown".to_string());
+    let text = publish(
+        &repository,
+        cli.scope.as_deref(),
+        since,
+        &writer,
+        &ledger.display().to_string(),
+    )?;
     let path = match out {
         Some(path) => Some(path.to_path_buf()),
         None => output_path(root)?,
     };
     match path {
-        Some(path) => write_file(&path, &text),
+        Some(path) => write_file(&substitute(&path, log_seq(&repository)), &text),
         None => write(&text),
     }
+}
+
+fn substitute(path: &Path, seq: u64) -> PathBuf {
+    PathBuf::from(path.to_string_lossy().replace("{seq}", &seq.to_string()))
 }
 
 fn output_path(root: &Path) -> Result<Option<PathBuf>> {

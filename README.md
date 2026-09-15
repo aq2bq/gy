@@ -2,7 +2,7 @@
 
 English | [日本語](README.ja.md)
 
-gy records the state before a requirement is confirmed. It holds the needs, questions, decisions, requirements, and acceptance criteria that a piece of work rests on, as a graph of nodes and edges, with one way to use it and almost nothing to configure. Agents write it as they work; people read the `publish` output. The canonical ledger lives outside the repository, and gy makes no network calls.
+gy records the state before a requirement is confirmed. It holds the needs, questions, decisions, requirements, and acceptance criteria that a piece of work rests on, as a graph of nodes and edges, with one way to use it and almost nothing to configure. Agents write it as they work, and `publish` writes the record to a file that is committed and read back later. The canonical ledger lives outside the repository, and gy makes no network calls.
 
 ## What gy is for
 
@@ -69,7 +69,7 @@ Reads (5):
 | `list [--type] [--status] [--targets] [--grep] [--actor] [--since]` | Node rows, or write units when `--actor` or `--since` is given |
 | `next` | The needs whose prerequisites are settled |
 | `handover` | In-progress requirements and the counts a session needs to resume |
-| `publish [<ID>...] [--since] [--out]` | The human-readable reading of the ledger |
+| `publish [--scope] [--since] [--out]` | Write the record at a point and range: every node verbatim, the write history, and the diagnostics |
 
 Writes (15):
 
@@ -134,11 +134,11 @@ An existing ledger keeps its old IDs as aliases, so `show D-164` and `show '#602
 
 ## publish
 
-`publish` writes a one-page Markdown reading for one person. By default it holds what is waiting on the master, the undecided questions grouped by who decides them, the attention counts, and, with `--since <seq>`, who changed what in that period. It does not print every node: a ledger-wide dump is not something anyone reads.
+`publish` writes the ledger at a point and range as one Markdown file to commit. It is a development artifact: later, an agent reads it to review what was decided and why, and diffs one publication against the next. It is not a reading for the master, and gy adds no human-facing output format.
 
-Name nodes to add their description. `publish <ID>...` prints those nodes with their title, state, verbatim, and relationships, so a question about one decision is answered without the rest of the ledger. ID is always printed beside title, so the reading can be traced back to the ledger.
+The file holds the generated time, the log sequence, the scope and range, the writer, and the canonical location; a short "how to read" section; every node in range verbatim (IDs with aliases and references, titles, scope, creation date, state, applicability conditions, body, both edge directions with marks, closure and evidence, requirement records, and free attributes); the write history; and the diagnostics. Every reference carries the target's title, so the document stands on its own without the ledger.
 
-`--out` writes to a path, `gy.toml`'s `output` names a default, and without either it goes to standard output.
+`--out` writes to a path, `gy.toml`'s `output` names a default, and without either it goes to standard output. `{seq}` in the path becomes the write sequence, so `docs/publication/{seq}.md` keeps one file per publication.
 
 ## Install
 

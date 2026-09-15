@@ -10,7 +10,7 @@ gy は要求が確定するまでの状態をグラフで持ち、書き込み�
   gy list [--type] [--status] [--targets] [--grep] [--actor] [--since]   一覧。--actor / --since で書き込み単位
   gy next                                              前提の片付いたニーズ
   gy handover                                          進行中の要求と再開に要る件数
-  gy publish [<ID>...] [--since] [--out]                既定は 1 ページ（判断待ち・未決・注意）。ID を渡すとそのノードの記述も出す
+  gy publish [--scope] [--since] [--out]                記録の公開物（範囲内の全ノードの逐語・履歴・診断）。コミットして後から振り返る
 
 書き (15):
   gy need add "<題>" --targets <AC>... [--spawned-by <D>]
