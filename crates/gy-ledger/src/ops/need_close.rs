@@ -21,6 +21,7 @@ impl<S: Store> Operation<S> for NeedClose {
         if self.evidence.trim().is_empty() {
             return Err(Error::invalid("closing a need needs evidence"));
         }
+        let source = self.evidence.clone();
         match node.data_mut() {
             NodeData::Need(data) => {
                 if data.closed.is_some() {
@@ -34,7 +35,8 @@ impl<S: Store> Operation<S> for NeedClose {
             _ => unreachable!(),
         }
         let id = self.id;
-        repo.transaction("need close", "operation", |repo| repo.put(&node))?;
+        let why = format!("need close {id}");
+        repo.transaction(&why, &source, |repo| repo.put(&node))?;
         Ok(Outcome {
             id: Some(id.clone()),
             changed: vec!["closed".into()],

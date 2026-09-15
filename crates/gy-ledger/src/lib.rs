@@ -15,7 +15,10 @@ pub use model::{
     FreeAttributes, Link, Need, Node, NodeData, NodeId, NodeKind, Question, Ref, Relation,
     Requirement, RequirementState, bearer_count, free_attribute,
 };
-pub use ops::{NeedAdd, NeedClose, Operation, Outcome, Repository, config};
+pub use ops::{
+    CriterionAdd, CriterionSatisfy, NeedAdd, NeedClose, Operation, Outcome, QuestionAdd,
+    QuestionClose, Repository, config,
+};
 pub use store::{
     Actor, Error, FileStore, FormatVersion, HistoryEntry, IdSource, MemoryStore, Result, Store,
     file, format, location, log,

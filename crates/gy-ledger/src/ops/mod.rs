@@ -1,11 +1,19 @@
 //! Operations: one intent = one command = one transaction (D-69, D-75).
 pub mod config;
+pub mod criterion_add;
+pub mod criterion_satisfy;
 pub mod need_add;
 pub mod need_close;
+pub mod question_add;
+pub mod question_close;
 pub mod repository;
 
+pub use criterion_add::CriterionAdd;
+pub use criterion_satisfy::CriterionSatisfy;
 pub use need_add::NeedAdd;
 pub use need_close::NeedClose;
+pub use question_add::QuestionAdd;
+pub use question_close::QuestionClose;
 pub use repository::Repository;
 
 use crate::model::NodeId;

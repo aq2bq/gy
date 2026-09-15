@@ -30,7 +30,8 @@ impl<S: Store> Operation<S> for NeedAdd {
                 decision.clone(),
             )?);
         }
-        repo.transaction("need add", "operation", |repo| repo.put(&node))?;
+        let why = format!("need add {id}");
+        repo.transaction(&why, "need add", |repo| repo.put(&node))?;
         let mut changed = vec!["created".to_string(), "targets".to_string()];
         if self.spawned_by.is_some() {
             changed.push("spawned-by".to_string());

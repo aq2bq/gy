@@ -32,6 +32,7 @@ pub struct Question {
     pub closure: Option<Closure>,
     pub decider: Option<String>,
     pub options: Vec<String>,
+    pub evidence: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -48,6 +49,8 @@ pub struct Requirement {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Criterion {
     pub satisfied: bool,
+    pub evidence: Option<String>,
+    pub satisfied_at: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
