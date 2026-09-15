@@ -164,7 +164,7 @@ impl Store {
         }
         if let Some(mark) = mark {
             if !self.node(target)?.body.contains(mark) {
-                warnings.push(format!("The anchor text is missing from the body of {target}. show / render will describe the affected passage separately: {mark}"));
+                warnings.push(format!("The anchor text is missing from the body of {target}. show will describe the affected passage separately: {mark}"));
             }
         }
         Ok(warnings)

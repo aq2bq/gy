@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### Removed
+
+- The `render` subcommand in all three formats (`markdown`, `dot`, `html`),
+  the bundled HTML projection (`crates/gy-core/src/html.rs`, its committed
+  `dist` bundle, and the `ui/` TypeScript source), the `e2e/` Playwright suite,
+  the `html_render` test, and the `gy_render` MCP tool. Human-facing projection
+  is planned to return as a reading view built from `publish`.
+- `gy init` no longer writes the `[render]` table into `gy.toml` and no longer
+  appends the HTML output to the ledger `.gitignore`.
+
+### Changed
+
+- `gy.toml` still accepts the `[render]` table, and its values are still read
+  and validated so an existing ledger opens unchanged; the table is dropped
+  whenever gy writes `gy.toml` back, and the keys will be rejected in a later
+  change.
+
 ## 0.4.2
 
 ### Added

@@ -37,4 +37,4 @@ For `narrows` and `supersedes`, supply `--mark` with the affected passage quoted
 
 Display the older decision with `gy show <old-decision-ID>`. Confirm that the affected passage and its relationship to the new decision are clear.
 
-gy stores the mark in frontmatter and adds annotations during show/render. If a body edit makes the passage impossible to locate, review the displayed diagnostic and update the anchor to identify the intended passage.
+gy stores the mark in frontmatter and adds annotations during show. If a body edit makes the passage impossible to locate, review the displayed diagnostic and update the anchor to identify the intended passage.

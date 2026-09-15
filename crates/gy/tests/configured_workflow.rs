@@ -1023,7 +1023,6 @@ fn declared_scope_matches_across_routes_without_rewriting_old_history() {
     assert!(lint(p)["diagnostics"].as_array().unwrap().is_empty());
     run(p, &["handover"]);
     run(p, &["show", "#1"]);
-    run(p, &["render"]);
     assert_eq!(fs::read(&path).unwrap(), valid_bytes);
 
     let mut files = reported_scope();

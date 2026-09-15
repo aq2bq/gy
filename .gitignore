@@ -5,7 +5,3 @@ AGENTS.md
 CLAUDE.md
 /docs/ledger/
 /.gy-dir
-/e2e/node_modules/
-/e2e/.generated/
-/e2e/test-results/
-/e2e/playwright-report/

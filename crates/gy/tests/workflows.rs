@@ -177,11 +177,8 @@ fn workflow_cross_scope_edges_and_unknown_attributes() {
         run(p, &["find", "--scope", "a", "--where", "type=need"])["hits"],
         json!([])
     );
-    run(p, &["render"]);
     let n = run(p, &["show", "N-1"]);
     assert_eq!(n["node"]["attrs"]["custom"]["weight"], 12);
-    let rendered = fs::read_to_string(p.join("docs/ledger/b/README.md")).unwrap();
-    assert!(rendered.contains("region: east"));
 }
 #[test]
 fn scope_rename_preserves_identity_relationships_records_and_history() {
@@ -636,7 +633,7 @@ fn all_thirteen_lint_rules_and_configured_severity() {
     );
 }
 #[test]
-fn marks_preserve_body_and_render_splits() {
+fn marks_preserve_body_and_graph_annotations() {
     let t = repo();
     let p = t.path();
     add_d(p);
@@ -674,15 +671,7 @@ fn marks_preserve_body_and_render_splits() {
             .contains("⟦Applicability narrowed: D-2⟧")
     );
     assert!(!show["node"]["body"].as_str().unwrap().contains('⟦'));
-    let config = p.join("docs/ledger/gy.toml");
-    let text = fs::read_to_string(&config)
-        .unwrap()
-        .replace("split_threshold = 100", "split_threshold = 1");
-    fs::write(config, text).unwrap();
-    let rendered = run(p, &["render"]);
-    assert_eq!(rendered["files"].as_array().unwrap().len(), 3);
     run(p, &["lint"]);
-    run(p, &["render", "--format", "dot"]);
     assert!(
         run(p, &["show", "D-1", "--graph"])["dot"]
             .as_str()
@@ -1203,7 +1192,6 @@ fn compression_retains_six_records_edges_extensions_and_exact_archive() {
     assert!(!body.contains("issuecomment-123"));
     run(p, &["lint"]);
     run(p, &["handover"]);
-    run(p, &["render"]);
     assert_eq!(
         run(
             p,
@@ -2146,7 +2134,7 @@ fn next_uses_current_dependencies_and_stops_at_completed_work() {
 }
 
 #[test]
-fn compression_preserves_historical_dependency_semantics_and_rendered_provenance() {
+fn compression_preserves_historical_dependency_semantics() {
     let t = compressible();
     let p = t.path();
     add_d(p);
@@ -2184,13 +2172,6 @@ fn compression_preserves_historical_dependency_semantics_and_rendered_provenance
     );
     run(p, &["lint"]);
     let original = fs::read(p.join("docs/ledger/a/requirements/7.md")).unwrap();
-    let rendered = run(p, &["render"]);
-    assert!(rendered["files"].as_array().unwrap().iter().any(|path| {
-        let path = path.as_str().unwrap();
-        fs::read_to_string(p.join("docs/ledger").join(path))
-            .unwrap_or_default()
-            .contains("Historical dependency on superseded decision: D-1")
-    }));
     assert_eq!(
         fs::read(p.join("docs/ledger/a/requirements/7.md")).unwrap(),
         original
@@ -2211,7 +2192,6 @@ fn compression_preserves_historical_dependency_semantics_and_rendered_provenance
         );
     }
 }
-
 #[test]
 fn adopting_workflow_does_not_reconstruct_completed_work_but_guards_new_actions() {
     let t = compressible();

@@ -1,9 +1,0 @@
-{
-  "name": "gy-html-ui",
-  "private": true,
-  "packageManager": "bun@1.4.0",
-  "scripts": {
-    "build": "bun build src/main.ts --outdir ../src/html/dist --format iife --entry-naming app.[ext]",
-    "check": "bun run build && git diff --exit-code -- ../src/html/dist"
-  }
-}

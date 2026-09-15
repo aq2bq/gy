@@ -2,7 +2,7 @@
 
 [English](README.md) | 日本語
 
-決定・論点・ニーズ・要求・受け入れ条件・継続判断ゲートを、Markdown ファイルのグラフとして管理する Rust 製の CLI です。エージェントは CLI か MCP から書き、人間は `render` が生成する台帳と `show` の記録を読みます。
+決定・論点・ニーズ・要求・受け入れ条件・継続判断ゲートを、Markdown ファイルのグラフとして管理する Rust 製の CLI です。エージェントは CLI か MCP から書き、人間は `show`・`find`・`lint` を通して台帳を読みます。
 
 `lint` が検査するのは、グラフの内側の整合だけです。台帳がコード・GitHub・本番と一致しているかは、利用者が確かめます。gy は GitHub API を呼びません。
 
@@ -68,7 +68,6 @@ gy question add "配信順序をどう決めるか" \
 gy decide "配信順序を発行時刻順に固定する" \
   --closes Q-1 --scope-note "本番ワーカーに適用。バッチ再送は対象外" --scope demo
 gy lint
-gy render
 ```
 
 この例の `gy lint` は何も報告しません。決定には成立範囲があり、論点には決定者と2つの選択肢があり、ニーズは受け入れ条件を担っているからです。試しに `--scope-note` を落として `decide` を実行すると、記録される前に CLI が拒否します。あとから広く適用されすぎる決定を、書いた時点で止めるためです。
@@ -97,7 +96,6 @@ gy render
 | `next` | 前提の解けたニーズを列挙 |
 | `lint` / `handover` | 整合性と、引き継ぎに要る記録の検査 |
 | `stats` | 受け入れ条件の充足数と、git 履歴による論点の発生率 |
-| `render` | 分割された Markdown・DOT・単一 HTML を生成 |
 | `import <directory>` | ADR を ID を保って取り込み |
 | `cheatsheet` / `completions <shell>` | 操作早見表とシェル補完 |
 | `skills install <dir>` / `mcp serve` | エージェント向け手順の展開と MCP サーバ |
@@ -158,7 +156,7 @@ gy node set D-1 --body-file decision-body.md
 | requirement → question | `raised` | `raised-by` |
 | gate → question | `measured-by` | `measures` |
 
-`narrows` と `supersedes` では、`--mark` に古い決定の本文のうち効力を失う箇所を指定します。本文そのものは変えず、`show` と `render` が表示時に印を付けます。指定した文字列が本文に見つからなければ別記するので、印が黙って別の箇所へ移ることはありません。
+`narrows` と `supersedes` では、`--mark` に古い決定の本文のうち効力を失う箇所を指定します。本文そのものは変えず、`show` が表示時に印を付けます。指定した文字列が本文に見つからなければ別記するので、印が黙って別の箇所へ移ることはありません。
 
 ## 要求はどのように complete へ至るか
 
@@ -242,13 +240,13 @@ gy find --where 'contracts_changed~orders.order_lines'
 
 `--evidence` なしの実行は記録を変えず、検査したうえで元ファイルの全文を出力します。`--evidence` 付きでも圧縮前の全文を標準出力へ返し、そのうえで本文を6項目に置き換えます。`--json` では `archive` に全文、`node` に圧縮後の記録が入ります。退避先 URL を伴う更新では、制約と6項目をもう一度検査します。
 
-圧縮後も ID、`created` を含む必須属性、双方向の辺、知らない属性は残ります。6項目は検索できる属性として保持され、`show` / `render` はそこから本文を生成します。受け入れ条件などの関連は本文へ重複させません。要求から直接 `targets` を張った場合も逆リンクは保存され、L2 の担い手数にはニーズだけを数えます。
+圧縮後も ID、`created` を含む必須属性、双方向の辺、知らない属性は残ります。6項目は検索できる属性として保持され、`show` はそこから本文を生成します。受け入れ条件などの関連は本文へ重複させません。要求から直接 `targets` を張った場合も逆リンクは保存され、L2 の担い手数にはニーズだけを数えます。
 
 圧縮で削除する既知の属性は `constraints`、`constraints_reviewed`、`remaining_work`、`transitions`、`record_history`、`next_evidence`、`responsible`、`pr_url`、`pr_base`、`pr_files`、`data_migration`、`production_only`、`production_done`、`cleanup_done`、`evidence`、`quality_gates`、`design_proposal`、`audit_records` です。これらと元の本文は退避先に残ります。他の拡張属性は保持します。圧縮済みの記録をもう一度圧縮して、元の退避先を上書きすることはできません。
 
 残作業を移管した場合は、`residual=[{"id":"N-2","note":"性能改善を移管"},"Q-3","#6010"]` のように書きます。各移管先は実在するノードでなければなりません。空欄・null・空配列は `none` とは別物で、L11 が検出します。
 
-## lint と render の設定
+## lint の設定
 
 ```toml
 # docs/ledger/gy.toml
@@ -262,12 +260,6 @@ L1 = "error"
 L6 = "warn"
 L2 = { enabled = true, severity = "error" }
 # false または "off" で個別に無効化
-
-[render]
-output = "{scope}/README.md"
-split_threshold = 100
-# HTML の出力先。台帳ルート直下（既定）または {scope} ごと
-html_output = "gy.html"
 ```
 
 | 規則 | 検査 |
@@ -293,23 +285,7 @@ html_output = "gy.html"
 
 `relies-on` は要求が完了したあとも残ります。その要求が何に依拠したかの履歴だからです。L5 が見るのは未完了要求の現在の依存で、完了済み要求の失効した依拠先は `show` と `handover` の `historical_superseded_dependencies` に履歴として出ます。要求を再開すれば、また現在の依存として検査されます。欠けたリンク・逆リンク・完了記録の不備は、完了後も検査します。履歴へ分類されたことは、実態を確認済みだという意味ではありません。正本・ライフサイクル・各規則の判定根拠は[設計上の定義](docs/architecture.md)にあります。
 
-`render` はスコープごとに指定ノード数で分割し、複数ページになれば README に索引を作ります。出力先は台帳内の相対パスで、正本のノードディレクトリには出力できません。
-
 `stats --days 7` は、直近7日とその前の7日について、論点の新規発生数・1日あたりの率・変化量を返します。git の全 ref で ID ごとの最初の追加を数え、本文の編集は新規発生に含めません。未コミットの論点は対象外です。前の期間が0件なら、減衰割合は算出せず null を返します。
-
-## HTML で台帳を読む
-
-`render --format html` は、自己完結した1つの HTML ファイルを生成します。台帳の全データと、`lint` / `next` / `handover` / `stats` が返す判断を埋め込み、ネットワークへ一切出ないので、`file://` で開いてそのまま動きます。
-
-開くと最初の1画面に、充足度・状態分布・未決数・lint 件数が並びます。件数から対応する一覧や Blockers の診断へ飛べます。その下が一覧表で、ここが主な読み取り領域です。タイトルは全文を折り返し、行のどこをクリックしても詳細が開きます。列の並べ替えを含む表示状態は URL の hash に載るので、ID で直接到達でき、ブラウザの戻るも効きます。
-
-グラフは一覧表の下にあり、表示対象の件数で2つの見え方を切り替えます。件数が多いときは、スコープと種別のクラスタを、クラスタ間の集約辺（本数付き）とともに描きます。クラスタをクリックすると、一覧表がそのスコープと種別で絞り込まれます。件数が少ないときは個々のノードを、接続を反映した配置で描きます。近傍のホップ数は、個別表示の上限に収まるよう起点ごとに自動で選びます。決定は `narrows` / `widens` / `supersedes` / `completes` を世代方向に並べた系譜として読め、置き換えられた決定には印が付きます。本文はグラフには描かず、詳細パネルで読みます。
-
-ノードや一覧の行をクリックしても、焦点・絞り込み・配置は動きません。詳細が開くだけです。焦点を移すのは近傍表示のボタンで、**↶** が1段、経路のクリックが複数段戻ります。**All** は絞り込みと系譜を保ったまま焦点を解除し、**Reset all** はそれらも解除して一覧の並べ替えを既定に戻します。詳細パネルには型・スコープ・状態・充足・閉じ方・置き換えがバッジで並び、成立範囲と本文は別々の読み物の領域に置かれます。mark は本文の一致箇所に注記され、見つからない mark は別に表示されて、別の文へは移りません。追加属性は `false`・`0`・`null` を含めて値を全文保持します。HTTP(S) のリンクは利用者が辿るときだけ開きます。
-
-`html_output` は既定で台帳ルート直下の `gy.html` です。`{scope}` を書いたときだけスコープごとに分割します。`split_threshold` は HTML には適用されず、lint の結果は終了コードを変えません。既存の HTML は `gy render --format html` で再生成すれば新しい振る舞いになります。台帳データの移行はなく、再生成は何度実行しても派生 HTML を置き換えるだけで、台帳の記録は変えません。グラフの配置・フィット・ラベルの寸法の規則は [docs/architecture.md の HTML projection](docs/architecture.md#html-projection) にあります。
-
-`init` は、既定の HTML 出力（`html_output`、既定 `gy.html`）を台帳ルートの `.gitignore` へ追記します。既存の `.gitignore` は上書きせず追記だけで、`init` を再実行しても行は重複しません。この機能より前に作った台帳では、既存スコープ名で `gy init <scope>` を再実行するか、`html_output` の値を手で1行足します。再実行は追記のみで冪等ですし、ノード・関連・記録・履歴も保たれます。ただし `gy.toml` は正規化した形で書き直され、設定の値は保たれますが、コメントと書式は失われます（インラインのテーブル書きが `[table]` 節へ展開されるなど）。`gy.toml` に運用のメモをコメントで残しているなら、`init` を再実行せず、`.gitignore` へ手で1行足すほうが安全です。
 
 ## 記録様式と遷移ガード
 
@@ -351,24 +327,13 @@ npx skills add aq2bq/gy
 gy mcp serve
 ```
 
-MCP は標準入出力で JSON-RPC メッセージを1行ずつ交換します。クライアントには `gy` を、引数 `mcp serve -C /absolute/project/path` とともに設定します。公開するツールは `gy_find`、`gy_show`、`gy_question`、`gy_decide` など19個で、各ツールの `args` は CLI の対応コマンド以降の引数配列です。`gy_find` なら `{"args":["配信","--where","type=decision"]}` です。
+MCP は標準入出力で JSON-RPC メッセージを1行ずつ交換します。クライアントには `gy` を、引数 `mcp serve -C /absolute/project/path` とともに設定します。公開するツールは `gy_find`、`gy_show`、`gy_question`、`gy_decide` など18個で、各ツールの `args` は CLI の対応コマンド以降の引数配列です。`gy_find` なら `{"args":["配信","--where","type=decision"]}` です。
 
 同梱する skill は `gy-ledger`、`gy-question`、`gy-decide` の3つです。インストール先の skill が編集されていれば上書きせず、別の出力先を求めます。
 
 `gy skills install` はインストール済みバイナリに埋め込まれた skill を書き出すので、本文は常に手元の gy の版と一致します。出力先の指定が要ります。同梱 skill は標準の `SKILL.md` 形式なので、`npx skills add aq2bq/gy` でも入ります。こちらはバイナリではなくリポジトリから取得します。エージェント検出・project/global・symlink 更新が欲しければ `npx skills`、オフラインで版を固定したいなら `gy skills install` です。
 
 ## 開発と配布の検証
-
-HTML の焦点状態とフィットの回帰テストは `node --test tests/html_navigation.test.cjs` で実行します。Node.js が要るのはこの開発用テストだけで、gy のビルドや HTML 生成には要りません。ブラウザでの操作と当たり判定は Playwright で検証します。
-
-```sh
-cd e2e
-npm ci
-npx playwright install --with-deps chromium
-npm test
-```
-
-この手順はローカルの CLI をビルドし、公開できる合成台帳を生成します。CI の独立した HTML E2E ジョブは、Chromium で既知欠陥の注入を含む検証を毎回実行します。これらの開発依存は両方の Rust クレートの外にあり、生成 HTML は単一ファイルのままです。性能測定の範囲と、欠陥注入後の失敗で検出力を確かめる方法は [e2e/README.md](e2e/README.md) にあります。
 
 ```sh
 cargo fmt --all -- --check

@@ -55,11 +55,6 @@ const TOOL_NAMES: &[(&str, &str, &[&str])] = &[
         &["node"],
     ),
     (
-        "gy_render",
-        "Generate Markdown, DOT, or a single-file HTML view",
-        &["render"],
-    ),
-    (
         "gy_import",
         "Import existing ADRs while preserving IDs",
         &["import"],

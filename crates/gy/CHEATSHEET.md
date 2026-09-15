@@ -31,7 +31,7 @@ Relationships (saved on both sides):
   requirement relies-on decision / raised question
   gate measured-by question
   gy link D-2 narrows D-1 --mark "Affected passage quoted from the older body"
-  mark does not change the older body. show/render annotates the matching passage.
+  mark does not change the older body. show annotates the matching passage.
 
 States (11 values; parenthesized context is allowed):
   unfiled / defining / awaiting-design / awaiting-approval / awaiting-implementation / awaiting-audit /
@@ -61,7 +61,7 @@ Record attributes:
 Search, output, and checks:
   gy find delivery --where type=decision --where 'created>=2026-09-01'
   gy show D-1 / gy show D-1 --graph
-  gy lint --json / gy render / gy stats --days 7
+  gy lint --json / gy stats --days 7
   Reads cover all scopes by default. Filter with --scope <name>.
   Configure L1–L14 and edges in [lint] as true / false / "error" / "warn" / "off".
   Exit codes: 0 success, 1 failed check, 2 invalid input or guard violation, 3 ledger corruption.

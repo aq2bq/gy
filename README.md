@@ -2,7 +2,7 @@
 
 English | [日本語](https://github.com/aq2bq/gy/blob/main/README.ja.md)
 
-A Rust CLI that keeps decisions, questions, needs, requirements, acceptance criteria, and continuation gates as a graph of Markdown files. Agents write through the CLI or MCP; people read the ledger that `render` generates and the records that `show` prints.
+A Rust CLI that keeps decisions, questions, needs, requirements, acceptance criteria, and continuation gates as a graph of Markdown files. Agents write through the CLI or MCP; people read the ledger through `show`, `find`, and `lint`.
 
 `lint` checks only the internal consistency of that graph. Whether the ledger matches the code, GitHub, and production is for the user to verify. gy never calls the GitHub API.
 
@@ -68,7 +68,6 @@ gy question add "How should deliveries be ordered?" \
 gy decide "Order deliveries by publication time" \
   --closes Q-1 --scope-note "Applies to production workers; excludes batch replays" --scope demo
 gy lint
-gy render
 ```
 
 `gy lint` reports nothing here. The decision has its applicability conditions, the question has a decider and two options, and the need targets a criterion. Drop `--scope-note` from the `decide` line and the CLI refuses before anything is written, because a decision without conditions gets applied too widely later.
@@ -97,7 +96,6 @@ To install from a source checkout, run `cargo install --path crates/gy --locked`
 | `next` | List needs whose prerequisites are resolved |
 | `lint` / `handover` | Check consistency and the records a handover needs |
 | `stats` | Report satisfied criteria and question arrival rates from git history |
-| `render` | Generate paginated Markdown, DOT, or a single HTML file |
 | `import <directory>` | Import ADRs, keeping their IDs |
 | `cheatsheet` / `completions <shell>` | Print a workflow reference or shell completions |
 | `skills install <dir>` / `mcp serve` | Install the agent skills or start the MCP server |
@@ -158,7 +156,7 @@ Relationships have the following directions and inverse attributes. `link` write
 | requirement → question | `raised` | `raised-by` |
 | gate → question | `measured-by` | `measures` |
 
-For `narrows` and `supersedes`, `--mark` names the passage of the older decision that loses effect. The stored body is untouched; `show` and `render` add the mark at display time. If the passage cannot be found in the body, it is listed separately, so a mark never moves silently to some other passage.
+For `narrows` and `supersedes`, `--mark` names the passage of the older decision that loses effect. The stored body is untouched; `show` adds the mark at display time. If the passage cannot be found in the body, it is listed separately, so a mark never moves silently to some other passage.
 
 ## How a requirement reaches complete
 
@@ -233,13 +231,13 @@ gy find --where 'contracts_changed~orders.order_lines'
 
 Without `--evidence`, the command changes nothing: it checks the record and prints the original file in full. With `--evidence`, it still prints the original to standard output, then replaces the body with the six items. Under `--json`, `archive` holds the full text and `node` the compressed record. An update that carries the archive URL rechecks the constraints and all six items.
 
-After compression the record keeps its ID, the required attributes including `created`, both sides of every edge, and any attribute gy does not know. The six items stay as searchable attributes, and `show` / `render` build the body from them. Relationships such as acceptance criteria are not repeated in the body. A `targets` link placed directly on a requirement keeps its inverse too, though L2 counts only needs as bearers of a criterion.
+After compression the record keeps its ID, the required attributes including `created`, both sides of every edge, and any attribute gy does not know. The six items stay as searchable attributes, and `show` builds the body from them. Relationships such as acceptance criteria are not repeated in the body. A `targets` link placed directly on a requirement keeps its inverse too, though L2 counts only needs as bearers of a criterion.
 
 Compression removes these known attributes: `constraints`, `constraints_reviewed`, `remaining_work`, `transitions`, `record_history`, `next_evidence`, `responsible`, `pr_url`, `pr_base`, `pr_files`, `data_migration`, `production_only`, `production_done`, `cleanup_done`, `evidence`, `quality_gates`, `design_proposal`, and `audit_records`. They survive in the archive along with the original body. Other extension attributes are kept. A compressed record cannot be compressed again to overwrite its original archive pointer.
 
 Transferred work is written as `residual=[{"id":"N-2","note":"Transferred performance improvements"},"Q-3","#6010"]`. Each destination must be an existing node. Blank values, null, and empty arrays are not the same as `none`, and L11 reports them.
 
-## Configuring lint and render
+## Configuring lint
 
 ```toml
 # docs/ledger/gy.toml
@@ -253,12 +251,6 @@ L1 = "error"
 L6 = "warn"
 L2 = { enabled = true, severity = "error" }
 # Use false or "off" to disable an individual rule.
-
-[render]
-output = "{scope}/README.md"
-split_threshold = 100
-# HTML output, at the ledger root (default) or per {scope}
-html_output = "gy.html"
 ```
 
 | Rule | Check |
@@ -284,23 +276,7 @@ Every rule works from explicit frontmatter. L1 reads `waiting-on` and `unresolve
 
 `relies-on` stays on a requirement after it completes, because it is the history of what the requirement was based on. L5 looks at the current dependencies of unfinished requirements; a superseded dependency of a completed one appears in `show` and in `handover.historical_superseded_dependencies` as history. Reopening the requirement puts it back under the current check. Broken links, missing inverses, and incomplete completion records stay errors after completion. Being filed as history is not a statement that reality was checked. The authority, lifecycle, and rule contracts are defined in [ledger semantics](https://github.com/aq2bq/gy/blob/main/docs/architecture.md).
 
-`render` splits each scope into pages of the configured node count and adds a README index when there is more than one page. Output paths are relative to the ledger directory and cannot point into the directories that hold the source nodes.
-
 `stats --days 7` reports new question counts, daily rates, and the change between the most recent seven days and the seven before. It counts the first addition of each ID across all git refs; a body edit is not a new arrival, and an uncommitted question is not counted. When the earlier period had no arrivals, the decay fraction is null.
-
-## Reading the ledger as HTML
-
-`render --format html` writes one self-contained HTML file. It embeds the whole ledger and the judgments returned by `lint`, `next`, `handover`, and `stats`, and it never goes to the network, so it works opened from `file://`.
-
-The first screen shows acceptance, the state distribution, open questions, and lint counts, and each count links to the matching records or to the Blockers findings. Below it is the table, which is the main reading surface. Titles wrap in full, and a click anywhere on a row opens the details. The display state, including the sort order, lives in the URL hash, so a record can be reached directly by ID and the browser's back button returns to the previous view.
-
-The graph sits under the table and switches between two views by the number of visible records. With many records it draws clusters by scope and type, joined by aggregated edges with their counts; clicking a cluster filters the table to that scope and type. With few records it draws individual nodes laid out to reflect their connections, and the neighborhood hop count is chosen per starting node so the result fits the individual-view limit. Decisions read as a lineage layered by generation along `narrows` / `widens` / `supersedes` / `completes`, with superseded decisions marked. Body text is never drawn on the graph; it is read in the detail panel.
-
-Clicking a node or a table row moves neither the focus, the filters, nor the layout. It only opens the details. Focus moves through the neighborhood button; **↶** goes back one step and clicking the path goes back several. **All** drops the focus while keeping filters and lineage, and **Reset all** clears those too and restores the default table order. The detail panel shows type, scope, state, satisfaction, closure, and supersession as badges, with the applicability conditions and the body in separate reading sections. A mark that matches the body is annotated at that passage; one that does not is listed separately and never moved to another sentence. Extra attributes keep their full values, including `false`, `0`, and `null`. HTTP(S) links open only when followed.
-
-`html_output` defaults to `gy.html` at the ledger root and produces one file per scope only when it contains `{scope}`. `split_threshold` does not apply to HTML, and lint results never change the exit code. Regenerate an existing file with `gy render --format html` to pick up new behavior; the ledger needs no migration, and rendering again only replaces the derived HTML without touching the records. The rules for layout, fit, and label sizing are in [the HTML projection section of docs/architecture.md](https://github.com/aq2bq/gy/blob/main/docs/architecture.md#html-projection).
-
-`init` appends the default HTML output (`html_output`, by default `gy.html`) to the `.gitignore` at the ledger root. An existing `.gitignore` is appended to, never rewritten, and running `init` again does not duplicate the line. For a ledger created before this behavior existed, either run `gy init <scope>` again with the existing scope name or add the `html_output` value by hand. Running it again is append-only and idempotent, and nodes, relationships, records, and history are kept. It does, however, rewrite `gy.toml` in normalized form: the values survive, but comments and formatting do not (an inline table becomes a `[table]` section, for example). If `gy.toml` holds operating notes as comments, adding the `.gitignore` line by hand is the safer choice.
 
 ## Record schemas and transition guards
 
@@ -342,24 +318,13 @@ npx skills add aq2bq/gy
 gy mcp serve
 ```
 
-MCP exchanges one JSON-RPC message per line over standard input and output. Configure the client to run `gy` with the arguments `mcp serve -C /absolute/project/path`. The server exposes 19 tools, among them `gy_find`, `gy_show`, `gy_question`, and `gy_decide`, and each takes an `args` array holding the arguments that would follow the corresponding CLI command. For `gy_find`, that is `{"args":["delivery","--where","type=decision"]}`.
+MCP exchanges one JSON-RPC message per line over standard input and output. Configure the client to run `gy` with the arguments `mcp serve -C /absolute/project/path`. The server exposes 18 tools, among them `gy_find`, `gy_show`, `gy_question`, and `gy_decide`, and each takes an `args` array holding the arguments that would follow the corresponding CLI command. For `gy_find`, that is `{"args":["delivery","--where","type=decision"]}`.
 
 The three bundled skills are `gy-ledger`, `gy-question`, and `gy-decide`. If a skill at the destination has been edited, installation refuses to overwrite it and asks for another destination.
 
 `gy skills install` writes the skills embedded in the installed binary, so their text always matches the installed version; it needs an explicit destination. The skills use the standard `SKILL.md` format, so `npx skills add aq2bq/gy` installs them too, fetching from the repository rather than the binary. Choose `npx skills` for agent detection, project or global scope, and symlinked updates; choose `gy skills install` for offline use and a version-locked copy.
 
 ## Development and distribution checks
-
-HTML focus-state and fit regressions run with `node --test tests/html_navigation.test.cjs`. Node.js is needed only for these development tests, not for building gy or generating HTML. Browser interaction and hit testing run with Playwright:
-
-```sh
-cd e2e
-npm ci
-npx playwright install --with-deps chromium
-npm test
-```
-
-This builds the local CLI and generates synthetic ledgers that are safe to publish. The separate HTML E2E job in CI runs Chromium on every run, including known-defect injection. These development dependencies live outside both Rust crates, and the generated HTML stays a single file. The measured performance scope, and how failed assertions after injection prove that defects are detected, are in [e2e/README.md](https://github.com/aq2bq/gy/blob/main/e2e/README.md).
 
 ```sh
 cargo fmt --all -- --check

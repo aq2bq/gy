@@ -488,10 +488,6 @@ fn execute(cli: &Cli) -> Result<Output> {
             output.human = Some(human);
             output.value = json!({"diagnostics":ds,"note":INTEGRITY_NOTE});
         }
-        Commands::Render { format } => {
-            write = false;
-            output.value = json!({"files":store.render(scope,format)?});
-        }
         Commands::Show { id, graph } => {
             write = false;
             let n = store.node(id)?;

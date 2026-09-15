@@ -62,7 +62,7 @@ pub enum Commands {
     },
     /// Save relationships on both sides. For narrows / supersedes, --mark identifies the invalidated passage in the older decision
     #[command(
-        after_help = "Directions: question closes decision; decision narrows|widens|supersedes|completes decision; need|requirement targets criterion; need spawned-by decision; need filed-as requirement; need depends-on need; requirement relies-on decision; requirement raised question; gate measured-by question\n--mark does not replace the body. show/render annotates the matching text in the older decision. A file-level link alone cannot identify an invalidated sentence."
+        after_help = "Directions: question closes decision; decision narrows|widens|supersedes|completes decision; need|requirement targets criterion; need spawned-by decision; need filed-as requirement; need depends-on need; requirement relies-on decision; requirement raised question; gate measured-by question\n--mark does not replace the body. show annotates the matching text in the older decision. A file-level link alone cannot identify an invalidated sentence."
     )]
     Link {
         source: String,
@@ -93,11 +93,6 @@ pub enum Commands {
     },
     /// Check L1–L14 and inverse links; exit 1 on errors. Incomplete q records fail even with L8/L9 disabled
     Lint,
-    /// Generate ledger pages based on node count. Configure output and threshold in gy.toml [render]. --format html writes a single self-contained file
-    Render {
-        #[arg(long,default_value="markdown",value_parser=["markdown","dot","html"])]
-        format: String,
-    },
     /// Show a node and relationships on both sides. --graph emits DOT by traversing relationships
     Show {
         id: String,

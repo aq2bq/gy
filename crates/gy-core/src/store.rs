@@ -146,10 +146,7 @@ impl Store {
         {
             let _lock = lock(&root)?;
             if !root.join("gy.toml").exists() {
-                atomic_write(
-                    &root.join("gy.toml"),
-                    "[render]\nsplit_threshold = 100\noutput = \"{scope}/README.md\"\nhtml_output = \"gy.html\"\n\n[lint]\n",
-                )?;
+                atomic_write(&root.join("gy.toml"), "[lint]\n")?;
             }
             for (_, _, dir) in KINDS {
                 fs::create_dir_all(root.join(scope).join(dir))?;
@@ -179,36 +176,7 @@ impl Store {
             entry.parent_issue = Some(p);
         }
         store.commit()?;
-        store.append_render_ignore()?;
         Ok(store)
-    }
-    /// Append the HTML projection output to the ledger-root .gitignore.
-    /// The output is a derived artifact meant for local reading only, so the
-    /// default destination should not be committed. Existing .gitignore files
-    /// are appended, never rewritten.
-    fn append_render_ignore(&self) -> Result<()> {
-        let output = &self.config.render.html_output;
-        if output.trim().is_empty() {
-            return Ok(());
-        }
-        let pattern = output.replace("{scope}", "*");
-        let ignore = self.root.join(".gitignore");
-        let original = if ignore.exists() {
-            fs::read_to_string(&ignore)?
-        } else {
-            String::new()
-        };
-        if original.lines().any(|l| l.trim() == pattern) {
-            return Ok(());
-        }
-        let mut updated = original;
-        if !updated.is_empty() && !updated.ends_with('\n') {
-            updated.push('\n');
-        }
-        updated.push_str(&pattern);
-        updated.push('\n');
-        atomic_write(&ignore, &updated)?;
-        Ok(())
     }
     pub fn open(cwd: &Path) -> Result<Self> {
         let cwd = cwd.canonicalize()?;
@@ -456,14 +424,19 @@ impl Store {
             PathBuf::from(".gy-ids.json"),
             serde_json::to_string_pretty(&self.counters).unwrap(),
         );
-        files.insert(
-            PathBuf::from("gy.toml"),
-            toml::to_string_pretty(&self.config).map_err(|e| Error::corrupt(e.to_string()))?,
-        );
+        files.insert(PathBuf::from("gy.toml"), self.config_toml()?);
         Ok(files)
     }
-    pub fn write_files(&self, files: BTreeMap<PathBuf, String>) -> Result<()> {
-        self.write_transaction(files, vec![])
+    /// Serialize `gy.toml` without the deprecated `[render]` table. The table
+    /// is still parsed and validated on load so an existing ledger opens
+    /// unchanged, but gy no longer writes it.
+    fn config_toml(&self) -> Result<String> {
+        let mut value =
+            toml::Value::try_from(&self.config).map_err(|e| Error::corrupt(e.to_string()))?;
+        if let Some(table) = value.as_table_mut() {
+            table.remove("render");
+        }
+        toml::to_string_pretty(&value).map_err(|e| Error::corrupt(e.to_string()))
     }
     fn write_transaction(
         &self,
