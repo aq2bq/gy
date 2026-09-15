@@ -5,6 +5,7 @@ pub mod now;
 pub mod search;
 pub mod shell;
 pub mod ticks;
+pub mod wait;
 
 use crate::assets;
 use crate::http::{Request, Response};

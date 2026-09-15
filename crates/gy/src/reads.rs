@@ -40,15 +40,19 @@ pub fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
 /// only wires it: gy-serve owns the server, and no write path exists. A read
 /// may name a sequence, which opens the ledger as it stood then (n-10e1).
 pub fn serve(ledger: &Path) -> Result<()> {
+    let watched = ledger.to_path_buf();
     let ledger = ledger.to_path_buf();
-    gy_serve::server::serve(Box::new(move |at| match at {
-        None => repo::open(&ledger).map(Opened::Now),
-        Some(seq) => {
-            // The same reader actor repo::open uses; open_at never writes.
-            let reader = |_: &str| Some("gy-read".to_string());
-            file::open_at(&ledger, seq, reader).map(|store| Opened::At(Repository::new(store)))
-        }
-    }))
+    gy_serve::server::serve(
+        Box::new(move |at| match at {
+            None => repo::open(&ledger).map(Opened::Now),
+            Some(seq) => {
+                // The same reader actor repo::open uses; open_at never writes.
+                let reader = |_: &str| Some("gy-read".to_string());
+                file::open_at(&ledger, seq, reader).map(|store| Opened::At(Repository::new(store)))
+            }
+        }),
+        watched,
+    )
 }
 
 /// The publication goes under `--out`, else gy.toml's `output` (an error when

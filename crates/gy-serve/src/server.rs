@@ -1,7 +1,9 @@
 //! The one file where tiny_http appears (ac-a49a): bind, accept, conversions.
 use crate::api;
 use crate::http;
+use crate::watch::Watch;
 use gy_ledger::{Error, FileStore, MemoryStore, Repository, Result};
+use std::path::PathBuf;
 use std::sync::Arc;
 use tiny_http::{Header, Request, Response, Server};
 
@@ -19,14 +21,17 @@ pub enum Opened {
 /// write (n-a493), at the asked sequence when one is given (n-10e1).
 pub type Opener = Box<dyn Fn(Option<u64>) -> Result<Opened> + Send + Sync>;
 
-/// Serve until stopped, printing the one line the master needs to open.
-pub fn serve(open: Opener) -> Result<()> {
+/// Serve until stopped, printing the one line the master needs to open. The
+/// watch follows `ledger`'s log so a request can wait for the next write.
+pub fn serve(open: Opener, ledger: PathBuf) -> Result<()> {
     let (server, port) = bind()?;
     println!("gy serve  http://127.0.0.1:{port}/");
     let open = Arc::new(open);
+    let watch = Watch::start(ledger);
     for request in server.incoming_requests() {
         let open = open.clone();
-        std::thread::spawn(move || handle(&open, request));
+        let watch = watch.clone();
+        std::thread::spawn(move || handle(&open, &watch, request));
     }
     Ok(())
 }
@@ -69,9 +74,14 @@ pub fn answer(open: &Opener, session: &http::Request) -> http::Response {
 }
 
 /// tiny_http's request in, tiny_http's response out; the route sees neither.
-fn handle(open: &Opener, request: Request) {
+/// Waiting for the next write is the one route that does not touch the ledger.
+fn handle(open: &Opener, watch: &Watch, request: Request) {
     let session = convert(&request);
-    let answer = answer(open, &session);
+    let answer = if session.path == "/api/wait" {
+        api::wait::wait(watch, &session)
+    } else {
+        answer(open, &session)
+    };
     let header = Header::from_bytes("Content-Type", answer.content_type).expect("static header");
     let _ = request.respond(
         Response::from_data(answer.body)
