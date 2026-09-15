@@ -55,13 +55,16 @@ fn commits_from_one_store_are_serialized() {
 
 #[test]
 fn an_id_hash_widens_on_collision() {
-    let base = 0x1234_5678;
+    let seed = "n:0:0:0:1";
     let mut used = BTreeSet::new();
-    assert_eq!(file::unique_hash("n", base, &used).unwrap(), "1234");
-    used.insert("n-1234".to_string());
-    assert_eq!(file::unique_hash("n", base, &used).unwrap(), "123456");
-    used.insert("n-123456".to_string());
-    assert_eq!(file::unique_hash("n", base, &used).unwrap(), "12345678");
-    used.insert("n-12345678".to_string());
-    assert!(file::unique_hash("n", base, &used).is_err());
+    let first = file::unique_hash("n", seed, &used).unwrap();
+    assert_eq!(first.len(), 4);
+    used.insert(format!("n-{first}"));
+    let second = file::unique_hash("n", seed, &used).unwrap();
+    assert_eq!(second.len(), 6);
+    used.insert(format!("n-{second}"));
+    let third = file::unique_hash("n", seed, &used).unwrap();
+    assert_eq!(third.len(), 8);
+    used.insert(format!("n-{third}"));
+    assert!(file::unique_hash("n", seed, &used).is_err());
 }

@@ -1,7 +1,8 @@
 //! The write side: projecting an `Outcome` to output, resolving the scope from
 //! `gy.toml`, and parsing the small closed sets the write commands take.
 use gy_ledger::{
-    ClosedBy, Closure, Error, NodeId, Outcome, Relation, Repository, Result, Store, config,
+    ClosedBy, Closure, Error, NodeData, NodeId, Outcome, Relation, Repository, Result, Store,
+    config,
 };
 use serde::Serialize;
 use std::fmt::{self, Display};
@@ -11,6 +12,8 @@ use std::path::Path;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Written {
     pub id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reference: Option<String>,
     pub changed: Vec<String>,
     pub missing: Vec<String>,
     pub next: Vec<String>,
@@ -19,21 +22,44 @@ impl Written {
     pub fn of<T>(outcome: &Outcome<T>) -> Self {
         Self {
             id: outcome.id.as_ref().map(ToString::to_string),
+            reference: None,
             changed: outcome.changed.clone(),
             missing: outcome.missing.clone(),
             next: outcome.next.clone(),
         }
     }
+    /// Put a requirement's outward reference beside its id (proposal-v3 12).
+    pub fn reference(mut self, reference: Option<String>) -> Self {
+        self.reference = reference;
+        self
+    }
 }
 impl Display for Written {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(id) = &self.id {
-            writeln!(f, "{id}")?;
+            match &self.reference {
+                Some(reference) => writeln!(f, "{id} ({reference})")?,
+                None => writeln!(f, "{id}")?,
+            }
         }
         writeln!(f, "changed: {}", self.changed.join(", "))?;
         writeln!(f, "missing: {}", self.missing.join(", "))?;
         writeln!(f, "next: {}", self.next.join(", "))
     }
+}
+
+/// A requirement's outward reference, for the id line.
+pub fn requirement_reference<S: Store>(
+    repository: &Repository<S>,
+    id: &NodeId,
+) -> Result<Option<String>> {
+    let node = repository
+        .get(id)?
+        .ok_or_else(|| Error::invalid(format!("{id} does not exist")))?;
+    Ok(match node.data() {
+        NodeData::Requirement(data) => data.reference.as_ref().map(|ref_| ref_.0.clone()),
+        _ => None,
+    })
 }
 
 /// The scope a write uses: `--scope`, or the only one gy.toml lists.

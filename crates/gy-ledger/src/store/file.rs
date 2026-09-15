@@ -12,11 +12,23 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+/// The seed a new id hashes: the prefix, the wall clock in nanoseconds, the
+/// process id, the node count, and a per-process counter. Two processes in the
+/// same second still differ (D-74).
+pub(crate) fn id_seed(prefix: &str, count: usize, salt: u64) -> String {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_nanos())
+        .unwrap_or(0);
+    format!("{prefix}:{nanos}:{}:{count}:{salt}", std::process::id())
+}
+
 /// Widen the short hash until it is unique among `used` full ids (D-74):
-/// four hex digits, then six, then eight.
-pub fn unique_hash(prefix: &str, base: u32, used: &BTreeSet<String>) -> Result<String> {
-    let hex = format!("{base:08x}");
+/// four hex digits, then six, then eight. Each width hashes a different seed,
+/// so widening is not a longer window on the same bits.
+pub fn unique_hash(prefix: &str, seed: &str, used: &BTreeSet<String>) -> Result<String> {
     for length in [4, 6, 8] {
+        let hex = format!("{:08x}", super::fnv1a(&format!("{seed}:{length}")));
         let hash = &hex[..length];
         if !used.contains(&format!("{prefix}-{hash}")) {
             return Ok(hash.to_string());
@@ -248,8 +260,9 @@ impl Store for FileStore {
 impl IdSource for FileStore {
     fn next_hash(&mut self, prefix: &str) -> Result<String> {
         self.salt += 1;
-        let base = super::fnv1a(&format!("{prefix}:{}:{}", now(), self.salt));
-        unique_hash(prefix, base, &self.nodes.keys().cloned().collect())
+        let used: BTreeSet<String> = self.nodes.keys().cloned().collect();
+        let seed = id_seed(prefix, used.len(), self.salt);
+        unique_hash(prefix, &seed, &used)
     }
 }
 fn now() -> u64 {

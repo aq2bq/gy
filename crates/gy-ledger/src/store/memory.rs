@@ -1,7 +1,8 @@
 //! The in-memory implementation for the skeleton and tests.
+use super::file::{id_seed, unique_hash};
 use super::{Actor, Error, FormatVersion, HistoryEntry, IdSource, Result, Store};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -132,8 +133,9 @@ impl Store for MemoryStore {
 impl IdSource for MemoryStore {
     fn next_hash(&mut self, prefix: &str) -> Result<String> {
         self.salt += 1;
-        let seed = format!("{prefix}:{}:{}", now(), self.salt);
-        Ok(format!("{:04x}", super::fnv1a(&seed) & 0xffff))
+        let used: BTreeSet<String> = self.committed.keys().cloned().collect();
+        let seed = id_seed(prefix, used.len(), self.salt);
+        unique_hash(prefix, &seed, &used)
     }
 }
 fn now() -> u64 {

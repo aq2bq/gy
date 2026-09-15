@@ -16,7 +16,8 @@ fn decide_creates_closes_and_links_one_relation() {
         "applies at dawn",
         "--closes",
         "q-0001",
-        "--narrows",
+        "--relate",
+        "narrows",
         "d-0002",
         "--mark",
         "changed part",
@@ -44,10 +45,47 @@ fn decide_errors_and_json() {
         "d",
         "--scope-note",
         "x",
-        "--narrows",
+        "--relate",
+        "narrows",
         "d-9999",
         "--mark",
         "m",
+    ]);
+    assert_eq!(out.status.code(), Some(2));
+
+    let out = fx.run(&[
+        "decide",
+        "d",
+        "--scope-note",
+        "x",
+        "--relate",
+        "targets",
+        "d-0003",
+    ]);
+    assert_eq!(out.status.code(), Some(2));
+
+    let out = fx.run(&[
+        "decide",
+        "d",
+        "--scope-note",
+        "x",
+        "--relate",
+        "bogus",
+        "d-0003",
+    ]);
+    assert_eq!(out.status.code(), Some(2));
+
+    let out = fx.run(&[
+        "decide",
+        "d",
+        "--scope-note",
+        "x",
+        "--relate",
+        "narrows",
+        "d-0003",
+        "--relate",
+        "widens",
+        "d-0003",
     ]);
     assert_eq!(out.status.code(), Some(2));
 

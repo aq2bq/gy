@@ -75,6 +75,11 @@ pub enum Command {
         #[command(subcommand)]
         action: CriterionAction,
     },
+    /// File a requirement, or advance one.
+    Req {
+        #[command(subcommand)]
+        action: writes::ReqAction,
+    },
     /// Create a decision, optionally closing questions and linking one relation.
     Decide(DecideArgs),
     /// Add or remove one edge between two nodes.
@@ -169,6 +174,7 @@ fn run(cli: &Cli) -> Result<()> {
         Command::Need { action } => write_need(cli, &root, &ledger, action),
         Command::Question { action } => write_question(cli, &root, &ledger, action),
         Command::Criterion { action } => write_criterion(cli, &root, &ledger, action),
+        Command::Req { action } => writes::req(cli, &root, &ledger, action),
         Command::Decide(args) => writes::decide(cli, &root, &ledger, args),
         Command::Link(args) => writes::link(cli, &ledger, args),
         Command::Edit(args) => writes::edit(cli, &ledger, args),
