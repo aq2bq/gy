@@ -62,6 +62,11 @@ pub fn requirement_reference<S: Store>(
     })
 }
 
+/// The scope names gy.toml declares, for a move that must name one of them.
+pub fn scope_names(root: &Path) -> Result<Vec<String>> {
+    Ok(config::read(root)?.scopes.into_keys().collect())
+}
+
 /// The scope a write uses: `--scope`, or the only one gy.toml lists.
 pub fn scope(root: &Path, given: Option<&str>) -> Result<String> {
     let settings = config::read(root)?;

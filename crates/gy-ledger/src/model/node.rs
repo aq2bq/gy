@@ -97,15 +97,11 @@ pub struct Node {
 }
 impl Node {
     fn build(id: NodeId, scope: &str, created: &str, title: &str, data: NodeData) -> Result<Self> {
-        if scope.trim().is_empty() {
-            return Err(Error::invalid("a node needs a scope"));
-        }
+        required(scope.to_string(), "a node needs a scope")?;
         if !valid_date(created) {
             return Err(Error::invalid("created must be YYYY-MM-DD"));
         }
-        if title.trim().is_empty() {
-            return Err(Error::invalid("a node needs a nonempty title"));
-        }
+        required(title.to_string(), "a node needs a nonempty title")?;
         Ok(Self {
             id,
             scope: scope.to_string(),
@@ -222,11 +218,12 @@ impl Node {
     }
     /// Retitle a node. An empty title is rejected (invariant).
     pub fn set_title(&mut self, title: impl Into<String>) -> Result<()> {
-        let title = title.into();
-        if title.trim().is_empty() {
-            return Err(Error::invalid("a node needs a nonempty title"));
-        }
-        self.title = title;
+        self.title = required(title.into(), "a node needs a nonempty title")?;
+        Ok(())
+    }
+    /// Move a node to another scope. An empty scope is rejected (invariant).
+    pub fn set_scope(&mut self, scope: impl Into<String>) -> Result<()> {
+        self.scope = required(scope.into(), "a node needs a scope")?;
         Ok(())
     }
     pub fn add_alias(&mut self, alias: Alias) {
@@ -268,6 +265,14 @@ impl Node {
     }
 }
 
+/// A required text field: a blank value is rejected (invariant).
+fn required(value: String, message: &str) -> Result<String> {
+    if value.trim().is_empty() {
+        return Err(Error::invalid(message));
+    }
+    Ok(value)
+}
+
 /// A `created` date in `YYYY-MM-DD` form.
 fn valid_date(text: &str) -> bool {
     let bytes = text.as_bytes();
@@ -277,7 +282,7 @@ fn valid_date(text: &str) -> bool {
         && bytes
             .iter()
             .enumerate()
-            .all(|(index, byte)| index == 4 || index == 7 || byte.is_ascii_digit())
+            .all(|(i, b)| i == 4 || i == 7 || b.is_ascii_digit())
 }
 
 /// Needs that carry a Targets edge to a criterion, derived rather than stored.

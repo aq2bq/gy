@@ -1,6 +1,7 @@
 //! edit: change a node's title, body, or free attributes, and never its state,
-//! edges, scope, or creation (proposal-v3 3). A reason is required, and the
-//! reserved names of protected concepts are refused.
+//! edges, or creation (proposal-v3 3). A reason is required, and the reserved
+//! names of protected concepts are refused. `--set scope=<name>` moves the node
+//! to a scope gy.toml declares (n-1aad).
 use super::{Operation, Outcome, Repository};
 use crate::model::{Node, NodeId};
 use crate::store::{Error, Result, Store};
@@ -38,7 +39,7 @@ impl<S: Store> Operation<S> for Edit {
         let mut node = repo
             .get(&self.id)?
             .ok_or_else(|| Error::invalid(format!("{} does not exist", self.id)))?;
-        let changed = apply(&mut node, &self)?;
+        let changed = apply(&mut node, &self, repo.scopes())?;
         let why = format!("edit {}", self.id);
         repo.transaction(&why, &self.reason, |repo| repo.put(&node))?;
         Ok(Outcome {
@@ -51,7 +52,7 @@ impl<S: Store> Operation<S> for Edit {
     }
 }
 
-fn apply(node: &mut Node, edit: &Edit) -> Result<Vec<String>> {
+fn apply(node: &mut Node, edit: &Edit, scopes: &[String]) -> Result<Vec<String>> {
     let mut changed = Vec::new();
     if let Some(title) = &edit.title {
         node.set_title(title.clone())?;
@@ -62,10 +63,21 @@ fn apply(node: &mut Node, edit: &Edit) -> Result<Vec<String>> {
         changed.push("body".into());
     }
     for (key, value) in &edit.set {
-        node.set_free(key.clone(), value.clone());
-        changed.push(format!("free:{key}"));
+        if key == "scope" {
+            if !scopes.contains(value) {
+                return Err(Error::invalid(format!("unknown scope {value}")));
+            }
+            node.set_scope(value.clone())?;
+            changed.push("scope".into());
+        } else {
+            node.set_free(key.clone(), value.clone());
+            changed.push(format!("free:{key}"));
+        }
     }
     for (key, value) in &edit.append {
+        if key == "scope" {
+            return Err(Error::invalid("scope is set, not appended"));
+        }
         node.append_free(key, value);
         changed.push(format!("free:{key}"));
     }
@@ -78,7 +90,6 @@ const RESERVED: &[&str] = &[
     "id",
     "type",
     "kind",
-    "scope",
     "created",
     "title",
     "body",

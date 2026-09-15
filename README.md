@@ -88,7 +88,7 @@ Writes (15):
 | `req cancel <ID> --reason <text> --source <text>` | Cancel a requirement that was not done |
 | `decide "<title>" --scope-note <text> [--body-file <path>] [--closes <Q>]... [--relate <relation> <D> --mark <text>]` | Create a decision, close questions, and record one lineage edge |
 | `link <from> <relation> <to> [--mark <text>] [--remove]` | Add or remove one edge |
-| `edit <ID> --reason <text> [--title] [--body-file] [--set k=v] [--append k=v]` | Change a node's title, body, or free attributes. A free attribute is a string; `--set` overwrites it and `--append` adds one line, separated by a newline |
+| `edit <ID> --reason <text> [--title] [--body-file] [--set k=v] [--append k=v]` | Change a node's title, body, or free attributes. A free attribute is a string; `--set` overwrites it and `--append` adds one line, separated by a newline. `--set scope=<name>` moves the node to a scope gy.toml declares |
 | `undo --reason <text>` | Invert the last transaction |
 
 Every write prints what it changed, what the node still lacks, and the shape of the command that could come next, so the next step is visible without a separate instruction sheet. Pass `--json` for the same content as data.

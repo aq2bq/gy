@@ -9,6 +9,7 @@ pub struct Repository<S: Store> {
     store: S,
     why: String,
     source: String,
+    scopes: Vec<String>,
 }
 impl<S: Store> Repository<S> {
     pub fn new(store: S) -> Self {
@@ -16,7 +17,18 @@ impl<S: Store> Repository<S> {
             store,
             why: String::new(),
             source: String::new(),
+            scopes: Vec::new(),
         }
+    }
+    /// The scope names a move accepts, from gy.toml. An empty list accepts
+    /// none, so a node can never be moved into an undeclared scope (n-1aad).
+    pub fn with_scopes(mut self, scopes: Vec<String>) -> Self {
+        self.scopes = scopes;
+        self
+    }
+    /// The scope names this repository accepts for a move.
+    pub fn scopes(&self) -> &[String] {
+        &self.scopes
     }
     /// The store beneath this repository.
     pub fn store(&self) -> &S {

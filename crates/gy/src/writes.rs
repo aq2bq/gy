@@ -116,8 +116,8 @@ pub fn link(cli: &Cli, ledger: &Path, args: &LinkArgs) -> Result<()> {
     emit(cli.json, &Written::of(&outcome))
 }
 
-pub fn edit(cli: &Cli, ledger: &Path, args: &EditArgs) -> Result<()> {
-    let mut repository = repo::open_write(ledger)?;
+pub fn edit(cli: &Cli, root: &Path, ledger: &Path, args: &EditArgs) -> Result<()> {
+    let mut repository = repo::open_write(ledger)?.with_scopes(write::scope_names(root)?);
     let outcome = Edit {
         id: repository.resolve(&args.id)?,
         reason: args.reason.clone(),

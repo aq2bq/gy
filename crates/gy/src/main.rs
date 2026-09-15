@@ -190,7 +190,7 @@ fn run(cli: &Cli) -> Result<()> {
         Command::Req { action } => writes::req(cli, &root, &ledger, action),
         Command::Decide(args) => writes::decide(cli, &root, &ledger, args),
         Command::Link(args) => writes::link(cli, &ledger, args),
-        Command::Edit(args) => writes::edit(cli, &ledger, args),
+        Command::Edit(args) => writes::edit(cli, &root, &ledger, args),
         Command::Undo(args) => writes::undo(cli, &ledger, args),
     }
 }

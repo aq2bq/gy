@@ -1,6 +1,6 @@
 use gy_ledger::{
-    Actor, Edit, FormatVersion, MemoryStore, Node, NodeId, NodeKind, Operation, Repository,
-    RequirementState, Store,
+    Actor, Edit, FormatVersion, Link, MemoryStore, Node, NodeId, NodeKind, Operation, Relation,
+    Repository, RequirementState, Store,
 };
 
 const SCOPE: &str = "a";
@@ -11,6 +11,10 @@ fn repo() -> Repository<MemoryStore> {
         FormatVersion::CURRENT,
         Actor::new("piko").unwrap(),
     ))
+}
+
+fn repo_with(scopes: &[&str]) -> Repository<MemoryStore> {
+    repo().with_scopes(scopes.iter().map(|scope| (*scope).to_string()).collect())
 }
 
 fn requirement(repo: &mut Repository<MemoryStore>) -> NodeId {
@@ -99,6 +103,66 @@ fn edit_rejects_a_no_op_and_a_missing_node() {
     let missing = NodeId::from_hash(NodeKind::Need, "0002").unwrap();
     let mut request = edit(&missing);
     request.title = Some("x".into());
+    assert!(request.run(&mut repo).is_err());
+}
+
+#[test]
+fn edit_moves_a_node_to_a_declared_scope_and_keeps_its_id_and_edges() {
+    let mut repo = repo_with(&["a", "b"]);
+    let criterion = Node::criterion(
+        NodeId::from_hash(NodeKind::Criterion, "0009").unwrap(),
+        SCOPE,
+        DATE,
+        "an AC",
+    )
+    .unwrap();
+    let criterion_id = criterion.id().clone();
+    let mut node = Node::requirement(
+        NodeId::from_hash(NodeKind::Requirement, "0001").unwrap(),
+        SCOPE,
+        DATE,
+        "a requirement",
+        RequirementState::Filed,
+    )
+    .unwrap();
+    node.link(Link::new(node.id().clone(), Relation::Targets, criterion_id.clone()).unwrap());
+    let id = node.id().clone();
+    repo.transaction("seed", "test", |repo| {
+        repo.put(&criterion)?;
+        repo.put(&node)
+    })
+    .unwrap();
+
+    let mut request = edit(&id);
+    request.set = vec![("scope".into(), "b".into())];
+    let outcome = request.run(&mut repo).unwrap();
+
+    let moved = repo.get(&id).unwrap().unwrap();
+    assert_eq!(moved.scope(), "b");
+    assert_eq!(moved.id(), &id);
+    assert_eq!(outcome.changed, ["scope"]);
+    assert_eq!(moved.links().len(), 1);
+    assert_eq!(moved.links()[0].name(), "targets");
+    assert_eq!(moved.links()[0].to, criterion_id);
+    assert_eq!(repo.get(&criterion_id).unwrap().unwrap().scope(), "a");
+}
+
+#[test]
+fn edit_rejects_an_undeclared_scope() {
+    let mut repo = repo_with(&["a"]);
+    let id = requirement(&mut repo);
+    let mut request = edit(&id);
+    request.set = vec![("scope".into(), "b".into())];
+    assert!(request.run(&mut repo).is_err());
+    assert_eq!(repo.get(&id).unwrap().unwrap().scope(), "a");
+}
+
+#[test]
+fn edit_with_no_declared_scopes_rejects_a_move() {
+    let mut repo = repo();
+    let id = requirement(&mut repo);
+    let mut request = edit(&id);
+    request.set = vec![("scope".into(), "a".into())];
     assert!(request.run(&mut repo).is_err());
 }
 
