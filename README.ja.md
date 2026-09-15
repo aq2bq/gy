@@ -162,4 +162,4 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 ```
 
-ワークスペースは `gy-ledger`（保存・モデル・操作）と `gy`（CLI）で構成します。`gy-migrate` とその下請けの `gy-core` は、残る 0.4 の台帳を移し終えるまで残し、そのあとで消します。CI は Linux で検証し、他のプラットフォームは未検証です。
+ワークスペースは `gy-ledger`（保存・モデル・操作）と `gy`（CLI）で構成します。`gy-migrate` とその下請けの `gy-core` は、残る 0.4 の台帳を移し終えるまで残し、そのあとで消します。CI は Linux で検証し、他のプラットフォームは未検証です。`gy serve` の画面には `e2e/`（Playwright、chromium）の E2E があり、[e2e/README.md](e2e/README.md) を読みます。`cargo test` には入りません。

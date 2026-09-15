@@ -58,7 +58,7 @@
   function head() {
     const word = state() ? stateWord() : '';
     const meta = [
-      `<span class="al">${esc(node.aliases[0] || node.id)}</span>`,
+      `<span class="al">${esc((node.aliases || [])[0] || node.id)}</span>`,
       `<span>${esc(node.id)}</span>`,
       `<span>${esc(node.scope)}</span>`,
       `<span>${fill(t('createdOn'), { d: node.created })}</span>`,
@@ -153,7 +153,7 @@
       const y = cy + (index - (right.length - 1) / 2) * rh;
       svg += line(cx + bw / 2, cy, width - bw / 2 - 16, y, rel(edge), 'R') + box(edge, width - bw / 2 - 16, y);
     });
-    svg += `<g transform="translate(${cx - bw / 2},${cy - bh / 2})"><rect class="box center" width="${bw}" height="${bh}" rx="7" stroke="var(--${COLOUR[node.kind]})"/><text class="al" x="10" y="17">${esc(node.aliases[0] || node.id)} · ${t(node.kind)}</text><text x="10" y="36">${esc(short(node.title))}</text></g>`;
+    svg += `<g transform="translate(${cx - bw / 2},${cy - bh / 2})"><rect class="box center" width="${bw}" height="${bh}" rx="7" stroke="var(--${COLOUR[node.kind]})"/><text class="al" x="10" y="17">${esc((node.aliases || [])[0] || node.id)} · ${t(node.kind)}</text><text x="10" y="36">${esc(short(node.title))}</text></g>`;
     if (!left.length && !right.length) {
       svg += `<text class="rel" x="${cx}" y="${height - 14}" text-anchor="middle">${t('noConn')}</text>`;
     }

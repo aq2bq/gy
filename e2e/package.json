@@ -1,0 +1,11 @@
+{
+  "name": "gy-e2e",
+  "private": true,
+  "description": "The gy serve screens, end to end (n-5e13, d-244b)",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.47.2"
+  }
+}
