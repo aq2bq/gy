@@ -11,6 +11,10 @@ pub mod question_add;
 pub mod question_close;
 pub mod repository;
 pub mod req_add;
+pub mod req_approve;
+pub mod req_cancel;
+pub mod req_done;
+pub mod req_revise;
 
 pub use criterion_add::CriterionAdd;
 pub use criterion_satisfy::CriterionSatisfy;
@@ -21,6 +25,10 @@ pub use question_add::QuestionAdd;
 pub use question_close::QuestionClose;
 pub use repository::Repository;
 pub use req_add::ReqAdd;
+pub use req_approve::ReqApprove;
+pub use req_cancel::ReqCancel;
+pub use req_done::ReqDone;
+pub use req_revise::ReqRevise;
 
 use crate::model::{Node, NodeId, NodeKind};
 use crate::store::{Error, Result, Store};
@@ -45,6 +53,17 @@ pub struct Outcome<T> {
     pub missing: Vec<String>,
     pub next: Vec<String>,
     pub value: T,
+}
+
+/// The outcome of a state transition: the same id, one changed label.
+pub fn outcome(id: &NodeId, changed: &str) -> Outcome<NodeId> {
+    Outcome {
+        id: Some(id.clone()),
+        changed: vec![changed.to_string()],
+        missing: Vec::new(),
+        next: Vec::new(),
+        value: id.clone(),
+    }
 }
 
 /// One intent, run against a repository (D-69).

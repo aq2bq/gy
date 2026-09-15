@@ -2,8 +2,8 @@
 use std::collections::BTreeMap;
 
 use super::{
-    Alias, Closed, Closure, DecisionScope, Edge, Link, NodeId, NodeKind, Ref, Relation,
-    RequirementState,
+    Alias, Approval, Cancellation, Closed, Closure, Completion, DecisionScope, Edge, Link, NodeId,
+    NodeKind, Ref, Relation, RequirementState, Revision,
 };
 use crate::store::{Error, Result};
 use serde::{Deserialize, Serialize};
@@ -44,6 +44,10 @@ pub struct Decision {
 pub struct Requirement {
     pub state: RequirementState,
     pub reference: Option<Ref>,
+    pub approval: Option<Approval>,
+    pub revisions: Vec<Revision>,
+    pub completion: Option<Completion>,
+    pub cancellation: Option<Cancellation>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -154,6 +158,10 @@ impl Node {
             NodeData::Requirement(Requirement {
                 state,
                 reference: None,
+                approval: None,
+                revisions: Vec::new(),
+                completion: None,
+                cancellation: None,
             }),
         )
     }

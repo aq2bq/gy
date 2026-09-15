@@ -11,13 +11,13 @@ mod store;
 mod views;
 
 pub use model::{
-    Alias, Attributes, Closed, ClosedBy, Closure, Criterion, Decision, DecisionScope, Edge,
-    FreeAttributes, Link, Need, Node, NodeData, NodeId, NodeKind, Question, Ref, Relation,
-    Requirement, RequirementState, bearer_count, free_attribute,
+    Alias, Approval, Attributes, Cancellation, Closed, ClosedBy, Closure, Completion, Criterion,
+    Decision, DecisionScope, Edge, FreeAttributes, Link, Need, Node, NodeData, NodeId, NodeKind,
+    Question, Ref, Relation, Requirement, RequirementState, Revision, bearer_count, free_attribute,
 };
 pub use ops::{
     CriterionAdd, CriterionSatisfy, Decide, NeedAdd, NeedClose, Operation, Outcome, QuestionAdd,
-    QuestionClose, Repository, ReqAdd, config, link,
+    QuestionClose, Repository, ReqAdd, ReqApprove, ReqCancel, ReqDone, ReqRevise, config, link,
 };
 pub use store::{
     Actor, Error, FileStore, FormatVersion, HistoryEntry, IdSource, MemoryStore, Result, Store,

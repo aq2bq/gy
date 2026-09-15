@@ -60,3 +60,35 @@ pub struct Closed {
     pub by: ClosedBy,
     pub evidence: String,
 }
+
+/// The approval that confirmed a requirement (D-70).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Approval {
+    pub design: String,
+    pub heard_by: String,
+    pub evidence: String,
+    pub at: String,
+}
+
+/// One revision: an approved requirement sent back to filed, and why.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Revision {
+    pub reason: String,
+    pub source: String,
+    pub at: String,
+}
+
+/// The completion of an approved requirement.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Completion {
+    pub evidence: String,
+    pub at: String,
+}
+
+/// The cancellation of a requirement that was not done.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Cancellation {
+    pub reason: String,
+    pub source: String,
+    pub at: String,
+}
