@@ -1,0 +1,16 @@
+# d-8d5d (D-66) AGENTS.md に「gy の意見」を置き、「要求を裁く」を意見を基準に書き直し、0.4 系を修正のみに凍結する
+
+## 関係
+- 無し
+
+decision_scope: ロードマップ第 0 段。2026-09-14 マスターの「お願いします」で実施。AGENTS.md はリポジトリ管理外なのでコミットは無い。以後の要望はこの節で裁く。
+scope: roadmap
+created: 2026-09-14
+
+## Context
+
+## Decision
+
+## Consequences
+
+

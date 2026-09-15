@@ -69,7 +69,7 @@ Reads (5):
 | `list [--type] [--status] [--targets] [--grep] [--actor] [--since]` | Node rows, or write units when `--actor` or `--since` is given |
 | `next` | The needs whose prerequisites are settled |
 | `handover` | In-progress requirements and the counts a session needs to resume |
-| `publish [--scope] [--since] [--out]` | Write the record at a point and range: every node verbatim, the write history, and the diagnostics |
+| `publish [--scope] [--since] [--out]` | Write the record at a point and range into a directory: one file per node and a scope index |
 
 Writes (15):
 
@@ -111,7 +111,7 @@ The only configuration is a scope name and, if wanted, an output path for `publi
 [scopes.myproject]
 
 # Optional. publish writes here when --out is not given.
-output = "docs/gy.md"
+output = "docs/publication"
 ```
 
 Reads cover every scope. A write needs a scope only when the file names more than one; pass `--scope <name>` to choose. The first write creates the ledger, and reads never do.
@@ -134,11 +134,13 @@ An existing ledger keeps its old IDs as aliases, so `show D-164` and `show '#602
 
 ## publish
 
-`publish` writes the ledger at a point and range as one Markdown file to commit. It is a development artifact: later, an agent reads it to review what was decided and why, and diffs one publication against the next. It is not a reading for the master, and gy adds no human-facing output format.
+`publish` writes the record at a point and range into a directory to commit: one file per node under `<out>/<scope>/<kind>/`, and a scope index at `<out>/<scope>/README.md`. It is a development artifact: later, an agent reads it to review what was decided and why, and diffs one publication against the next. It is not a reading for the master, and gy adds no human-facing output format.
 
-The file holds the generated time, the log sequence, the scope and range, the writer, and the canonical location; a short "how to read" section; every node in range verbatim (IDs with aliases and references, titles, scope, creation date, state, applicability conditions, body, both edge directions with marks, closure and evidence, requirement records, and free attributes); the write history; and the diagnostics. Every reference carries the target's title, so the document stands on its own without the ledger.
+A node file holds the id with its old aliases and reference, the title, scope, creation date, state, applicability conditions, the body, both edge directions with the other side's id, alias, title, and mark, the closure and evidence, the requirement records, and the free attributes. Every reference carries the target's title, so each file stands on its own. A decision file puts its lineage relations first.
 
-`--out` writes to a path, `gy.toml`'s `output` names a default, and without either it goes to standard output. `{seq}` in the path becomes the write sequence, so `docs/publication/{seq}.md` keeps one file per publication.
+The index holds the generated time, the log sequence, the scope and range, the writer, and the canonical location; a short "how to read" section; a per-kind list with a link and state for each node; the write history; and the diagnostics.
+
+`--out` names the output directory, `gy.toml`'s `output` names a default, and without either publish is an error. Only the target scopes' directories are removed and rewritten; other files under `--out` and other scope directories are left alone.
 
 ## Install
 

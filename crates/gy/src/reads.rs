@@ -3,7 +3,7 @@
 use crate::output::emit;
 use crate::repo;
 use crate::{Cli, Command};
-use gy_ledger::{Error, Filter, NodeKind, Publication, Result, config, list, publish};
+use gy_ledger::{Actor, Error, Filter, NodeKind, Publication, Result, config, list, publish};
 use std::path::{Path, PathBuf};
 
 pub fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
@@ -43,7 +43,16 @@ pub fn write_publish(
     out: Option<&Path>,
 ) -> Result<()> {
     let repository = repo::open(ledger)?;
-    let publication = publish(&repository, cli.scope.as_deref(), since)?;
+    let writer = Actor::from_env()
+        .map(|actor| actor.name().to_string())
+        .unwrap_or_else(|_| "unknown".to_string());
+    let publication = publish(
+        &repository,
+        cli.scope.as_deref(),
+        since,
+        &writer,
+        &ledger.display().to_string(),
+    )?;
     let out = match out {
         Some(path) => path.to_path_buf(),
         None => output_path(root)?

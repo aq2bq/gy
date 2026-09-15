@@ -1,6 +1,6 @@
 //! The node files: one file per node, named for its kind and ID (d-7c64).
 use super::super::show::{EdgeLine, Shown, show};
-use super::{FileEntry, reference};
+use super::{FileEntry, path, reference};
 use crate::model::{ClosedBy, Closure, Need, Node, NodeData, NodeKind, Question, Requirement};
 use crate::ops::repository::{Repository, Result, Store};
 use std::collections::{BTreeMap, BTreeSet};
@@ -70,47 +70,6 @@ fn key(node: &Node) -> (usize, String, String) {
         node.created().to_string(),
         node.id().to_string(),
     )
-}
-
-fn path(node: &Node) -> String {
-    format!(
-        "{}/{}-{}.md",
-        plural(node.kind()),
-        node.id(),
-        safe_title(node.title())
-    )
-}
-
-fn plural(kind: NodeKind) -> &'static str {
-    match kind {
-        NodeKind::Need => "needs",
-        NodeKind::Question => "questions",
-        NodeKind::Decision => "decisions",
-        NodeKind::Requirement => "requirements",
-        NodeKind::Criterion => "criteria",
-    }
-}
-
-/// A title as a file name: only letters, digits, `-`, and `_` survive; the rest
-/// becomes `-`, and the name stops at 40 characters.
-fn safe_title(title: &str) -> String {
-    let mut out = String::new();
-    for ch in title.chars() {
-        if out.chars().count() >= 40 {
-            break;
-        }
-        if ch.is_alphanumeric() || ch == '-' || ch == '_' {
-            out.push(ch);
-        } else if !out.ends_with('-') {
-            out.push('-');
-        }
-    }
-    let trimmed = out.trim_matches('-');
-    if trimmed.is_empty() {
-        "untitled".to_string()
-    } else {
-        trimmed.to_string()
-    }
 }
 
 fn text(shown: &Shown, targets: &BTreeMap<String, &Node>) -> String {

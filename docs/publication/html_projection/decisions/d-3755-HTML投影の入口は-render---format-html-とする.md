@@ -1,0 +1,17 @@
+# d-3755 (D-1) HTML投影の入口は render --format html とする
+
+## 関係
+- 無し
+
+decision_scope: 台帳の派生表示を生成する責務は既に render にあり、出力先ガードと [render] 設定を再利用できる。新コマンドを作れば同じ責務が2つの入口に分かれる。分割は markdown にのみ適用し、HTMLは1枚に固定する
+scope: html_projection
+created: 2026-09-13
+  closed-by q-8aca (Q-1) 台帳をHTMLへ投影する入口は render の追加オプションか、新しいコマンドか
+
+## Context
+
+## Decision
+
+## Consequences
+
+

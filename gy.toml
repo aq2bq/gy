@@ -1,3 +1,5 @@
+output = "docs/publication"
+
 [scopes.agent_footprint]
 [scopes.guard_waiver]
 [scopes.gy05]

@@ -1,0 +1,14 @@
+# n-2f21 (N-40) publish (a): views/publish の骨格と「いま判断待ち」（問い 2）、「未決の論点」（問い 6）、「注意」の節
+
+state: closed
+scope: gy05
+created: 2026-09-14
+  targets ac-8787 (AC-52) publish の出力が、指定した時点と範囲の記録（ノード・辺・履歴）と診断結果を含む完結した文書で、原本（正本）を読まずに理解でき、コミットして後から判断と経緯を振り返れる
+  targets ac-e8b7 (AC-54) すべての変更が物理設計の基準（1 ファイル 300 行、1 関数 40 行、glob import 0、属性の文字列キーは 1 か所、テストは操作ごとに 300 行以下、1 ニーズの差分 600 行以下）と層の依存の向きを満たし、検収前に機械で測った値が残っている
+  depended-on-by n-5091 (N-71) publish (b): ノードの節（問い 1・3・4）と「この期間の変更」（問い 5）、gy5 の配線、publish-sample.md（N-40 から分割）
+## 09-15 分割
+
+見込み約 900 行のため、ノードの節と期間の変更と cli の配線を N-71 に割った（ピコちゃんの案）。このニーズは views/publish/{mod,waiting}.rs と gy-ledger の tests/publish.rs。問いは D-85。
+
+閉じた理由: 事実（migrated: complete）
+

@@ -19,6 +19,15 @@ fn publish_writes_a_scope_directory_tree() {
     assert!(file.is_file(), "missing {}", file.display());
     let text = std::fs::read_to_string(&file).unwrap();
     assert!(text.contains("# ac-0001 a criterion"), "{text}");
+
+    let index = out.join("a/README.md");
+    assert!(index.is_file(), "missing {}", index.display());
+    let text = std::fs::read_to_string(&index).unwrap();
+    assert!(text.contains("## 一覧"), "{text}");
+    assert!(
+        text.contains("[ac-0001 a criterion](criteria/ac-0001-a-criterion.md) — unsatisfied"),
+        "{text}"
+    );
 }
 
 #[test]

@@ -28,7 +28,19 @@ fn seed<S: Store>(repo: &mut Repository<S>, nodes: &[Node]) {
 }
 
 fn render<S: Store>(repo: &Repository<S>) -> Publication {
-    publish(repo, None, None).unwrap()
+    publish(repo, None, None, "piko", "/ledger").unwrap()
+}
+
+fn render_since<S: Store>(repo: &Repository<S>, since: Option<u64>) -> Publication {
+    publish(repo, None, since, "piko", "/ledger").unwrap()
+}
+
+/// The section under `heading` in a text.
+fn section<'a>(text: &'a str, heading: &str) -> &'a str {
+    let start = text.find(heading).unwrap() + heading.len();
+    let rest = &text[start..];
+    let end = rest.find("\n## ").map_or(rest.len(), |at| at + 1);
+    &rest[..end]
 }
 
 /// The text of the file whose path contains `needle` in `scope`.
@@ -91,10 +103,14 @@ fn publish_writes_a_scope_and_kind_directory_tree() {
         paths(&publication, "a"),
         [
             "decisions/d-0002-a-decision.md",
-            "criteria/ac-0001-a-criterion.md"
+            "criteria/ac-0001-a-criterion.md",
+            "README.md"
         ]
     );
-    assert_eq!(paths(&publication, "b"), ["needs/n-0003-b-need.md"]);
+    assert_eq!(
+        paths(&publication, "b"),
+        ["needs/n-0003-b-need.md", "README.md"]
+    );
 }
 
 #[test]
@@ -148,6 +164,57 @@ fn a_decision_file_puts_its_lineage_first() {
 }
 
 #[test]
+fn an_index_lists_nodes_with_links_and_sections() {
+    let mut repo = repo();
+    let criterion = Node::criterion(id(NodeKind::Criterion, "0001"), SCOPE, DATE, "an AC").unwrap();
+    let decision = decision("0002", "D-1", "a decision");
+    seed(&mut repo, &[criterion, decision]);
+
+    let publication = render(&repo);
+    let index = file(&publication, "a", "README.md");
+    assert!(index.starts_with("# gy の公開物 — a\n"), "{index}");
+    for marker in [
+        "- seq: ",
+        "- scope: a",
+        "- 書き手: piko",
+        "- 正本: /ledger",
+        "## 読み方",
+        "## 一覧",
+        "## 履歴",
+        "## 診断",
+    ] {
+        assert!(index.contains(marker), "missing {marker}:\n{index}");
+    }
+    assert!(
+        index.contains("- [ac-0001 an AC](criteria/ac-0001-an-AC.md) — unsatisfied"),
+        "{index}"
+    );
+    assert!(
+        index.contains("- [d-0002 (D-1) a decision](decisions/d-0002-a-decision.md)"),
+        "{index}"
+    );
+}
+
+#[test]
+fn the_index_history_honors_since() {
+    let mut repo = repo();
+    seed(
+        &mut repo,
+        &[Node::need(id(NodeKind::Need, "0001"), SCOPE, DATE, "first need").unwrap()],
+    );
+    seed(
+        &mut repo,
+        &[Node::need(id(NodeKind::Need, "0002"), SCOPE, DATE, "second need").unwrap()],
+    );
+
+    let index = render_since(&repo, Some(1));
+    let index = file(&index, "a", "README.md");
+    let history = section(index, "## 履歴");
+    assert!(history.contains("second need"), "{history}");
+    assert!(!history.contains("first need"), "{history}");
+}
+
+#[test]
 fn two_runs_produce_the_same_files() {
     let mut repo = repo();
     let criterion = Node::criterion(id(NodeKind::Criterion, "0001"), SCOPE, DATE, "an AC").unwrap();
@@ -157,11 +224,17 @@ fn two_runs_produce_the_same_files() {
     let first = render(&repo);
     let second = render(&repo);
     assert_eq!(paths(&first, "a"), paths(&second, "a"));
+    let strip = |text: &str| {
+        text.lines()
+            .filter(|line| !line.starts_with("- 生成:"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
     for group in &first.scopes {
         for entry in &group.files {
             assert_eq!(
-                entry.text,
-                file(&second, &group.name, &entry.path),
+                strip(&entry.text),
+                strip(file(&second, &group.name, &entry.path)),
                 "{}",
                 entry.path
             );
