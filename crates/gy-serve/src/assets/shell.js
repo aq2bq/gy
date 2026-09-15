@@ -19,7 +19,13 @@ function pickLang() {
 
 let lang = pickLang();
 
-const word = key => (words ? words[lang][key] : key);
+/* A word by key; a dotted key walks nested objects (`st.Need.open`). */
+function word(key) {
+  if (!words) return key;
+  const found = key.split('.').reduce((value, part) => (value ? value[part] : undefined), words[lang]);
+  return found ?? key;
+}
+
 const esc = text => String(text).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 
 /* A time the way the browser writes it in this language. */
@@ -54,16 +60,27 @@ function drawNav() {
     shell.scopes.map(scopeRow).join('');
 }
 
+/* The router: the empty hash is the now page, every other page waits its
+   own need. */
+function route() {
+  const hash = location.hash;
+  if (hash === '' || hash === '#/') {
+    if (window.GyNow) window.GyNow.draw();
+  } else {
+    document.getElementById('main').textContent = word('notYet');
+  }
+}
+
 function draw() {
   document.getElementById('crumb').textContent = word('now');
   document.getElementById('searchlbl').textContent = word('searchLbl');
-  document.getElementById('main').textContent = word('notYet');
   document.getElementById('clock').innerHTML =
     `<span class="live"></span>${word('canon')} <b>${shell.seq}</b><br>${stamp(shell.at)}`;
   document.querySelectorAll('#lang button').forEach(button => {
     button.classList.toggle('on', button.dataset.l === lang);
   });
   drawNav();
+  route();
 }
 
 async function refresh() {
@@ -88,8 +105,18 @@ function wire() {
     sessionStorage.setItem(SCOPE_KEY, scope);
     refresh();
   });
-  window.addEventListener('hashchange', drawNav);
+  window.addEventListener('hashchange', () => {
+    drawNav();
+    route();
+  });
 }
+
+/* What a page script (now.js) needs from the shell. */
+window.GyShell = {
+  t: word,
+  lang: () => lang,
+  scope: () => scope,
+};
 
 async function start() {
   const res = await fetch('/assets/i18n.json');

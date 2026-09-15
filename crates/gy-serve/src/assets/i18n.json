@@ -5,7 +5,29 @@
     "Needs": "Needs", "Questions": "Questions", "Decisions": "Decisions", "Requirements": "Requirements", "Criteria": "Criteria",
     "canon": "canonical seq",
     "searchLbl": "What was that again… D-85, q-037e, part of a title",
-    "notYet": "This page comes with the next need"
+    "notYet": "This page comes with the next need",
+    "waiting": "Waiting on master",
+    "nothing": "Nothing is waiting.",
+    "nothingP": "In {s}, no question waits for master and no requirement waits for approval. Agents are working on {n} needs.",
+    "nothingPEmpty": "In {s}, no question waits for master and no requirement waits for approval. No need is in progress either.",
+    "waitingH": "<span class=\"n\">{n}</span> items wait for master's call",
+    "decider": "decider",
+    "inprogress": "Needs in progress",
+    "openq": "Open questions",
+    "unmet": "Unmet criteria",
+    "seeall": "see all →",
+    "emptyNeeds": "No need is in progress",
+    "emptyQ": "No open question",
+    "emptyAC": "No unmet criterion",
+    "pulse": "Pulse of writes",
+    "pulseSub": "{n} writes up to {t} · dot = author",
+    "st": {
+      "Need": { "open": "in progress", "done": "done", "closed": "done" },
+      "Question": { "open": "open", "closed": "closed" },
+      "Criterion": { "unsatisfied": "unmet", "satisfied": "met" },
+      "Requirement": { "filed": "filed", "approved": "approved", "done": "done", "cancelled": "cancelled" }
+    },
+    "why": { "decide": "decided", "needadd": "filed", "needclose": "closed", "qadd": "asked", "qclose": "closed", "acsat": "met", "acadd": "placed", "link": "linked", "edit": "edited", "req": "advanced" }
   },
   "ja": {
     "now": "いま", "graph": "グラフ", "history": "履歴", "nodes": "ノード", "scopes": "スコープ", "all": "すべて",
@@ -13,6 +35,28 @@
     "Needs": "ニーズ", "Questions": "論点", "Decisions": "決定", "Requirements": "要求", "Criteria": "受け入れ条件",
     "canon": "正本 seq",
     "searchLbl": "あれってなんだっけ… D-85、q-037e、題名の一部",
-    "notYet": "この頁は次のニーズで"
+    "notYet": "この頁は次のニーズで",
+    "waiting": "マスター待ち",
+    "nothing": "何も待っていません。",
+    "nothingP": "{s}で、マスターの判断を待つ論点も、承認を待つ要求もありません。エージェントは {n} 件のニーズを進めています。",
+    "nothingPEmpty": "{s}で、マスターの判断を待つ論点も、承認を待つ要求もありません。進行中のニーズもありません。",
+    "waitingH": "<span class=\"n\">{n} 件</span>がマスターの判断を待っています",
+    "decider": "決定者",
+    "inprogress": "進行中のニーズ",
+    "openq": "まだ決まっていない論点",
+    "unmet": "まだ満たしていない受け入れ条件",
+    "seeall": "すべて →",
+    "emptyNeeds": "進行中のニーズはありません",
+    "emptyQ": "未決の論点はありません",
+    "emptyAC": "未達の受け入れ条件はありません",
+    "pulse": "書き込みの脈",
+    "pulseSub": "{t} までの {n} 件 · ドットは書き手",
+    "st": {
+      "Need": { "open": "進行中", "done": "完了", "closed": "完了" },
+      "Question": { "open": "未決", "closed": "閉じた" },
+      "Criterion": { "unsatisfied": "未達", "satisfied": "満たした" },
+      "Requirement": { "filed": "起票済み", "approved": "確定", "done": "完了", "cancelled": "中止" }
+    },
+    "why": { "decide": "を決めた", "needadd": "を立てた", "needclose": "を閉じた", "qadd": "を問うた", "qclose": "を閉じた", "acsat": "を満たした", "acadd": "を置いた", "link": "を繋いだ", "edit": "を書き換えた", "req": "を進めた" }
   }
 }

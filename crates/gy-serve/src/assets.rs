@@ -3,13 +3,17 @@ const INDEX: &str = include_str!("assets/index.html");
 const CSS: &str = include_str!("assets/app.css");
 const JS: &str = include_str!("assets/shell.js");
 const I18N: &str = include_str!("assets/i18n.json");
+const NOW_CSS: &str = include_str!("assets/now.css");
+const NOW_JS: &str = include_str!("assets/now.js");
 
 /// Every embedded file: its name and its text.
-pub const FILES: [(&str, &str); 4] = [
+pub const FILES: [(&str, &str); 6] = [
     ("index.html", INDEX),
     ("app.css", CSS),
     ("shell.js", JS),
     ("i18n.json", I18N),
+    ("now.css", NOW_CSS),
+    ("now.js", NOW_JS),
 ];
 
 /// The one HTML document, with `%LANG%` still in place.

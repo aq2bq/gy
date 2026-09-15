@@ -21,10 +21,23 @@ fn a_traversal_or_unknown_name_is_not_a_file() {
 }
 
 #[test]
+fn the_now_page_is_embedded_and_served() {
+    for name in ["now.css", "now.js"] {
+        let (body, kind) = assets::get(name).unwrap();
+        assert!(!body.is_empty(), "{name} is empty");
+        assert!(kind.starts_with("text/"), "{name} has the type {kind}");
+    }
+}
+
+#[test]
 fn the_index_references_the_embedded_files() {
     let html = assets::index();
-    assert!(html.contains("assets/app.css"), "{html}");
-    assert!(html.contains("assets/shell.js"), "{html}");
+    for name in ["app.css", "now.css", "shell.js", "now.js"] {
+        assert!(
+            html.contains(&format!("assets/{name}")),
+            "{name} is not linked"
+        );
+    }
 }
 
 #[test]
