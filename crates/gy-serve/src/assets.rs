@@ -1,0 +1,41 @@
+//! The static files, embedded (ac-932f); `index.html` carries `%LANG%`.
+const INDEX: &str = include_str!("assets/index.html");
+const CSS: &str = include_str!("assets/app.css");
+const JS: &str = include_str!("assets/shell.js");
+const I18N: &str = include_str!("assets/i18n.json");
+
+/// Every embedded file: its name and its text.
+pub const FILES: [(&str, &str); 4] = [
+    ("index.html", INDEX),
+    ("app.css", CSS),
+    ("shell.js", JS),
+    ("i18n.json", I18N),
+];
+
+/// The one HTML document, with `%LANG%` still in place.
+pub fn index() -> &'static str {
+    INDEX
+}
+
+/// A file under `assets/`: its text and content type. A name with `..` or a
+/// separator is not a file (ac-f5c4).
+pub fn get(name: &str) -> Option<(&'static str, &'static str)> {
+    if name.contains("..") || name.contains('/') {
+        return None;
+    }
+    FILES
+        .iter()
+        .find(|(file, _)| *file == name)
+        .map(|(_, body)| (*body, content_type(name)))
+}
+
+/// The content type by extension; the dictionary and the API are both JSON.
+fn content_type(name: &str) -> &'static str {
+    match name.rsplit('.').next() {
+        Some("html") => "text/html; charset=utf-8",
+        Some("css") => "text/css; charset=utf-8",
+        Some("js") => "text/javascript; charset=utf-8",
+        Some("json") => "application/json; charset=utf-8",
+        _ => "application/octet-stream",
+    }
+}

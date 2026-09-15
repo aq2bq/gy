@@ -33,6 +33,13 @@ pub fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
     emit(cli.json, &list(&repository, &filter)?)
 }
 
+/// Serve the ledger over HTTP on localhost until stopped (n-a493). The CLI
+/// only wires it: gy-serve owns the server, and no write path exists.
+pub fn serve(ledger: &Path) -> Result<()> {
+    let ledger = ledger.to_path_buf();
+    gy_serve::server::serve(Box::new(move || repo::open(&ledger)))
+}
+
 /// The publication goes under `--out`, else gy.toml's `output` (an error when
 /// neither is given). Each target scope's directory is removed and rewritten.
 pub fn write_publish(

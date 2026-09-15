@@ -5,12 +5,13 @@ gy は要求が確定するまでの状態をグラフで持ち、書き込み�
   gy next
   gy show <ID>
 
-読み (5):
+読み (6):
   gy show <ID|ref>... [--full]                         ノードを表示し、足りないものも出す
   gy list [--type] [--status] [--targets] [--grep] [--actor] [--since]   一覧。--actor / --since で書き込み単位
   gy next                                              前提の片付いたニーズ
   gy handover                                          進行中の要求と再開に要る件数
   gy publish [--scope] [--since] [--out]                記録の公開物（範囲内の全ノードの逐語・履歴・診断）。コミットして後から振り返る
+  gy serve                                              台帳をブラウザで読む。127.0.0.1、止めるまで
 
 書き (16):
   gy need add "<題>" --targets <AC>... [--spawned-by <D>]

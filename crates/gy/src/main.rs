@@ -70,6 +70,8 @@ pub enum Command {
         #[arg(long, value_name = "DIR")]
         out: Option<PathBuf>,
     },
+    /// Read the ledger in a browser, on 127.0.0.1 until stopped.
+    Serve,
     /// File or close a need.
     Need {
         #[command(subcommand)]
@@ -189,6 +191,7 @@ fn run(cli: &Cli) -> Result<()> {
         Command::Publish { since, out } => {
             reads::write_publish(cli, &root, &ledger, *since, out.as_deref())
         }
+        Command::Serve => reads::serve(&ledger),
         Command::Need { action } => write_need(cli, &root, &ledger, action),
         Command::Question { action } => write_question(cli, &root, &ledger, action),
         Command::Criterion { action } => write_criterion(cli, &root, &ledger, action),

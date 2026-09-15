@@ -1,6 +1,6 @@
 [package]
-name = "gy"
-description = "good,yes — the ledger of what work rests on before a requirement is confirmed"
+name = "gy-serve"
+description = "gy serve — the local reading surface for the master (n-a493)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,16 +9,9 @@ homepage.workspace = true
 rust-version.workspace = true
 readme = "../../README.md"
 
-[[bin]]
-name = "gy"
-path = "src/main.rs"
-
 [dependencies]
 gy-ledger = { path = "../gy-ledger", version = "0.6.0" }
-gy-serve = { path = "../gy-serve", version = "0.6.0" }
+tiny_http.workspace = true
+chrono.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-clap.workspace = true
-
-[dev-dependencies]
-tempfile.workspace = true

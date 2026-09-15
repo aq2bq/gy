@@ -61,7 +61,7 @@ The canonical ledger is an append-only event log outside the repository, under `
 
 ## The twenty operations
 
-Reads (5):
+Reads (6):
 
 | Operation | Result |
 | --- | --- |
@@ -70,8 +70,9 @@ Reads (5):
 | `next` | The needs whose prerequisites are settled |
 | `handover` | In-progress requirements and the counts a session needs to resume |
 | `publish [--scope] [--since] [--out]` | Write the record at a point and range into a directory: one file per node and a scope index |
+| `serve` | Read the ledger in a browser, on 127.0.0.1 until stopped |
 
-Writes (15):
+Writes (16):
 
 | Operation | Result |
 | --- | --- |
