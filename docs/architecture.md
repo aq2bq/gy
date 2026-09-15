@@ -18,7 +18,7 @@
 
 ## イベントログとスナップショットと形式の版
 
-正本は `events.jsonl` という追記専用のログで、1 トランザクションが 1 行に対応する。行は `seq`・`at`・`actor`・`why`・`source`・`changes` を持ち、`changes` の各項が 1 ノードの変更（`node`・`change`・`value`）を表す。`change` は `created`・`updated`・`deleted` のいずれかである。
+正本は `events.jsonl` という追記専用のログで、1 トランザクションが 1 行に対応する。行は `seq`・`at`・`actor`・`why`・`source`・`changes` を持ち、`changes` の各項が 1 ノードの変更（`node`・`change`・`value`）を表す。`change` は `created`・`updated`・`deleted`・`scope-renamed` のいずれかである。`scope-renamed` は 1 行で複数ノードのスコープ名を変え、`node` は空、`value` は `{from, to, nodes}` である。
 
 原子性は 1 行の追記と `fsync` で得る。途中で切れた末尾は、次に開くときに捨てる。同時に書く書き手の競合は、排他ロックと `seq` の比較で検出する。履歴はログそのもので、`undo` は直前のトランザクションを逆にたどる行を新しく追記する。
 

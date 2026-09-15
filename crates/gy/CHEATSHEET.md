@@ -12,7 +12,7 @@ gy は要求が確定するまでの状態をグラフで持ち、書き込み�
   gy handover                                          進行中の要求と再開に要る件数
   gy publish [--scope] [--since] [--out]                記録の公開物（範囲内の全ノードの逐語・履歴・診断）。コミットして後から振り返る
 
-書き (15):
+書き (16):
   gy need add "<題>" --targets <AC>... [--spawned-by <D>]
   gy need close <ID> --by fact|external --evidence <文>
   gy question add "<題>" --decider <名> --options <文>...        選択肢は 2 つ以上
@@ -29,6 +29,8 @@ gy は要求が確定するまでの状態をグラフで持ち、書き込み�
   gy edit <ID> --reason <文> [--title] [--body-file] [--set k=v] [--append k=v]
         自由属性は文字列。--set は上書き、--set k= は消去、--append は改行区切りで 1 行足す
         --set scope=<名前> で gy.toml にあるスコープへ移動。--set decision_scope=<文> で未記録の成立範囲を 1 回だけ記録
+  gy scope rename <旧> <新>
+        旧スコープの全ノードを新名へ移し、gy.toml をコメントと順序を保ったまま書き換える
   gy undo --reason <文>
 
 設定はスコープ名と出力先だけ:

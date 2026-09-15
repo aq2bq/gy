@@ -26,3 +26,22 @@ pub fn read(root: &Path) -> Result<Config> {
         .map_err(|_| Error::invalid(format!("no gy.toml at {}", path.display())))?;
     toml::from_str(&text).map_err(|error| Error::invalid(format!("gy.toml: {error}")))
 }
+
+/// Rename a scope table in gy.toml, leaving the other bytes (comments, order,
+/// and the other keys) as they were (n-24dd). A missing old table or an
+/// existing new one is an error, so the caller can roll the log back.
+pub fn rename_scope(root: &Path, from: &str, to: &str) -> Result<()> {
+    let path = root.join("gy.toml");
+    let text = std::fs::read_to_string(&path)
+        .map_err(|_| Error::invalid(format!("no gy.toml at {}", path.display())))?;
+    let old = format!("[scopes.{from}]");
+    let new = format!("[scopes.{to}]");
+    if !text.contains(&old) {
+        return Err(Error::invalid(format!("gy.toml has no [scopes.{from}]")));
+    }
+    if text.contains(&new) {
+        return Err(Error::invalid(format!("gy.toml already has [scopes.{to}]")));
+    }
+    std::fs::write(&path, text.replace(&old, &new))
+        .map_err(|error| Error::invalid(format!("gy.toml: {error}")))
+}

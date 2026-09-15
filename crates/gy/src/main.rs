@@ -90,6 +90,11 @@ pub enum Command {
         #[command(subcommand)]
         action: writes::ReqAction,
     },
+    /// Rename a scope: move every node and rewrite gy.toml.
+    Scope {
+        #[command(subcommand)]
+        action: writes::ScopeAction,
+    },
     /// Create a decision, optionally closing questions and linking one relation.
     Decide(DecideArgs),
     /// Add or remove one edge between two nodes.
@@ -188,6 +193,7 @@ fn run(cli: &Cli) -> Result<()> {
         Command::Question { action } => write_question(cli, &root, &ledger, action),
         Command::Criterion { action } => write_criterion(cli, &root, &ledger, action),
         Command::Req { action } => writes::req(cli, &root, &ledger, action),
+        Command::Scope { action } => writes::scope(cli, &root, &ledger, action),
         Command::Decide(args) => writes::decide(cli, &root, &ledger, args),
         Command::Link(args) => writes::link(cli, &ledger, args),
         Command::Edit(args) => writes::edit(cli, &root, &ledger, args),

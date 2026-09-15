@@ -8,7 +8,7 @@ use clap::{Args, Subcommand};
 use gy_ledger::link::Link as LinkOp;
 use gy_ledger::{
     Decide, DecisionScope, Edit, Error, NodeId, Operation, Outcome, Ref, Relation, Repository,
-    ReqAdd, ReqApprove, ReqCancel, ReqDone, ReqRevise, Result, Store, Undo,
+    ReqAdd, ReqApprove, ReqCancel, ReqDone, ReqRevise, Result, ScopeRename, Store, Undo, config,
 };
 use std::path::Path;
 
@@ -136,6 +136,35 @@ pub fn undo(cli: &Cli, ledger: &Path, args: &UndoArgs) -> Result<()> {
         reason: args.reason.clone(),
     }
     .run(&mut repository)?;
+    emit(cli.json, &Written::of(&outcome))
+}
+
+#[derive(Subcommand)]
+pub enum ScopeAction {
+    /// Move every node of a scope to a new name and rewrite gy.toml.
+    Rename { old: String, new: String },
+}
+
+pub fn scope(cli: &Cli, root: &Path, ledger: &Path, action: &ScopeAction) -> Result<()> {
+    let mut repository = repo::open_write(ledger)?.with_scopes(write::scope_names(root)?);
+    let outcome = match action {
+        ScopeAction::Rename { old, new } => {
+            let outcome = ScopeRename {
+                from: old.clone(),
+                to: new.clone(),
+            }
+            .run(&mut repository)?;
+            // The log is the source of truth; if gy.toml cannot follow, put it
+            // back (n-24dd).
+            if let Err(error) = config::rename_scope(root, old, new) {
+                let _ = repository
+                    .store_mut()
+                    .undo("scope rename rollback", "scope rename");
+                return Err(error);
+            }
+            outcome
+        }
+    };
     emit(cli.json, &Written::of(&outcome))
 }
 
