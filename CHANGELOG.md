@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.6.0 - 2026-09-15
+
+### Changed (incompatible)
+
+- The ledger format is 2. Opening a format-1 ledger keeps `format.1.bak`
+  and `events.jsonl.1.bak` and upgrades it in place.
+- `publish` writes a directory per scope: one file per node (relations
+  and marks with the other node's title, the applicability conditions,
+  the body verbatim, records, free attributes) and `README.md` as the
+  index (how to read, lists with links, history, diagnostics). It
+  rewrites only the target scope directories under `--out` or the
+  configured `output`. The single-file form is gone.
+
+### Added
+
+- `scope rename <old> <new>`: one transaction, one history line
+  ("scope renamed old -> new (n nodes)"), and gy.toml rewritten; `undo`
+  reverts it. Twenty-one terminal commands.
+- `edit --set scope=<name>` moves a node to a scope declared in gy.toml.
+- `edit --set decision_scope=<text>` records the applicability
+  conditions of a decision the migration left unrecorded, once.
+- `edit --set <key>=` removes a free attribute.
+
+### Fixed
+
+- `show`, `list`, and `publish` derive a need's state (open / closed /
+  done) the way `next` does; `list --status done` matches needs.
+- `gy-migrate` carries every remaining attribute as a free attribute
+  and names them in its report instead of dropping unknown ones.
+- Resolving an id tries the exact id before aliases, so a hash that is
+  all digits no longer collides with an old id; new hashes contain a
+  hex letter.
+- Writing to a closed pipe ends quietly.
+
 ## 0.5.1 - 2026-09-15
 
 ### Changed
