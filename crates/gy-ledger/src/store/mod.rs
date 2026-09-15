@@ -5,6 +5,8 @@ pub mod format;
 pub mod location;
 pub mod log;
 mod memory;
+mod replay;
+mod snapshot;
 
 pub use file::FileStore;
 pub use memory::MemoryStore;
