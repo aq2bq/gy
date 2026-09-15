@@ -21,7 +21,7 @@ pub fn route<S: Store>(repo: &Repository<S>, req: &Request) -> Response {
         "/api/list" => list::rows(repo, req),
         "/api/search" => search::search(repo, req),
         _ => match req.path.strip_prefix("/api/node/") {
-            Some(id) => node::node(repo, id),
+            Some(id) => node::node(repo, &crate::http::decode(id, false)),
             None => static_file(req),
         },
     }

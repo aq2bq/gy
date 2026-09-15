@@ -21,8 +21,17 @@ fn a_traversal_or_unknown_name_is_not_a_file() {
 }
 
 #[test]
-fn the_now_page_is_embedded_and_served() {
-    for name in ["now.css", "now.js"] {
+fn the_read_pages_are_embedded_and_served() {
+    for name in [
+        "now.css",
+        "now.js",
+        "list.css",
+        "list.js",
+        "node.css",
+        "node.js",
+        "palette.css",
+        "palette.js",
+    ] {
         let (body, kind) = assets::get(name).unwrap();
         assert!(!body.is_empty(), "{name} is empty");
         assert!(kind.starts_with("text/"), "{name} has the type {kind}");
@@ -32,7 +41,18 @@ fn the_now_page_is_embedded_and_served() {
 #[test]
 fn the_index_references_the_embedded_files() {
     let html = assets::index();
-    for name in ["app.css", "now.css", "shell.js", "now.js"] {
+    for name in [
+        "app.css",
+        "now.css",
+        "list.css",
+        "node.css",
+        "palette.css",
+        "shell.js",
+        "now.js",
+        "list.js",
+        "node.js",
+        "palette.js",
+    ] {
         assert!(
             html.contains(&format!("assets/{name}")),
             "{name} is not linked"

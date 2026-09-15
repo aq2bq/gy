@@ -39,16 +39,48 @@ impl Request {
     }
 }
 
-/// `a=1&b` is two pairs; a missing query is none.
+/// `a=1&b` is two pairs; a missing query is none. A value is percent-decoded,
+/// so a browser's `q=%E7%A7%BB%E8%A1%8C` is the text it typed.
 fn parse_query(query: &str) -> Vec<(String, String)> {
     query
         .split('&')
         .filter(|pair| !pair.is_empty())
         .map(|pair| match pair.split_once('=') {
-            Some((key, value)) => (key.to_string(), value.to_string()),
+            Some((key, value)) => (key.to_string(), decode(value, true)),
             None => (pair.to_string(), String::new()),
         })
         .collect()
+}
+
+/// Percent-decode text as UTF-8. `+` becomes a space when `plus_as_space` (a
+/// query value, not a path). A broken escape is kept as it stands.
+pub fn decode(text: &str, plus_as_space: bool) -> String {
+    let bytes = text.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        let byte = bytes[index];
+        if byte == b'%' && index + 2 < bytes.len() {
+            if let Some(value) = hex(&bytes[index + 1..index + 3]) {
+                out.push(value);
+                index += 3;
+                continue;
+            }
+        }
+        out.push(if plus_as_space && byte == b'+' {
+            b' '
+        } else {
+            byte
+        });
+        index += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// Two hex digits as one byte.
+fn hex(pair: &[u8]) -> Option<u8> {
+    let digit = |byte: u8| (byte as char).to_digit(16).map(|value| value as u8);
+    Some(digit(pair[0])? * 16 + digit(pair[1])?)
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Response {

@@ -21,7 +21,13 @@ fn ledger() -> Repository<MemoryStore> {
     let mut nodes = vec![
         Node::need(id(NodeKind::Need, "0001"), "a", DATE, "a need").unwrap(),
         Node::criterion(id(NodeKind::Criterion, "0002"), "a", DATE, "measures well").unwrap(),
-        Node::criterion(id(NodeKind::Criterion, "0003"), "b", DATE, "measures later").unwrap(),
+        Node::criterion(
+            id(NodeKind::Criterion, "0003"),
+            "b",
+            DATE,
+            "measures 移行 later",
+        )
+        .unwrap(),
         Node::question(id(NodeKind::Question, "0004"), "a", DATE, "which way").unwrap(),
         Node::decision(
             id(NodeKind::Decision, "0005"),
@@ -44,6 +50,7 @@ fn ledger() -> Repository<MemoryStore> {
         data.decider = Some("master".to_string());
         data.options = vec!["left".to_string(), "right".to_string()];
     }
+    nodes[1].add_alias(Alias("#5896".to_string()));
     nodes[4].add_alias(Alias("D-85".to_string()));
     for index in 0..12 {
         let hash = format!("1{index:03}");
@@ -180,4 +187,25 @@ fn search_matches_id_alias_and_title() {
 
     let capped = answer(&repo, "/api/search", Some("q=duplicated"));
     assert_eq!(capped["hits"].as_array().unwrap().len(), 10);
+}
+
+#[test]
+fn query_and_path_values_are_decoded() {
+    let repo = ledger();
+    // A browser sends the Japanese title percent-encoded; `+` is a space.
+    let hit = answer(&repo, "/api/search", Some("q=%E7%A7%BB%E8%A1%8C"));
+    assert_eq!(
+        ids(&hit["hits"]),
+        [id(NodeKind::Criterion, "0003").to_string()]
+    );
+    let plus = answer(&repo, "/api/search", Some("q=measures+%E7%A7%BB%E8%A1%8C"));
+    assert_eq!(
+        ids(&plus["hits"]),
+        [id(NodeKind::Criterion, "0003").to_string()]
+    );
+
+    // An id with a hash is percent-encoded on the road.
+    let node = answer(&repo, "/api/node/%235896", None);
+    assert_eq!(node["id"], id(NodeKind::Criterion, "0002").to_string());
+    assert_eq!(node["aliases"][0], "#5896");
 }

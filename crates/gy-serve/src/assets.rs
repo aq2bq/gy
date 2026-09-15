@@ -5,15 +5,27 @@ const JS: &str = include_str!("assets/shell.js");
 const I18N: &str = include_str!("assets/i18n.json");
 const NOW_CSS: &str = include_str!("assets/now.css");
 const NOW_JS: &str = include_str!("assets/now.js");
+const PALETTE_CSS: &str = include_str!("assets/palette.css");
+const PALETTE_JS: &str = include_str!("assets/palette.js");
+const LIST_CSS: &str = include_str!("assets/list.css");
+const LIST_JS: &str = include_str!("assets/list.js");
+const NODE_CSS: &str = include_str!("assets/node.css");
+const NODE_JS: &str = include_str!("assets/node.js");
 
 /// Every embedded file: its name and its text.
-pub const FILES: [(&str, &str); 6] = [
+pub const FILES: [(&str, &str); 12] = [
     ("index.html", INDEX),
     ("app.css", CSS),
     ("shell.js", JS),
     ("i18n.json", I18N),
     ("now.css", NOW_CSS),
     ("now.js", NOW_JS),
+    ("palette.css", PALETTE_CSS),
+    ("palette.js", PALETTE_JS),
+    ("list.css", LIST_CSS),
+    ("list.js", LIST_JS),
+    ("node.css", NODE_CSS),
+    ("node.js", NODE_JS),
 ];
 
 /// The one HTML document, with `%LANG%` still in place.

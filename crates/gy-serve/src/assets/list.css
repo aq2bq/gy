@@ -1,0 +1,9 @@
+/* The list page's own rules: the prototype's list block and the wide row. */
+.list h1{font-family:var(--serif);font-weight:400;font-size:28px;margin:16px 0 4px}
+.list .sub{color:var(--paper-3);font-size:13px;margin-bottom:16px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.chips button{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--paper-2)}
+.chips button.on{border-color:var(--paper);color:var(--paper)}
+.list .head{display:grid;grid-template-columns:20px 74px minmax(0,1fr) 120px 90px 90px;gap:12px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--paper-3);text-transform:uppercase;padding:6px 0}
+.row.wide{grid-template-columns:20px 74px minmax(0,1fr) 120px 90px 90px}
+.row.wide .sc{font-family:var(--mono);font-size:11px;color:var(--paper-3);white-space:nowrap}

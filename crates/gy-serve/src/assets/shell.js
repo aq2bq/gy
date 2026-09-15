@@ -26,6 +26,9 @@ function word(key) {
   return found ?? key;
 }
 
+/* The plural name of a kind, for a list heading. */
+const plural = kind => word(PLURAL[kind] || kind);
+
 const esc = text => String(text).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 
 /* A time the way the browser writes it in this language. */
@@ -60,13 +63,23 @@ function drawNav() {
     shell.scopes.map(scopeRow).join('');
 }
 
-/* The router: the empty hash is the now page, every other page waits its
-   own need. */
+/* The router: the empty hash is the now page, #/list and #/n are the two read
+   pages, and every other page waits its own need. */
 function route() {
   const hash = location.hash;
+  const crumb = document.getElementById('crumb');
+  const list = hash.match(/^#\/list\/(\w+)$/);
+  const node = hash.match(/^#\/n\/(.+)$/);
   if (hash === '' || hash === '#/') {
+    crumb.innerHTML = `<span>${word('now')}</span>`;
     if (window.GyNow) window.GyNow.draw();
+  } else if (list) {
+    crumb.innerHTML = `<a href="#/">${word('now')}</a><span>›</span><span>${plural(list[1])}</span>`;
+    if (window.GyList) window.GyList.draw(list[1]);
+  } else if (node) {
+    if (window.GyNode) window.GyNode.draw(decodeURIComponent(node[1]));
   } else {
+    crumb.innerHTML = `<span>${word('now')}</span>`;
     document.getElementById('main').textContent = word('notYet');
   }
 }
@@ -111,11 +124,12 @@ function wire() {
   });
 }
 
-/* What a page script (now.js) needs from the shell. */
+/* What a page script (now.js, list.js, node.js, palette.js) needs. */
 window.GyShell = {
   t: word,
   lang: () => lang,
   scope: () => scope,
+  plural: kind => word(PLURAL[kind] || kind),
 };
 
 async function start() {

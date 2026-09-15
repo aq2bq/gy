@@ -21,13 +21,26 @@
     "emptyAC": "No unmet criterion",
     "pulse": "Pulse of writes",
     "pulseSub": "{n} writes up to {t} · dot = author",
+    "listSub": "{o} open of {n}",
+    "filterOpen": "open", "filterAll": "all", "status": "status", "scope": "scope", "created": "created",
+    "scopeOf": "Scope of validity", "unrecorded": "(not recorded)", "options": "Options", "closedHow": "How it closed",
+    "readBody": "Read the body", "noBody": "(no body)",
+    "connections": "Connections", "noConn": "No connection at this point", "hist": "History · {n} writes",
+    "migrated": "Brought in by migration. Its individual writes are at the head of this ledger.",
+    "createdOn": "created {d}", "met": "Met", "unmetH": "Not yet met", "measure": "The method is in the body",
+    "keepGoing": "Work continues until every criterion is met",
+    "reqRef": "Outward reference", "reqPath": "Where it stands",
+    "filedOn": "filed", "approvedOn": "approved", "doneOn": "done", "cancelledOn": "cancelled", "pendingOn": "not yet",
+    "heardBy": "heard by", "revisions": "{n} revisions after approval",
+    "palPh": "Type an ID, alias, or part of a title", "palHint": "↑↓ choose · Enter open · Esc close", "notFound": "No match",
     "st": {
       "Need": { "open": "in progress", "done": "done", "closed": "done" },
       "Question": { "open": "open", "closed": "closed" },
       "Criterion": { "unsatisfied": "unmet", "satisfied": "met" },
       "Requirement": { "filed": "filed", "approved": "approved", "done": "done", "cancelled": "cancelled" }
     },
-    "why": { "decide": "decided", "needadd": "filed", "needclose": "closed", "qadd": "asked", "qclose": "closed", "acsat": "met", "acadd": "placed", "link": "linked", "edit": "edited", "req": "advanced" }
+    "why": { "decide": "decided", "needadd": "filed", "needclose": "closed", "qadd": "asked", "qclose": "closed", "acsat": "met", "acadd": "placed", "link": "linked", "edit": "edited", "req": "advanced" },
+    "rel": { "spawned-by": "spawned by", "spawns": "spawned", "depends-on": "depends on", "depended-on-by": "awaited by", "targets": "targets", "targeted-by": "targeted by", "closes": "closed by", "closed-by": "closed", "narrows": "narrows", "narrowed-by": "narrowed by", "supersedes": "supersedes", "superseded-by": "superseded by", "widens": "widens", "widened-by": "widened by", "completes": "completes", "completed-by": "completed by", "relies-on": "relies on", "relied-on-by": "relied on by", "filed-as": "filed as", "filed-from": "filed from", "raised": "raised", "raised-by": "raised by", "waits-on": "waits on", "waited-on-by": "awaited by", "awaited-by": "awaited by", "files": "filed from" }
   },
   "ja": {
     "now": "いま", "graph": "グラフ", "history": "履歴", "nodes": "ノード", "scopes": "スコープ", "all": "すべて",
@@ -51,12 +64,25 @@
     "emptyAC": "未達の受け入れ条件はありません",
     "pulse": "書き込みの脈",
     "pulseSub": "{t} までの {n} 件 · ドットは書き手",
+    "listSub": "{n} 件のうち {o} 件が開いている",
+    "filterOpen": "開いている", "filterAll": "すべて", "status": "状態", "scope": "スコープ", "created": "作成",
+    "scopeOf": "成立範囲", "unrecorded": "（未記録）", "options": "選択肢", "closedHow": "閉じ方",
+    "readBody": "本文を読む", "noBody": "（本文なし）",
+    "connections": "つながり", "noConn": "この時点で繋がりはない", "hist": "経緯 · {n} 回の書き込み",
+    "migrated": "移行で持ち込まれた。個別の書き込みはこの台帳の先頭にある",
+    "createdOn": "{d} に作られた", "met": "満たした", "unmetH": "まだ満たしていない", "measure": "測り方は本文にある",
+    "keepGoing": "受け入れ条件を満たすまで進める",
+    "reqRef": "外への参照", "reqPath": "どこまで進んだか",
+    "filedOn": "起票", "approvedOn": "確定", "doneOn": "完了", "cancelledOn": "中止", "pendingOn": "まだ",
+    "heardBy": "聞いた人", "revisions": "承認後の改訂 {n} 件",
+    "palPh": "ID、別名、題名の一部を打つ", "palHint": "↑↓ で選ぶ · Enter で開く · Esc で閉じる", "notFound": "見つかりません",
     "st": {
       "Need": { "open": "進行中", "done": "完了", "closed": "完了" },
       "Question": { "open": "未決", "closed": "閉じた" },
       "Criterion": { "unsatisfied": "未達", "satisfied": "満たした" },
       "Requirement": { "filed": "起票済み", "approved": "確定", "done": "完了", "cancelled": "中止" }
     },
-    "why": { "decide": "を決めた", "needadd": "を立てた", "needclose": "を閉じた", "qadd": "を問うた", "qclose": "を閉じた", "acsat": "を満たした", "acadd": "を置いた", "link": "を繋いだ", "edit": "を書き換えた", "req": "を進めた" }
+    "why": { "decide": "を決めた", "needadd": "を立てた", "needclose": "を閉じた", "qadd": "を問うた", "qclose": "を閉じた", "acsat": "を満たした", "acadd": "を置いた", "link": "を繋いだ", "edit": "を書き換えた", "req": "を進めた" },
+    "rel": { "spawned-by": "生んだ決定", "spawns": "生んだニーズ", "depends-on": "前提のニーズ", "depended-on-by": "これを待つニーズ", "targets": "受け入れ条件", "targeted-by": "対象にするニーズ", "closes": "閉じた決定", "closed-by": "閉じた論点", "narrows": "狭めた決定", "narrowed-by": "これを狭めた決定", "supersedes": "置き換えた決定", "superseded-by": "これを置き換えた決定", "widens": "広げた決定", "widened-by": "これを広げた決定", "completes": "完成させた決定", "completed-by": "これを完成させた決定", "relies-on": "依拠する決定", "relied-on-by": "依拠する要求", "filed-as": "起票した要求", "filed-from": "元のニーズ", "raised": "起こした論点", "raised-by": "起こした要求", "waits-on": "待っている相手", "waited-on-by": "これを待つニーズ", "awaited-by": "これを待つニーズ", "files": "元のニーズ" }
   }
 }

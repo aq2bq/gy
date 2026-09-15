@@ -48,9 +48,6 @@ struct Node {
 }
 
 pub fn node<S: Store>(repo: &Repository<S>, id: &str) -> Response {
-    if id.contains('%') {
-        return Response::text(400, "the id is not encoded");
-    }
     let shown = match show(repo, &[id.to_string()], true) {
         Ok(mut shown) if !shown.is_empty() => shown.remove(0),
         Ok(_) => return Response::text(404, "not found"),
