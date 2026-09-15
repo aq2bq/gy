@@ -13,7 +13,7 @@
 1. 英語の `CHANGELOG.md` と、移行の案内（`docs/migration-0.5.md`）を書く。利用者に残る手作業は、CHANGELOG と README の両方に書く。同じコマンドを再実行して安全かどうかも明記する。
 2. 移行の案内にあるコード例を、下流のクレートから実行して確かめる。読める例とコンパイルが通る例は別である。`#[non_exhaustive]` の型は、定義したクレートの外では構造体リテラルと `..Default::default()` を受け付けない。下流は `Default::default()` を作って公開フィールドへ代入する。
 3. `cargo fmt --all -- --check`、`cargo clippy --workspace --all-targets --locked -- -D warnings`、`cargo test --workspace --locked` を実行する。
-4. `cargo publish --workspace --dry-run --locked` を実行する。`--allow-dirty` はコミット前の確認にだけ使い、公開はきれいな検証済みのコミットから行う。
+4. `cargo publish --workspace --dry-run --locked` を実行する。`gy-ledger` と `gy` を依存の向きの順に package して検証する（`publish = false` の `gy-migrate` と `gy-core` は対象外）。`--allow-dirty` はコミット前の確認にだけ使い、公開はきれいな検証済みのコミットから行う。
 5. クレートごとに `cargo package --list` を実行し、埋め込んだファイルが package に含まれることを確かめる。欠けたファイルは手元のビルドを通り、公開したクレートでだけ壊れる。
 6. 版を揃えたコミットを行う。
 
@@ -21,7 +21,7 @@
 
 crates.io への公開は取り消せない。`yank` は新しい依存がその版を選ぶのを止めるだけで、番号は消費されたまま残る。取り消せる準備が終わり、公開の指示が出てから行う。
 
-1. `cargo publish -p gy-ledger --locked`、次に `cargo publish -p gy --locked` と `cargo publish -p gy-migrate --locked`。
+1. `cargo publish -p gy-ledger --locked`、次に `cargo publish -p gy --locked`。`gy-migrate` と `gy-core` は残る 0.4 の移行のためのもので、0.5 では公開しない（`publish = false`。移行が終わった版で消す）。
 2. 公開のコミットと、対応する `vX.Y.Z` のタグを push する。
 3. レジストリから入れて、バイナリを一度動かす: `cargo install gy --locked && gy --version`。
 4. 公開した版と更新のコマンドを利用者へ伝える。`--locked` は同梱の依存の版を再現する。

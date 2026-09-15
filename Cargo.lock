@@ -132,15 +132,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "clap_complete"
-version = "4.6.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3be2ad0423bdbbb0e25bc89add796f3559706d4a95e1bc98e4d9662a957b6a19"
-dependencies = [
- "clap",
-]
-
-[[package]]
 name = "clap_derive"
 version = "4.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -245,11 +236,10 @@ dependencies = [
 
 [[package]]
 name = "gy"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "clap",
- "clap_complete",
- "gy-core",
+ "gy-ledger",
  "serde",
  "serde_json",
  "tempfile",
@@ -257,7 +247,7 @@ dependencies = [
 
 [[package]]
 name = "gy-core"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "chrono",
  "fs2",
@@ -270,7 +260,7 @@ dependencies = [
 
 [[package]]
 name = "gy-ledger"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "chrono",
  "fs2",
@@ -282,22 +272,11 @@ dependencies = [
 
 [[package]]
 name = "gy-migrate"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "clap",
  "gy-core",
  "gy-ledger",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "gy5"
-version = "0.4.2"
-dependencies = [
- "clap",
- "gy-ledger",
- "serde",
  "serde_json",
  "tempfile",
 ]

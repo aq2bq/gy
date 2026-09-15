@@ -4,7 +4,7 @@ use gy_ledger::{Actor, Error, FileStore, FormatVersion, Repository, Result, form
 use std::path::{Path, PathBuf};
 
 /// A placeholder actor for reads. Only a write names the real `GY_ACTOR`.
-const READ_ACTOR: &str = "gy5-read";
+const READ_ACTOR: &str = "gy-read";
 
 /// The directory that holds `gy.toml`, starting at `start` (or the current
 /// directory) and walking up.

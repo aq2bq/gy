@@ -1,36 +1,24 @@
 ---
 name: gy-question
-description: Use when checking existing records before creating unresolved questions in gy, or closing questions by fact, decision, or non-decision.
+description: gy に論点を立てて閉じるとき、決定者と選択肢と閉じ方を決めるときに使う。
 ---
 
-# gy Questions
+# 論点を扱う
 
-Record choices that need a decision, then close them with a traceable reason.
+## 立てる
 
-## Check existing answers
+`question add` は決定者（`--decider`）と、互いに異なる選択肢（`--options`）を 2 つ以上求める。誰の合意で閉じるかが決まっていないものは、論点にしない。
 
-`gy question add` searches all scopes before creating a question. Read matching sections and applicability conditions to determine whether the question is already answered. Use `--force` after verifying why a separate question is needed.
+## 3 つの閉じ方
 
-## Create a question
+`question close --by` は次のいずれかを取る。
 
-Read `gy question add --help` for current syntax. Supply:
+- `fact`: 事実が決めた。根拠を `--evidence` に書く。
+- `decision`: 決定が決めた。`--decision <D>` で決定を指す。その決定は `decide` で先に作る。
+- `non-decision`: 決定を指さずに閉じる。
 
-- `--options`: at least two distinct, viable choices.
-- `--decider`: whose agreement is required.
-- For a bundle, `--bundle` and `--bundle-rationale`: why the same intervention closes its questions.
+閉じたら、閉じ方を変えることはできない。
 
-Investigate matters uniquely determined by facts; inventing a second option does not create a decision to make. A shared cause alone does not justify a bundle. `gy q` is reserved for quick human notes; agents use `gy question add`.
+## 迷ったら
 
-## Choose a closure method
-
-| Result | Arguments to `gy question close <ID>` |
-| --- | --- |
-| Facts resolved the question without a choice | `--by fact --note "<reason>"` |
-| A choice was made | `--by decision --decision <decision-ID>` |
-| The decision was not to decide | `--by non-decision --decision <decision-ID>` |
-
-For decision and non-decision closures, first record the decision with `gy decide`.
-
-## Update waiting references
-
-Closure lists nodes that still reference the question as unresolved. Read those nodes, verify whether their pending matters are resolved, and update their records. Run `gy lint` to check the resulting references.
+`question add` の出力が、次に打てるコマンド（`question close` と `decide`）を示す。

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 //! Shared helpers: a repository root with a gy.toml, its XDG data directory,
-//! and running the gy5 binary against them.
+//! and running the gy binary against them.
 use gy_ledger::{
     DecisionScope, FileStore, FormatVersion, Node, NodeId, NodeKind, Repository, format, location,
 };
@@ -102,7 +102,7 @@ impl Fixture {
     }
 
     fn command(&self, args: &[&str]) -> Command {
-        let mut command = Command::new(env!("CARGO_BIN_EXE_gy5"));
+        let mut command = Command::new(env!("CARGO_BIN_EXE_gy"));
         command
             .current_dir(&self.root)
             .env("XDG_DATA_HOME", &self.data)

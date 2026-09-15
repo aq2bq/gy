@@ -158,4 +158,4 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 ```
 
-The workspace holds `gy-ledger` (the store, model, and operations), `gy` (the CLI), and `gy-migrate` (the one-time move from 0.4). CI tests on Linux; other platforms are unverified.
+The workspace holds `gy-ledger` (the store, model, and operations) and `gy` (the CLI). `gy-migrate` and its private `gy-core` reader stay until the remaining 0.4 ledgers have moved, then are removed. CI tests on Linux; other platforms are unverified.

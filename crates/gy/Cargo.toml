@@ -1,6 +1,6 @@
 [package]
 name = "gy"
-description = "good,yes — Decision, question and need graph ledger CLI with MCP"
+description = "good,yes — the ledger of what work rests on before a requirement is confirmed"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,12 +9,15 @@ homepage.workspace = true
 rust-version.workspace = true
 readme = "../../README.md"
 
+[[bin]]
+name = "gy"
+path = "src/main.rs"
+
 [dependencies]
-gy-core = { path = "../gy-core", version = "0.4.2" }
+gy-ledger = { path = "../gy-ledger", version = "0.5.0" }
 serde.workspace = true
 serde_json.workspace = true
 clap.workspace = true
-clap_complete.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

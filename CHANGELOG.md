@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (0.5.0)
+## 0.5.0 - 2026-09-15
 
 0.5 is incompatible with 0.4 in the storage format, the operation set, and the
 configuration. A 0.4 ledger moves in one run of `gy-migrate`; see
@@ -61,6 +61,9 @@ configuration. A 0.4 ledger moves in one run of `gy-migrate`; see
   prefix> --publication <directory>`. It writes the new ledger in one
   transaction, freezes post-approval records as a publication, maps the eleven
   states to four, and generates `[scopes.<name>]` in `gy.toml`.
+- `gy-migrate` and its private `gy-core` reader ship in this version so the
+  remaining 0.4 ledgers can move. They are not the new core and are removed
+  once those migrations are complete.
 - Old IDs resolve as aliases (`show D-164`, `show '#6027'`). `--ref-base`
   turns an old `#N` into the requirement's `ref`.
 - Follow [docs/migration-0.5.md](docs/migration-0.5.md) for the full steps and

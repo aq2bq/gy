@@ -1,40 +1,22 @@
 ---
 name: gy-decide
-description: Use when recording decisions with applicability conditions in gy and linking changed passages in existing decisions and question closures.
+description: gy に決定を記録するとき、成立範囲と mark と closes の書き方を確かめるときに使う。
 ---
 
-# gy Decisions
+# 決定を記録する
 
-Record what was decided, where it applies, and which earlier records it changes.
+## 成立範囲
 
-## State the decision and its scope
+`decide` は成立範囲（`--scope-note`）が無いと受け付けない。その決定がどこで成り立ち、どこでは成り立たないかを、後から読む人に分かる一文で書く。空にはできない。
 
-```sh
-gy decide "State the decision in one sentence" \
-  --scope-note "Applicable paths, conditions, and exclusions" --scope <scope>
-```
+## 論点を閉じる
 
-`--scope` selects the ledger scope. `--scope-note` defines where the decision applies. A person must review whether that description is specific; filling the field alone does not establish this.
+決定で論点を閉じるときは `--closes <Q>` を渡す。閉じ方と辺は論点側に残る。閉じた論点を閉じ直すことはできない。
 
-## Close answered questions
+## 系譜と mark
 
-Supply `--closes <question-ID>` for the question being answered. Read the open questions displayed during creation and close any others answered by the same decision.
+古い決定を狭める・置き換えるときは `--relate narrows|supersedes <古い D> --mark <文>` を使う。`mark` は、古い決定のうち効力を失う箇所の文字列で、その本文か成立範囲に見つからなければ拒まれる。本文は変えず、表示のときに関係の印として示す。他の関係（`widens`・`completes`）は `link` で張る。
 
-## Link changes to earlier decisions
+## 迷ったら
 
-Use `gy link <new-decision-ID> <relationship> <old-decision-ID>`:
-
-| Relationship | Effect on the older decision |
-| --- | --- |
-| `narrows` | Restricts applicability |
-| `widens` | Expands applicability |
-| `supersedes` | Replaces the decision |
-| `completes` | Fills previously undecided parts |
-
-For `narrows` and `supersedes`, supply `--mark` with the affected passage quoted from the older body. A file-level relationship alone cannot identify the invalidated sentence.
-
-## Verify the affected passage
-
-Display the older decision with `gy show <old-decision-ID>`. Confirm that the affected passage and its relationship to the new decision are clear.
-
-gy stores the mark in frontmatter and adds annotations during show. If a body edit makes the passage impossible to locate, review the displayed diagnostic and update the anchor to identify the intended passage.
+`decide` の出力が、まだ無いものと次に打てるコマンドを返す。

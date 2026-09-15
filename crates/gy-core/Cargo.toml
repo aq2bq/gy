@@ -1,6 +1,6 @@
 [package]
 name = "gy-core"
-description = "good,yes — File-backed graph of decisions, questions, needs and requirements"
+description = "gy-core — the private 0.4 reader used by gy-migrate; not published"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,6 +8,7 @@ repository.workspace = true
 homepage.workspace = true
 rust-version.workspace = true
 readme = "../../README.md"
+publish = false
 
 [dependencies]
 serde.workspace = true

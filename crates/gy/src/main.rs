@@ -1,591 +1,275 @@
-mod cli;
-mod mcp;
-use clap::{CommandFactory, Parser};
-use cli::*;
-use gy_core::*;
-use serde_json::{Value, json};
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    fs,
-};
+//! gy: the ledger CLI. It wires the gy-ledger views and ops to commands and
+//! does nothing else (D-76).
+mod output;
+mod reads;
+mod repo;
+mod write;
+mod writes;
 
-const CHEATSHEET: &str = include_str!("../CHEATSHEET.md");
-const SKILLS: &[(&str, &str)] = &[
-    ("gy-ledger", include_str!("../skills/gy-ledger/SKILL.md")),
-    (
-        "gy-question",
-        include_str!("../skills/gy-question/SKILL.md"),
-    ),
-    ("gy-decide", include_str!("../skills/gy-decide/SKILL.md")),
-];
-struct Output {
-    value: Value,
-    human: Option<String>,
-    warnings: Vec<String>,
-    code: u8,
+use clap::{Parser, Subcommand};
+use gy_ledger::{
+    CriterionAdd, CriterionSatisfy, NeedAdd, NeedClose, Operation, QuestionAdd, QuestionClose,
+    Result, handover, location, next, show,
+};
+use output::{emit, emit_list, report};
+use std::path::{Path, PathBuf};
+use write::Written;
+use writes::{DecideArgs, EditArgs, LinkArgs, UndoArgs};
+
+#[derive(Parser)]
+#[command(name = "gy", version, about = "The gy ledger")]
+pub struct Cli {
+    /// Print the result as JSON (diagnostics go to stderr).
+    #[arg(long, global = true)]
+    pub json: bool,
+    /// The directory whose gy.toml names the repository (searched upward).
+    #[arg(short = 'C', global = true, value_name = "DIR")]
+    pub directory: Option<PathBuf>,
+    /// The scope a write uses; required when gy.toml has more than one.
+    #[arg(long, global = true, value_name = "NAME")]
+    pub scope: Option<String>,
+    #[command(subcommand)]
+    pub command: Command,
 }
-impl Output {
-    fn new(value: Value) -> Self {
-        Self {
-            value,
-            human: None,
-            warnings: vec![],
-            code: 0,
-        }
-    }
-    fn text(value: Value, human: String) -> Self {
-        Self {
-            human: Some(human),
-            ..Self::new(value)
-        }
-    }
+
+#[derive(Subcommand)]
+pub enum Command {
+    /// Show one or more nodes by id, alias, or outward reference.
+    Show {
+        #[arg(required = true, value_name = "ID")]
+        ids: Vec<String>,
+        /// Show every field, every free attribute, and both edge directions.
+        #[arg(long)]
+        full: bool,
+    },
+    /// List node rows, or write units when --actor or --since is given.
+    List {
+        #[arg(long = "type", value_name = "KIND")]
+        kind: Option<String>,
+        #[arg(long, value_name = "STATUS")]
+        status: Option<String>,
+        #[arg(long, value_name = "ID")]
+        targets: Option<String>,
+        #[arg(long, value_name = "TEXT")]
+        grep: Option<String>,
+        #[arg(long, value_name = "NAME")]
+        actor: Option<String>,
+        #[arg(long, value_name = "SEQ")]
+        since: Option<u64>,
+    },
+    /// The needs that are ready to work.
+    Next,
+    /// What a session needs to resume: in-progress requirements and counts.
+    Handover,
+    /// Write the human-facing reading of the ledger, or describe named nodes.
+    Publish {
+        /// Describe these nodes instead of the one-page reading.
+        #[arg(value_name = "ID")]
+        ids: Vec<String>,
+        /// Include the changes after this write sequence.
+        #[arg(long, value_name = "SEQ")]
+        since: Option<u64>,
+        /// Write to this path instead of gy.toml's output or stdout.
+        #[arg(long, value_name = "PATH")]
+        out: Option<PathBuf>,
+    },
+    /// File or close a need.
+    Need {
+        #[command(subcommand)]
+        action: NeedAction,
+    },
+    /// Open or close a question.
+    Question {
+        #[command(subcommand)]
+        action: QuestionAction,
+    },
+    /// Add an acceptance criterion, or record it satisfied.
+    Criterion {
+        #[command(subcommand)]
+        action: CriterionAction,
+    },
+    /// File a requirement, or advance one.
+    Req {
+        #[command(subcommand)]
+        action: writes::ReqAction,
+    },
+    /// Create a decision, optionally closing questions and linking one relation.
+    Decide(DecideArgs),
+    /// Add or remove one edge between two nodes.
+    Link(LinkArgs),
+    /// Change a node's title, body, or free attributes.
+    Edit(EditArgs),
+    /// Invert the last write as a new transaction.
+    Undo(UndoArgs),
 }
-// Compare only the nodes returned by the operation, not the whole ledger.
-fn node_summary(node: &Node, before: &BTreeMap<String, Node>) -> Value {
-    let old = before.get(node.id());
-    let keys: BTreeSet<_> = node
-        .attrs
-        .keys()
-        .chain(old.into_iter().flat_map(|n| n.attrs.keys()))
-        .collect();
-    let changed: Vec<_> = keys
-        .into_iter()
-        .filter(|key| old.and_then(|n| n.attrs.get(*key)) != node.attrs.get(*key))
-        .collect();
-    json!({"id": node.id(), "type": node.kind(), "scope": node.scope(),
-        "changed_attributes": changed,
-        "body_changed": old.map(|n| n.body.as_str()).unwrap_or("") != node.body})
+
+#[derive(Subcommand)]
+pub enum NeedAction {
+    /// File a need against existing criteria.
+    Add {
+        title: String,
+        #[arg(long, value_name = "AC", required = true)]
+        targets: Vec<String>,
+        #[arg(long, value_name = "D")]
+        spawned_by: Option<String>,
+    },
+    /// Close a need by a fact or an external tracker.
+    Close {
+        id: String,
+        #[arg(long, value_name = "KIND")]
+        by: String,
+        #[arg(long, value_name = "TEXT")]
+        evidence: String,
+    },
 }
-fn previous_nodes(command: &Commands, store: &Store) -> BTreeMap<String, Node> {
-    let ids = match command {
-        Commands::Need {
-            command: Need::File { id, issue },
-        } => vec![id.clone(), issue_id(&issue.to_string())],
-        Commands::Question {
-            command: Question::Close { id, .. },
-        }
-        | Commands::Criterion {
-            command: Criterion::Satisfy { id, .. },
-        }
-        | Commands::Node {
-            command: NodeCommand::Set { id, .. },
-        }
-        | Commands::Node {
-            command: NodeCommand::Submit { id, .. },
-        } => vec![id.clone()],
-        Commands::Link { source, target, .. } => vec![source.clone(), target.clone()],
-        Commands::Req {
-            command: Req::Advance(a),
-        } => vec![issue_id(&a.issue)],
-        Commands::Req {
-            command:
-                Req::Compress {
-                    issue,
-                    evidence: Some(_),
-                },
-        } => vec![issue_id(issue)],
-        _ => vec![],
-    };
-    ids.into_iter()
-        .filter_map(|id| store.nodes.get(&id).cloned().map(|n| (id, n)))
-        .collect()
+
+#[derive(Subcommand)]
+pub enum QuestionAction {
+    /// Open a question with a decider and at least two options.
+    Add {
+        title: String,
+        #[arg(long, value_name = "NAME")]
+        decider: String,
+        #[arg(long = "options", value_name = "OPTION", required = true)]
+        options: Vec<String>,
+    },
+    /// Close a question by a fact, a decision, or neither.
+    Close {
+        id: String,
+        #[arg(long, value_name = "KIND")]
+        by: String,
+        #[arg(long, value_name = "TEXT")]
+        evidence: String,
+        #[arg(long, value_name = "D")]
+        decision: Option<String>,
+    },
 }
-fn issue_id(s: &str) -> String {
-    if s.starts_with('#') {
-        s.into()
-    } else {
-        format!("#{s}")
-    }
+
+#[derive(Subcommand)]
+pub enum CriterionAction {
+    /// Add an acceptance criterion.
+    Add { title: String },
+    /// Record evidence that a criterion holds, or revoke it.
+    Satisfy {
+        id: String,
+        #[arg(long, value_name = "TEXT")]
+        evidence: String,
+        #[arg(long)]
+        revoke: bool,
+    },
 }
+
 fn main() {
-    let args: Vec<_> = std::env::args_os().collect();
-    let json_mode = args.iter().any(|s| s == "--json");
-    let cli = match Cli::try_parse_from(args) {
-        Ok(cli) => cli,
-        Err(e) => {
-            let code = if e.use_stderr() { 2 } else { 0 };
-            if json_mode {
-                let value = json!({"code":code,"message":e.to_string()});
-                if code == 0 {
-                    println!("{value}");
-                } else {
-                    eprintln!("{value}");
-                }
-            } else {
-                let _ = e.print();
-            }
-            std::process::exit(code);
-        }
-    };
-    if matches!(cli.command, Commands::Mcp { .. }) {
-        if let Err(e) = mcp::serve(&cli) {
-            eprintln!("{}", e.message);
-            std::process::exit(e.code.into());
-        }
-        return;
-    }
-    match execute(&cli) {
-        Ok(output) => {
-            for warning in &output.warnings {
-                if cli.json {
-                    eprintln!("{}", json!({"severity":"warn","message":warning}));
-                } else {
-                    eprintln!("Warning: {warning}");
-                }
-            }
-            if cli.json {
-                println!("{}", output.value);
-            } else if !cli.quiet {
-                if let Some(human) = output.human {
-                    print!("{human}");
-                    if !human.ends_with('\n') {
-                        println!();
-                    }
-                } else {
-                    println!("{}", serde_json::to_string_pretty(&output.value).unwrap());
-                }
-            }
-            std::process::exit(output.code.into());
-        }
-        Err(e) => {
-            if cli.json {
-                eprintln!("{}", serde_json::to_string(&e).unwrap());
-            } else {
-                eprintln!("error: {}", e.message);
-            }
-            std::process::exit(e.code.into());
-        }
+    let cli = Cli::parse();
+    if let Err(error) = run(&cli) {
+        report(cli.json, &error);
+        std::process::exit(2);
     }
 }
-fn execute(cli: &Cli) -> Result<Output> {
-    let cwd = cli.cwd.clone().unwrap_or(std::env::current_dir()?);
+
+fn run(cli: &Cli) -> Result<()> {
+    let root = repo::root(cli.directory.as_deref())?;
+    let ledger = location::ledger_dir(&root);
     match &cli.command {
-        Commands::Cheatsheet => {
-            return Ok(Output::text(
-                json!({"cheatsheet":CHEATSHEET}),
-                CHEATSHEET.into(),
-            ));
+        Command::Show { ids, full } => {
+            let repository = repo::open(&ledger)?;
+            emit_list(cli.json, &show(&repository, ids, *full)?)
         }
-        Commands::Completions { shell } => {
-            let mut buffer = vec![];
-            clap_complete::generate(*shell, &mut Cli::command(), "gy", &mut buffer);
-            let script = String::from_utf8(buffer).unwrap();
-            return Ok(Output::text(
-                json!({"shell":shell.to_string(),"script":script}),
-                script,
-            ));
+        Command::List { .. } => reads::read_list(cli, &ledger),
+        Command::Next => {
+            let repository = repo::open(&ledger)?;
+            emit_list(cli.json, &next(&repository, cli.scope.as_deref())?)
         }
-        Commands::Skills {
-            command: Skills::Install { directory },
-        } => {
-            let directory = cwd.join(directory);
-            // Check every destination before writing any skill.
-            for (name, body) in SKILLS {
-                let path = directory.join(name).join("SKILL.md");
-                if path.exists() && fs::read_to_string(&path)? != *body {
-                    return Err(Error::input(format!(
-                        "{} contains an edited skill. Specify a different destination",
-                        path.display()
-                    )));
-                }
-            }
-            let mut paths = vec![];
-            for (name, body) in SKILLS {
-                let path = directory.join(name).join("SKILL.md");
-                fs::create_dir_all(path.parent().unwrap())?;
-                fs::write(&path, body)?;
-                paths.push(path);
-            }
-            return Ok(Output::new(json!({"installed":paths})));
+        Command::Handover => {
+            let repository = repo::open(&ledger)?;
+            emit(cli.json, &handover(&repository, cli.scope.as_deref())?)
         }
-        Commands::Init { name, parent_issue } => {
-            let store = Store::init(&cwd, name, *parent_issue)?;
-            let value = json!({"root":store.root,"scope":name});
-            return Ok(Output::text(value.clone(), value.to_string()));
+        Command::Publish { ids, since, out } => {
+            reads::write_publish(cli, &root, &ledger, ids, *since, out.as_deref())
         }
-        Commands::Scope { command } => {
-            let mut store = Store::open(&cwd)?;
-            let ScopeCommand::Rename { old, new } = command;
-            let before: BTreeMap<_, _> = store
-                .nodes
-                .iter()
-                .filter(|(_, n)| n.scope() == old)
-                .map(|(id, n)| (id.clone(), n.clone()))
-                .collect();
-            store.rename_scope(old, new)?;
-            let nodes: Vec<_> = before
-                .keys()
-                .map(|id| node_summary(&store.nodes[id], &before))
-                .collect();
-            let value = json!({"nodes": nodes});
-            return Ok(Output::text(value.clone(), value.to_string()));
-        }
-        Commands::Mcp { .. } => return Err(Error::input("Cannot start MCP recursively")),
-        _ => {}
+        Command::Need { action } => write_need(cli, &root, &ledger, action),
+        Command::Question { action } => write_question(cli, &root, &ledger, action),
+        Command::Criterion { action } => write_criterion(cli, &root, &ledger, action),
+        Command::Req { action } => writes::req(cli, &root, &ledger, action),
+        Command::Decide(args) => writes::decide(cli, &root, &ledger, args),
+        Command::Link(args) => writes::link(cli, &ledger, args),
+        Command::Edit(args) => writes::edit(cli, &ledger, args),
+        Command::Undo(args) => writes::undo(cli, &ledger, args),
     }
-    let mut store = Store::open(&cwd)?;
-    if cli.verbose {
-        eprintln!(
-            "Ledger: {} ({} nodes)",
-            store.root.display(),
-            store.nodes.len()
-        );
-    }
-    if let Some(scope) = &cli.scope {
-        store.scope(Some(scope))?;
-    }
-    let scope = cli.scope.as_deref();
-    let before = previous_nodes(&cli.command, &store);
-    let mut output = Output::new(Value::Null);
-    let mut write = true;
-    match &cli.command {
-        Commands::Need { command } => match command {
-            Need::Add {
-                title,
-                targets,
-                spawned_by,
-            } => {
-                let s = store.scope(scope)?;
-                let id = store.add_need(&s, title, targets, spawned_by.as_deref())?;
-                output.value = json!({"node":node_summary(store.node(&id)?, &before)});
-            }
-            Need::File { id, issue } => {
-                let req = store.file_need(id, *issue)?;
-                output.value = json!({"need":node_summary(store.node(id)?, &before),"requirement":node_summary(store.node(&req)?, &before)});
-            }
-        },
-        Commands::Question { command } => match command {
-            Question::Add {
-                title,
-                decider,
-                options,
-                bundle,
-                bundle_rationale,
-                force,
-            } => {
-                let s = store.scope(scope)?;
-                let (id, warnings) = store.add_question(
-                    &s,
-                    title,
-                    QuestionOptions {
-                        decider: decider.as_deref().unwrap_or(""),
-                        options,
-                        bundle: bundle.as_deref(),
-                        rationale: bundle_rationale.as_deref(),
-                        force: *force,
-                    },
-                )?;
-                output.value =
-                    json!({"node":node_summary(store.node(&id)?, &before),"search_hits":warnings});
-                output.warnings = warnings;
-            }
-            Question::Close {
-                id,
-                by,
-                decision,
-                note,
-            } => {
-                output.warnings = store.close_question(
-                    id,
-                    by.as_deref().unwrap_or(""),
-                    decision.as_deref(),
-                    note.as_deref(),
-                )?;
-                output.value = json!({"node":node_summary(store.node(id)?, &before),"warnings":output.warnings});
-            }
-        },
-        Commands::Q { title } => {
-            let s = store.scope(scope)?;
-            let id = store.create("question", title, &s, None)?;
-            let n = store.nodes.get_mut(&id).unwrap();
-            n.put("status", "open");
-            n.put("capture", true);
-            output.value = json!({"node":node_summary(n, &before)});
-            output.warnings.push("Recorded an incomplete human note. lint will fail until decider and options are supplied".into());
-        }
-        Commands::Decide {
+}
+
+fn write_need(cli: &Cli, root: &Path, ledger: &Path, action: &NeedAction) -> Result<()> {
+    let mut repository = repo::open_write(ledger)?;
+    let outcome = match action {
+        NeedAction::Add {
             title,
-            scope_note,
-            closes,
-        } => {
-            let s = store.scope(scope)?;
-            let (id, warnings) =
-                store.decide(&s, title, scope_note.as_deref().unwrap_or(""), closes)?;
-            output.value =
-                json!({"node":node_summary(store.node(&id)?, &before),"open_questions":warnings});
-            output.warnings = warnings;
+            targets,
+            spawned_by,
+        } => NeedAdd {
+            scope: write::scope(root, cli.scope.as_deref())?,
+            title: title.clone(),
+            targets: write::resolve_all(&repository, targets)?,
+            spawned_by: write::resolve_opt(&repository, spawned_by.as_deref())?,
         }
-        Commands::Link {
-            source,
-            label,
-            target,
-            mark,
-        } => {
-            if label == "closes" {
-                output.warnings = store.close_question(source, "decision", Some(target), None)?;
-            } else if label == "filed-as" {
-                let issue = target
-                    .trim_start_matches('#')
-                    .parse()
-                    .map_err(|_| Error::input("A filed-as target must be #<Issue-number>"))?;
-                store.file_need(source, issue)?;
-            } else {
-                output.warnings = store.link(source, label, target, mark.as_deref())?;
-            }
-            output.value = json!({"source":node_summary(store.node(source)?, &before),"target":node_summary(store.node(target)?, &before),"warnings":output.warnings});
+        .run(&mut repository)?,
+        NeedAction::Close { id, by, evidence } => NeedClose {
+            id: repository.resolve(id)?,
+            by: write::closed_by(by)?,
+            evidence: evidence.clone(),
         }
-        Commands::Req { command } => match command {
-            Req::Add {
-                title,
-                issue,
-                parent_issue,
-            } => {
-                let s = store.scope(scope)?;
-                let id = store.create("requirement", title, &s, Some(*issue))?;
-                let n = store.nodes.get_mut(&id).unwrap();
-                n.put("status", "defining");
-                if let Some(p) = parent_issue {
-                    n.put("parent_issue", p);
-                }
-                output.value = json!({"node":node_summary(n, &before)});
-            }
-            Req::Advance(a) => {
-                let id = issue_id(&a.issue);
-                store.advance(
-                    &id,
-                    AdvanceOptions {
-                        to: a.to.as_deref().unwrap_or(""),
-                        evidence: a.evidence.as_deref().unwrap_or(""),
-                        reported_base: a.reported_base.as_deref(),
-                        reported_files: a.reported_files,
-                        data_migration: a.data_migration,
-                        production_only: a.production_only,
-                        production_done: a.production_done,
-                        cleanup_done: a.cleanup_done,
-                    },
-                )?;
-                output.value = json!({"node":node_summary(store.node(&id)?, &before)});
-            }
-            Req::Compress { issue, evidence } => {
-                let id = issue_id(issue);
-                if let Some(evidence) = evidence {
-                    store.compress(&id, evidence)?;
-                    output.value = json!({"node":node_summary(store.node(&id)?, &before)});
-                } else {
-                    write = false;
-                    let original = store.compression_preview(&id)?;
-                    output = Output::text(
-                        json!({"id":id,"archive":original,"next":"Archive the full text in an Issue comment, then compress with --evidence <URL>"}),
-                        original,
-                    );
-                }
-            }
-        },
-        Commands::Criterion { command } => match command {
-            Criterion::Add { title } => {
-                let s = store.scope(scope)?;
-                let id = store.create("criterion", title, &s, None)?;
-                output.value = json!({"node":node_summary(store.node(&id)?, &before)});
-            }
-            Criterion::Satisfy { id, evidence } => {
-                store.typed(id, "criterion")?;
-                let evidence = evidence.as_deref().filter(|s| !s.trim().is_empty()).ok_or_else(|| Error::input("--evidence is required. Record the evidence for judging the acceptance criterion satisfied"))?;
-                let n = store.nodes.get_mut(id).unwrap();
-                if n.attrs.get("satisfied") != Some(&json!(true)) {
-                    n.put("satisfied", true);
-                    n.put("satisfied_at", gy_core::today());
-                    n.put("evidence", evidence);
-                }
-                output.value = json!({"node":node_summary(n, &before)});
-            }
-        },
-        Commands::Gate {
-            command: Gate::Add { title, measured_by },
-        } => {
-            let s = store.scope(scope)?;
-            for q in measured_by {
-                store.typed(q, "question")?;
-            }
-            let id = store.create("gate", title, &s, None)?;
-            for q in measured_by {
-                store.link(&id, "measured-by", q, None)?;
-            }
-            output.value = json!({"node":node_summary(store.node(&id)?, &before)});
+        .run(&mut repository)?,
+    };
+    emit(cli.json, &Written::of(&outcome))
+}
+
+fn write_question(cli: &Cli, root: &Path, ledger: &Path, action: &QuestionAction) -> Result<()> {
+    let mut repository = repo::open_write(ledger)?;
+    let outcome = match action {
+        QuestionAction::Add {
+            title,
+            decider,
+            options,
+        } => QuestionAdd {
+            scope: write::scope(root, cli.scope.as_deref())?,
+            title: title.clone(),
+            decider: decider.clone(),
+            options: options.clone(),
         }
-        Commands::Node {
-            command:
-                NodeCommand::Set {
-                    id,
-                    attributes,
-                    body_file,
-                },
-        } => {
-            let mut attrs = serde_json::Map::new();
-            for a in attributes {
-                let (k, v) = a
-                    .split_once('=')
-                    .ok_or_else(|| Error::input("Use --set key=value"))?;
-                if k.trim().is_empty() {
-                    return Err(Error::input("The attribute name is empty"));
-                }
-                attrs.insert(
-                    k.into(),
-                    serde_json::from_str(v).unwrap_or_else(|_| json!(v)),
-                );
-            }
-            let n = store.node(id)?;
-            if n.kind() == "criterion"
-                && n.attrs.get("satisfied") == Some(&json!(true))
-                && attrs.get("satisfied").is_some_and(|v| v != &json!(true))
-            {
-                return Err(Error::input(
-                    "A satisfied acceptance criterion cannot be reverted. Register the changed criterion as a new node",
-                ));
-            }
-            store.set_attributes(
-                id,
-                &attrs,
-                body_file
-                    .as_ref()
-                    .map(|p| fs::read_to_string(cwd.join(p)))
-                    .transpose()?,
-            )?;
-            output.value = json!({"node":node_summary(store.node(id)?, &before)});
+        .run(&mut repository)?,
+        QuestionAction::Close {
+            id,
+            by,
+            evidence,
+            decision,
+        } => QuestionClose {
+            id: repository.resolve(id)?,
+            by: write::closure(by)?,
+            evidence: evidence.clone(),
+            decision: write::resolve_opt(&repository, decision.as_deref())?,
         }
-        Commands::Node {
-            command:
-                NodeCommand::Submit {
-                    id,
-                    record,
-                    evidence,
-                },
-        } => {
-            store.submit_record(id, record, evidence)?;
-            let schema = &store.config.workflow.records[record];
-            let revision = schema
-                .version_field
-                .as_ref()
-                .and_then(|field| store.nodes[id].attrs[record].get(field));
-            output.value = json!({"node": node_summary(store.node(id)?, &before),
-                "submission": {"record": record, "revision": revision}});
+        .run(&mut repository)?,
+    };
+    emit(cli.json, &Written::of(&outcome))
+}
+
+fn write_criterion(cli: &Cli, root: &Path, ledger: &Path, action: &CriterionAction) -> Result<()> {
+    let mut repository = repo::open_write(ledger)?;
+    let outcome = match action {
+        CriterionAction::Add { title } => CriterionAdd {
+            scope: write::scope(root, cli.scope.as_deref())?,
+            title: title.clone(),
         }
-        Commands::Lint => {
-            write = false;
-            let ds = store.lint(scope);
-            output.code = u8::from(ds.iter().any(|d| d.severity == "error"));
-            let human = format!(
-                "{}\n{}\n",
-                if ds.is_empty() {
-                    "lint: no findings (L1–L14, inverse links, and configured workflow)".into()
-                } else {
-                    ds.iter()
-                        .map(|d| format!("{} {} {}: {}", d.severity, d.rule, d.id, d.message))
-                        .collect::<Vec<_>>()
-                        .join("\n")
-                },
-                INTEGRITY_NOTE
-            );
-            output.human = Some(human);
-            output.value = json!({"diagnostics":ds,"note":INTEGRITY_NOTE});
+        .run(&mut repository)?,
+        CriterionAction::Satisfy {
+            id,
+            evidence,
+            revoke,
+        } => CriterionSatisfy {
+            id: repository.resolve(id)?,
+            evidence: evidence.clone(),
+            revoke: *revoke,
         }
-        Commands::Show { id, graph } => {
-            write = false;
-            let n = store.node(id)?;
-            if scope.is_some_and(|s| n.scope() != s) {
-                return Err(Error::input(format!("{id} is not in the specified scope")));
-            }
-            if *graph {
-                let dot = store.dot(scope, Some(id))?;
-                output = Output::text(json!({"dot":dot}), dot);
-            } else {
-                let display = store.display_node(n)?;
-                let neighbors = store.neighbors(id)?;
-                output = Output::text(
-                    json!({"node":n,"neighbors":neighbors,"display":display,"decision_dependencies":store.decision_dependencies(n)}),
-                    format!(
-                        "{display}\nRelationships:\n{}",
-                        serde_json::to_string_pretty(&neighbors).unwrap()
-                    ),
-                );
-            }
-        }
-        Commands::Find { keyword, filters } => {
-            write = false;
-            let hits = store.find(keyword.as_deref(), filters, scope)?;
-            let human = hits
-                .iter()
-                .map(|h| format!("{} ({}) [{}] {}", h.id, h.scope, h.section, h.excerpt))
-                .collect::<Vec<_>>()
-                .join("\n");
-            output = Output::text(json!({"hits":hits}), human);
-        }
-        Commands::Next => {
-            write = false;
-            let nodes = store.next(scope);
-            output = Output::text(
-                json!({"nodes":nodes}),
-                nodes
-                    .iter()
-                    .map(|n| format!("{} ({}) {}", n.id(), n.scope(), n.get("title")))
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-            );
-        }
-        Commands::Handover => {
-            write = false;
-            output.value = store.handover(scope);
-            output.code = u8::from(
-                output.value["lint"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .any(|d| d["severity"] == "error")
-                    || !output.value["missing"].as_array().unwrap().is_empty()
-                    || !output.value["dangling"].as_array().unwrap().is_empty(),
-            );
-        }
-        Commands::Stats { days } => {
-            write = false;
-            output.value = store.stats(scope, *days)?;
-        }
-        Commands::Import { directory } => {
-            let s = store.scope(scope)?;
-            let imported = store.import_adr(&cwd.join(directory), &s)?;
-            let mut missing_scope = vec![];
-            let mut missing_marks = vec![];
-            for id in &imported {
-                let node = store.node(id)?;
-                if node.get("decision_scope").trim().is_empty() {
-                    missing_scope.push(id.clone());
-                }
-                for relationship in ["narrows", "supersedes"] {
-                    for target in node.refs(relationship) {
-                        if gy_core::edge_mark(node, relationship, &target).is_none() {
-                            missing_marks.push(json!({"source": id, "relationship": relationship, "target": target}));
-                        }
-                    }
-                }
-            }
-            output.warnings.push(format!(
-                "Imported {} decisions; {} missing decision_scope; {} relationships missing mark. Review import_summary and run gy lint.",
-                imported.len(), missing_scope.len(), missing_marks.len()
-            ));
-            output.value = json!({
-                "imported": imported.iter().map(|id| node_summary(&store.nodes[id], &before)).collect::<Vec<_>>(),
-                "import_summary": {
-                    "imported_count": imported.len(),
-                    "missing_decision_scope_count": missing_scope.len(),
-                    "missing_decision_scope": missing_scope,
-                    "missing_mark_count": missing_marks.len(),
-                    "missing_marks": missing_marks
-                }
-            });
-        }
-        _ => unreachable!(),
-    }
-    if write {
-        output.human = Some(output.value.to_string());
-        store.commit()?;
-    }
-    Ok(output)
+        .run(&mut repository)?,
+    };
+    emit(cli.json, &Written::of(&outcome))
 }
