@@ -19,9 +19,10 @@ pub enum Relation {
     DependsOn,
     ReliesOn,
     Raised,
+    WaitsOn,
 }
 impl Relation {
-    const PAIRS: [(&'static str, &'static str); 11] = [
+    const PAIRS: [(&'static str, &'static str); 12] = [
         ("closes", "closed-by"),
         ("narrows", "narrowed-by"),
         ("widens", "widened-by"),
@@ -33,6 +34,7 @@ impl Relation {
         ("depends-on", "depended-on-by"),
         ("relies-on", "relied-on-by"),
         ("raised", "raised-by"),
+        ("waits-on", "awaited-by"),
     ];
     /// The (from kind, to kind) pairs each relation allows. One table, in the
     /// model, so an edge that breaks a kind pairing cannot be built (D-75).
@@ -49,6 +51,7 @@ impl Relation {
         (Self::DependsOn, NodeKind::Need, NodeKind::Need),
         (Self::ReliesOn, NodeKind::Requirement, NodeKind::Decision),
         (Self::Raised, NodeKind::Requirement, NodeKind::Question),
+        (Self::WaitsOn, NodeKind::Need, NodeKind::Question),
     ];
     pub fn name(self) -> &'static str {
         Self::PAIRS[self as usize].0

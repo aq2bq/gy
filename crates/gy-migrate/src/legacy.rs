@@ -1,12 +1,13 @@
 //! Reading a 0.4 ledger into an intermediate form. This is the only file of
 //! the crate that touches gy-core's string keys (N-65): every key becomes a
-//! typed accessor, so the node transfer reads values, not names.
+//! typed accessor, so the node transfer and the edges read values, not names.
+use crate::report::Report;
 use gy_ledger::{Error, Result};
 use std::collections::{BTreeMap, BTreeSet};
-use std::fmt;
 use std::path::Path;
 
-/// The forward relationship keys a 0.4 node stores.
+/// The forward relationship keys a 0.4 node stores (`measured-by` becomes a
+/// waits-on edge for a gate).
 const RELATIONS: &[&str] = &[
     "targets",
     "spawned-by",
@@ -40,6 +41,13 @@ pub struct Legacy {
     pub nodes: Vec<LegacyNode>,
 }
 
+/// One 0.4 edge: the target's old id and, for narrows / supersedes, its mark.
+#[derive(Debug, Clone)]
+pub struct LegacyLink {
+    pub id: String,
+    pub mark: Option<String>,
+}
+
 /// One 0.4 node: identity and body, plus its attributes and edges as data.
 #[derive(Debug, Clone)]
 pub struct LegacyNode {
@@ -53,8 +61,8 @@ pub struct LegacyNode {
     pub attrs: BTreeMap<String, String>,
     /// List attributes (ids or words).
     pub lists: BTreeMap<String, Vec<String>>,
-    /// Relationship name to target ids.
-    pub links: BTreeMap<String, Vec<String>>,
+    /// Relationship name to its edges.
+    pub links: BTreeMap<String, Vec<LegacyLink>>,
 }
 
 pub fn read(dir: &Path) -> Result<Legacy> {
@@ -76,9 +84,9 @@ impl LegacyNode {
         }
         let mut links = BTreeMap::new();
         for relation in RELATIONS {
-            let targets = node.refs(relation);
-            if !targets.is_empty() {
-                links.insert((*relation).to_string(), targets);
+            let edges = node.attrs.get(*relation).map(edges_of).unwrap_or_default();
+            if !edges.is_empty() {
+                links.insert((*relation).to_string(), edges);
             }
         }
         Self {
@@ -103,6 +111,17 @@ impl LegacyNode {
         }
     }
 
+    /// The forward edges except `measured-by` (a gate's, written as waits-on).
+    pub fn out_edges(&self) -> impl Iterator<Item = (&str, &[LegacyLink])> {
+        self.links
+            .iter()
+            .filter(|(name, _)| name.as_str() != "measured-by")
+            .map(|(name, links)| (name.as_str(), links.as_slice()))
+    }
+
+    pub fn measured_by(&self) -> &[LegacyLink] {
+        self.link("measured-by")
+    }
     pub fn decision_scope(&self) -> Option<&str> {
         self.text("decision_scope")
     }
@@ -183,7 +202,6 @@ impl LegacyNode {
     pub fn waiting_on(&self) -> &[String] {
         self.list("waiting-on")
     }
-
     /// A decision whose `decision_scope` was never recorded.
     pub fn has_unrecorded_scope(&self) -> bool {
         self.kind == "decision" && self.decision_scope().is_none()
@@ -197,6 +215,10 @@ impl LegacyNode {
             .collect()
     }
 
+    fn link(&self, name: &str) -> &[LegacyLink] {
+        self.links.get(name).map(Vec::as_slice).unwrap_or(&[])
+    }
+
     fn text(&self, name: &str) -> Option<&str> {
         self.attrs
             .get(name)
@@ -206,6 +228,28 @@ impl LegacyNode {
 
     fn list(&self, name: &str) -> &[String] {
         self.lists.get(name).map(Vec::as_slice).unwrap_or(&[])
+    }
+}
+
+/// The edges carried by one attribute: a list of ids, a list of `{id, mark}`
+/// objects, or a single one of either.
+fn edges_of(value: &serde_json::Value) -> Vec<LegacyLink> {
+    match value {
+        serde_json::Value::Array(items) => items.iter().flat_map(edges_of).collect(),
+        serde_json::Value::Object(map) => match map.get("id") {
+            Some(id) => vec![LegacyLink {
+                id: gy_core::text(id),
+                mark: map
+                    .get("mark")
+                    .map(gy_core::text)
+                    .filter(|mark| !mark.is_empty()),
+            }],
+            None => Vec::new(),
+        },
+        _ => vec![LegacyLink {
+            id: gy_core::text(value),
+            mark: None,
+        }],
     }
 }
 
@@ -221,10 +265,10 @@ impl Legacy {
         self.nodes
             .iter()
             .filter(|node| {
-                let filed = node.links.get("filed-as").map(Vec::as_slice).unwrap_or(&[]);
+                let filed = node.link("filed-as");
                 !filed.is_empty()
-                    && filed.iter().all(|id| {
-                        self.by_id(id)
+                    && filed.iter().all(|link| {
+                        self.by_id(&link.id)
                             .is_some_and(|node| node.status() == "complete")
                     })
             })
@@ -252,35 +296,4 @@ impl Legacy {
         report.dropped.sort();
         report
     }
-}
-
-/// What the read found, before anything is written.
-#[derive(Debug, Clone, Default)]
-pub struct Report {
-    pub before: BTreeMap<String, usize>,
-    pub after: BTreeMap<String, usize>,
-    pub aliases: usize,
-    pub unrecorded: usize,
-    pub waiting_on: usize,
-    pub links: usize,
-    pub dropped: Vec<String>,
-}
-
-impl fmt::Display for Report {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "before: {}", counts(&self.before))?;
-        writeln!(f, "after: {}", counts(&self.after))?;
-        writeln!(f, "aliases: {}", self.aliases)?;
-        writeln!(f, "unrecorded decision scope: {}", self.unrecorded)?;
-        writeln!(f, "waiting-on ids: {}", self.waiting_on)?;
-        writeln!(f, "edges: {}", self.links)?;
-        writeln!(f, "dropped attributes: {}", self.dropped.join(", "))
-    }
-}
-
-fn counts(map: &BTreeMap<String, usize>) -> String {
-    map.iter()
-        .map(|(kind, count)| format!("{kind} {count}"))
-        .collect::<Vec<_>>()
-        .join(", ")
 }

@@ -1,0 +1,157 @@
+//! Writing the 0.4 edges onto the new nodes (N-66): the from-side keys as edge
+//! values, and waits-on from a need's waiting-on or a gate's measured-by.
+use crate::legacy::{Legacy, LegacyLink, LegacyNode};
+use gy_ledger::{Link, Node, NodeId, Relation};
+use std::collections::BTreeMap;
+use std::fmt;
+
+/// What the edge pass did and what it could not write.
+#[derive(Debug, Default)]
+pub struct Edges {
+    pub written: usize,
+    pub missing: Vec<String>,
+    pub unsupported: Vec<String>,
+    pub mark_missing: usize,
+    pub waits_on: usize,
+    pub waits_skipped: Vec<String>,
+}
+
+pub fn apply(legacy: &Legacy, nodes: &mut [Node], ids: &BTreeMap<String, NodeId>) -> Edges {
+    let mut report = Edges::default();
+    for (source, node) in legacy.nodes.iter().zip(nodes.iter_mut()) {
+        for (name, links) in source.out_edges() {
+            let Some(relation) = relation(name) else {
+                report
+                    .unsupported
+                    .extend(links.iter().map(|link| entry(source, name, &link.id)));
+                continue;
+            };
+            for link in links {
+                link_edge(legacy, source, node, relation, link, ids, &mut report);
+            }
+        }
+        waits_on(legacy, source, node, ids, &mut report);
+    }
+    report
+}
+
+fn link_edge(
+    legacy: &Legacy,
+    source: &LegacyNode,
+    node: &mut Node,
+    relation: Relation,
+    link: &LegacyLink,
+    ids: &BTreeMap<String, NodeId>,
+    report: &mut Edges,
+) {
+    let Some(to) = ids.get(&link.id) else {
+        report
+            .missing
+            .push(entry(source, relation.name(), &link.id));
+        return;
+    };
+    match Link::new(node.id().clone(), relation, to.clone()) {
+        Ok(edge) => {
+            if required_mark(relation) && !mark_in_body(legacy, &link.id, link.mark.as_deref()) {
+                report.mark_missing += 1;
+            }
+            node.link(edge.with_mark(link.mark.clone()));
+            report.written += 1;
+        }
+        Err(_) => report
+            .unsupported
+            .push(entry(source, relation.name(), &link.id)),
+    }
+}
+
+/// A need waits on the questions in its `waiting-on`; a gate's `measured-by`
+/// becomes the same relationship (D-83).
+fn waits_on(
+    legacy: &Legacy,
+    source: &LegacyNode,
+    node: &mut Node,
+    ids: &BTreeMap<String, NodeId>,
+    report: &mut Edges,
+) {
+    if source.new_kind() != "need" {
+        return;
+    }
+    let targets = source
+        .waiting_on()
+        .iter()
+        .map(String::as_str)
+        .chain(source.measured_by().iter().map(|link| link.id.as_str()));
+    for id in targets {
+        let question = ids.get(id).filter(|_| {
+            legacy
+                .by_id(id)
+                .is_some_and(|node| node.new_kind() == "question")
+        });
+        let edge = question
+            .and_then(|to| Link::new(node.id().clone(), Relation::WaitsOn, to.clone()).ok());
+        match edge {
+            Some(edge) => {
+                node.link(edge);
+                report.waits_on += 1;
+            }
+            None => report.waits_skipped.push(entry(source, "waits-on", id)),
+        }
+    }
+}
+
+fn required_mark(relation: Relation) -> bool {
+    matches!(relation, Relation::Narrows | Relation::Supersedes)
+}
+
+fn mark_in_body(legacy: &Legacy, id: &str, mark: Option<&str>) -> bool {
+    let Some(mark) = mark else {
+        return false;
+    };
+    legacy
+        .by_id(id)
+        .is_some_and(|node| node.body.contains(mark))
+}
+
+fn entry(source: &LegacyNode, relation: &str, target: &str) -> String {
+    format!("{} {relation} {target}", source.id)
+}
+
+fn relation(name: &str) -> Option<Relation> {
+    [
+        Relation::Closes,
+        Relation::Narrows,
+        Relation::Widens,
+        Relation::Supersedes,
+        Relation::Completes,
+        Relation::Targets,
+        Relation::SpawnedBy,
+        Relation::FiledAs,
+        Relation::DependsOn,
+        Relation::ReliesOn,
+        Relation::Raised,
+        Relation::WaitsOn,
+    ]
+    .into_iter()
+    .find(|relation| relation.name() == name)
+}
+
+impl fmt::Display for Edges {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "edges written: {}", self.written)?;
+        writeln!(f, "edges missing a target: {}", self.missing.len())?;
+        writeln!(f, "edges not allowed by kind: {}", self.unsupported.len())?;
+        writeln!(f, "marks not in the old body: {}", self.mark_missing)?;
+        writeln!(f, "waits-on written: {}", self.waits_on)?;
+        writeln!(f, "waits-on skipped: {}", self.waits_skipped.len())?;
+        for entry in &self.missing {
+            writeln!(f, "  missing: {entry}")?;
+        }
+        for entry in &self.unsupported {
+            writeln!(f, "  not allowed: {entry}")?;
+        }
+        for entry in &self.waits_skipped {
+            writeln!(f, "  waits-on skipped: {entry}")?;
+        }
+        Ok(())
+    }
+}

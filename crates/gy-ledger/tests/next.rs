@@ -143,13 +143,13 @@ fn next_waits_for_dependencies() {
 }
 
 #[test]
-fn next_waits_for_questions_named_in_waiting_on() {
+fn next_waits_for_questions_in_waits_on() {
     let mut repo = repo();
     let question =
         Node::question(id(NodeKind::Question, "0010"), SCOPE, DATE, "a question").unwrap();
     let question_id = question.id().clone();
     let mut need = need("0011", SCOPE, "waiting");
-    need.set_free("waiting-on", question_id.to_string());
+    need.link(Link::new(need.id().clone(), Relation::WaitsOn, question_id.clone()).unwrap());
     seed(&mut repo, &[question, need]);
     assert!(next(&repo, None).unwrap().is_empty());
 

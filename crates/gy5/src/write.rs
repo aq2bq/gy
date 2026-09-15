@@ -122,6 +122,7 @@ pub fn relation(text: &str) -> Result<Relation> {
         Relation::DependsOn,
         Relation::ReliesOn,
         Relation::Raised,
+        Relation::WaitsOn,
     ]
     .into_iter()
     .find(|relation| relation.name() == text)

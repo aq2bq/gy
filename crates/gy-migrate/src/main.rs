@@ -1,12 +1,15 @@
 //! gy-migrate: read a 0.4 ledger and write it into the new canonical ledger
-//! (N-67). Edges and frozen records arrive with the following step.
+//! (N-67), with its edges (N-66). Frozen records arrive with the next step.
+mod edges;
 mod legacy;
 mod nodes;
+mod report;
 
 use clap::Parser;
 use gy_ledger::{
     Actor, Error, FileStore, FormatVersion, NodeId, Repository, Result, format, location,
 };
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -43,15 +46,14 @@ fn run() -> Result<()> {
     let cli = Cli::parse();
     guard(&cli)?;
     let legacy = legacy::read(&cli.ledger)?;
-    let written = if cli.dry_run {
-        0
-    } else {
-        write(&cli, &legacy)?
-    };
     print!("{}", legacy.report());
-    if !cli.dry_run {
-        println!("written: {written} nodes");
+    if cli.dry_run {
+        settings(&cli);
+        return Ok(());
     }
+    let (written, diagnostics) = write(&cli, &legacy)?;
+    println!("written: {written} nodes");
+    print!("{diagnostics}");
     settings(&cli);
     Ok(())
 }
@@ -71,18 +73,21 @@ fn guard(cli: &Cli) -> Result<()> {
     Ok(())
 }
 
-/// Build every new node, then write them in one transaction.
-fn write(cli: &Cli, legacy: &legacy::Legacy) -> Result<usize> {
+/// Build every new node and its edges, then write them in one transaction.
+fn write(cli: &Cli, legacy: &legacy::Legacy) -> Result<(usize, edges::Edges)> {
     let ledger = location::ledger_dir(&cli.root);
     format::write(&ledger, FormatVersion::CURRENT)?;
     let mut repository = Repository::new(FileStore::open(&ledger)?);
     let derived = legacy.derived_ids();
+    let mut ids = BTreeMap::new();
     let mut nodes = Vec::new();
     for node in &legacy.nodes {
         let id = NodeId::mint(nodes::kind(node.new_kind())?, repository.store_mut())?;
+        ids.insert(node.id.clone(), id.clone());
         let derive = derived.contains(&node.id);
         nodes.push(nodes::build(node, id, cli.ref_base.as_deref(), derive)?);
     }
+    let diagnostics = edges::apply(legacy, &mut nodes, &ids);
     let source = cli.ledger.display().to_string();
     repository.transaction("migrate from 0.4", &source, |repository| {
         for node in &nodes {
@@ -90,7 +95,7 @@ fn write(cli: &Cli, legacy: &legacy::Legacy) -> Result<usize> {
         }
         Ok(())
     })?;
-    Ok(nodes.len())
+    Ok((nodes.len(), diagnostics))
 }
 
 fn settings(cli: &Cli) {
