@@ -1,10 +1,18 @@
 # n-ac8e (N-21) 検索と絞り込みをヘッダー直下の常設ツールバーにし、左パネルを状況把握に限る
 
-state: closed
-scope: html_projection
-created: 2026-09-13
-  spawned-by d-3026 (D-41) 検索と絞り込みは常設のツールバーとしてヘッダー直下に置く
-  targets ac-b77a (AC-26) 検索欄と種別・スコープ・状態の絞り込みがヘッダー直下に常に見え、左パネルは Overview / Blockers / Progress だけになる
+- 種類: need
+- scope: html_projection
+- created: 2026-09-13
+- 状態: closed
+- 別名: N-21
+
+## 関係
+
+- spawned-by d-3026 (D-41) 検索と絞り込みは常設のツールバーとしてヘッダー直下に置く
+- targets ac-b77a (AC-26) 検索欄と種別・スコープ・状態の絞り込みがヘッダー直下に常に見え、左パネルは Overview / Blockers / Progress だけになる
+
+## 本文
+
 ## 要求（2026-09-13、マスター承認済み。開発担当 deck へ振り出し）
 
 根拠は D-37（業務: 絞り込んで一覧を読む・状況把握）と D-41。状態は N-20 の後。判定は AC-26。
@@ -28,5 +36,11 @@ created: 2026-09-13
 
 deck の報告をコミット 4163149 で照合。隔離 worktree で再実行: fmt exit 0、clippy 警告 0、Rust 71 passed / 0 failed、E2E 26 passed / 0 failed。受領。push・公開は未実施。
 
-閉じた理由: 事実（未実装のまま閉じた。HTML 投影は D-79 で消す (D-80)）
+## 閉じ方
+
+- 事実で閉じた（未実装のまま閉じた。HTML 投影は D-79 で消す (D-80)）
+
+## 自由属性
+
+- 無し
 

@@ -1,11 +1,17 @@
 # q-36fa (Q-38) ワークフロー外で閉じた要求を complete へ進める経路をどの形で用意するか
 
-state: closed
-decider: master
-options: gy.toml のガードに waived_by = "<記録名>" を足し、プロジェクトが定義した免除記録（理由・外部証跡・承認者）が有効ならそのガードの records と checks を適用せず、遷移の snapshot に免除の事実を残す, req advance --to complete に --legacy を足し、legacy_status を持ち transitions と記録が無い要求に限ってガードを飛ばし、transitions[] に飛ばした事実を残す, 12 個目の終端状態 closed を追加し、legacy_status を持つ要求だけが入れるようにして handover の active から外す, gy は変えず、当該要求に next_evidence と responsible を事実として書き defining のまま置く
-scope: guard_waiver
-created: 2026-09-14
-  closes d-237a (D-57) ガードの免除は gy.toml の waived_by が指す記録で表し、有効な免除記録を持つ要求にはそのガードの records と checks を掛けず、snapshot に免除の事実を残す
+- 種類: question
+- scope: guard_waiver
+- created: 2026-09-14
+- 状態: closed
+- 別名: Q-38
+
+## 関係
+
+- closes d-237a (D-57) ガードの免除は gy.toml の waived_by が指す記録で表し、有効な免除記録を持つ要求にはそのガードの records と checks を掛けず、snapshot に免除の事実を残す
+
+## 本文
+
 ## Context
 
 Kokopelli の進行担当からマスター経由で受けた 2 件目の要望（2026-09-14、gy 0.4.1）。移行時に legacy_status「進行中（状態集合の外）」で入れた要求 #5969 は status が defining、transitions も workflow records も無い。実態は閉じている（GitHub は 2026-09-08 にクローズ、挙げた論点 Q-17 / Q-18 も閉じている）が、`gy req advance 5969 --to complete` は complete に掛かる approval / audit / delivery のガードで止まる。記録を後付けで作れば通るが実在しない作業の記録になるので採らない、という判断を Kokopelli が持っている。残る実害は handover の missing に 1 件残り終了コードが 1 のままなこと。
@@ -51,5 +57,11 @@ waived_by = "legacy_closure"
 
 有効な `legacy_closure` を持つ要求には audit ガードの records と checks が掛からない。遷移の snapshot には `legacy_closure` と `waived: {"audit": "legacy_closure"}` が残り、免除したガードの checks は保存しない。lint と handover の現在状態の検査も同じ経路を使う。waived_by を書かないプロジェクトには出口が無い。免除記録に誰が書けるかを gy は判定しないので、承認者を必須項目にするかはプロジェクトが決める。
 
-閉じ方: 決定（2026-09-14T03:13:04.069891+00:00）
+## 閉じ方
+
+- 決定で閉じた（2026-09-14T03:13:04.069891+00:00）
+
+## 自由属性
+
+- 無し
 

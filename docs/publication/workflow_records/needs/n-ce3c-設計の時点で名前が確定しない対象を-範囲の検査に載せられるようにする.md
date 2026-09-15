@@ -1,9 +1,17 @@
 # n-ce3c (N-11) 設計の時点で名前が確定しない対象を、範囲の検査に載せられるようにする
 
-state: open
-scope: workflow_records
-created: 2026-09-13
-  targets ac-554a (AC-14) 設計の時点で名前が確定しないファイルを含む設計と実装の報告が範囲の検査を通り、宣言されていないファイルが混ざった場合は落ちる
+- 種類: need
+- scope: workflow_records
+- created: 2026-09-13
+- 状態: open
+- 別名: N-11
+
+## 関係
+
+- targets ac-554a (AC-14) 設計の時点で名前が確定しないファイルを含む設計と実装の報告が範囲の検査を通り、宣言されていないファイルが混ざった場合は落ちる
+
+## 本文
+
 ## 出所
 
 kokopelli-recurring-v2 の進行管理担当から 2026-09-13 に報告。Issue #6009 の進行中、Rails の migration は実装時にタイムスタンプが採番されるため、設計提案には `db/migrate/<generated>_add_recurring_v2_enabled_to_tf_recurring_accounts.rb` と書き、実物は `20260912045332_add_...rb` になった。
@@ -25,4 +33,7 @@ exit=2
 
 検査を弱めるのではなく、検査が成立しない事例を成立させる変更として設計する。既存の same-set / subset の意味は変えない。どちら側がどう確定しない部分を宣言できるかを、実装前に定義する。
 
+## 自由属性
+
+- 無し
 

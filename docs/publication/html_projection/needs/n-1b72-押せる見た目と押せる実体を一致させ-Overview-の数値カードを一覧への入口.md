@@ -1,11 +1,19 @@
 # n-1b72 (N-27) 押せる見た目と押せる実体を一致させ、Overview の数値カードを一覧への入口にする
 
-state: closed
-scope: html_projection
-created: 2026-09-13
-  depends-on n-b4d3 (N-25) 画面のコードを ui/ 配下の TypeScript モジュールに再構成し、bun で束ねた成果物を html.rs が埋め込む形にする
-  spawned-by d-6e4d (D-44) 押せるものは押せる見た目を持ち、押せる見た目のものは押すと何かが起きる
-  targets ac-9e06 (AC-32) クリックハンドラを持つ全要素が button/link の役割とポインタカーソルを持ち、Overview の数値カードはそれぞれの一覧へ至るか枠を持たず、ポインタカーソルを持つのに何も起きない要素が 0 件である
+- 種類: need
+- scope: html_projection
+- created: 2026-09-13
+- 状態: closed
+- 別名: N-27
+
+## 関係
+
+- depends-on n-b4d3 (N-25) 画面のコードを ui/ 配下の TypeScript モジュールに再構成し、bun で束ねた成果物を html.rs が埋め込む形にする
+- spawned-by d-6e4d (D-44) 押せるものは押せる見た目を持ち、押せる見た目のものは押すと何かが起きる
+- targets ac-9e06 (AC-32) クリックハンドラを持つ全要素が button/link の役割とポインタカーソルを持ち、Overview の数値カードはそれぞれの一覧へ至るか枠を持たず、ポインタカーソルを持つのに何も起きない要素が 0 件である
+
+## 本文
+
 ## 要求（2026-09-14、マスター承認済み。開発担当 deck へ振り出し）
 
 根拠は D-44、D-40、D-39。状態は N-22 の後（fc71408）。判定は AC-32。受領は kuroko の目視を含む。
@@ -43,5 +51,11 @@ deck の報告をコミット 2d3d3ce で照合。隔離 worktree で再実行: 
 
 cad46c1 を隔離 worktree で再実行: fmt exit 0、clippy 警告 0、Rust 71 passed、bun check exit 0。actions.spec は単独で 4/4 passed（前回の 170 件の不合格は解消）。全件は 39 passed / 1 failed だが、落ちたのは location.spec「URL selects IDs, reports missing IDs, and restores state through history」で、goBack 直後の hash の tab が jams のはずが overview になる。単独 3 回で 2 回成功 1 回失敗（時間依存）。N-27 の変更と無関係の既存テスト（N-19 由来）の不安定さなので N-27 は受領し、不安定さは N-28 として切り出す。
 
-閉じた理由: 事実（migrated: complete）
+## 閉じ方
+
+- 事実で閉じた（migrated: complete）
+
+## 自由属性
+
+- 無し
 

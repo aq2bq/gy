@@ -1,10 +1,18 @@
 # n-afe9 (N-19) 表示状態を URL の hash に載せ、ID で直接到達でき、戻るが効くようにする
 
-state: closed
-scope: html_projection
-created: 2026-09-13
-  spawned-by d-626e (D-38) 場所は URL が持つ: 表示状態は hash に載り、ブラウザの戻るが効き、ID を貼れば開く
-  targets ac-5b53 (AC-24) gy.html#<ID> を開くとそのノードの詳細が開いており、焦点・選択・絞り込み・検索語の変更が hash に反映され、ブラウザの戻るで直前の表示状態に戻る
+- 種類: need
+- scope: html_projection
+- created: 2026-09-13
+- 状態: closed
+- 別名: N-19
+
+## 関係
+
+- spawned-by d-626e (D-38) 場所は URL が持つ: 表示状態は hash に載り、ブラウザの戻るが効き、ID を貼れば開く
+- targets ac-5b53 (AC-24) gy.html#<ID> を開くとそのノードの詳細が開いており、焦点・選択・絞り込み・検索語の変更が hash に反映され、ブラウザの戻るで直前の表示状態に戻る
+
+## 本文
+
 ## 要求（2026-09-13、マスター承認済み。開発担当 deck へ振り出し）
 
 根拠は D-37（業務: 指名到達・辿る）と D-38。状態は `main` beb4449。判定は AC-24。
@@ -28,5 +36,11 @@ created: 2026-09-13
 
 deck の報告をコミット ba302ab で照合。kuroko 側は deck の作業ツリーと分けた worktree（e79b617）で再実行: fmt exit 0、clippy 警告 0、cargo test --workspace --locked 71 passed / 0 failed、e2e npm test 23 passed / 0 failed。作業ツリー上で走らせた最初の E2E は N-20 作業中の未コミット変更を含んでいたため 3 件落ちたが、コミット済み HEAD では再現せず。受領。push・公開は未実施。
 
-閉じた理由: 事実（未実装のまま閉じた。HTML 投影は D-79 で消す (D-80)）
+## 閉じ方
+
+- 事実で閉じた（未実装のまま閉じた。HTML 投影は D-79 で消す (D-80)）
+
+## 自由属性
+
+- 無し
 

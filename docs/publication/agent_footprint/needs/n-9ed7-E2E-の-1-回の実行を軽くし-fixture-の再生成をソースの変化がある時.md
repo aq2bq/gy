@@ -1,10 +1,18 @@
 # n-9ed7 (N-30) E2E の 1 回の実行を軽くし、fixture の再生成をソースの変化がある時だけにする
 
-state: closed
-scope: agent_footprint
-created: 2026-09-14
-  spawned-by d-c567 (D-46) CI に追加した検査は、同一コマンドのローカル成功と欠陥注入での失敗を根拠に受け入れ、GitHub 上の実行結果は push 後に追補の evidence として確かめる
-  targets ac-f68f (AC-35) e2e のローカル既定（npm test、機能 spec）が fixture 再利用時に 30 秒台で完了し、npm run test:all は CI と同じ全件を実行して成否が 1 ワーカー実行と同一である
+- 種類: need
+- scope: agent_footprint
+- created: 2026-09-14
+- 状態: closed
+- 別名: N-30
+
+## 関係
+
+- spawned-by d-c567 (D-46) CI に追加した検査は、同一コマンドのローカル成功と欠陥注入での失敗を根拠に受け入れ、GitHub 上の実行結果は push 後に追補の evidence として確かめる
+- targets ac-f68f (AC-35) e2e のローカル既定（npm test、機能 spec）が fixture 再利用時に 30 秒台で完了し、npm run test:all は CI と同じ全件を実行して成否が 1 ワーカー実行と同一である
+
+## 本文
+
 ## 出所
 
 2026-09-14、マスターの「実装に想定以上の時間がかかった」報告を kuroko が調査。need あたりの実作業は 5〜27 分だが、全件 E2E は 1 回約 95 秒（deck 実測 96.1 / 97.4 / 95.6 秒）で、毎回 `cargo build` と全 fixture の HTML 再生成を含む。1 need につき deck と kuroko で 2〜4 回走るので、5〜7 分が検証で消える。`playwright.config.mjs` は workers: 1、fullyParallel: false。CI も 1 ワーカー。
@@ -35,5 +43,11 @@ created: 2026-09-14
 
 deck の報告をコミット b546773 と c6f7f1e で照合。隔離 worktree: fmt exit 0、clippy 警告 0。npm test（機能 42 件、並列 4 ワーカー）は 1 回目 30.2 秒（fixture 生成あり）、2 回目 17.8 秒、3 回目 17.6 秒、いずれも 42/42。npm run test:all は 54.6 秒で 45/45。CI=1 npm test は testIgnore が空になり全 45 件を 1 ワーカーで実行（ci.yml は `npm test` のまま、成果物も不変）。AC-35 の改訂条件（ローカル既定 30 秒台、test:all は全件で成否同一）を満たす。受領。
 
-閉じた理由: 事実（migrated: complete）
+## 閉じ方
+
+- 事実で閉じた（migrated: complete）
+
+## 自由属性
+
+- 無し
 

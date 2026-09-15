@@ -1,11 +1,17 @@
 # q-cbf1 (Q-26) N-13 の説明を cheatsheet にも表示するか
 
-state: closed
-decider: master
-options: gy.toml の説明を handover JSON で公開し cheatsheet は共通の操作早見表を維持する（推奨）, cheatsheet に記録名・項目パス・説明の設定別一覧を追加する
-scope: workflow_records
-created: 2026-09-13
-  closes d-feb4 (D-30) 記録の説明は handover の出力で公開し、cheatsheet には載せない
+- 種類: question
+- scope: workflow_records
+- created: 2026-09-13
+- 状態: closed
+- 別名: Q-26
+
+## 関係
+
+- closes d-feb4 (D-30) 記録の説明は handover の出力で公開し、cheatsheet には載せない
+
+## 本文
+
 # N-13 cheatsheet への説明表示 — Q-26、PO 判断待ち
 
 gy の開発担当のデック先生です。N-13 の description と handover JSON は実装・検証済みです。cheatsheet の表示は変更していません。
@@ -16,5 +22,11 @@ gy の開発担当のデック先生です。N-13 の description と handover J
 
 PO には A と B の採否をお願いします。追加表示がコンテキスト長への依存を減らす実運用上の根拠はまだないため、A を推奨します。
 
-閉じ方: 決定（2026-09-13T09:01:16.732708+00:00）
+## 閉じ方
+
+- 決定で閉じた（2026-09-13T09:01:16.732708+00:00）
+
+## 自由属性
+
+- 無し
 

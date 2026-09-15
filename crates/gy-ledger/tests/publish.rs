@@ -76,7 +76,7 @@ fn decision(hash: &str, alias: &str, title: &str) -> Node {
         SCOPE,
         DATE,
         title,
-        DecisionScope::recorded("scope").unwrap(),
+        DecisionScope::recorded("applies at dawn").unwrap(),
     )
     .unwrap();
     node.add_alias(Alias(alias.into()));
@@ -134,7 +134,7 @@ fn a_file_name_is_safe_and_bounded() {
 }
 
 #[test]
-fn a_decision_file_puts_its_lineage_first() {
+fn a_decision_file_has_one_relations_section_and_a_spaced_shape() {
     let mut repo = repo();
     let old = decision("0005", "D-1", "the old decision");
     let mut new = decision("0006", "D-2", "the new decision");
@@ -148,19 +148,41 @@ fn a_decision_file_puts_its_lineage_first() {
     let publication = render(&repo);
     let newer = file(&publication, "a", "d-0006");
     assert!(
-        newer.starts_with("# d-0006 (D-2) the new decision\n"),
+        newer.starts_with("# d-0006 (D-2) the new decision\n\n"),
         "{newer}"
     );
+    assert_eq!(newer.matches("## 関係").count(), 1, "{newer}");
+    assert_eq!(newer.matches("## 成立範囲").count(), 1, "{newer}");
+    assert_eq!(newer.matches("applies at dawn").count(), 1, "{newer}");
     assert!(
-        newer
-            .contains("## 関係\n- narrows d-0005 (D-1) the old decision（mark: the changed part）"),
+        newer.contains("- narrows d-0005 (D-1) the old decision（mark: the changed part）"),
         "{newer}"
     );
+    for (index, line) in newer.lines().enumerate() {
+        if line.starts_with("## ") {
+            assert!(
+                index > 0 && newer.lines().nth(index - 1).unwrap().is_empty(),
+                "no blank line before {line}:\n{newer}"
+            );
+        }
+    }
     let older = file(&publication, "a", "d-0005");
     assert!(
-        older.contains("## 関係\n- narrowed-by d-0006 (D-2) the new decision"),
+        older.contains("- narrowed-by d-0006 (D-2) the new decision"),
         "{older}"
     );
+}
+
+#[test]
+fn the_index_omits_an_empty_writer() {
+    let mut repo = repo();
+    let criterion = Node::criterion(id(NodeKind::Criterion, "0001"), SCOPE, DATE, "an AC").unwrap();
+    seed(&mut repo, &[criterion]);
+
+    let index = publish(&repo, None, None, "", "/ledger").unwrap();
+    let index = file(&index, "a", "README.md");
+    assert!(!index.contains("- 書き手:"), "{index}");
+    assert!(index.contains("- 正本: /ledger"), "{index}");
 }
 
 #[test]

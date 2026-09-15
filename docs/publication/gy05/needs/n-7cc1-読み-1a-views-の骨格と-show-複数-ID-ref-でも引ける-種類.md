@@ -1,15 +1,23 @@
 # n-7cc1 (N-57) 読み (1a): views の骨格と show（複数 ID、ref でも引ける、種類ごとの逐語、--full、--json）
 
-state: closed
-scope: gy05
-created: 2026-09-15
-  depends-on n-447c (N-54) 操作 (d): edit（--title / --body / --set / --append、--reason 必須。状態と辺は変えない）と undo の操作
-  spawned-by d-f77c (D-69) 新しい gy の操作は末端 20（書き 14、読み 6）の閉じた集合とし、一つの意図を一つのコマンド・一つのトランザクションで行う
-  targets ac-c21e (AC-43) セッション再開の 1 コマンド（handover）で、進行中と確定・未完了の要求が ref 付きで復元でき、warn は件数だけ
-  targets ac-e8b7 (AC-54) すべての変更が物理設計の基準（1 ファイル 300 行、1 関数 40 行、glob import 0、属性の文字列キーは 1 か所、テストは操作ごとに 300 行以下、1 ニーズの差分 600 行以下）と層の依存の向きを満たし、検収前に機械で測った値が残っている
-  depended-on-by n-0471 (N-36) bearer_count と need の状態を導出にし、handover を error と進行中だけにする
-  depended-on-by n-58b4 (N-58) 読み (1b): list（--type / --status / --targets / --grep / --actor / --since。actor と since は書き込み単位）を views 層に作る（N-57 から分割）
-  depended-on-by n-da96 (N-39) 各コマンドの出力が、そのノードに無いものと次の操作を返し、同梱 skill を流れの説明だけにする
+- 種類: need
+- scope: gy05
+- created: 2026-09-15
+- 状態: closed
+- 別名: N-57
+
+## 関係
+
+- depended-on-by n-0471 (N-36) bearer_count と need の状態を導出にし、handover を error と進行中だけにする
+- depended-on-by n-58b4 (N-58) 読み (1b): list（--type / --status / --targets / --grep / --actor / --since。actor と since は書き込み単位）を views 層に作る（N-57 から分割）
+- depended-on-by n-da96 (N-39) 各コマンドの出力が、そのノードに無いものと次の操作を返し、同梱 skill を流れの説明だけにする
+- depends-on n-447c (N-54) 操作 (d): edit（--title / --body / --set / --append、--reason 必須。状態と辺は変えない）と undo の操作
+- spawned-by d-f77c (D-69) 新しい gy の操作は末端 20（書き 14、読み 6）の閉じた集合とし、一つの意図を一つのコマンド・一つのトランザクションで行う
+- targets ac-c21e (AC-43) セッション再開の 1 コマンド（handover）で、進行中と確定・未完了の要求が ref 付きで復元でき、warn は件数だけ
+- targets ac-e8b7 (AC-54) すべての変更が物理設計の基準（1 ファイル 300 行、1 関数 40 行、glob import 0、属性の文字列キーは 1 か所、テストは操作ごとに 300 行以下、1 ニーズの差分 600 行以下）と層の依存の向きを満たし、検収前に機械で測った値が残っている
+
+## 本文
+
 ## 経緯
 
 書きの操作が揃ったので読みの投影に入る（2026-09-15 lead）。
@@ -18,5 +26,11 @@ created: 2026-09-15
 
 見込み約 660 行のため、list を N-58 に割った（ピコちゃんの案）。このニーズは views/mod.rs の骨格と show と tests/show.rs。許可した追加: model/node.rs に `pub fn free_attributes(&self) -> &FreeAttributes`（full で自由属性すべてを出すため。views から serde を辿ると文字列キーが増えるのを避ける）。
 
-閉じた理由: 事実（migrated: complete）
+## 閉じ方
+
+- 事実で閉じた（migrated: complete）
+
+## 自由属性
+
+- 無し
 

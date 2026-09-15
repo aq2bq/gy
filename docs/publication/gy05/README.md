@@ -1,7 +1,7 @@
 # gy の公開物 — gy05
 
-- 生成: 2026-09-15T07:59:17Z
-- seq: 45
+- 生成: 2026-09-15T08:12:12Z
+- seq: 51
 - scope: gy05
 - since: (先頭から)
 - 書き手: piko
@@ -65,7 +65,7 @@ ID と別名:
 - [n-0551 (N-65) 移行 (a1): クレート gy-migrate の骨格（引数、ガード、0.4 を gy-core で読んで中間の型 Legacy へ、--dry-run、報告の器）](needs/n-0551-移行-a1-クレート-gy-migrate-の骨格-引数-ガード-0-4-を-g.md) — closed
 - [n-0cb7 (N-48) 正本の置き場所（XDG のデータディレクトリ + リポジトリのハッシュ）と形式の版 format の読み書き・判定・移行の入口の枠](needs/n-0cb7-正本の置き場所-XDG-のデータディレクトリ-リポジトリのハッシュ-と形式の版.md) — closed
 - [n-147b (N-70) 0.5.0 の準備: gy5 を gy に改名し、gy-core と 0.4 の CLI と gy-migrate を消し、docs/ledger を新しい正本へ切り替え、版とCHANGELOG を整える（公開はマスターの指示）](needs/n-147b-0-5-0-の準備-gy5-を-gy-に改名し-gy-core-と-0-4-の.md) — closed
-- [n-1aad edit --set scope=<名前> でノードを別のスコープへ移せるようにする（名前は gy.toml にあるものだけ。ID と辺は変わらない）](needs/n-1aad-edit---set-scope-名前-でノードを別のスコープへ移せるようにする.md) — open
+- [n-1aad edit --set scope=<名前> でノードを別のスコープへ移せるようにする（名前は gy.toml にあるものだけ。ID と辺は変わらない）](needs/n-1aad-edit---set-scope-名前-でノードを別のスコープへ移せるようにする.md) — closed
 - [n-348d (N-45) 物理設計の基準を機械で測る道具 scripts/measure.sh を用意する（行数・関数の長さ・glob・文字列キー・テストの行数・差分・層の向き）](needs/n-348d-物理設計の基準を機械で測る道具-scripts-measure-sh-を用意する.md) — closed
 - [n-35cf show / list / publish のニーズの状態を next と同じ導出（open / closed / done）にする。list --status done を受ける](needs/n-35cf-show-list-publish-のニーズの状態を-next-と同じ導出-op.md) — closed
 - [n-3806 (N-67) 移行 (a2): ノードの写し（種類ごとの対応表、別名、ref、1 トランザクション）とテスト（N-65 から分割）](needs/n-3806-移行-a2-ノードの写し-種類ごとの対応表-別名-ref-1-トランザクション.md) — closed
@@ -77,8 +77,9 @@ ID と別名:
 - [n-5091 (N-71) publish (b): ノードの節（問い 1・3・4）と「この期間の変更」（問い 5）、gy5 の配線、publish-sample.md（N-40 から分割）](needs/n-5091-publish-b-ノードの節-問い-1-3-4-と-この期間の変更-問い-5.md) — closed
 - [n-54fe (N-61) CLI (1a): 新しい gy の CLI クレート gy5 の骨格（clap、GY_ACTOR、--json、-C、終了コード、正本の自動作成）と読み 4 の配線](needs/n-54fe-CLI-1a-新しい-gy-の-CLI-クレート-gy5-の骨格-clap-GY.md) — closed
 - [n-58b4 (N-58) 読み (1b): list（--type / --status / --targets / --grep / --actor / --since。actor と since は書き込み単位）を views 層に作る（N-57 から分割）](needs/n-58b4-読み-1b-list---type---status---targets---g.md) — closed
-- [n-5c59 publish (b): スコープごとの索引 README.md（見出し・読み方・一覧とリンク・履歴・診断）と --since、gy.toml の output、文書、gy 自身の docs/publication の作り直し（n-45ef から分割）](needs/n-5c59-publish-b-スコープごとの索引-README-md-見出し-読み方-一覧.md) — open
+- [n-5c59 publish (b): スコープごとの索引 README.md（見出し・読み方・一覧とリンク・履歴・診断）と --since、gy.toml の output、文書、gy 自身の docs/publication の作り直し（n-45ef から分割）](needs/n-5c59-publish-b-スコープごとの索引-README-md-見出し-読み方-一覧.md) — closed
 - [n-6eae publish <ID> を見出しと箇条書きの形にし、既定の読み物の見本を 2 つ（判断待ちが無いとき / あるとき）作ってマスターに見せる](needs/n-6eae-publish-ID-を見出しと箇条書きの形にし-既定の読み物の見本を-2-つ.md) — closed
+- [n-79fb edit で、未記録の成立範囲だけを 1 回記録できる（--set decision_scope=<文>。記録済みは拒む）。--set key= は自由属性を消す](needs/n-79fb-edit-で-未記録の成立範囲だけを-1-回記録できる---set-decisi.md) — open
 - [n-7cc1 (N-57) 読み (1a): views の骨格と show（複数 ID、ref でも引ける、種類ごとの逐語、--full、--json）](needs/n-7cc1-読み-1a-views-の骨格と-show-複数-ID-ref-でも引ける-種類.md) — closed
 - [n-816a (N-55) 操作 (a2): question add / question close / criterion add / criterion satisfy の 4 操作（N-51 から分割）](needs/n-816a-操作-a2-question-add-question-close-criter.md) — closed
 - [n-81d8 (N-52) 操作 (b): decide（ADR 有り無し、closes / narrows / supersedes / completes / widens と mark）と link（--mark、--remove）](needs/n-81d8-操作-b-decide-ADR-有り無し-closes-narrows-supe.md) — closed
@@ -95,6 +96,7 @@ ID と別名:
 - [n-d514 (N-51) 操作 (a1): 辺を from 側だけに置き Need.targets の重複を消し、need add / need close を作る](needs/n-d514-操作-a1-辺を-from-側だけに置き-Need-targets-の重複を消し.md) — closed
 - [n-e3c1 (N-68) 移行 (b2): legacy.rs の分割、要求の 11 状態 → 4 状態と approval / completion、決定側の closes を読まない修正](needs/n-e3c1-移行-b2-legacy-rs-の分割-要求の-11-状態-4-状態と-appr.md) — closed
 - [n-edce (N-47) 辺の種類の組（論点 closes 決定、ニーズ targets 受け入れ条件など）を model の不変条件として検査し、外れた組の Link を作れなくする](needs/n-edce-辺の種類の組-論点-closes-決定-ニーズ-targets-受け入れ条件など.md) — closed
+- [n-ef16 publish のノードのファイルの形を整える: 関係は 1 か所（両向き）、成立範囲は 1 回、節の間に空行、書き手が無ければ行を出さない](needs/n-ef16-publish-のノードのファイルの形を整える-関係は-1-か所-両向き-成立範.md) — open
 - [n-f088 ID の解決で、0 埋めの同一視を旧 ID の別名にだけ当て、gy が振ったハッシュ ID には当てない（d-0008 が D-8 と衝突する欠陥）。新しい ID は数字だけのハッシュを避ける](needs/n-f088-ID-の解決で-0-埋めの同一視を旧-ID-の別名にだけ当て-gy-が振ったハッ.md) — closed
 - [n-f312 (N-62) CLI (2a): decide / link / edit / undo の配線と、書きの入口での actor 検査の前倒し](needs/n-f312-CLI-2a-decide-link-edit-undo-の配線と-書きの入口で.md) — closed
 - [n-f65b (N-63) CLI (1b): need / question / criterion の 6 操作の配線とテスト（N-61 から分割）](needs/n-f65b-CLI-1b-need-question-criterion-の-6-操作の配線.md) — closed
@@ -259,6 +261,12 @@ ID と別名:
 | 43 | 2026-09-15 07:44 | lead | n-45ef publish (a): スコープごとのディレクトリ出力と 1 ノード 1 ファイル（関係と mark を相手の題名付きで。対象スコープのディレクトリだけを作り直す） | updated | edit n-45ef | 見込み 650〜750 行のため分割 |
 | 44 | 2026-09-15 07:49 | lead | n-45ef publish (a): スコープごとのディレクトリ出力と 1 ノード 1 ファイル（関係と mark を相手の題名付きで。対象スコープのディレクトリだけを作り直す） | updated | need close n-45ef | 2026-09-15 lead が検収。measure 違反 0（score 368）、テスト 196 件 0 failed。gy 自身の台帳で --scope gy05 を一時ディレクトリへ出し、gy05/ の下に 4 種のディレクトリと 1 ノード 1 ファイル、決定は「## 関係」の節、出力先の無関係なファイルが残ることを確認。コミット d0b22ba |
 | 45 | 2026-09-15 07:54 | lead | d-dcbb 0.4 の運用を決めた古い決定は消さず、新しい決定で置き換える（supersedes と mark）。公開物にも「置き換えられた」として残す。正本からノードを消す操作は提供しない | created | decide d-dcbb | decide |
+| 46 | 2026-09-15 08:01 | lead | n-5c59 publish (b): スコープごとの索引 README.md（見出し・読み方・一覧とリンク・履歴・診断）と --since、gy.toml の output、文書、gy 自身の docs/publication の作り直し（n-45ef から分割） | updated | need close n-5c59 | 2026-09-15 lead が検収。measure 違反 0（score 405、生成物を除く）、テスト 198 件 0 failed。gy 自身の公開物 8 スコープ 280 ファイル、gy05 の索引 269 行（読み方・一覧・履歴・診断）。コミット 8d304b1、ローカルにインストール |
+| 47 | 2026-09-15 08:03 | lead | n-ef16 publish のノードのファイルの形を整える: 関係は 1 か所（両向き）、成立範囲は 1 回、節の間に空行、書き手が無ければ行を出さない | created | need add n-ef16 | need add |
+| 48 | 2026-09-15 08:03 | lead | n-ef16 publish のノードのファイルの形を整える: 関係は 1 か所（両向き）、成立範囲は 1 回、節の間に空行、書き手が無ければ行を出さない | updated | link n-ef16 spawned-by d-7c64 | link |
+| 49 | 2026-09-15 08:08 | lead | n-79fb edit で、未記録の成立範囲だけを 1 回記録できる（--set decision_scope=<文>。記録済みは拒む）。--set key= は自由属性を消す | created | need add n-79fb | need add |
+| 50 | 2026-09-15 08:08 | lead | n-79fb edit で、未記録の成立範囲だけを 1 回記録できる（--set decision_scope=<文>。記録済みは拒む）。--set key= は自由属性を消す | updated | link n-79fb spawned-by d-dcbb | link |
+| 51 | 2026-09-15 08:08 | lead | n-1aad edit --set scope=<名前> でノードを別のスコープへ移せるようにする（名前は gy.toml にあるものだけ。ID と辺は変わらない） | updated | need close n-1aad | 2026-09-15 lead が検収。measure 違反 0（score 139）、テスト 0 failed。一時台帳で scope a → b の移動と、無い名前の Err を確認。コミット c67be17、ローカルにインストール |
 
 ## 診断
 

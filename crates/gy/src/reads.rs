@@ -45,7 +45,7 @@ pub fn write_publish(
     let repository = repo::open(ledger)?;
     let writer = Actor::from_env()
         .map(|actor| actor.name().to_string())
-        .unwrap_or_else(|_| "unknown".to_string());
+        .unwrap_or_default();
     let publication = publish(
         &repository,
         cli.scope.as_deref(),

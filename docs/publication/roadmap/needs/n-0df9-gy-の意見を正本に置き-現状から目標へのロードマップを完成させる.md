@@ -1,10 +1,18 @@
 # n-0df9 (N-33) gy の意見を正本に置き、現状から目標へのロードマップを完成させる
 
-state: open
-scope: roadmap
-created: 2026-09-14
-  spawned-by d-a1d5 (D-58) ロードマップ策定の対話は、マスターの意見と Kokopelli の回答を逐語で .local/roadmap/ に残し、確認済みの意見だけを台帳の決定に、公開できる形だけを docs のロードマップに置く
-  targets ac-2ff5 (AC-38) gy の意見（たった一つの進め方）とそこへ至るロードマップが、マスターの言葉を正本として docs に置かれ、現状（Kokopelli での実績）と目標の差分、削るもの・残すもの・足すものの順序が読める
+- 種類: need
+- scope: roadmap
+- created: 2026-09-14
+- 状態: open
+- 別名: N-33
+
+## 関係
+
+- spawned-by d-a1d5 (D-58) ロードマップ策定の対話は、マスターの意見と Kokopelli の回答を逐語で .local/roadmap/ に残し、確認済みの意見だけを台帳の決定に、公開できる形だけを docs のロードマップに置く
+- targets ac-2ff5 (AC-38) gy の意見（たった一つの進め方）とそこへ至るロードマップが、マスターの言葉を正本として docs に置かれ、現状（Kokopelli での実績）と目標の差分、削るもの・残すもの・足すものの順序が読める
+
+## 本文
+
 ## 経緯
 
 2026-09-14 夜。マスターの意見を逐語で受け（.local/roadmap/opinions.md、確認済 13 件）、Kokopelli の進行管理担当へ 3 往復のインタビューをした（.local/roadmap/interview-kokopelli.md、gy.toml の写しは kokopelli-gy.toml.snapshot）。骨子の確認を抽象的な問いで求めて伝わらなかったため、本文を先に書く形に変えた。
@@ -29,4 +37,7 @@ roadmap.md の「未決の一覧」7 件。
 
 マスターが移行のリード役（Herdr 名 lead、w37:p1C）を召喚。引き継ぎテスト（.local/roadmap/handover-test.md、12 問と N-42 の依頼書の下書き）に lead が正本だけで合格。lead は正本の食い違いを 3 つ見つけ（末端 19 と 20 の混在、AGENTS.md の開発担当の記述、N-33 の未決の件数）、いずれも正本を直した。未決は保存形式・マスターの問いの一覧・版番号の 3 件。以後の PO と進行は lead。kuroko のセッションはここで終了。
 
+## 自由属性
+
+- 無し
 

@@ -1,20 +1,14 @@
-//! The node files: one file per node, named for its kind and ID (d-7c64).
+//! The node files: one file per node, named for its kind and ID (d-7c64), in
+//! one fixed shape (n-ef16). The body is carried as it is; only the framing is
+//! built here.
 use super::super::show::{EdgeLine, Shown, show};
 use super::{FileEntry, path, reference};
-use crate::model::{ClosedBy, Closure, Need, Node, NodeData, NodeKind, Question, Requirement};
+use crate::model::{
+    Closed, ClosedBy, Closure, Criterion, Node, NodeData, NodeKind, Question, Requirement,
+};
 use crate::ops::repository::{Repository, Result, Store};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write;
-
-/// The lineage relations a decision prints first, one per line.
-const LINEAGE: &[&str] = &[
-    "supersedes",
-    "superseded-by",
-    "narrows",
-    "narrowed-by",
-    "widens",
-    "completes",
-];
 
 /// Every node file of one scope, in the fixed order kind, created, ID.
 pub(super) fn files<S: Store>(
@@ -72,81 +66,191 @@ fn key(node: &Node) -> (usize, String, String) {
     )
 }
 
+/// One node file: a heading, the metadata, then the sections (n-ef16).
 fn text(shown: &Shown, targets: &BTreeMap<String, &Node>) -> String {
-    let mut out = format!("# {} {}\n\n", heading(shown), shown.title);
-    if shown.kind == NodeKind::Decision {
-        out.push_str(&relations(shown, targets));
-    }
-    out.push_str(&rest(shown, targets));
-    out
-}
-
-/// The id with its old aliases and, for a requirement, its reference (D-62).
-fn heading(shown: &Shown) -> String {
-    let mut extra = shown.aliases.clone();
-    if let Some(reference) = &shown.reference {
-        extra.push(reference.clone());
-    }
-    if extra.is_empty() {
-        shown.id.clone()
-    } else {
-        format!("{} ({})", shown.id, extra.join(", "))
-    }
-}
-
-/// The decision's lineage edges first, with the other side's title (d-7c64).
-fn relations(shown: &Shown, targets: &BTreeMap<String, &Node>) -> String {
-    let mut out = String::from("## 関係\n");
-    let mut count = 0;
-    for edge in &shown.edges {
-        if !LINEAGE.contains(&edge.name.as_str()) {
-            continue;
-        }
-        let _ = writeln!(
-            out,
-            "- {} {}{}",
-            edge.name,
-            other(edge, targets),
-            mark(edge)
-        );
-        count += 1;
-    }
-    if count == 0 {
-        out.push_str("- 無し\n");
+    let mut out = format!("# {}\n\n", summary(shown));
+    for line in metadata(shown) {
+        let _ = writeln!(out, "- {line}");
     }
     out.push('\n');
+    section(&mut out, "関係", &bullets(&relations(shown, targets)));
+    if let NodeData::Decision(data) = &shown.data {
+        let scope = if data.scope.is_unrecorded() {
+            "（未記録）"
+        } else {
+            data.scope.text()
+        };
+        section(&mut out, "成立範囲", scope);
+    }
+    section(&mut out, "本文", shown.body.trim_end());
+    if let Some((label, lines)) = records(shown) {
+        let lines: Vec<String> = lines.iter().map(|line| format!("- {line}")).collect();
+        section(&mut out, label, &bullets(&lines));
+    }
+    section(&mut out, "自由属性", &bullets(&attributes(shown)));
     out
 }
 
-fn rest(shown: &Shown, targets: &BTreeMap<String, &Node>) -> String {
-    let mut out = shown.verbatim();
+/// `ID (alias) title`, the form every reference uses (d-edb0).
+fn summary(shown: &Shown) -> String {
+    match shown.aliases.first() {
+        Some(alias) => format!("{} ({}) {}", shown.id, alias, shown.title),
+        None => format!("{} {}", shown.id, shown.title),
+    }
+}
+
+fn metadata(shown: &Shown) -> Vec<String> {
+    let mut out = vec![format!("種類: {}", shown.kind.name())];
     if let Some(scope) = &shown.scope {
-        let _ = writeln!(out, "scope: {scope}");
+        out.push(format!("scope: {scope}"));
     }
     if let Some(created) = &shown.created {
-        let _ = writeln!(out, "created: {created}");
+        out.push(format!("created: {created}"));
     }
-    for (name, value) in &shown.attributes {
-        let _ = writeln!(out, "{name}: {value}");
+    if let Some(state) = state(shown) {
+        let reference = match (&shown.data, &shown.reference) {
+            (NodeData::Requirement(_), Some(reference)) => format!("（ref: {reference}）"),
+            _ => String::new(),
+        };
+        out.push(format!("状態: {state}{reference}"));
     }
-    for edge in &shown.edges {
-        let _ = writeln!(
-            out,
-            "  {} {}{}",
-            edge.name,
-            other(edge, targets),
-            mark(edge)
-        );
+    if !shown.aliases.is_empty() {
+        out.push(format!("別名: {}", shown.aliases.join(", ")));
     }
-    if !shown.body.is_empty() {
-        let _ = writeln!(out, "{}", shown.body);
-    }
-    records(&shown.data, &mut out);
-    out.push('\n');
     out
 }
 
-/// The other side of an edge as `ID (alias) title`, or the bare ID.
+/// The node's state; a decision has none.
+fn state(shown: &Shown) -> Option<String> {
+    match &shown.data {
+        NodeData::Need(_) => shown.need.map(str::to_string),
+        NodeData::Question(data) => Some(open_closed(data.closure.is_some())),
+        NodeData::Requirement(data) => Some(data.state.name().to_string()),
+        NodeData::Criterion(data) => Some(
+            if data.satisfied {
+                "satisfied"
+            } else {
+                "unsatisfied"
+            }
+            .to_string(),
+        ),
+        NodeData::Decision(_) => None,
+    }
+}
+
+fn open_closed(closed: bool) -> String {
+    if closed { "closed" } else { "open" }.to_string()
+}
+
+/// Every edge of the node, both directions, once, ordered by name then ID.
+fn relations(shown: &Shown, targets: &BTreeMap<String, &Node>) -> Vec<String> {
+    let mut edges: Vec<(&EdgeLine, String)> = shown
+        .edges
+        .iter()
+        .map(|edge| {
+            (
+                edge,
+                format!("- {} {}{}", edge.name, other(edge, targets), mark(edge)),
+            )
+        })
+        .collect();
+    edges.sort_by(|a, b| (&a.0.name, &a.0.to).cmp(&(&b.0.name, &b.0.to)));
+    if edges.is_empty() {
+        vec!["- 無し".to_string()]
+    } else {
+        edges.into_iter().map(|(_, line)| line).collect()
+    }
+}
+
+fn attributes(shown: &Shown) -> Vec<String> {
+    if shown.attributes.is_empty() {
+        return vec!["- 無し".to_string()];
+    }
+    shown
+        .attributes
+        .iter()
+        .map(|(name, value)| format!("- {name}: {value}"))
+        .collect()
+}
+
+/// The kind's records section: requirements, criteria, and closures.
+fn records(shown: &Shown) -> Option<(&'static str, Vec<String>)> {
+    match &shown.data {
+        NodeData::Requirement(data) => {
+            let lines = requirement_records(data);
+            (!lines.is_empty()).then_some(("記録", lines))
+        }
+        NodeData::Criterion(data) => Some(("充足", vec![satisfaction(data)])),
+        NodeData::Question(data) => Some(("閉じ方", vec![closure(data)])),
+        NodeData::Need(data) => data
+            .closed
+            .as_ref()
+            .map(|closed| ("閉じ方", vec![closed_line(closed)])),
+        NodeData::Decision(_) => None,
+    }
+}
+
+fn requirement_records(data: &Requirement) -> Vec<String> {
+    let mut out = Vec::new();
+    if let Some(approval) = &data.approval {
+        out.push(format!(
+            "承認: design={}, heard_by={}, evidence={}, at={}",
+            approval.design, approval.heard_by, approval.evidence, approval.at
+        ));
+    }
+    for revision in &data.revisions {
+        out.push(format!(
+            "改訂: {}（出典: {}、{}）",
+            revision.reason, revision.source, revision.at
+        ));
+    }
+    if let Some(completion) = &data.completion {
+        out.push(format!(
+            "完了: {}（{}）",
+            completion.evidence, completion.at
+        ));
+    }
+    if let Some(cancellation) = &data.cancellation {
+        out.push(format!(
+            "中止: {}（出典: {}、{}）",
+            cancellation.reason, cancellation.source, cancellation.at
+        ));
+    }
+    out
+}
+
+fn satisfaction(data: &Criterion) -> String {
+    if !data.satisfied {
+        return "unsatisfied".to_string();
+    }
+    let mut line = "satisfied".to_string();
+    if let Some(evidence) = &data.evidence {
+        line.push_str(&format!("（{evidence}）"));
+    }
+    if let Some(at) = &data.satisfied_at {
+        line.push_str(&format!(" {at}"));
+    }
+    line
+}
+
+fn closure(data: &Question) -> String {
+    let evidence = data.evidence.clone().unwrap_or_default();
+    match data.closure {
+        Some(Closure::Fact) => format!("事実で閉じた（{evidence}）"),
+        Some(Closure::Decision) => format!("決定で閉じた（{evidence}）"),
+        Some(Closure::NonDecision) => format!("決定を伴わず閉じた（{evidence}）"),
+        None => "開いている".to_string(),
+    }
+}
+
+fn closed_line(closed: &Closed) -> String {
+    let by = match closed.by {
+        ClosedBy::Fact => "事実",
+        ClosedBy::External => "外部",
+    };
+    format!("{by}で閉じた（{}）", closed.evidence)
+}
+
 fn other(edge: &EdgeLine, targets: &BTreeMap<String, &Node>) -> String {
     targets
         .get(&edge.to)
@@ -161,59 +265,16 @@ fn mark(edge: &EdgeLine) -> String {
         .unwrap_or_default()
 }
 
-fn records(data: &NodeData, out: &mut String) {
-    match data {
-        NodeData::Requirement(data) => requirement_records(data, out),
-        NodeData::Question(data) => question_records(data, out),
-        NodeData::Need(data) => need_records(data, out),
-        _ => {}
-    }
+fn bullets(lines: &[String]) -> String {
+    lines.join("\n")
 }
 
-fn requirement_records(data: &Requirement, out: &mut String) {
-    if let Some(approval) = &data.approval {
-        let _ = writeln!(
-            out,
-            "承認: design={}, heard_by={}, evidence={}, at={}",
-            approval.design, approval.heard_by, approval.evidence, approval.at
-        );
-    }
-    for revision in &data.revisions {
-        let _ = writeln!(
-            out,
-            "改訂: {}（出典: {}、{}）",
-            revision.reason, revision.source, revision.at
-        );
-    }
-    if let Some(completion) = &data.completion {
-        let _ = writeln!(out, "完了: {}（{}）", completion.evidence, completion.at);
-    }
-    if let Some(cancellation) = &data.cancellation {
-        let _ = writeln!(
-            out,
-            "中止: {}（出典: {}、{}）",
-            cancellation.reason, cancellation.source, cancellation.at
-        );
-    }
-}
-
-fn question_records(data: &Question, out: &mut String) {
-    let evidence = data.evidence.clone().unwrap_or_default();
-    let line = match data.closure {
-        Some(Closure::Fact) => format!("閉じ方: 事実（{evidence}）"),
-        Some(Closure::Decision) => format!("閉じ方: 決定（{evidence}）"),
-        Some(Closure::NonDecision) => format!("閉じ方: 決定を伴わない（{evidence}）"),
-        None => "閉じ方: 開いている".to_string(),
-    };
-    let _ = writeln!(out, "{line}");
-}
-
-fn need_records(data: &Need, out: &mut String) {
-    if let Some(closed) = &data.closed {
-        let by = match closed.by {
-            ClosedBy::Fact => "事実",
-            ClosedBy::External => "外部",
-        };
-        let _ = writeln!(out, "閉じた理由: {by}（{}）", closed.evidence);
+/// One `## ` section, with a blank line before the heading and after the body.
+fn section(out: &mut String, heading: &str, body: &str) {
+    let _ = write!(out, "## {heading}\n\n");
+    let body = body.trim_end();
+    if !body.is_empty() {
+        let _ = writeln!(out, "{body}");
+        out.push('\n');
     }
 }

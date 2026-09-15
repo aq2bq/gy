@@ -1,10 +1,18 @@
 # n-adaa (N-17) 変更系コマンドの返却を識別子と更新項目に絞り、本文は show で取得する形にする
 
-state: open
-scope: agent_footprint
-created: 2026-09-13
-  spawned-by d-c956 (D-34) 変更系コマンドは id と更新した属性名だけを返し、本文と全属性は show / find が返す
-  targets ac-2101 (AC-21) 変更系コマンドの JSON 出力に入力として渡した本文が含まれず、CLI と MCP で同じ形を返す
+- 種類: need
+- scope: agent_footprint
+- created: 2026-09-13
+- 状態: open
+- 別名: N-17
+
+## 関係
+
+- spawned-by d-c956 (D-34) 変更系コマンドは id と更新した属性名だけを返し、本文と全属性は show / find が返す
+- targets ac-2101 (AC-21) 変更系コマンドの JSON 出力に入力として渡した本文が含まれず、CLI と MCP で同じ形を返す
+
+## 本文
+
 ## 出所
 
 N-16 と同じ報告。デック先生は N-11 の設計案を `gy node set Q-25 --body-file` で保存し、コマンドが返す JSON に本文全体が含まれていたため、直前に生成した長文が再びモデルへ戻った。
@@ -49,4 +57,7 @@ N-16 と同じ報告。デック先生は N-11 の設計案を `gy node set Q-25
 
 deck の報告をコミット beb4449 で照合。kuroko 側の再実行: fmt exit 0、clippy 警告 0、cargo test --workspace --locked 71 passed / 0 failed（mutation_output.rs の 3 件を含む）。実機プローブ（一時台帳、本文 5,000 バイト）: node set --body-file の結果は {"node":{"body_changed":true,"changed_attributes":[],...}} の 1 行、同値再設定は body_changed=false、show の本文長は 5,000 で保持。CHANGELOG の Unreleased/Breaking、README.md 105 行付近と README.ja.md 103 行の出力説明が実装のキーと一致。AC-21 satisfied。push・公開は未実施。main は 0.4.0 から非互換変更を含むため次版は 0.5.0。
 
+## 自由属性
+
+- 無し
 

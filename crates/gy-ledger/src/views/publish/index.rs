@@ -33,14 +33,18 @@ pub(super) fn index<S: Store>(
 fn header(scope: &str, seq: u64, since: Option<u64>, writer: &str, location: &str) -> String {
     let generated = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ");
     let since = since.map_or("(先頭から)".to_string(), |since| since.to_string());
+    let writer = if writer.trim().is_empty() {
+        String::new()
+    } else {
+        format!("- 書き手: {writer}\n")
+    };
     format!(
         "# gy の公開物 — {scope}\n\n\
          - 生成: {generated}\n\
          - seq: {seq}\n\
          - scope: {scope}\n\
          - since: {since}\n\
-         - 書き手: {writer}\n\
-         - 正本: {location}\n"
+         {writer}- 正本: {location}\n"
     )
 }
 

@@ -1,10 +1,18 @@
 # n-5ba8 (N-28) 履歴の戻る/進む直後に hash と表示状態が一致することを、時間依存なく成立させる
 
-state: closed
-scope: html_projection
-created: 2026-09-13
-  spawned-by d-626e (D-38) 場所は URL が持つ: 表示状態は hash に載り、ブラウザの戻るが効き、ID を貼れば開く
-  targets ac-8d4d (AC-33) location.spec の履歴復元テストが単独 10 回連続と全件 3 回連続で成功し、goBack 直後の hash と表示状態の一致が待機に依存しない形で検査される
+- 種類: need
+- scope: html_projection
+- created: 2026-09-13
+- 状態: closed
+- 別名: N-28
+
+## 関係
+
+- spawned-by d-626e (D-38) 場所は URL が持つ: 表示状態は hash に載り、ブラウザの戻るが効き、ID を貼れば開く
+- targets ac-8d4d (AC-33) location.spec の履歴復元テストが単独 10 回連続と全件 3 回連続で成功し、goBack 直後の hash と表示状態の一致が待機に依存しない形で検査される
+
+## 本文
+
 ## 出所
 
 2026-09-14、N-27 の照合中に kuroko の隔離 worktree で観測。cad46c1 で `location.spec.mjs` の「URL selects IDs, reports missing IDs, and restores state through history」が全件実行で 1 回失敗、単独 3 回で 1 回失敗。失敗時は `page.goBack()` 直後の hash の `tab` が期待 `jams` に対し `overview`（1 段戻り切っていない、または popstate の処理が pushState を再発行している）。
@@ -21,5 +29,11 @@ created: 2026-09-13
 
 deck の報告をコミット 249b5e2 で照合。原因はテスト側（URL 保存の完了前に goBack していた）で、popstate 後の再保存は観測されず製品側の履歴汚染は無い。隔離 worktree で再実行: fmt exit 0、clippy 警告 0、Rust 71 passed、bun check exit 0、単独 5/5 passed、全件 44/44 を 2 回連続。受領。
 
-閉じた理由: 事実（migrated: complete）
+## 閉じ方
+
+- 事実で閉じた（migrated: complete）
+
+## 自由属性
+
+- 無し
 

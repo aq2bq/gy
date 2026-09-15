@@ -1,7 +1,7 @@
 # gy の公開物 — roadmap
 
-- 生成: 2026-09-15T07:59:25Z
-- seq: 45
+- 生成: 2026-09-15T08:12:20Z
+- seq: 51
 - scope: roadmap
 - since: (先頭から)
 - 書き手: piko

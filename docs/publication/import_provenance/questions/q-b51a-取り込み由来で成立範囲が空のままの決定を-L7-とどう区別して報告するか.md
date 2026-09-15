@@ -1,11 +1,17 @@
 # q-b51a (Q-37) 取り込み由来で成立範囲が空のままの決定を、L7 とどう区別して報告するか
 
-state: closed
-decider: master
-options: import が決定ノードに imported: true を打ち、imported かつ成立範囲が空の決定を新規則 L14（既定 warn）で報告し、L7 は imported でない決定に限る, 同じ印を使い、規則は L7 のまま、[lint] L7 に imported な決定だけ severity を下げる設定を足す, 印も規則も足さず、利用者が [lint] L7 = warn にする（新規の欠落も warn になる）
-scope: import_provenance
-created: 2026-09-14
-  closes d-dbef (D-56) gy import は作成した決定ノードに imported: true を打ち、imported かつ成立範囲が空の決定は L14（既定 warn）で報告し、L7 は imported でない決定に限る
+- 種類: question
+- scope: import_provenance
+- created: 2026-09-14
+- 状態: closed
+- 別名: Q-37
+
+## 関係
+
+- closes d-dbef (D-56) gy import は作成した決定ノードに imported: true を打ち、imported かつ成立範囲が空の決定は L14（既定 warn）で報告し、L7 は imported でない決定に限る
+
+## 本文
+
 ## Context
 
 Kokopelli の進行担当（クロコさん）からマスター経由で受けた要望（2026-09-14、gy 0.4.0）。旧台帳の決定 113 件を `gy import` で取り込み、成立範囲の欄が旧台帳に無かったため `[import] scope_note_placeholders` で意図して空欄のまま入れた。残る 81 件は元の決定者の意図が要り、まとめて埋めると推論が決定に混ざるため、マスターが埋めない判断をしている。D-113 以降の `gy decide` による決定に L7 は無い。
@@ -32,5 +38,11 @@ Kokopelli の進行担当（クロコさん）からマスター経由で受け�
 
 案1。印は辺と同じ語 `imported` を決定ノードにも使い、import が作った決定すべてに打つ。L14 の文言は L6 に倣い「取り込み時に成立範囲が記録されておらず、埋めるには元の決定を読む必要がある」と書く。決定を記録する側で成立範囲を埋めれば L14 は消え、`imported` は取り込み履歴として残る。
 
-閉じ方: 決定（2026-09-14T02:37:22.345886+00:00）
+## 閉じ方
+
+- 決定で閉じた（2026-09-14T02:37:22.345886+00:00）
+
+## 自由属性
+
+- 無し
 

@@ -1,11 +1,17 @@
 # q-4b50 (Q-19) 要求にしないまま終わったニーズを next から外す手段が無い
 
-state: closed
-decider: master
-options: 要求を経ない完了の記録手段を追加する, next の過剰報告を受け入れる
-scope: html_projection
-created: 2026-09-13
-  closes d-5ee8 (D-28) ニーズの完了は need 自身の状態が記録する
+- 種類: question
+- scope: html_projection
+- created: 2026-09-13
+- 状態: closed
+- 別名: Q-19
+
+## 関係
+
+- closes d-5ee8 (D-28) ニーズの完了は need 自身の状態が記録する
+
+## 本文
+
 ## 観測
 
 gy の開発を gy で記録した結果、`gy next` が完了済みのニーズを返し続けている。
@@ -24,5 +30,11 @@ requirement の ID は確認済みの GitHub Issue 番号であり、gy 自身�
 
 いっぽう、これは GitHub Issue を使わない利用者に限る話である。Issue を使う利用者では `need file` と `req advance` で表現できる。gy が担うべき一般的な意味なのか、Issue を使わない運用に残る作業なのかは、「要求を裁く」の基準で判定する必要がある。
 
-閉じ方: 決定（2026-09-13T08:54:24.430634+00:00）
+## 閉じ方
+
+- 決定で閉じた（2026-09-13T08:54:24.430634+00:00）
+
+## 自由属性
+
+- 無し
 
