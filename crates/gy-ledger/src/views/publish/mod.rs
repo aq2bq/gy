@@ -83,7 +83,7 @@ fn reading() -> &'static str {
      - depends-on: ニーズ → ニーズ。\n\
      - relies-on: 要求 → 決定。\n\
      - raised: 要求 → 論点。\n\
-     - waits-on: ニーズ → 論点。\n\
+     - waits-on: ニーズ → 論点・要求（論点が閉じる、または要求が完了・中止になるまで待つ）。\n\
      辺は始点のノードだけに保存し、逆向きは導出する。この文書は両向きを出す。\n\n\
      論点の閉じ方:\n\
      - fact: 事実で閉じた。 - decision: 決定で閉じた。 - non-decision: 決定を伴わずに閉じた。\n\n\

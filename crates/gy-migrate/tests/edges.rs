@@ -23,6 +23,7 @@ fn fixture() -> Fixture {
         "a/questions",
         "a/decisions",
         "a/criteria",
+        "a/requirements",
         "a/gates",
     ] {
         std::fs::create_dir_all(ledger.join(dir)).unwrap();
@@ -35,7 +36,7 @@ fn fixture() -> Fixture {
                 "N-1",
                 "need",
                 "need one",
-                "targets:\n- AC-2\ndepends-on:\n- N-3\nwaiting-on:\n- Q-4\n",
+                "targets:\n- AC-2\ndepends-on:\n- N-3\nwaiting-on:\n- Q-4\n- '#9'\n",
                 "body of N-1",
             ),
         ),
@@ -69,7 +70,7 @@ fn fixture() -> Fixture {
                 "Q-4",
                 "question",
                 "question four",
-                "decider: master\noptions:\n- a\n- b\ncloses:\n- D-5\n",
+                "decider: master\noptions:\n- a\n- b\ncloses:\n- D-5\nbelongs-to:\n- N-3\n- '#9'\n",
                 "body of Q-4",
             ),
         ),
@@ -92,6 +93,10 @@ fn fixture() -> Fixture {
                 "narrows:\n- id: D-5\n  mark: old text\n",
                 "body of D-6",
             ),
+        ),
+        (
+            "a/requirements/9.md",
+            md("#9", "requirement", "requirement nine", "", "body of R-9"),
         ),
         (
             "a/criteria/AC-2.md",
@@ -176,7 +181,12 @@ fn edges_marks_and_waits_on_are_written_and_the_rest_reported() {
     assert!(text.contains("edges written: 4"), "{text}");
     assert!(text.contains("edges missing a target: 1"), "{text}");
     assert!(text.contains("edges not allowed by kind: 1"), "{text}");
-    assert!(text.contains("waits-on written: 2"), "{text}");
+    assert!(text.contains("waits-on written: 4"), "{text}");
+    assert!(text.contains("waits-on skipped: 0"), "{text}");
+    assert!(
+        text.contains("belongs-to kept as free attributes: 1"),
+        "{text}"
+    );
     assert!(text.contains("missing: N-7 targets AC-999"), "{text}");
     assert!(text.contains("not allowed: N-10 narrows D-5"), "{text}");
 
@@ -185,7 +195,15 @@ fn edges_marks_and_waits_on_are_written_and_the_rest_reported() {
     assert!(edge_target(&repository, &need, Relation::Targets, "AC-2"));
     assert!(edge_target(&repository, &need, Relation::DependsOn, "N-3"));
     assert!(edge_target(&repository, &need, Relation::WaitsOn, "Q-4"));
+    assert!(edge_target(&repository, &need, Relation::WaitsOn, "#9"));
     assert_eq!(need.free("waiting-on"), None);
+
+    // A question's belonging to a need means the need waits on the question;
+    // a target that is not a need stays as a free attribute.
+    let three = node(&repository, "N-3");
+    assert!(edge_target(&repository, &three, Relation::WaitsOn, "Q-4"));
+    let q4 = node(&repository, "Q-4");
+    assert_eq!(q4.free("belongs-to").map(String::as_str), Some("#9"));
 
     let gate = node(&repository, "G-8");
     assert!(edge_target(&repository, &gate, Relation::WaitsOn, "Q-4"));

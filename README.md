@@ -36,7 +36,7 @@ Edges are stored on the node they start from; the reverse direction is derived, 
 | need → need | `depends-on` | `depended-on-by` |
 | requirement → decision | `relies-on` | `relied-on-by` |
 | requirement → question | `raised` | `raised-by` |
-| need → question | `waits-on` | `awaited-by` |
+| need → question, requirement | `waits-on` | `awaited-by` |
 
 A decision is stored with its applicability conditions, so a later reader can tell where it does and does not hold. `narrows` and `supersedes` also name the passage of the older decision that loses effect; the mark is checked against that decision's text when the edge is written.
 

@@ -43,7 +43,7 @@ ID は種類の接頭辞と短いハッシュで作る。中央の採番器を�
 保存せず、毎回グラフから計算する値がある。
 
 - ニーズの状態: 閉じていれば `closed`、`filed-as` の要求がすべて `done` なら `done`、それ以外は `open`。
-- 着手できるか（`next` の条件）: `open` で、`depends-on` のニーズが `closed` か `done` で、`waits-on` の論点が閉じている。
+- 着手できるか（`next` の条件）: `open` で、`depends-on` のニーズが `closed` か `done` で、`waits-on` の先（論点は閉じており、要求は `done` か `cancelled`）が片付いている。
 - `bearer_count`: その受け入れ条件を `targets` に持つニーズの数。
 - 進行中の要求: `filed` か `approved` の要求。
 

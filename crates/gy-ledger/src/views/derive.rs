@@ -54,14 +54,25 @@ pub fn ready(need: &Node, all: &[Node]) -> bool {
     let dependencies_done = edges(need, Relation::DependsOn)
         .iter()
         .all(|id| find(all, id).is_some_and(|node| need_state(node, all) != NeedState::Open));
-    let questions_done = edges(need, Relation::WaitsOn)
+    let waits_done = edges(need, Relation::WaitsOn)
         .iter()
-        .all(|id| find(all, id).is_some_and(question_closed));
-    dependencies_done && questions_done
+        .all(|id| find(all, id).is_some_and(waited_on_resolved));
+    dependencies_done && waits_done
 }
 
-fn question_closed(node: &Node) -> bool {
-    matches!(node.data(), NodeData::Question(data) if data.closure.is_some())
+/// A question settles when it closes; a requirement settles when it is done or
+/// cancelled (d-63f8).
+fn waited_on_resolved(node: &Node) -> bool {
+    match node.data() {
+        NodeData::Question(data) => data.closure.is_some(),
+        NodeData::Requirement(data) => {
+            matches!(
+                data.state,
+                RequirementState::Done | RequirementState::Cancelled
+            )
+        }
+        _ => false,
+    }
 }
 
 fn requirement_state(node: &Node) -> Option<RequirementState> {

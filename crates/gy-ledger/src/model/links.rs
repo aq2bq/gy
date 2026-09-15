@@ -52,6 +52,7 @@ impl Relation {
         (Self::ReliesOn, NodeKind::Requirement, NodeKind::Decision),
         (Self::Raised, NodeKind::Requirement, NodeKind::Question),
         (Self::WaitsOn, NodeKind::Need, NodeKind::Question),
+        (Self::WaitsOn, NodeKind::Need, NodeKind::Requirement),
     ];
     pub fn name(self) -> &'static str {
         Self::PAIRS[self as usize].0

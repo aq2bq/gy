@@ -23,6 +23,7 @@ gy 0.5 は保存の形式と操作の集合を変える非互換の版である�
 | ニーズを作る | ニーズを追加し、担い手の数を手で更新 | `need add "<題>" --targets <AC>...` |
 | ニーズを閉じる | 方法が無かった | `need close <ID> --by fact\|external --evidence <文>` |
 | 論点を作る・閉じる | 論点を追加し、3 通りのいずれかで閉じる | 同じ。決定で閉じるときは `--decision <D>` で辺も張る |
+| 論点がニーズに属する | 論点の `belongs-to: [N-x]` | そのニーズから論点への `waits-on` の辺（`link <N> waits-on <Q>`） |
 | 決定を採番する | ADR を書いて取り込む | `decide "<題>" --scope-note <成立範囲> [--body-file <path>] [--closes <Q>] [--relate <関係> <D> --mark <文>]` |
 | 要求を起票する | 要求を追加し、ニーズを関連付け、属性を手で更新 | `req add "<題>" --need <N>... [--relies-on <D>]... [--targets <AC>]... [--ref <URL>]` |
 | 確定・改訂・完了・中止 | 遷移コマンドと申告オプション | `req approve` / `req revise` / `req done` / `req cancel` |

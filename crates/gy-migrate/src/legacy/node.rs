@@ -175,8 +175,10 @@ impl LegacyNode {
         self.text("unresolved")
     }
 
-    pub fn belongs_to(&self) -> Option<&str> {
-        self.text("belongs-to")
+    /// The owning nodes of a 0.4 question: a need means it waits on the
+    /// question (d-63f8).
+    pub fn belongs_to(&self) -> &[String] {
+        self.list("belongs-to")
     }
 
     pub fn pr_url(&self) -> Option<&str> {

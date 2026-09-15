@@ -162,6 +162,24 @@ fn next_waits_for_questions_in_waits_on() {
 }
 
 #[test]
+fn next_waits_for_a_requirement_in_waits_on() {
+    let mut repo = repo();
+    let requirement = requirement("0012", RequirementState::Filed);
+    let requirement_id = requirement.id().clone();
+    let mut need = need("0013", SCOPE, "waiting on a requirement");
+    need.link(Link::new(need.id().clone(), Relation::WaitsOn, requirement_id.clone()).unwrap());
+    seed(&mut repo, &[requirement, need]);
+    assert!(next(&repo, None).unwrap().is_empty());
+
+    let mut done = repo.get(&requirement_id).unwrap().unwrap();
+    if let NodeData::Requirement(data) = done.data_mut() {
+        data.state = RequirementState::Done;
+    }
+    seed(&mut repo, &[done]);
+    assert_eq!(ids(&next(&repo, None).unwrap()), ["n-0013"]);
+}
+
+#[test]
 fn next_filters_by_scope() {
     let mut repo = repo();
     seed(

@@ -185,7 +185,6 @@ fn free(node: &mut Node, legacy: &LegacyNode) {
         ("remaining_work", legacy.remaining_work()),
         ("residual", legacy.residual()),
         ("unresolved", legacy.unresolved()),
-        ("belongs-to", legacy.belongs_to()),
     ] {
         if let Some(value) = value {
             node.set_free(name, value);

@@ -121,10 +121,12 @@ fn a_disallowed_kind_pair_is_rejected() {
 }
 
 #[test]
-fn waits_on_links_a_need_to_a_question() {
+fn waits_on_links_a_need_to_a_question_or_a_requirement() {
     let need = id(NodeKind::Need, "0001");
     let question = id(NodeKind::Question, "0003");
+    let requirement = id(NodeKind::Requirement, "0004");
     assert!(Link::new(need.clone(), Relation::WaitsOn, question.clone()).is_ok());
+    assert!(Link::new(need.clone(), Relation::WaitsOn, requirement).is_ok());
     assert!(Link::new(question, Relation::WaitsOn, need).is_err());
     assert_eq!(Relation::WaitsOn.name(), "waits-on");
     assert_eq!(Relation::WaitsOn.inverse(), "awaited-by");

@@ -14,6 +14,7 @@ pub struct Edges {
     pub mark_missing: usize,
     pub waits_on: usize,
     pub waits_skipped: Vec<String>,
+    pub belongs_kept: usize,
 }
 
 pub fn apply(legacy: &Legacy, nodes: &mut [Node], ids: &BTreeMap<String, NodeId>) -> Edges {
@@ -32,6 +33,7 @@ pub fn apply(legacy: &Legacy, nodes: &mut [Node], ids: &BTreeMap<String, NodeId>
         }
         waits_on(legacy, source, node, ids, &mut report);
     }
+    belongs_to(legacy, nodes, ids, &mut report);
     report
 }
 
@@ -64,8 +66,8 @@ fn link_edge(
     }
 }
 
-/// A need waits on the questions in its `waiting-on`; a gate's `measured-by`
-/// becomes the same relationship (D-83).
+/// A need waits on the questions and requirements in its `waiting-on`; a gate's
+/// `measured-by` becomes the same relationship (D-83, d-63f8).
 fn waits_on(
     legacy: &Legacy,
     source: &LegacyNode,
@@ -82,13 +84,13 @@ fn waits_on(
         .map(String::as_str)
         .chain(source.measured_by().iter().map(|link| link.id.as_str()));
     for id in targets {
-        let question = ids.get(id).filter(|_| {
+        let target = ids.get(id).filter(|_| {
             legacy
                 .by_id(id)
-                .is_some_and(|node| node.new_kind() == "question")
+                .is_some_and(|node| matches!(node.new_kind(), "question" | "requirement"))
         });
-        let edge = question
-            .and_then(|to| Link::new(node.id().clone(), Relation::WaitsOn, to.clone()).ok());
+        let edge =
+            target.and_then(|to| Link::new(node.id().clone(), Relation::WaitsOn, to.clone()).ok());
         match edge {
             Some(edge) => {
                 node.link(edge);
@@ -96,6 +98,66 @@ fn waits_on(
             }
             None => report.waits_skipped.push(entry(source, "waits-on", id)),
         }
+    }
+}
+
+/// A question that belongs to a need means that need waits on the question
+/// (d-63f8). A target that is not a need stays as a free attribute.
+fn belongs_to(
+    legacy: &Legacy,
+    nodes: &mut [Node],
+    ids: &BTreeMap<String, NodeId>,
+    report: &mut Edges,
+) {
+    let index: BTreeMap<&str, usize> = legacy
+        .nodes
+        .iter()
+        .enumerate()
+        .map(|(index, node)| (node.id.as_str(), index))
+        .collect();
+    for (question_index, source) in legacy.nodes.iter().enumerate() {
+        if source.new_kind() == "question" {
+            one_belonging(legacy, nodes, ids, &index, question_index, source, report);
+        }
+    }
+}
+
+fn one_belonging(
+    legacy: &Legacy,
+    nodes: &mut [Node],
+    ids: &BTreeMap<String, NodeId>,
+    index: &BTreeMap<&str, usize>,
+    question_index: usize,
+    source: &LegacyNode,
+    report: &mut Edges,
+) {
+    let question = nodes[question_index].id().clone();
+    let mut kept = Vec::new();
+    for target in source.belongs_to() {
+        let need = index.get(target.as_str()).filter(|_| {
+            legacy
+                .by_id(target)
+                .is_some_and(|node| node.new_kind() == "need")
+        });
+        match need {
+            Some(&need_index) => {
+                if let Some(need_id) = ids.get(target) {
+                    if let Ok(edge) =
+                        Link::new(need_id.clone(), Relation::WaitsOn, question.clone())
+                    {
+                        nodes[need_index].link(edge);
+                        report.waits_on += 1;
+                        continue;
+                    }
+                }
+                kept.push(target.clone());
+            }
+            None => kept.push(target.clone()),
+        }
+    }
+    if !kept.is_empty() {
+        report.belongs_kept += kept.len();
+        nodes[question_index].set_free("belongs-to", kept.join(", "));
     }
 }
 
@@ -143,6 +205,11 @@ impl fmt::Display for Edges {
         writeln!(f, "marks not in the old body: {}", self.mark_missing)?;
         writeln!(f, "waits-on written: {}", self.waits_on)?;
         writeln!(f, "waits-on skipped: {}", self.waits_skipped.len())?;
+        writeln!(
+            f,
+            "belongs-to kept as free attributes: {}",
+            self.belongs_kept
+        )?;
         for entry in &self.missing {
             writeln!(f, "  missing: {entry}")?;
         }
