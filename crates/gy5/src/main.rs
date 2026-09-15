@@ -3,6 +3,7 @@
 mod output;
 mod repo;
 mod write;
+mod writes;
 
 use clap::{Parser, Subcommand};
 use gy_ledger::{
@@ -12,25 +13,26 @@ use gy_ledger::{
 use output::{emit, emit_list, report};
 use std::path::{Path, PathBuf};
 use write::Written;
+use writes::{DecideArgs, EditArgs, LinkArgs, UndoArgs};
 
 #[derive(Parser)]
 #[command(name = "gy5", version, about = "The new gy ledger")]
-struct Cli {
+pub struct Cli {
     /// Print the result as JSON (diagnostics go to stderr).
     #[arg(long, global = true)]
-    json: bool,
+    pub json: bool,
     /// The directory whose gy.toml names the repository (searched upward).
     #[arg(short = 'C', global = true, value_name = "DIR")]
-    directory: Option<PathBuf>,
+    pub directory: Option<PathBuf>,
     /// The scope a write uses; required when gy.toml has more than one.
     #[arg(long, global = true, value_name = "NAME")]
-    scope: Option<String>,
+    pub scope: Option<String>,
     #[command(subcommand)]
-    command: Command,
+    pub command: Command,
 }
 
 #[derive(Subcommand)]
-enum Command {
+pub enum Command {
     /// Show one or more nodes by id, alias, or outward reference.
     Show {
         #[arg(required = true, value_name = "ID")]
@@ -73,10 +75,18 @@ enum Command {
         #[command(subcommand)]
         action: CriterionAction,
     },
+    /// Create a decision, optionally closing questions and linking one relation.
+    Decide(DecideArgs),
+    /// Add or remove one edge between two nodes.
+    Link(LinkArgs),
+    /// Change a node's title, body, or free attributes.
+    Edit(EditArgs),
+    /// Invert the last write as a new transaction.
+    Undo(UndoArgs),
 }
 
 #[derive(Subcommand)]
-enum NeedAction {
+pub enum NeedAction {
     /// File a need against existing criteria.
     Add {
         title: String,
@@ -96,7 +106,7 @@ enum NeedAction {
 }
 
 #[derive(Subcommand)]
-enum QuestionAction {
+pub enum QuestionAction {
     /// Open a question with a decider and at least two options.
     Add {
         title: String,
@@ -118,7 +128,7 @@ enum QuestionAction {
 }
 
 #[derive(Subcommand)]
-enum CriterionAction {
+pub enum CriterionAction {
     /// Add an acceptance criterion.
     Add { title: String },
     /// Record evidence that a criterion holds, or revoke it.
@@ -159,6 +169,10 @@ fn run(cli: &Cli) -> Result<()> {
         Command::Need { action } => write_need(cli, &root, &ledger, action),
         Command::Question { action } => write_question(cli, &root, &ledger, action),
         Command::Criterion { action } => write_criterion(cli, &root, &ledger, action),
+        Command::Decide(args) => writes::decide(cli, &root, &ledger, args),
+        Command::Link(args) => writes::link(cli, &ledger, args),
+        Command::Edit(args) => writes::edit(cli, &ledger, args),
+        Command::Undo(args) => writes::undo(cli, &ledger, args),
     }
 }
 

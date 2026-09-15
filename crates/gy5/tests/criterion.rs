@@ -13,6 +13,14 @@ fn the_first_write_creates_the_ledger_and_resolves_one_scope() {
 }
 
 #[test]
+fn a_write_without_an_actor_does_not_create_the_ledger() {
+    let fx = fixture();
+    let out = fx.run_without_actor(&["criterion", "add", "a criterion"]);
+    assert_eq!(out.status.code(), Some(2));
+    assert!(!fx.ledger().exists());
+}
+
+#[test]
 fn criterion_add_satisfy_and_revoke() {
     let fx = fixture();
     let out = fx.run(&["criterion", "add", "a criterion"]);

@@ -1,9 +1,40 @@
 #![allow(dead_code)]
 //! Shared helpers: a repository root with a gy.toml, its XDG data directory,
 //! and running the gy5 binary against them.
-use gy_ledger::{FileStore, FormatVersion, Node, Repository, format, location};
+use gy_ledger::{
+    DecisionScope, FileStore, FormatVersion, Node, NodeId, NodeKind, Repository, format, location,
+};
 use std::path::PathBuf;
 use std::process::{Command, Output};
+
+pub const DATE: &str = "2026-09-15";
+
+pub fn node_id(kind: NodeKind, hash: &str) -> NodeId {
+    NodeId::from_hash(kind, hash).unwrap()
+}
+
+pub fn need(hash: &str, title: &str) -> Node {
+    Node::need(node_id(NodeKind::Need, hash), "a", DATE, title).unwrap()
+}
+
+pub fn criterion(hash: &str, title: &str) -> Node {
+    Node::criterion(node_id(NodeKind::Criterion, hash), "a", DATE, title).unwrap()
+}
+
+pub fn question(hash: &str, title: &str) -> Node {
+    Node::question(node_id(NodeKind::Question, hash), "a", DATE, title).unwrap()
+}
+
+pub fn decision(hash: &str, title: &str) -> Node {
+    Node::decision(
+        node_id(NodeKind::Decision, hash),
+        "a",
+        DATE,
+        title,
+        DecisionScope::recorded("scope").unwrap(),
+    )
+    .unwrap()
+}
 
 pub struct Fixture {
     _temp: tempfile::TempDir,

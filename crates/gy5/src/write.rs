@@ -1,6 +1,8 @@
 //! The write side: projecting an `Outcome` to output, resolving the scope from
 //! `gy.toml`, and parsing the small closed sets the write commands take.
-use gy_ledger::{ClosedBy, Closure, Error, NodeId, Outcome, Repository, Result, Store, config};
+use gy_ledger::{
+    ClosedBy, Closure, Error, NodeId, Outcome, Relation, Repository, Result, Store, config,
+};
 use serde::Serialize;
 use std::fmt::{self, Display};
 use std::path::Path;
@@ -78,4 +80,45 @@ pub fn closure(text: &str) -> Result<Closure> {
         "non-decision" => Ok(Closure::NonDecision),
         _ => Err(Error::invalid(format!("unknown --by {text}"))),
     }
+}
+
+/// The canonical name of any relation a `link` may name.
+pub fn relation(text: &str) -> Result<Relation> {
+    [
+        Relation::Closes,
+        Relation::Narrows,
+        Relation::Widens,
+        Relation::Supersedes,
+        Relation::Completes,
+        Relation::Targets,
+        Relation::SpawnedBy,
+        Relation::FiledAs,
+        Relation::DependsOn,
+        Relation::ReliesOn,
+        Relation::Raised,
+    ]
+    .into_iter()
+    .find(|relation| relation.name() == text)
+    .ok_or_else(|| Error::invalid(format!("unknown relation {text}")))
+}
+
+/// `key=value` pairs, as `--set` and `--append` take them.
+pub fn pairs(values: &[String]) -> Result<Vec<(String, String)>> {
+    values
+        .iter()
+        .map(|value| {
+            value
+                .split_once('=')
+                .map(|(key, value)| (key.to_string(), value.to_string()))
+                .ok_or_else(|| Error::invalid(format!("expected key=value, got {value}")))
+        })
+        .collect()
+}
+
+/// A body read from a file, when one is named.
+pub fn body_file(path: Option<&str>) -> Result<Option<String>> {
+    path.map(|path| {
+        std::fs::read_to_string(path).map_err(|error| Error::invalid(format!("{path}: {error}")))
+    })
+    .transpose()
 }
