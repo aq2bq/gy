@@ -1,0 +1,22 @@
+[package]
+name = "gy-migrate"
+description = "gy-migrate — read a 0.4 ledger into the new gy canonical form"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "gy-migrate"
+path = "src/main.rs"
+
+[dependencies]
+gy-core = { path = "../gy-core" }
+gy-ledger = { path = "../gy-ledger" }
+clap.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

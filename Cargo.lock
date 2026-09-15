@@ -281,6 +281,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "gy-migrate"
+version = "0.4.2"
+dependencies = [
+ "clap",
+ "gy-core",
+ "gy-ledger",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "gy5"
 version = "0.4.2"
 dependencies = [
