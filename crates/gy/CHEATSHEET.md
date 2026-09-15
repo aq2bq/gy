@@ -27,7 +27,8 @@ gy は要求が確定するまでの状態をグラフで持ち、書き込み�
   gy decide "<題>" --scope-note <文> [--body-file <path>] [--closes <Q>]... [--relate <関係> <D> --mark <文>]
   gy link <from> <関係> <to> [--mark <文>] [--remove]
   gy edit <ID> --reason <文> [--title] [--body-file] [--set k=v] [--append k=v]
-        自由属性は文字列。--set は上書き、--append は改行区切りで 1 行足す
+        自由属性は文字列。--set は上書き、--set k= は消去、--append は改行区切りで 1 行足す
+        --set scope=<名前> で gy.toml にあるスコープへ移動。--set decision_scope=<文> で未記録の成立範囲を 1 回だけ記録
   gy undo --reason <文>
 
 設定はスコープ名と出力先だけ:

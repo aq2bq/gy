@@ -239,6 +239,10 @@ impl Node {
     pub fn set_free(&mut self, name: impl Into<String>, value: impl Into<String>) {
         self.free.insert(name.into(), value.into());
     }
+    /// Drop a free attribute, returning its value if it was set.
+    pub fn remove_free(&mut self, name: &str) -> Option<String> {
+        self.free.remove(name)
+    }
     /// Append to a free attribute, joined by a newline; create it if absent.
     pub fn append_free(&mut self, name: &str, value: &str) {
         let joined = match self.free.get(name) {
@@ -265,7 +269,6 @@ impl Node {
     }
 }
 
-/// A required text field: a blank value is rejected (invariant).
 fn required(value: String, message: &str) -> Result<String> {
     if value.trim().is_empty() {
         return Err(Error::invalid(message));
@@ -287,12 +290,11 @@ fn valid_date(text: &str) -> bool {
 
 /// Needs that carry a Targets edge to a criterion, derived rather than stored.
 pub fn bearer_count(needs: &[Node], criterion: &NodeId) -> usize {
-    needs
+    needs.iter().filter(|node| bears(node, criterion)).count()
+}
+
+fn bears(node: &Node, criterion: &NodeId) -> bool {
+    node.links()
         .iter()
-        .filter(|node| {
-            node.links()
-                .iter()
-                .any(|edge| edge.label == Relation::Targets && &edge.to == criterion)
-        })
-        .count()
+        .any(|edge| edge.label == Relation::Targets && &edge.to == criterion)
 }

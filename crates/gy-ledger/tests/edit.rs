@@ -1,6 +1,6 @@
 use gy_ledger::{
-    Actor, Edit, FormatVersion, Link, MemoryStore, Node, NodeId, NodeKind, Operation, Relation,
-    Repository, RequirementState, Store,
+    Actor, DecisionScope, Edit, FormatVersion, Link, MemoryStore, Node, NodeData, NodeId, NodeKind,
+    Operation, Relation, Repository, RequirementState, Store, handover,
 };
 
 const SCOPE: &str = "a";
@@ -164,6 +164,123 @@ fn edit_with_no_declared_scopes_rejects_a_move() {
     let mut request = edit(&id);
     request.set = vec![("scope".into(), "a".into())];
     assert!(request.run(&mut repo).is_err());
+}
+
+fn decision(repo: &mut Repository<MemoryStore>, hash: &str, unrecorded: bool) -> NodeId {
+    let scope = if unrecorded {
+        DecisionScope::migration_unrecorded()
+    } else {
+        DecisionScope::recorded("applies").unwrap()
+    };
+    let node = Node::decision(
+        NodeId::from_hash(NodeKind::Decision, hash).unwrap(),
+        SCOPE,
+        DATE,
+        "a decision",
+        scope,
+    )
+    .unwrap();
+    let id = node.id().clone();
+    repo.transaction("seed", "test", |repo| repo.put(&node))
+        .unwrap();
+    id
+}
+
+#[test]
+fn edit_records_an_unrecorded_decision_scope_once() {
+    let mut repo = repo();
+    let id = decision(&mut repo, "0003", true);
+    let mut request = edit(&id);
+    request.set = vec![("decision_scope".into(), "applies at dawn".into())];
+    let outcome = request.run(&mut repo).unwrap();
+    assert_eq!(outcome.changed, ["decision_scope"]);
+    match repo.get(&id).unwrap().unwrap().data() {
+        NodeData::Decision(data) => {
+            assert!(!data.scope.is_unrecorded());
+            assert_eq!(data.scope.text(), "applies at dawn");
+        }
+        _ => panic!("not a decision"),
+    }
+
+    let mut again = edit(&id);
+    again.set = vec![("decision_scope".into(), "another".into())];
+    assert!(again.run(&mut repo).is_err());
+}
+
+#[test]
+fn edit_rejects_bad_scope_records() {
+    let mut repo = repo();
+    let recorded = decision(&mut repo, "0003", false);
+    let mut request = edit(&recorded);
+    request.set = vec![("decision_scope".into(), "x".into())];
+    assert!(request.run(&mut repo).is_err());
+
+    let unrecorded = decision(&mut repo, "0004", true);
+    let mut request = edit(&unrecorded);
+    request.set = vec![("decision_scope".into(), String::new())];
+    assert!(request.run(&mut repo).is_err());
+}
+
+#[test]
+fn edit_drops_a_free_attribute_with_an_empty_value() {
+    let mut repo = repo();
+    let id = requirement(&mut repo);
+    let mut add = edit(&id);
+    add.set = vec![("owner".into(), "piko".into())];
+    add.run(&mut repo).unwrap();
+
+    let mut remove = edit(&id);
+    remove.set = vec![
+        ("owner".into(), String::new()),
+        ("missing".into(), String::new()),
+    ];
+    let outcome = remove.run(&mut repo).unwrap();
+    assert_eq!(outcome.changed, ["free:owner"]);
+    assert_eq!(repo.get(&id).unwrap().unwrap().free("owner"), None);
+}
+
+#[test]
+fn edit_rejects_an_empty_append() {
+    let mut repo = repo();
+    let id = requirement(&mut repo);
+    let mut request = edit(&id);
+    request.append = vec![("note".into(), String::new())];
+    assert!(request.run(&mut repo).is_err());
+}
+
+#[test]
+fn recording_a_scope_clears_the_handover_warning() {
+    let mut repo = repo();
+    let decision = decision(&mut repo, "0003", true);
+    let requirement = requirement(&mut repo);
+    let mut node = repo.get(&requirement).unwrap().unwrap();
+    node.link(Link::new(requirement.clone(), Relation::ReliesOn, decision.clone()).unwrap());
+    repo.transaction("link", "test", |repo| repo.put(&node))
+        .unwrap();
+
+    let before = handover(&repo, None).unwrap();
+    assert!(
+        before
+            .warnings
+            .iter()
+            .any(|warning| warning.label.contains("unrecorded") && warning.count == 1),
+        "{:?}",
+        before.warnings
+    );
+
+    let mut request = edit(&decision);
+    request.set = vec![("decision_scope".into(), "applies at dawn".into())];
+    request.run(&mut repo).unwrap();
+
+    let after = handover(&repo, None).unwrap();
+    assert!(
+        after
+            .warnings
+            .iter()
+            .all(|warning| !warning.label.contains("unrecorded")),
+        "{:?}",
+        after.warnings
+    );
 }
 
 #[test]

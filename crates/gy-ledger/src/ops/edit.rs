@@ -1,9 +1,11 @@
 //! edit: change a node's title, body, or free attributes, and never its state,
 //! edges, or creation (proposal-v3 3). A reason is required, and the reserved
 //! names of protected concepts are refused. `--set scope=<name>` moves the node
-//! to a scope gy.toml declares (n-1aad).
+//! to a scope gy.toml declares (n-1aad); `--set decision_scope=<text>` fills a
+//! decision's unrecorded scope once, and `--set key=` drops a free attribute
+//! (n-79fb).
 use super::{Operation, Outcome, Repository};
-use crate::model::{Node, NodeId};
+use crate::model::{DecisionScope, Node, NodeData, NodeId};
 use crate::store::{Error, Result, Store};
 
 pub struct Edit {
@@ -63,29 +65,80 @@ fn apply(node: &mut Node, edit: &Edit, scopes: &[String]) -> Result<Vec<String>>
         changed.push("body".into());
     }
     for (key, value) in &edit.set {
-        if key == "scope" {
-            if !scopes.contains(value) {
-                return Err(Error::invalid(format!("unknown scope {value}")));
-            }
-            node.set_scope(value.clone())?;
-            changed.push("scope".into());
-        } else {
-            node.set_free(key.clone(), value.clone());
-            changed.push(format!("free:{key}"));
-        }
+        set_one(node, key, value, scopes, &mut changed)?;
     }
     for (key, value) in &edit.append {
-        if key == "scope" {
-            return Err(Error::invalid("scope is set, not appended"));
-        }
-        node.append_free(key, value);
-        changed.push(format!("free:{key}"));
+        append_one(node, key, value, &mut changed)?;
     }
     Ok(changed)
 }
 
-/// Names owned by typed fields or by another operation. `edit` only writes
-/// free attributes, so these keys would write a parallel, unread value.
+/// One `--set`: the typed keys `scope` and `decision_scope`, or a free
+/// attribute. An empty value drops a free attribute.
+fn set_one(
+    node: &mut Node,
+    key: &str,
+    value: &str,
+    scopes: &[String],
+    changed: &mut Vec<String>,
+) -> Result<()> {
+    match key {
+        "scope" => {
+            if !scopes.iter().any(|scope| scope == value) {
+                return Err(Error::invalid(format!("unknown scope {value}")));
+            }
+            node.set_scope(value)?;
+            changed.push("scope".into());
+        }
+        "decision_scope" => {
+            record_scope(node, value)?;
+            changed.push("decision_scope".into());
+        }
+        _ if value.is_empty() => {
+            if node.remove_free(key).is_some() {
+                changed.push(format!("free:{key}"));
+            }
+        }
+        _ => {
+            node.set_free(key, value);
+            changed.push(format!("free:{key}"));
+        }
+    }
+    Ok(())
+}
+
+/// Fill a decision's unrecorded applicability scope, once (n-79fb).
+fn record_scope(node: &mut Node, text: &str) -> Result<()> {
+    let scope = DecisionScope::recorded(text)?;
+    match node.data_mut() {
+        NodeData::Decision(data) => {
+            if !data.scope.is_unrecorded() {
+                return Err(Error::invalid(
+                    "the decision already has a recorded scope; use narrows or supersedes",
+                ));
+            }
+            data.scope = scope;
+            Ok(())
+        }
+        _ => Err(Error::invalid("only a decision has an applicability scope")),
+    }
+}
+
+fn append_one(node: &mut Node, key: &str, value: &str, changed: &mut Vec<String>) -> Result<()> {
+    if key == "scope" || key == "decision_scope" {
+        return Err(Error::invalid(format!("{key} is set, not appended")));
+    }
+    if value.is_empty() {
+        return Err(Error::invalid(format!("appending to {key} needs a value")));
+    }
+    node.append_free(key, value);
+    changed.push(format!("free:{key}"));
+    Ok(())
+}
+
+/// Names owned by typed fields or by another operation. `edit` writes only free
+/// attributes and the two typed keys above, so these would write a parallel,
+/// unread value.
 const RESERVED: &[&str] = &[
     "id",
     "type",
@@ -106,7 +159,6 @@ const RESERVED: &[&str] = &[
     "closure",
     "decider",
     "options",
-    "decision_scope",
     "satisfied",
     "satisfied_at",
 ];
