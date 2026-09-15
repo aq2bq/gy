@@ -12,6 +12,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+pub use super::as_of::open_at;
 use super::id::id_seed;
 pub use super::id::unique_hash;
 

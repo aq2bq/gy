@@ -1,5 +1,6 @@
 //! The store layer: transactions, ID generation, history, the format version,
 //! and where the canonical ledger lives. It uses no other layer (D-76).
+mod as_of;
 pub mod file;
 pub mod format;
 pub mod id;

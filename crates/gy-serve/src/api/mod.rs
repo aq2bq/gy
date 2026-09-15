@@ -4,6 +4,7 @@ pub mod node;
 pub mod now;
 pub mod search;
 pub mod shell;
+pub mod ticks;
 
 use crate::assets;
 use crate::http::{Request, Response};
@@ -20,6 +21,7 @@ pub fn route<S: Store>(repo: &Repository<S>, req: &Request) -> Response {
         "/api/now" => now::answer(repo, req),
         "/api/list" => list::rows(repo, req),
         "/api/search" => search::search(repo, req),
+        "/api/ticks" => ticks::ticks(repo, req),
         _ => match req.path.strip_prefix("/api/node/") {
             Some(id) => node::node(repo, &crate::http::decode(id, false)),
             None => static_file(req),

@@ -48,6 +48,32 @@ impl MemoryStore {
             salt: 0,
         }
     }
+    /// The store for a point in the log (n-10e1): the nodes and the history
+    /// already replayed. Writing to it stays in memory.
+    pub(crate) fn from_replay(
+        version: FormatVersion,
+        actor: Actor,
+        nodes: BTreeMap<String, Value>,
+        history: Vec<HistoryEntry>,
+    ) -> Result<Self> {
+        let mut committed = BTreeMap::new();
+        for (key, value) in nodes {
+            committed.insert(key, super::replay::encode(&value)?);
+        }
+        let seq = history.iter().map(|entry| entry.seq).max().unwrap_or(0);
+        Ok(Self {
+            version,
+            actor,
+            committed,
+            staged: Vec::new(),
+            staged_rename: None,
+            history,
+            staged_history: Vec::new(),
+            undo_stack: Vec::new(),
+            seq,
+            salt: 0,
+        })
+    }
     /// Commit on `Ok`, roll back on `Err`, so a half-finished change writes nothing.
     pub fn transaction<T>(&mut self, f: impl FnOnce(&mut Self) -> Result<T>) -> Result<T> {
         self.begin();

@@ -1,7 +1,7 @@
 //! The one file where tiny_http appears (ac-a49a): bind, accept, conversions.
 use crate::api;
 use crate::http;
-use gy_ledger::{Error, FileStore, Repository, Result};
+use gy_ledger::{Error, FileStore, MemoryStore, Repository, Result};
 use std::sync::Arc;
 use tiny_http::{Header, Request, Response, Server};
 
@@ -9,9 +9,15 @@ use tiny_http::{Header, Request, Response, Server};
 const FIRST_PORT: u16 = 7331;
 const LAST_PORT: u16 = 7400;
 
+/// The ledger a request reads: the head, or a point in the log (n-10e1).
+pub enum Opened {
+    Now(Repository<FileStore>),
+    At(Repository<MemoryStore>),
+}
+
 /// How a request opens the ledger: afresh each time, so no cache hides a
-/// write (n-a493). The CLI supplies it.
-pub type Opener = Box<dyn Fn() -> Result<Repository<FileStore>> + Send + Sync>;
+/// write (n-a493), at the asked sequence when one is given (n-10e1).
+pub type Opener = Box<dyn Fn(Option<u64>) -> Result<Opened> + Send + Sync>;
 
 /// Serve until stopped, printing the one line the master needs to open.
 pub fn serve(open: Opener) -> Result<()> {
@@ -40,13 +46,32 @@ pub fn bind() -> Result<(Server, u16)> {
     )))
 }
 
+/// The answer to one framework-free request: `at` picks the point in the log,
+/// and a broken one is 400. The scrubber always sees the whole log, so
+/// `/api/ticks` ignores `at` (n-10e1).
+pub fn answer(open: &Opener, session: &http::Request) -> http::Response {
+    let at = if session.path == "/api/ticks" {
+        None
+    } else {
+        match session.param("at") {
+            Some(text) => match text.parse::<u64>() {
+                Ok(seq) => Some(seq),
+                Err(_) => return http::Response::text(400, "at is not a sequence"),
+            },
+            None => None,
+        }
+    };
+    match open(at) {
+        Ok(Opened::Now(repo)) => api::route(&repo, session),
+        Ok(Opened::At(repo)) => api::route(&repo, session),
+        Err(error) => http::Response::text(500, &error.to_string()),
+    }
+}
+
 /// tiny_http's request in, tiny_http's response out; the route sees neither.
 fn handle(open: &Opener, request: Request) {
     let session = convert(&request);
-    let answer = match open() {
-        Ok(repo) => api::route(&repo, &session),
-        Err(error) => http::Response::text(500, &error.to_string()),
-    };
+    let answer = answer(open, &session);
     let header = Header::from_bytes("Content-Type", answer.content_type).expect("static header");
     let _ = request.respond(
         Response::from_data(answer.body)
