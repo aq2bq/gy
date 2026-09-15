@@ -1,6 +1,6 @@
 //! The reading commands that need more than a single view call: list and the
 //! publish reading.
-use crate::output::emit;
+use crate::output::{emit, write};
 use crate::repo;
 use crate::{Cli, Command};
 use gy_ledger::{Error, Filter, NodeKind, Result, config, describe, list, publish};
@@ -59,10 +59,7 @@ pub fn write_publish(
     };
     match path {
         Some(path) => write_file(&path, &text),
-        None => {
-            print!("{text}");
-            Ok(())
-        }
+        None => write(&text),
     }
 }
 

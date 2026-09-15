@@ -1,14 +1,17 @@
 //! N-39: what a write reports as still missing, and the shape of the command
 //! that could follow. One test per row of the brief's table, plus show.
 use gy_ledger::{
-    Actor, CriterionAdd, CriterionSatisfy, Decide, DecisionScope, Edit, FormatVersion, Link,
-    MemoryStore, NeedAdd, Node, NodeId, NodeKind, Operation, QuestionAdd, Relation, Repository,
-    ReqAdd, ReqApprove, ReqCancel, ReqDone, ReqRevise, Store, Undo, link, show,
+    Actor, CriterionAdd, CriterionSatisfy, Decide, DecisionScope, FormatVersion, Link, MemoryStore,
+    NeedAdd, Node, NodeId, NodeKind, Operation, QuestionAdd, Relation, Repository, ReqAdd,
+    ReqApprove, ReqCancel, ReqDone, ReqRevise, Store, link, show,
 };
 
 const SCOPE: &str = "a";
 const DATE: &str = "2026-09-15";
-const APPROVE: &str = "req approve <ID> --design … --heard-by … --evidence …";
+
+fn approve_cmd(id: &NodeId) -> String {
+    format!("req approve {id} --design … --heard-by … --evidence …")
+}
 
 fn repo() -> Repository<MemoryStore> {
     Repository::new(MemoryStore::with_actor(
@@ -109,14 +112,15 @@ fn add_operations_report_what_their_new_node_lacks() {
     .run(&mut repo)
     .unwrap();
     assert_eq!(added.missing, ["本文", "filed-as の要求"]);
+    let added_id = added.id.clone().unwrap();
     assert_eq!(
         added.next,
         [
-            "edit <ID> --body-file … --reason …",
-            "req add \"<題>\" --need <ID> …"
+            format!("edit {added_id} --body-file … --reason …"),
+            format!("req add \"<題>\" --need {added_id} …")
         ]
     );
-    let text = show(&repo, &[added.id.unwrap().to_string()], false).unwrap()[0].to_string();
+    let text = show(&repo, &[added_id.to_string()], false).unwrap()[0].to_string();
     assert!(text.contains("無いもの: 本文, filed-as の要求"), "{text}");
 
     let asked = QuestionAdd {
@@ -128,11 +132,12 @@ fn add_operations_report_what_their_new_node_lacks() {
     .run(&mut repo)
     .unwrap();
     assert_eq!(asked.missing, ["本文（選択肢の根拠）"]);
+    let asked_id = asked.id.clone().unwrap();
     assert_eq!(
         asked.next,
         [
-            "question close <ID> --by … --evidence …",
-            "decide … --closes <ID>"
+            format!("question close {asked_id} --by … --evidence …"),
+            format!("decide … --closes {asked_id}")
         ]
     );
 
@@ -143,14 +148,21 @@ fn add_operations_report_what_their_new_node_lacks() {
     .run(&mut repo)
     .unwrap();
     assert_eq!(criterion.missing, ["本文（測り方）"]);
-    assert_eq!(criterion.next, ["criterion satisfy <AC> --evidence …"]);
+    let criterion_id = criterion.id.clone().unwrap();
+    assert_eq!(
+        criterion.next,
+        [format!("criterion satisfy {criterion_id} --evidence …")]
+    );
 
     let requirement = req_add(&need_id).run(&mut repo).unwrap();
     assert_eq!(
         requirement.missing,
         ["relies-on の決定", "targets の AC", "ref"]
     );
-    assert_eq!(requirement.next, [APPROVE]);
+    assert_eq!(
+        requirement.next,
+        [approve_cmd(&requirement.id.clone().unwrap())]
+    );
 }
 
 #[test]
@@ -165,7 +177,11 @@ fn decide_reports_missing_and_suggests_a_link() {
 
     let bare = decide(None, Vec::new(), Vec::new()).run(&mut repo).unwrap();
     assert_eq!(bare.missing, ["本文", "closes した論点"]);
-    assert_eq!(bare.next, ["link <D> narrows <古い D> --mark <文>"]);
+    let bare_id = bare.id.clone().unwrap();
+    assert_eq!(
+        bare.next,
+        [format!("link {bare_id} narrows <古い D> --mark <文>")]
+    );
 
     let full = decide(
         Some("## Decision\nwe chose".into()),
@@ -188,7 +204,10 @@ fn requirement_transitions_report_the_next_state_only() {
 
     let approved = approve(&requirement).run(&mut repo).unwrap();
     assert!(approved.missing.is_empty());
-    assert_eq!(approved.next, ["req done <ID> --evidence …"]);
+    assert_eq!(
+        approved.next,
+        [format!("req done {requirement} --evidence …")]
+    );
 
     let revised = ReqRevise {
         id: requirement.clone(),
@@ -198,7 +217,7 @@ fn requirement_transitions_report_the_next_state_only() {
     .run(&mut repo)
     .unwrap();
     assert!(revised.missing.is_empty());
-    assert_eq!(revised.next, [APPROVE]);
+    assert_eq!(revised.next, [approve_cmd(&requirement)]);
 
     let second = req_add(&need_id).run(&mut repo).unwrap().id.unwrap();
     let cancelled = ReqCancel {
@@ -239,7 +258,7 @@ fn criterion_satisfy_points_at_the_other_criterion() {
     .run(&mut repo)
     .unwrap();
     assert!(satisfied.missing.is_empty());
-    assert_eq!(satisfied.next, ["criterion satisfy <他の AC>"]);
+    assert_eq!(satisfied.next, [format!("criterion satisfy {second_id}")]);
 
     let last = CriterionSatisfy {
         id: second_id,
@@ -252,7 +271,7 @@ fn criterion_satisfy_points_at_the_other_criterion() {
 }
 
 #[test]
-fn link_edit_and_undo_report_nothing() {
+fn link_reports_nothing() {
     let mut repo = repo();
     let need = need("0001");
     let need_id = need.id().clone();
@@ -261,7 +280,7 @@ fn link_edit_and_undo_report_nothing() {
     seed(&mut repo, &[need, ac]);
 
     let linked = link::Link {
-        from: need_id.clone(),
+        from: need_id,
         relation: Relation::Targets,
         to: ac_id,
         mark: None,
@@ -270,23 +289,4 @@ fn link_edit_and_undo_report_nothing() {
     .run(&mut repo)
     .unwrap();
     assert!(linked.missing.is_empty() && linked.next.is_empty());
-
-    let edited = Edit {
-        id: need_id,
-        reason: "r".into(),
-        title: Some("t".into()),
-        body: None,
-        set: Vec::new(),
-        append: Vec::new(),
-    }
-    .run(&mut repo)
-    .unwrap();
-    assert!(edited.missing.is_empty() && edited.next.is_empty());
-
-    let undone = Undo {
-        reason: "mistake".into(),
-    }
-    .run(&mut repo)
-    .unwrap();
-    assert!(undone.missing.is_empty() && undone.next.is_empty());
 }

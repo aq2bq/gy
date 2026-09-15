@@ -18,19 +18,21 @@ pub fn missing(node: &Node, all: &[Node]) -> Vec<String> {
     }
 }
 
-/// The commands that could follow, with `<...>` holes for their arguments.
+/// The commands that could follow. The id this node is known by is filled in;
+/// the arguments that depend on a choice stay as `<...>` holes.
 pub fn next(node: &Node, all: &[Node]) -> Vec<String> {
+    let id = node.id();
     match node.data() {
-        NodeData::Need(data) if data.closed.is_none() => strings(&[
-            "edit <ID> --body-file … --reason …",
-            "req add \"<題>\" --need <ID> …",
-        ]),
-        NodeData::Question(data) if data.closure.is_none() => strings(&[
-            "question close <ID> --by … --evidence …",
-            "decide … --closes <ID>",
-        ]),
+        NodeData::Need(data) if data.closed.is_none() => vec![
+            format!("edit {id} --body-file … --reason …"),
+            format!("req add \"<題>\" --need {id} …"),
+        ],
+        NodeData::Question(data) if data.closure.is_none() => vec![
+            format!("question close {id} --by … --evidence …"),
+            format!("decide … --closes {id}"),
+        ],
         NodeData::Decision(_) => decision_next(node, all),
-        NodeData::Requirement(data) => requirement_next(data),
+        NodeData::Requirement(data) => requirement_next(id, data),
         NodeData::Criterion(data) => criterion_next(node, data, all),
         _ => Vec::new(),
     }
@@ -82,41 +84,43 @@ fn decision_next(node: &Node, all: &[Node]) -> Vec<String> {
             && other.scope() == node.scope()
     });
     if !lineage && sibling {
-        strings(&["link <D> narrows <古い D> --mark <文>"])
+        vec![format!("link {} narrows <古い D> --mark <文>", node.id())]
     } else {
         Vec::new()
     }
 }
 
-fn requirement_next(data: &Requirement) -> Vec<String> {
+fn requirement_next(id: &NodeId, data: &Requirement) -> Vec<String> {
     match data.state {
         RequirementState::Filed => {
-            strings(&["req approve <ID> --design … --heard-by … --evidence …"])
+            vec![format!(
+                "req approve {id} --design … --heard-by … --evidence …"
+            )]
         }
-        RequirementState::Approved => strings(&["req done <ID> --evidence …"]),
+        RequirementState::Approved => vec![format!("req done {id} --evidence …")],
         RequirementState::Done | RequirementState::Cancelled => Vec::new(),
     }
 }
 
 fn criterion_next(node: &Node, data: &Criterion, all: &[Node]) -> Vec<String> {
     if !data.satisfied {
-        return strings(&["criterion satisfy <AC> --evidence …"]);
+        return vec![format!("criterion satisfy {} --evidence …", node.id())];
     }
-    let sibling = all
-        .iter()
-        .any(|need| has_open_sibling(need, node.id(), all));
-    if sibling {
-        strings(&["criterion satisfy <他の AC>"])
-    } else {
-        Vec::new()
+    match open_sibling(node.id(), all) {
+        Some(sibling) => vec![format!("criterion satisfy {sibling}")],
+        None => Vec::new(),
     }
 }
 
-fn has_open_sibling(need: &Node, criterion: &NodeId, all: &[Node]) -> bool {
-    need.kind() == NodeKind::Need
-        && linked(need, Relation::Targets)
-            .iter()
-            .any(|id| id != criterion && find(all, id).is_some_and(unsatisfied))
+/// Another unsatisfied criterion on a need that also targets `criterion`.
+fn open_sibling(criterion: &NodeId, all: &[Node]) -> Option<NodeId> {
+    all.iter()
+        .filter(|need| need.kind() == NodeKind::Need)
+        .find_map(|need| {
+            linked(need, Relation::Targets)
+                .into_iter()
+                .find(|id| id != criterion && find(all, id).is_some_and(unsatisfied))
+        })
 }
 
 /// A requirement still being filed: not approved yet. A revised requirement
@@ -154,8 +158,4 @@ fn reference(node: &Node) -> Option<&str> {
 
 fn find<'a>(all: &'a [Node], id: &NodeId) -> Option<&'a Node> {
     all.iter().find(|node| node.id() == id)
-}
-
-fn strings(items: &[&str]) -> Vec<String> {
-    items.iter().map(|item| (*item).to_string()).collect()
 }

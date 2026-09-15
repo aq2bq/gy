@@ -26,8 +26,12 @@ fn criterion_add_satisfy_and_revoke() {
     let out = fx.run(&["criterion", "add", "a criterion"]);
     assert!(out.status.success(), "{}", stderr(&out));
     assert!(stdout(&out).contains("changed: created"));
-    assert!(stdout(&out).contains("next: criterion satisfy <AC> --evidence …"));
     let id = first_line(&out);
+    assert!(
+        stdout(&out).contains(&format!("next: criterion satisfy {id} --evidence …")),
+        "{}",
+        stdout(&out)
+    );
 
     let out = fx.run(&["criterion", "satisfy", &id, "--evidence", "verified"]);
     assert!(out.status.success(), "{}", stderr(&out));
