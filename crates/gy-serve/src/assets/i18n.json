@@ -1,4 +1,18 @@
 {
-  "en": { "home": "Now", "next": "This page arrives in the next need." },
-  "ja": { "home": "いま", "next": "この頁は次のニーズで。" }
+  "en": {
+    "now": "Now", "graph": "Graph", "history": "History", "nodes": "Nodes", "scopes": "Scopes", "all": "All scopes",
+    "Need": "Need", "Question": "Question", "Decision": "Decision", "Requirement": "Requirement", "Criterion": "Criterion",
+    "Needs": "Needs", "Questions": "Questions", "Decisions": "Decisions", "Requirements": "Requirements", "Criteria": "Criteria",
+    "canon": "canonical seq",
+    "searchLbl": "What was that again… D-85, q-037e, part of a title",
+    "notYet": "This page comes with the next need"
+  },
+  "ja": {
+    "now": "いま", "graph": "グラフ", "history": "履歴", "nodes": "ノード", "scopes": "スコープ", "all": "すべて",
+    "Need": "ニーズ", "Question": "論点", "Decision": "決定", "Requirement": "要求", "Criterion": "受け入れ条件",
+    "Needs": "ニーズ", "Questions": "論点", "Decisions": "決定", "Requirements": "要求", "Criteria": "受け入れ条件",
+    "canon": "正本 seq",
+    "searchLbl": "あれってなんだっけ… D-85、q-037e、題名の一部",
+    "notYet": "この頁は次のニーズで"
+  }
 }

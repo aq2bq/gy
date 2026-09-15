@@ -2,12 +2,24 @@
 <html lang="%LANG%">
 <head>
 <meta charset="utf-8">
-<title>gy</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gy serve</title>
 <link rel="stylesheet" href="/assets/app.css">
 </head>
 <body>
 <div class="app">
-<aside class="side"><div class="wordmark">gy</div></aside>
+<aside class="side">
+  <div class="wordmark">gy</div>
+  <nav class="nav" id="nav"></nav>
+  <div class="foot">
+    <div class="lang" id="lang"><button data-l="en">EN</button><button data-l="ja">日本語</button></div>
+    <div class="live-line" id="clock"></div>
+  </div>
+</aside>
+<div>
+  <div class="topbar"><div class="crumb" id="crumb"></div><div class="search" id="searchbtn" style="margin-left:auto"><span id="searchlbl"></span><kbd>⌘K</kbd></div></div>
+  <main id="main"></main>
+</div>
 </div>
 <script src="/assets/shell.js"></script>
 </body>
