@@ -1,5 +1,6 @@
 //! list: node rows, or the write units when asked (proposal-v3 2). A node's
 //! status comes from the model, so the view never compares status strings.
+use super::derive::{NeedState, need_state};
 use super::open_or_closed;
 use crate::model::{Node, NodeData, NodeId, NodeKind, Relation, RequirementState};
 use crate::ops::repository::{Error, Repository, Result, Store};
@@ -92,10 +93,11 @@ pub fn list<S: Store>(repo: &Repository<S>, filter: &Filter) -> Result<Listing> 
         Some(text) => Some(parse_status(text)?),
         None => None,
     };
+    let all = repo.all()?;
     let mut rows = Vec::new();
-    for node in repo.all()? {
-        if keep(&node, filter, status) {
-            rows.push(row(&node));
+    for node in &all {
+        if keep(node, filter, status, &all) {
+            rows.push(row(node, &all));
         }
     }
     Ok(Listing::Nodes(rows))
@@ -130,11 +132,11 @@ fn history<S: Store>(repo: &Repository<S>, filter: &Filter) -> Vec<LogRow> {
     rows
 }
 
-fn keep(node: &Node, filter: &Filter, status: Option<Status>) -> bool {
+fn keep(node: &Node, filter: &Filter, status: Option<Status>, all: &[Node]) -> bool {
     if filter.kind.is_some_and(|kind| node.kind() != kind) {
         return false;
     }
-    if status.is_some_and(|status| !matches_status(node, status)) {
+    if status.is_some_and(|status| !matches_status(node, status, all)) {
         return false;
     }
     if let Some(target) = &filter.targets {
@@ -154,7 +156,7 @@ fn keep(node: &Node, filter: &Filter, status: Option<Status>) -> bool {
     true
 }
 
-fn row(node: &Node) -> Row {
+fn row(node: &Node, all: &[Node]) -> Row {
     let reference = match node.data() {
         NodeData::Requirement(data) => data.reference.as_ref().map(|ref_| ref_.0.clone()),
         _ => None,
@@ -163,17 +165,18 @@ fn row(node: &Node) -> Row {
         id: node.id().to_string(),
         reference,
         kind: node.kind(),
-        status: status_of(node),
+        status: status_of(node, all),
         title: node.title().to_string(),
         scope: node.scope().to_string(),
         created: node.created().to_string(),
     }
 }
 
-/// The status a row prints: the model's own name.
-fn status_of(node: &Node) -> Option<String> {
+/// The status a row prints: the model's own name, and for a need the derived
+/// state from the graph (n-35cf).
+fn status_of(node: &Node, all: &[Node]) -> Option<String> {
     match node.data() {
-        NodeData::Need(data) => Some(open_or_closed(data.closed.is_some()).to_string()),
+        NodeData::Need(_) => Some(need_state(node, all).name().to_string()),
         NodeData::Question(data) => Some(open_or_closed(data.closure.is_some()).to_string()),
         NodeData::Requirement(data) => Some(data.state.name().to_string()),
         NodeData::Criterion(data) => Some(
@@ -193,6 +196,7 @@ fn status_of(node: &Node) -> Option<String> {
 enum Status {
     Open,
     Closed,
+    Done,
     Satisfied,
     Unsatisfied,
     Requirement(RequirementState),
@@ -208,6 +212,7 @@ fn parse_status(text: &str) -> Result<Status> {
     match text {
         "open" => Ok(Status::Open),
         "closed" => Ok(Status::Closed),
+        "done" => Ok(Status::Done),
         "satisfied" => Ok(Status::Satisfied),
         "unsatisfied" => Ok(Status::Unsatisfied),
         _ => states
@@ -218,12 +223,14 @@ fn parse_status(text: &str) -> Result<Status> {
     }
 }
 
-fn matches_status(node: &Node, wanted: Status) -> bool {
+fn matches_status(node: &Node, wanted: Status, all: &[Node]) -> bool {
     match (node.data(), wanted) {
-        (NodeData::Need(data), Status::Open) => data.closed.is_none(),
-        (NodeData::Need(data), Status::Closed) => data.closed.is_some(),
+        (NodeData::Need(_), Status::Open) => need_state(node, all) == NeedState::Open,
+        (NodeData::Need(_), Status::Closed) => need_state(node, all) == NeedState::Closed,
+        (NodeData::Need(_), Status::Done) => need_state(node, all) == NeedState::Done,
         (NodeData::Question(data), Status::Open) => data.closure.is_none(),
         (NodeData::Question(data), Status::Closed) => data.closure.is_some(),
+        (NodeData::Requirement(data), Status::Done) => data.state == RequirementState::Done,
         (NodeData::Requirement(data), Status::Requirement(state)) => data.state == state,
         (NodeData::Criterion(data), Status::Satisfied) => data.satisfied,
         (NodeData::Criterion(data), Status::Unsatisfied) => !data.satisfied,

@@ -1,5 +1,6 @@
 //! show: one node, or several, in the verbatim a kind calls for, or in full
 //! (proposal-v3 4). A requirement always shows its id with its ref beside it.
+use super::derive::need_state;
 use super::open_or_closed;
 use crate::model::{Criterion, Edge, Node, NodeData, NodeKind};
 use crate::ops::advice;
@@ -51,6 +52,9 @@ pub struct Shown {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub aliases: Vec<String>,
     pub data: NodeData,
+    /// A need's derived state (open / closed / done), from the graph (n-35cf).
+    #[serde(skip_serializing)]
+    pub need: Option<&'static str>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub edges: Vec<EdgeLine>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -74,6 +78,10 @@ impl Shown {
             created: full.then(|| node.created().to_string()),
             aliases: projected_aliases(node, full),
             data: node.data().clone(),
+            need: match node.data() {
+                NodeData::Need(_) => Some(need_state(node, all).name()),
+                _ => None,
+            },
             edges: projected_edges(node, incoming, full),
             missing: advice::missing(node, all),
             attributes: projected_attributes(node, full),
@@ -89,8 +97,8 @@ impl Shown {
     pub fn verbatim(&self) -> String {
         let mut out = String::new();
         match &self.data {
-            NodeData::Need(data) => {
-                let _ = writeln!(out, "state: {}", open_or_closed(data.closed.is_some()));
+            NodeData::Need(_) => {
+                let _ = writeln!(out, "state: {}", self.need.unwrap_or("open"));
             }
             NodeData::Question(data) => {
                 let _ = writeln!(out, "state: {}", open_or_closed(data.closure.is_some()));

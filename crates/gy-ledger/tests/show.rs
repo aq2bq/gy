@@ -69,6 +69,27 @@ fn a_need_shows_state_and_body_without_extras() {
 }
 
 #[test]
+fn a_need_whose_requirement_is_done_shows_done() {
+    let mut repo = repo();
+    let requirement = Node::requirement(
+        id(NodeKind::Requirement, "0020"),
+        SCOPE,
+        DATE,
+        "a done requirement",
+        RequirementState::Done,
+    )
+    .unwrap();
+    let requirement_id = requirement.id().clone();
+    let mut need = Node::need(id(NodeKind::Need, "0021"), SCOPE, DATE, "a done need").unwrap();
+    need.link(Link::new(need.id().clone(), Relation::FiledAs, requirement_id).unwrap());
+    let need_id = need.id().clone();
+    seed(&mut repo, &[requirement, need]);
+
+    let text = render(&repo, &[need_id.to_string()], false);
+    assert!(text.contains("state: done"), "{text}");
+}
+
+#[test]
 fn a_decision_shows_only_the_decision_section() {
     let mut repo = repo();
     let mut node = Node::decision(

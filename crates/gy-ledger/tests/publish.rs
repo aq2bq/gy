@@ -180,6 +180,27 @@ fn publish_keeps_a_closed_need_reason() {
 }
 
 #[test]
+fn publish_shows_a_done_need_state() {
+    let mut repo = repo();
+    let requirement = Node::requirement(
+        id(NodeKind::Requirement, "0020"),
+        SCOPE,
+        DATE,
+        "完了した要求",
+        RequirementState::Done,
+    )
+    .unwrap();
+    let requirement_id = requirement.id().clone();
+    let mut need = Node::need(id(NodeKind::Need, "0021"), SCOPE, DATE, "完了したニーズ").unwrap();
+    need.link(Link::new(need.id().clone(), Relation::FiledAs, requirement_id).unwrap());
+    seed(&mut repo, &[requirement, need]);
+
+    let text = render(&repo, None);
+    assert!(text.contains("完了したニーズ"), "{text}");
+    assert!(text.contains("state: done"), "{text}");
+}
+
+#[test]
 fn publish_filters_by_since() {
     let mut repo = repo();
     seed(

@@ -90,6 +90,34 @@ fn list_filters_by_status_and_rejects_an_unknown_one() {
 }
 
 #[test]
+fn list_filters_a_done_need_by_its_derived_state() {
+    let mut repo = repo();
+    let requirement = Node::requirement(
+        id(NodeKind::Requirement, "0020"),
+        SCOPE,
+        DATE,
+        "a done requirement",
+        RequirementState::Done,
+    )
+    .unwrap();
+    let requirement_id = requirement.id().clone();
+    let mut need = Node::need(id(NodeKind::Need, "0021"), SCOPE, DATE, "a done need").unwrap();
+    need.link(Link::new(need.id().clone(), Relation::FiledAs, requirement_id).unwrap());
+    let need_id = need.id().clone();
+    seed(&mut repo, &[requirement, need]);
+
+    let filter = Filter {
+        kind: Some(NodeKind::Need),
+        status: Some("done".into()),
+        ..Filter::default()
+    };
+    let rows = node_rows(&repo, &filter);
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].id, need_id.to_string());
+    assert_eq!(rows[0].status.as_deref(), Some("done"));
+}
+
+#[test]
 fn list_filters_by_targets_and_grep() {
     let mut repo = repo();
     let criterion = Node::criterion(
