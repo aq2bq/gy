@@ -1,5 +1,4 @@
-//! The model layer. N-42 keeps only node identity here; the five node types
-//! and their invariants arrive with N-46. It uses the store layer only.
+//! Node identity: the kind, the short-hash ID, old aliases, and the outward ref.
 use crate::store::{Error, IdSource, Result};
 
 /// The five node kinds. A gate is not a kind (D-68).
@@ -61,3 +60,11 @@ impl std::fmt::Display for NodeId {
         write!(f, "{}-{}", self.kind.prefix(), self.hash)
     }
 }
+
+/// An old ID, kept so a renamed node stays reachable (D-74, N-41).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Alias(pub String);
+
+/// An opaque outward reference. gy never reads its target (D-73).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Ref(pub String);
