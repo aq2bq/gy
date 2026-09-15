@@ -1,14 +1,15 @@
 //! gy5: the new gy CLI. It wires the gy-ledger views and ops to commands and
 //! does nothing else (D-76).
 mod output;
+mod reads;
 mod repo;
 mod write;
 mod writes;
 
 use clap::{Parser, Subcommand};
 use gy_ledger::{
-    CriterionAdd, CriterionSatisfy, Error, Filter, NeedAdd, NeedClose, NodeKind, Operation,
-    QuestionAdd, QuestionClose, Result, handover, list, location, next, show,
+    CriterionAdd, CriterionSatisfy, NeedAdd, NeedClose, Operation, QuestionAdd, QuestionClose,
+    Result, handover, location, next, show,
 };
 use output::{emit, emit_list, report};
 use std::path::{Path, PathBuf};
@@ -60,6 +61,15 @@ pub enum Command {
     Next,
     /// What a session needs to resume: in-progress requirements and counts.
     Handover,
+    /// Write the human-facing reading of the ledger.
+    Publish {
+        /// Include the changes after this write sequence.
+        #[arg(long, value_name = "SEQ")]
+        since: Option<u64>,
+        /// Write to this path instead of gy.toml's output or stdout.
+        #[arg(long, value_name = "PATH")]
+        out: Option<PathBuf>,
+    },
     /// File or close a need.
     Need {
         #[command(subcommand)]
@@ -162,7 +172,7 @@ fn run(cli: &Cli) -> Result<()> {
             let repository = repo::open(&ledger)?;
             emit_list(cli.json, &show(&repository, ids, *full)?)
         }
-        Command::List { .. } => read_list(cli, &ledger),
+        Command::List { .. } => reads::read_list(cli, &ledger),
         Command::Next => {
             let repository = repo::open(&ledger)?;
             emit_list(cli.json, &next(&repository, cli.scope.as_deref())?)
@@ -170,6 +180,9 @@ fn run(cli: &Cli) -> Result<()> {
         Command::Handover => {
             let repository = repo::open(&ledger)?;
             emit(cli.json, &handover(&repository, cli.scope.as_deref())?)
+        }
+        Command::Publish { since, out } => {
+            reads::write_publish(cli, &root, &ledger, *since, out.as_deref())
         }
         Command::Need { action } => write_need(cli, &root, &ledger, action),
         Command::Question { action } => write_question(cli, &root, &ledger, action),
@@ -180,33 +193,6 @@ fn run(cli: &Cli) -> Result<()> {
         Command::Edit(args) => writes::edit(cli, &ledger, args),
         Command::Undo(args) => writes::undo(cli, &ledger, args),
     }
-}
-
-fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
-    let Command::List {
-        kind,
-        status,
-        targets,
-        grep,
-        actor,
-        since,
-    } = &cli.command
-    else {
-        return Err(Error::invalid("not a list"));
-    };
-    let repository = repo::open(ledger)?;
-    let filter = Filter {
-        kind: kind.as_deref().map(parse_kind).transpose()?,
-        status: status.clone(),
-        targets: targets
-            .as_deref()
-            .map(|text| repository.resolve(text))
-            .transpose()?,
-        grep: grep.clone(),
-        actor: actor.clone(),
-        since: *since,
-    };
-    emit(cli.json, &list(&repository, &filter)?)
 }
 
 fn write_need(cli: &Cli, root: &Path, ledger: &Path, action: &NeedAction) -> Result<()> {
@@ -283,11 +269,4 @@ fn write_criterion(cli: &Cli, root: &Path, ledger: &Path, action: &CriterionActi
         .run(&mut repository)?,
     };
     emit(cli.json, &Written::of(&outcome))
-}
-
-fn parse_kind(text: &str) -> Result<NodeKind> {
-    NodeKind::ALL
-        .into_iter()
-        .find(|kind| kind.name() == text || kind.prefix() == text)
-        .ok_or_else(|| Error::invalid(format!("unknown type {text}")))
 }

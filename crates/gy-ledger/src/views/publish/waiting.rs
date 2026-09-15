@@ -1,6 +1,7 @@
 //! The judgement, undecided, and attention sections: D-85 questions 2 and 6,
 //! and the handover diagnostics. Every id is printed with its title.
 use super::super::handover::handover;
+use super::{in_scope, label};
 use crate::model::{Node, NodeData, RequirementState};
 use crate::ops::repository::{Repository, Result, Store};
 use std::collections::BTreeMap;
@@ -107,22 +108,6 @@ fn requirement_item(out: &mut String, node: &Node) {
     }
 }
 
-/// The new id with its old aliases and, for a requirement, its reference beside
-/// it (D-62: never an id alone).
-fn label(node: &Node) -> String {
-    let mut extra: Vec<String> = node.aliases().iter().map(|alias| alias.0.clone()).collect();
-    if let NodeData::Requirement(data) = node.data() {
-        if let Some(reference) = &data.reference {
-            extra.push(reference.0.clone());
-        }
-    }
-    if extra.is_empty() {
-        node.id().to_string()
-    } else {
-        format!("{} ({})", node.id(), extra.join(", "))
-    }
-}
-
 /// The text under a `## ` heading, without the heading itself.
 fn section(body: &str, heading: &str) -> Option<String> {
     let start = body.find(heading)? + heading.len();
@@ -130,10 +115,6 @@ fn section(body: &str, heading: &str) -> Option<String> {
     let end = rest.find("\n## ").unwrap_or(rest.len());
     let text = rest[..end].trim();
     (!text.is_empty()).then(|| text.to_string())
-}
-
-fn in_scope(node: &Node, scope: Option<&str>) -> bool {
-    scope.is_none_or(|scope| node.scope() == scope)
 }
 
 fn open_question(node: &Node) -> bool {

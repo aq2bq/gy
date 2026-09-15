@@ -1,6 +1,6 @@
 use gy_ledger::{
-    Actor, Alias, FormatVersion, MemoryStore, Node, NodeData, NodeId, NodeKind, Ref, Repository,
-    RequirementState, Store, publish,
+    Actor, Alias, DecisionScope, FormatVersion, Link, MemoryStore, Node, NodeData, NodeId,
+    NodeKind, Ref, Relation, Repository, RequirementState, Store, publish,
 };
 
 const SCOPE: &str = "a";
@@ -106,4 +106,86 @@ fn publish_keeps_ids_with_titles_and_filters_by_scope() {
     let scoped = publish(&repo, Some("b"), None).unwrap();
     assert!(!scoped.contains("master が決める論点"), "{scoped}");
     assert!(scoped.contains("いま判断待ちは無し。"), "{scoped}");
+}
+
+fn decision(hash: &str, alias: &str, title: &str, body: &str) -> Node {
+    let mut node = Node::decision(
+        id(NodeKind::Decision, hash),
+        SCOPE,
+        DATE,
+        title,
+        DecisionScope::recorded("scope").unwrap(),
+    )
+    .unwrap();
+    node.set_body(body);
+    node.add_alias(Alias(alias.into()));
+    node
+}
+
+fn lineage_ledger() -> Repository<MemoryStore> {
+    let mut repo = repo();
+    let old = decision("0010", "D-1", "古い決定", "the changed part");
+    let mut new = decision("0011", "D-2", "新しい決定", "");
+    new.link(
+        Link::new(new.id().clone(), Relation::Narrows, old.id().clone())
+            .unwrap()
+            .with_mark(Some("the changed part".into())),
+    );
+    let mut need = Node::need(id(NodeKind::Need, "0012"), SCOPE, DATE, "元のニーズ").unwrap();
+    need.add_alias(Alias("N-1".into()));
+    let mut requirement = Node::requirement(
+        id(NodeKind::Requirement, "0013"),
+        SCOPE,
+        DATE,
+        "要求",
+        RequirementState::Filed,
+    )
+    .unwrap();
+    requirement.add_alias(Alias("R-1".into()));
+    if let NodeData::Requirement(data) = requirement.data_mut() {
+        data.reference = Some(Ref("https://example/9".into()));
+    }
+    need.link(
+        Link::new(
+            need.id().clone(),
+            Relation::FiledAs,
+            requirement.id().clone(),
+        )
+        .unwrap(),
+    );
+    requirement.link(
+        Link::new(
+            requirement.id().clone(),
+            Relation::ReliesOn,
+            old.id().clone(),
+        )
+        .unwrap(),
+    );
+    seed(&mut repo, &[old, need, requirement]);
+    repo.transaction("decide d-0011", "test", |repo| repo.put(&new))
+        .unwrap();
+    repo
+}
+
+#[test]
+fn publish_shows_nodes_with_relationships_and_provenance() {
+    let repo = lineage_ledger();
+    let text = publish(&repo, None, None).unwrap();
+    assert!(text.contains("## ノード"), "{text}");
+    assert!(text.contains("### "), "{text}");
+    assert!(text.contains("狭める"), "{text}");
+    assert!(text.contains("mark: the changed part"), "{text}");
+    assert!(text.contains("来歴:"), "{text}");
+    assert!(text.contains("- ニーズ: "), "{text}");
+    assert!(text.contains("- 依拠する決定: "), "{text}");
+    assert!(text.contains("- 状態: filed"), "{text}");
+}
+
+#[test]
+fn publish_lists_the_period_changes() {
+    let repo = lineage_ledger();
+    let text = publish(&repo, None, Some(0)).unwrap();
+    assert!(text.contains("## この期間の変更"), "{text}");
+    assert!(text.contains("【決定の作成】"), "{text}");
+    assert!(text.contains("d-0011"), "{text}");
 }

@@ -6,6 +6,7 @@ use crate::ops::repository::{Error, Repository, Result, Store};
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt;
+use std::fmt::Write as _;
 
 /// One edge as a view prints it: the name from this node's side, the other id,
 /// and the mark a narrows / supersedes carries.
@@ -80,18 +81,21 @@ impl Shown {
             None => format!("{} {}", self.id, self.title),
         }
     }
-    fn show_data(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    /// The kind-specific verbatim of the default view, without the heading.
+    pub fn verbatim(&self) -> String {
+        let mut out = String::new();
         match &self.data {
-            NodeData::Need(data) => writeln!(f, "state: {}", open_or_closed(data.closed.is_some())),
+            NodeData::Need(data) => {
+                let _ = writeln!(out, "state: {}", open_or_closed(data.closed.is_some()));
+            }
             NodeData::Question(data) => {
-                writeln!(f, "state: {}", open_or_closed(data.closure.is_some()))?;
+                let _ = writeln!(out, "state: {}", open_or_closed(data.closure.is_some()));
                 if let Some(decider) = &data.decider {
-                    writeln!(f, "decider: {decider}")?;
+                    let _ = writeln!(out, "decider: {decider}");
                 }
                 if !data.options.is_empty() {
-                    writeln!(f, "options: {}", data.options.join(", "))?;
+                    let _ = writeln!(out, "options: {}", data.options.join(", "));
                 }
-                Ok(())
             }
             NodeData::Decision(data) => {
                 let scope = if data.scope.is_unrecorded() {
@@ -99,17 +103,22 @@ impl Shown {
                 } else {
                     data.scope.text().to_string()
                 };
-                writeln!(f, "decision_scope: {scope}")
+                let _ = writeln!(out, "decision_scope: {scope}");
             }
-            NodeData::Requirement(data) => writeln!(f, "state: {}", data.state.name()),
-            NodeData::Criterion(data) => writeln!(f, "{}", criterion_line(data)),
+            NodeData::Requirement(data) => {
+                let _ = writeln!(out, "state: {}", data.state.name());
+            }
+            NodeData::Criterion(data) => {
+                let _ = writeln!(out, "{}", criterion_line(data));
+            }
         }
+        out
     }
 }
 impl fmt::Display for Shown {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "{}", self.heading())?;
-        self.show_data(f)?;
+        f.write_str(&self.verbatim())?;
         for (name, value) in &self.attributes {
             writeln!(f, "{name}: {value}")?;
         }
