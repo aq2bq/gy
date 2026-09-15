@@ -165,10 +165,7 @@ fn a_question_closes_in_three_ways() {
 fn bearer_count_is_derived_not_stored() {
     let criterion = id(NodeKind::Criterion, "0002");
     let mut first = need("0001", "n");
-    match first.data_mut() {
-        NodeData::Need(data) => data.targets.push(criterion.clone()),
-        _ => panic!("not a need"),
-    }
+    first.link(Link::new(first.id().clone(), Relation::Targets, criterion.clone()).unwrap());
     let second = need("0003", "n");
     assert_eq!(bearer_count(&[first, second], &criterion), 1);
 }

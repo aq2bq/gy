@@ -14,4 +14,4 @@ pub use node::{
     bearer_count, free_attribute,
 };
 pub use scope::DecisionScope;
-pub use state::{Closure, RequirementState};
+pub use state::{Closed, ClosedBy, Closure, RequirementState};

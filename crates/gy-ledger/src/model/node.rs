@@ -1,7 +1,10 @@
 //! The node: typed fields, the five kind-specific payloads, and free attributes.
 use std::collections::BTreeMap;
 
-use super::{Alias, Closure, DecisionScope, Link, NodeId, NodeKind, Ref, RequirementState};
+use super::{
+    Alias, Closed, Closure, DecisionScope, Edge, Link, NodeId, NodeKind, Ref, Relation,
+    RequirementState,
+};
 use crate::store::{Error, Result};
 use serde::{Deserialize, Serialize};
 
@@ -21,8 +24,7 @@ pub fn free_attribute<'a>(attributes: &'a Attributes, name: &str) -> Option<&'a 
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Need {
-    pub targets: Vec<NodeId>,
-    pub spawned_by: Vec<NodeId>,
+    pub closed: Option<Closed>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -79,7 +81,7 @@ pub struct Node {
     body: String,
     aliases: Vec<Alias>,
     free: FreeAttributes,
-    links: Vec<Link>,
+    links: Vec<Edge>,
     data: NodeData,
 }
 impl Node {
@@ -188,11 +190,13 @@ impl Node {
     pub fn aliases(&self) -> &[Alias] {
         &self.aliases
     }
-    pub fn links(&self) -> &[Link] {
+    pub fn links(&self) -> &[Edge] {
         &self.links
     }
+    /// Save a relationship. Only the from side stores the edge; the reverse is
+    /// derived when needed.
     pub fn link(&mut self, link: Link) {
-        self.links.push(link);
+        self.links.push(link.forward().clone());
     }
     pub fn set_body(&mut self, body: impl Into<String>) {
         self.body = body.into();
@@ -236,12 +240,14 @@ fn valid_date(text: &str) -> bool {
             .all(|(index, byte)| index == 4 || index == 7 || byte.is_ascii_digit())
 }
 
-/// Needs that target a criterion, derived rather than stored (N-36).
+/// Needs that carry a Targets edge to a criterion, derived rather than stored.
 pub fn bearer_count(needs: &[Node], criterion: &NodeId) -> usize {
     needs
         .iter()
-        .filter(
-            |node| matches!(&node.data, NodeData::Need(need) if need.targets.contains(criterion)),
-        )
+        .filter(|node| {
+            node.links()
+                .iter()
+                .any(|edge| edge.label == Relation::Targets && &edge.to == criterion)
+        })
         .count()
 }

@@ -1,6 +1,6 @@
 //! Typed node access over a store: get, all, put, remove, id resolution, and
 //! one intent per transaction (D-69, D-75).
-use crate::model::{Node, NodeId, NodeKind};
+use crate::model::{Edge, Node, NodeId, NodeKind};
 use crate::store::{Error, Result, Store};
 
 pub struct Repository<S: Store> {
@@ -34,6 +34,24 @@ impl<S: Store> Repository<S> {
             }
         }
         Ok(nodes)
+    }
+    /// The reverse of every edge that points at `id`, derived from the from
+    /// side's stored links (D-76: one place per edge).
+    pub fn incoming(&self, id: &NodeId) -> Result<Vec<Edge>> {
+        let mut edges = Vec::new();
+        for node in self.all()? {
+            for edge in node.links() {
+                if &edge.to == id {
+                    edges.push(Edge {
+                        from: id.clone(),
+                        label: edge.label,
+                        reversed: true,
+                        to: edge.from.clone(),
+                    });
+                }
+            }
+        }
+        Ok(edges)
     }
     pub fn put(&mut self, node: &Node) -> Result<()> {
         let bytes = encode(node)?;

@@ -46,3 +46,17 @@ pub enum Closure {
     Decision,
     NonDecision,
 }
+
+/// How a need closed: a fact resolved it, or an external tracker did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ClosedBy {
+    Fact,
+    External,
+}
+
+/// A need's closure and the evidence for it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Closed {
+    pub by: ClosedBy,
+    pub evidence: String,
+}

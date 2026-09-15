@@ -11,11 +11,11 @@ mod store;
 mod views;
 
 pub use model::{
-    Alias, Attributes, Closure, Criterion, Decision, DecisionScope, Edge, FreeAttributes, Link,
-    Need, Node, NodeData, NodeId, NodeKind, Question, Ref, Relation, Requirement, RequirementState,
-    bearer_count, free_attribute,
+    Alias, Attributes, Closed, ClosedBy, Closure, Criterion, Decision, DecisionScope, Edge,
+    FreeAttributes, Link, Need, Node, NodeData, NodeId, NodeKind, Question, Ref, Relation,
+    Requirement, RequirementState, bearer_count, free_attribute,
 };
-pub use ops::{NeedAdd, Operation, Outcome, Repository, config};
+pub use ops::{NeedAdd, NeedClose, Operation, Outcome, Repository, config};
 pub use store::{
     Actor, Error, FileStore, FormatVersion, HistoryEntry, IdSource, MemoryStore, Result, Store,
     file, format, location, log,
