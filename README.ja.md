@@ -4,6 +4,18 @@
 
 gy は、要求が確定するまでの状態を記録します。ある仕事が何に基づいているかを、ニーズ・論点・決定・要求・受け入れ条件のノードと辺のグラフとして持ちます。使い方は一つで、設定するものはほとんどありません。エージェントが作業しながら書き、`publish` が記録をファイルに書き出し、それをコミットして後から読み返します。正本はリポジトリの外に置き、gy はネットワークへ出ません。
 
+いま
+
+<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-now-ja.png" alt="いま" width="100%">
+
+フラクタルなグラフ
+
+<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-graph-ja.png" alt="フラクタルなグラフ" width="100%">
+
+一件
+
+<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-node-ja.png" alt="一件" width="100%">
+
 ## gy とは何か
 
 エージェントに任せた仕事は、順調なあいだは読まなくて済みます。読まなくて済むので、読まなくなります。どこまで進むかは、文脈に入る量、対象の規模、モデルの性能に依存していて、その依存は順調なうちは見えません。

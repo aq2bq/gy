@@ -4,6 +4,18 @@ English | [日本語](README.ja.md)
 
 gy records the state before a requirement is confirmed. It holds the needs, questions, decisions, requirements, and acceptance criteria that a piece of work rests on, as a graph of nodes and edges, with one way to use it and almost nothing to configure. Agents write it as they work, and `publish` writes the record to a file that is committed and read back later. The canonical ledger lives outside the repository, and gy makes no network calls.
 
+The now page
+
+<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-now-en.png" alt="The now page" width="100%">
+
+The fractal graph
+
+<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-graph-en.png" alt="The fractal graph" width="100%">
+
+One node
+
+<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-node-en.png" alt="One node" width="100%">
+
 ## What gy is for
 
 Work handed to an agent does not need to be read while it goes well. Because it is not read, it stops being read. How far the work gets then depends on how much fits in the context window, how large the target is, and how strong the model is, and none of that shows while things go well.
