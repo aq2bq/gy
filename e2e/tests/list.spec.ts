@@ -7,8 +7,8 @@ test.beforeAll(async () => {
   gy = await start();
 });
 
-test.afterAll(() => {
-  gy?.stop();
+test.afterAll(async () => {
+  await gy?.stop();
 });
 
 test('the list rows match /api/list', async ({ page, request }) => {

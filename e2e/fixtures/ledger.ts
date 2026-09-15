@@ -1,4 +1,5 @@
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
+import { once } from 'node:events';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -13,7 +14,8 @@ export type Ledger = {
   url: string;
   /** One CLI write against this ledger; answers stdout. */
   gy: (args: string[]) => string;
-  stop: () => void;
+  /** Kill the server and wait for it to leave its port. */
+  stop: () => Promise<void>;
 };
 
 const run = (dir: string, data: string, args: string[], json = true) =>
@@ -41,7 +43,17 @@ export async function start(options: { large?: boolean } = {}): Promise<Ledger> 
     env: { ...process.env, GY_ACTOR: 'e2e', XDG_DATA_HOME: data },
   });
   const url = await address(server);
-  return { dir, url, gy, stop: () => server.kill() };
+  return {
+    dir,
+    url,
+    gy,
+    stop: async () => {
+      if (server.exitCode === null) {
+        server.kill();
+        await once(server, 'exit');
+      }
+    },
+  };
 }
 
 /** The one small ledger every G1 scene shares. */
