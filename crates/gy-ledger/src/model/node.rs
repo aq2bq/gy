@@ -235,6 +235,10 @@ impl Node {
     pub fn free(&self, name: &str) -> Option<&String> {
         self.free.get(name)
     }
+    /// Every free attribute, for a view that prints the whole node (N-57).
+    pub fn free_attributes(&self) -> &FreeAttributes {
+        &self.free
+    }
     pub fn set_free(&mut self, name: impl Into<String>, value: impl Into<String>) {
         self.free.insert(name.into(), value.into());
     }

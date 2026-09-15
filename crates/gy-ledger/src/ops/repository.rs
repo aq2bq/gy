@@ -1,7 +1,9 @@
 //! Typed node access over a store: get, all, put, remove, id resolution, and
 //! one intent per transaction (D-69, D-75).
 use crate::model::{Edge, Node, NodeData, NodeId, NodeKind};
-use crate::store::{Error, Result, Store};
+// Re-exported so a view can use `Repository` without reaching into the store
+// layer (D-76): the trait bound and its result are part of this API.
+pub use crate::store::{Error, Result, Store};
 
 pub struct Repository<S: Store> {
     store: S,
