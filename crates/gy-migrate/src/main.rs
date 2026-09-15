@@ -1,9 +1,12 @@
-//! gy-migrate: read a 0.4 ledger and report what it holds. Writing the new
-//! nodes into the canonical ledger arrives with the next step (N-67).
+//! gy-migrate: read a 0.4 ledger and write it into the new canonical ledger
+//! (N-67). Edges and frozen records arrive with the following step.
 mod legacy;
+mod nodes;
 
 use clap::Parser;
-use gy_ledger::{Actor, Error, Result, format, location};
+use gy_ledger::{
+    Actor, Error, FileStore, FormatVersion, NodeId, Repository, Result, format, location,
+};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -40,7 +43,15 @@ fn run() -> Result<()> {
     let cli = Cli::parse();
     guard(&cli)?;
     let legacy = legacy::read(&cli.ledger)?;
+    let written = if cli.dry_run {
+        0
+    } else {
+        write(&cli, &legacy)?
+    };
     print!("{}", legacy.report());
+    if !cli.dry_run {
+        println!("written: {written} nodes");
+    }
     settings(&cli);
     Ok(())
 }
@@ -58,6 +69,28 @@ fn guard(cli: &Cli) -> Result<()> {
         Actor::from_env()?;
     }
     Ok(())
+}
+
+/// Build every new node, then write them in one transaction.
+fn write(cli: &Cli, legacy: &legacy::Legacy) -> Result<usize> {
+    let ledger = location::ledger_dir(&cli.root);
+    format::write(&ledger, FormatVersion::CURRENT)?;
+    let mut repository = Repository::new(FileStore::open(&ledger)?);
+    let derived = legacy.derived_ids();
+    let mut nodes = Vec::new();
+    for node in &legacy.nodes {
+        let id = NodeId::mint(nodes::kind(node.new_kind())?, repository.store_mut())?;
+        let derive = derived.contains(&node.id);
+        nodes.push(nodes::build(node, id, cli.ref_base.as_deref(), derive)?);
+    }
+    let source = cli.ledger.display().to_string();
+    repository.transaction("migrate from 0.4", &source, |repository| {
+        for node in &nodes {
+            repository.put(node)?;
+        }
+        Ok(())
+    })?;
+    Ok(nodes.len())
 }
 
 fn settings(cli: &Cli) {

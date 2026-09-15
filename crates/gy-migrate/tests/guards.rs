@@ -115,14 +115,15 @@ fn dry_run_reports_and_writes_nothing() {
     assert!(text.contains("aliases: 3"), "{text}");
     assert!(text.contains("unrecorded decision scope: 1"), "{text}");
     assert!(text.contains("dropped attributes: parent_issue"), "{text}");
+    assert!(text.ends_with('\n'), "the report ends with a newline");
     assert!(!canonical(&fx).exists());
 }
 
 #[test]
-fn a_real_run_guards_and_reports_for_now() {
+fn a_real_run_writes_the_ledger() {
     let fx = fixture();
     let out = fx.run(&[]);
     assert!(out.status.success(), "{}", stderr(&out));
-    assert!(stdout(&out).contains("aliases: 3"));
-    assert!(!canonical(&fx).exists());
+    assert!(stdout(&out).contains("written: 3 nodes"));
+    assert!(canonical(&fx).join("format").is_file());
 }

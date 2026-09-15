@@ -1,7 +1,8 @@
 //! Reading a 0.4 ledger into an intermediate form. This is the only file of
-//! the crate that touches gy-core's string keys (N-65).
+//! the crate that touches gy-core's string keys (N-65): every key becomes a
+//! typed accessor, so the node transfer reads values, not names.
 use gy_ledger::{Error, Result};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::path::Path;
 
@@ -40,9 +41,7 @@ pub struct Legacy {
 }
 
 /// One 0.4 node: identity and body, plus its attributes and edges as data.
-/// The identity fields are read by the node transfer in the next step (N-67).
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct LegacyNode {
     pub kind: String,
     pub id: String,
@@ -104,13 +103,90 @@ impl LegacyNode {
         }
     }
 
+    pub fn decision_scope(&self) -> Option<&str> {
+        self.text("decision_scope")
+    }
+
+    /// The status without a trailing variant suffix, as gy-core reads it.
+    pub fn status(&self) -> &str {
+        let status = self.attrs.get("status").map(String::as_str).unwrap_or("");
+        status
+            .split_once(" (")
+            .filter(|(_, tail)| tail.ends_with(')'))
+            .map_or(status, |(base, _)| base)
+    }
+
+    pub fn decider(&self) -> Option<&str> {
+        self.text("decider")
+    }
+
+    pub fn options(&self) -> &[String] {
+        self.list("options")
+    }
+
+    pub fn closed_by(&self) -> Option<&str> {
+        self.text("closed_by")
+    }
+
+    pub fn closure_note(&self) -> Option<&str> {
+        self.text("closure_note")
+    }
+
+    pub fn closed_at(&self) -> Option<&str> {
+        self.text("closed_at")
+    }
+
+    pub fn satisfied(&self) -> bool {
+        self.text("satisfied") == Some("true")
+    }
+
+    pub fn satisfied_at(&self) -> Option<&str> {
+        self.text("satisfied_at")
+    }
+
+    pub fn evidence(&self) -> Option<&str> {
+        self.text("evidence")
+    }
+
+    pub fn dropped_by(&self) -> Option<&str> {
+        self.text("dropped_by")
+    }
+
+    pub fn dropped_reason(&self) -> Option<&str> {
+        self.text("dropped_reason")
+    }
+
+    pub fn next_evidence(&self) -> Option<&str> {
+        self.text("next_evidence")
+    }
+
+    pub fn responsible(&self) -> Option<&str> {
+        self.text("responsible")
+    }
+
+    pub fn remaining_work(&self) -> Option<&str> {
+        self.text("remaining_work")
+    }
+
+    pub fn residual(&self) -> Option<&str> {
+        self.text("residual")
+    }
+
+    pub fn unresolved(&self) -> Option<&str> {
+        self.text("unresolved")
+    }
+
+    pub fn belongs_to(&self) -> Option<&str> {
+        self.text("belongs-to")
+    }
+
+    pub fn waiting_on(&self) -> &[String] {
+        self.list("waiting-on")
+    }
+
     /// A decision whose `decision_scope` was never recorded.
     pub fn has_unrecorded_scope(&self) -> bool {
-        self.kind == "decision"
-            && self
-                .attrs
-                .get("decision_scope")
-                .is_none_or(|text| text.trim().is_empty())
+        self.kind == "decision" && self.decision_scope().is_none()
     }
 
     fn dropped(&self) -> Vec<String> {
@@ -119,6 +195,62 @@ impl LegacyNode {
             .filter(|name| self.attrs.contains_key(**name))
             .map(|name| (*name).to_string())
             .collect()
+    }
+
+    fn text(&self, name: &str) -> Option<&str> {
+        self.attrs
+            .get(name)
+            .map(String::as_str)
+            .filter(|text| !text.is_empty())
+    }
+
+    fn list(&self, name: &str) -> &[String] {
+        self.lists.get(name).map(Vec::as_slice).unwrap_or(&[])
+    }
+}
+
+impl Legacy {
+    pub fn by_id(&self, id: &str) -> Option<&LegacyNode> {
+        self.nodes.iter().find(|node| node.id == id)
+    }
+
+    /// Needs whose filed requirements are all complete: their state is derived
+    /// from those requirements, so the transfer must not freeze them closed
+    /// (D-28).
+    pub fn derived_ids(&self) -> BTreeSet<String> {
+        self.nodes
+            .iter()
+            .filter(|node| {
+                let filed = node.links.get("filed-as").map(Vec::as_slice).unwrap_or(&[]);
+                !filed.is_empty()
+                    && filed.iter().all(|id| {
+                        self.by_id(id)
+                            .is_some_and(|node| node.status() == "complete")
+                    })
+            })
+            .map(|node| node.id.clone())
+            .collect()
+    }
+
+    pub fn report(&self) -> Report {
+        let mut report = Report::default();
+        for node in &self.nodes {
+            *report.before.entry(node.kind.clone()).or_default() += 1;
+            *report.after.entry(node.new_kind().to_string()).or_default() += 1;
+            report.aliases += 1;
+            if node.has_unrecorded_scope() {
+                report.unrecorded += 1;
+            }
+            report.waiting_on += node.waiting_on().len();
+            report.links += node.links.values().map(Vec::len).sum::<usize>();
+            for name in node.dropped() {
+                if !report.dropped.contains(&name) {
+                    report.dropped.push(name);
+                }
+            }
+        }
+        report.dropped.sort();
+        report
     }
 }
 
@@ -134,29 +266,6 @@ pub struct Report {
     pub dropped: Vec<String>,
 }
 
-impl Legacy {
-    pub fn report(&self) -> Report {
-        let mut report = Report::default();
-        for node in &self.nodes {
-            *report.before.entry(node.kind.clone()).or_default() += 1;
-            *report.after.entry(node.new_kind().to_string()).or_default() += 1;
-            report.aliases += 1;
-            if node.has_unrecorded_scope() {
-                report.unrecorded += 1;
-            }
-            report.waiting_on += node.lists.get("waiting-on").map_or(0, Vec::len);
-            report.links += node.links.values().map(Vec::len).sum::<usize>();
-            for name in node.dropped() {
-                if !report.dropped.contains(&name) {
-                    report.dropped.push(name);
-                }
-            }
-        }
-        report.dropped.sort();
-        report
-    }
-}
-
 impl fmt::Display for Report {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "before: {}", counts(&self.before))?;
@@ -165,7 +274,7 @@ impl fmt::Display for Report {
         writeln!(f, "unrecorded decision scope: {}", self.unrecorded)?;
         writeln!(f, "waiting-on ids: {}", self.waiting_on)?;
         writeln!(f, "edges: {}", self.links)?;
-        write!(f, "dropped attributes: {}", self.dropped.join(", "))
+        writeln!(f, "dropped attributes: {}", self.dropped.join(", "))
     }
 }
 
