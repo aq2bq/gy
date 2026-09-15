@@ -1,6 +1,6 @@
 //! decide: create a decision, close its questions, and record lineage edges
 //! with their marks, all in one transaction.
-use super::{Operation, Outcome, Repository, marks, today};
+use super::{Operation, Outcome, Repository, advice_for, marks, today};
 use crate::model::{
     Closure, DecisionScope, Link as ModelLink, Node, NodeData, NodeId, NodeKind, Relation,
 };
@@ -36,11 +36,12 @@ impl<S: Store> Operation<S> for Decide {
             }
             Ok(())
         })?;
+        let (missing, next) = advice_for(repo, &node)?;
         Ok(Outcome {
             id: Some(id.clone()),
             changed: changed(&self.closes, &self.relates),
-            missing: Vec::new(),
-            next: Vec::new(),
+            missing,
+            next,
             value: id,
         })
     }

@@ -31,6 +31,7 @@ fn req_add_approve_done_with_the_ref_on_the_id_line() {
     let text = stdout(&out);
     assert!(text.contains("changed: created, needs"), "{text}");
     assert!(text.contains("(https://example/7)"), "{text}");
+    assert!(text.contains("missing: relies-on の決定"), "{text}");
     let id = first_line(&out).split(' ').next().unwrap().to_string();
 
     let out = fx.run(&[

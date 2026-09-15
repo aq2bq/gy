@@ -1,5 +1,5 @@
 //! question add: a question with a decider and at least two options.
-use super::{Operation, Outcome, Repository, today};
+use super::{Operation, Outcome, Repository, advice_for, today};
 use crate::model::{Node, NodeData, NodeId, NodeKind};
 use crate::store::{Error, Result, Store};
 
@@ -26,11 +26,12 @@ impl<S: Store> Operation<S> for QuestionAdd {
         }
         let why = format!("question add {id}");
         repo.transaction(&why, "question add", |repo| repo.put(&node))?;
+        let (missing, next) = advice_for(repo, &node)?;
         Ok(Outcome {
             id: Some(id.clone()),
             changed: vec!["created".into(), "decider".into(), "options".into()],
-            missing: Vec::new(),
-            next: Vec::new(),
+            missing,
+            next,
             value: id,
         })
     }

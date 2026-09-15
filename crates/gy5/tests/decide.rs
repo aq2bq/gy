@@ -24,6 +24,7 @@ fn decide_creates_closes_and_links_one_relation() {
     ]);
     assert!(out.status.success(), "{}", stderr(&out));
     assert!(stdout(&out).contains("changed: created, closes, narrows"));
+    assert!(stdout(&out).contains("missing: 本文"));
     let id = first_line(&out);
 
     assert!(stdout(&fx.run(&["show", "q-0001"])).contains("state: closed"));

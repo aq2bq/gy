@@ -1,4 +1,5 @@
 //! Operations: one intent = one command = one transaction (D-69, D-75).
+pub mod advice;
 pub mod config;
 pub mod criterion_add;
 pub mod criterion_satisfy;
@@ -59,15 +60,14 @@ pub struct Outcome<T> {
     pub value: T,
 }
 
-/// The outcome of a state transition: the same id, one changed label.
-pub fn outcome(id: &NodeId, changed: &str) -> Outcome<NodeId> {
-    Outcome {
-        id: Some(id.clone()),
-        changed: vec![changed.to_string()],
-        missing: Vec::new(),
-        next: Vec::new(),
-        value: id.clone(),
-    }
+/// What a node still lacks and what could follow (N-39), read from the graph
+/// after the write so every command reports the same thing show does.
+pub fn advice_for<S: Store>(
+    repo: &Repository<S>,
+    node: &Node,
+) -> Result<(Vec<String>, Vec<String>)> {
+    let all = repo.all()?;
+    Ok((advice::missing(node, &all), advice::next(node, &all)))
 }
 
 /// One intent, run against a repository (D-69).

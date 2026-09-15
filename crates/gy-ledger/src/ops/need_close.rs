@@ -1,6 +1,6 @@
 //! need close: record how a need closed, with evidence. Completion is the
 //! need's own state (D-28).
-use super::{Operation, Outcome, Repository};
+use super::{Operation, Outcome, Repository, advice_for};
 use crate::model::{Closed, ClosedBy, NodeData, NodeId, NodeKind};
 use crate::store::{Error, Result, Store};
 
@@ -37,11 +37,12 @@ impl<S: Store> Operation<S> for NeedClose {
         let id = self.id;
         let why = format!("need close {id}");
         repo.transaction(&why, &source, |repo| repo.put(&node))?;
+        let (missing, next) = advice_for(repo, &node)?;
         Ok(Outcome {
             id: Some(id.clone()),
             changed: vec!["closed".into()],
-            missing: Vec::new(),
-            next: Vec::new(),
+            missing,
+            next,
             value: id,
         })
     }

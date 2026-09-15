@@ -21,6 +21,7 @@ fn need_add_then_close() {
     let out = fx.run(&["need", "add", "a need", "--targets", "ac-0001"]);
     assert!(out.status.success(), "{}", stderr(&out));
     assert!(stdout(&out).contains("changed: created, targets"));
+    assert!(stdout(&out).contains("missing: 本文, filed-as の要求"));
     let id = first_line(&out);
 
     let out = fx.run(&[

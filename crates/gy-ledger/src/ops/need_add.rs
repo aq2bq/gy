@@ -1,6 +1,6 @@
 //! need add: a need targeting existing criteria, optionally spawned by a
 //! decision. It writes both sides from the need's own links.
-use super::{Operation, Outcome, Repository, today};
+use super::{Operation, Outcome, Repository, advice_for, today};
 use crate::model::{Link, Node, NodeId, NodeKind, Relation};
 use crate::store::{Error, Result, Store};
 
@@ -32,6 +32,7 @@ impl<S: Store> Operation<S> for NeedAdd {
         }
         let why = format!("need add {id}");
         repo.transaction(&why, "need add", |repo| repo.put(&node))?;
+        let (missing, next) = advice_for(repo, &node)?;
         let mut changed = vec!["created".to_string(), "targets".to_string()];
         if self.spawned_by.is_some() {
             changed.push("spawned-by".to_string());
@@ -39,8 +40,8 @@ impl<S: Store> Operation<S> for NeedAdd {
         Ok(Outcome {
             id: Some(id.clone()),
             changed,
-            missing: Vec::new(),
-            next: Vec::new(),
+            missing,
+            next,
             value: id,
         })
     }

@@ -14,6 +14,7 @@ fn undo_restores_the_previous_value() {
     let out = fx.run(&["undo", "--reason", "mistake"]);
     assert!(out.status.success(), "{}", stderr(&out));
     assert!(stdout(&out).contains("changed: undone"));
+    assert!(stdout(&out).contains("missing: \nnext: \n"));
     assert!(stdout(&fx.run(&["show", &id])).contains("satisfied: false"));
 }
 

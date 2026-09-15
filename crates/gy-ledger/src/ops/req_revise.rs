@@ -1,6 +1,6 @@
 //! req revise: send an approved requirement back to filed, keeping the reason
 //! and its source as a revision record (D-70).
-use super::{Operation, Outcome, Repository, node_of, outcome, today};
+use super::{Operation, Outcome, Repository, advice_for, node_of, today};
 use crate::model::{NodeData, NodeId, NodeKind, RequirementState, Revision};
 use crate::store::{Error, Result, Store};
 
@@ -26,6 +26,13 @@ impl<S: Store> Operation<S> for ReqRevise {
         }
         let why = format!("req revise {}", self.id);
         repo.transaction(&why, &self.source, |repo| repo.put(&node))?;
-        Ok(outcome(&self.id, "revised"))
+        let (missing, next) = advice_for(repo, &node)?;
+        Ok(Outcome {
+            id: Some(self.id.clone()),
+            changed: vec!["revised".into()],
+            missing,
+            next,
+            value: self.id,
+        })
     }
 }

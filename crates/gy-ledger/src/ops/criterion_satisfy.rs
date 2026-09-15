@@ -1,6 +1,6 @@
 //! criterion satisfy: record evidence that a criterion holds, or revoke it
 //! while keeping the evidence.
-use super::{Operation, Outcome, Repository, today};
+use super::{Operation, Outcome, Repository, advice_for, today};
 use crate::model::{Node, NodeData, NodeId, NodeKind};
 use crate::store::{Error, Result, Store};
 
@@ -24,11 +24,12 @@ impl<S: Store> Operation<S> for CriterionSatisfy {
         update(&mut node, &self.id, &self.evidence, self.revoke)?;
         let why = format!("criterion satisfy {}", self.id);
         repo.transaction(&why, &self.evidence, |repo| repo.put(&node))?;
+        let (missing, next) = advice_for(repo, &node)?;
         Ok(Outcome {
             id: Some(self.id.clone()),
             changed: vec!["satisfied".into()],
-            missing: Vec::new(),
-            next: Vec::new(),
+            missing,
+            next,
             value: self.id,
         })
     }

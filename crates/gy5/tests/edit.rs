@@ -23,6 +23,7 @@ fn edit_changes_title_and_free_attributes() {
     ]);
     assert!(out.status.success(), "{}", stderr(&out));
     assert!(stdout(&out).contains("changed: title, free:owner, free:note"));
+    assert!(stdout(&out).contains("missing: \nnext: \n"));
 
     let text = stdout(&fx.run(&["show", "--full", "n-0001"]));
     assert!(text.contains("new title"));

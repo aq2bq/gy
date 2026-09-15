@@ -1,5 +1,5 @@
 //! req done: record the evidence that an approved requirement shipped (D-70).
-use super::{Operation, Outcome, Repository, node_of, outcome, today};
+use super::{Operation, Outcome, Repository, advice_for, node_of, today};
 use crate::model::{Completion, NodeData, NodeId, NodeKind, RequirementState};
 use crate::store::{Error, Result, Store};
 
@@ -23,6 +23,13 @@ impl<S: Store> Operation<S> for ReqDone {
         }
         let why = format!("req done {}", self.id);
         repo.transaction(&why, &self.evidence, |repo| repo.put(&node))?;
-        Ok(outcome(&self.id, "done"))
+        let (missing, next) = advice_for(repo, &node)?;
+        Ok(Outcome {
+            id: Some(self.id.clone()),
+            changed: vec!["done".into()],
+            missing,
+            next,
+            value: self.id,
+        })
     }
 }

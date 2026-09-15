@@ -10,6 +10,7 @@ fn link_adds_then_removes_an_edge() {
     let out = fx.run(&["link", "n-0001", "targets", "ac-0002"]);
     assert!(out.status.success(), "{}", stderr(&out));
     assert!(stdout(&out).contains("changed: linked"));
+    assert!(stdout(&out).contains("missing: \nnext: \n"));
 
     let out = fx.run(&["link", "n-0001", "targets", "ac-0002"]);
     assert_eq!(out.status.code(), Some(2));

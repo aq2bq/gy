@@ -1,6 +1,6 @@
 //! req add: a requirement filed against one or more needs, with optional
 //! decisions it relies on, criteria it targets, and one outward reference.
-use super::{Operation, Outcome, Repository, node_of, today};
+use super::{Operation, Outcome, Repository, advice_for, node_of, today};
 use crate::model::{
     Link as ModelLink, Node, NodeData, NodeId, NodeKind, Ref, Relation, RequirementState,
 };
@@ -40,11 +40,12 @@ impl<S: Store> Operation<S> for ReqAdd {
             }
             Ok(())
         })?;
+        let (missing, next) = advice_for(repo, &node)?;
         Ok(Outcome {
             id: Some(id.clone()),
             changed: vec!["created".into(), "needs".into()],
-            missing: Vec::new(),
-            next: Vec::new(),
+            missing,
+            next,
             value: id,
         })
     }

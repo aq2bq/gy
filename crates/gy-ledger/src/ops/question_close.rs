@@ -1,7 +1,7 @@
 //! question close: record the closure, its evidence, and, when a decision
 //! closed it, the Closes edge.
-use super::{Operation, Outcome, Repository};
-use crate::model::{Closure, Link, NodeData, NodeId, NodeKind, Relation};
+use super::{Operation, Outcome, Repository, advice_for};
+use crate::model::{Closure, Link, Node, NodeData, NodeId, NodeKind, Relation};
 use crate::store::{Error, Result, Store};
 
 pub struct QuestionClose {
@@ -25,33 +25,40 @@ impl<S: Store> Operation<S> for QuestionClose {
             return Err(Error::invalid("closing by decision needs the decision"));
         }
         check_decision(repo, &self.decision)?;
-        match node.data_mut() {
-            NodeData::Question(data) => {
-                if data.closure.is_some() {
-                    return Err(Error::invalid(format!("{} is already closed", self.id)));
-                }
-                data.closure = Some(self.by);
-                data.evidence = Some(self.evidence.clone());
-            }
-            _ => unreachable!(),
-        }
-        if let Some(decision) = &self.decision {
-            node.link(Link::new(
-                self.id.clone(),
-                Relation::Closes,
-                decision.clone(),
-            )?);
-        }
+        close(&mut node, &self)?;
         let why = format!("question close {}", self.id);
         repo.transaction(&why, &self.evidence, |repo| repo.put(&node))?;
+        let (missing, next) = advice_for(repo, &node)?;
         Ok(Outcome {
             id: Some(self.id.clone()),
             changed: vec!["closed".into()],
-            missing: Vec::new(),
-            next: Vec::new(),
+            missing,
+            next,
             value: self.id,
         })
     }
+}
+
+/// Record the closure and, when a decision closed it, its Closes edge.
+fn close(node: &mut Node, input: &QuestionClose) -> Result<()> {
+    match node.data_mut() {
+        NodeData::Question(data) => {
+            if data.closure.is_some() {
+                return Err(Error::invalid(format!("{} is already closed", input.id)));
+            }
+            data.closure = Some(input.by);
+            data.evidence = Some(input.evidence.clone());
+        }
+        _ => unreachable!(),
+    }
+    if let Some(decision) = &input.decision {
+        node.link(Link::new(
+            input.id.clone(),
+            Relation::Closes,
+            decision.clone(),
+        )?);
+    }
+    Ok(())
 }
 
 fn check_decision<S: Store>(repo: &Repository<S>, decision: &Option<NodeId>) -> Result<()> {

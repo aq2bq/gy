@@ -2,6 +2,7 @@
 //! (proposal-v3 4). A requirement always shows its id with its ref beside it.
 use super::open_or_closed;
 use crate::model::{Criterion, Edge, Node, NodeData, NodeKind};
+use crate::ops::advice;
 use crate::ops::repository::{Error, Repository, Result, Store};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -52,11 +53,13 @@ pub struct Shown {
     pub data: NodeData,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub edges: Vec<EdgeLine>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub missing: Vec<String>,
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     pub attributes: BTreeMap<String, String>,
 }
 impl Shown {
-    fn new(node: &Node, incoming: &[Edge], full: bool) -> Self {
+    fn new(node: &Node, incoming: &[Edge], all: &[Node], full: bool) -> Self {
         let reference = match node.data() {
             NodeData::Requirement(data) => data.reference.as_ref().map(|ref_| ref_.0.clone()),
             _ => None,
@@ -72,6 +75,7 @@ impl Shown {
             aliases: projected_aliases(node, full),
             data: node.data().clone(),
             edges: projected_edges(node, incoming, full),
+            missing: advice::missing(node, all),
             attributes: projected_attributes(node, full),
         }
     }
@@ -137,6 +141,9 @@ impl fmt::Display for Shown {
         if !self.body.is_empty() {
             writeln!(f, "{}", self.body)?;
         }
+        if !self.missing.is_empty() {
+            writeln!(f, "無いもの: {}", self.missing.join(", "))?;
+        }
         Ok(())
     }
 }
@@ -144,6 +151,7 @@ impl fmt::Display for Shown {
 /// Project the named texts in order. Resolving any one of them is an error
 /// that names the candidates when several refs match (proposal-v3 11).
 pub fn show<S: Store>(repo: &Repository<S>, texts: &[String], full: bool) -> Result<Vec<Shown>> {
+    let all = repo.all()?;
     let mut out = Vec::new();
     for text in texts {
         let id = repo.resolve(text)?;
@@ -155,7 +163,7 @@ pub fn show<S: Store>(repo: &Repository<S>, texts: &[String], full: bool) -> Res
         } else {
             Vec::new()
         };
-        out.push(Shown::new(&node, &incoming, full));
+        out.push(Shown::new(&node, &incoming, &all, full));
     }
     Ok(out)
 }

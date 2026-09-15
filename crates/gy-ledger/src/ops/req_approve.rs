@@ -1,6 +1,6 @@
 //! req approve: record the design, who heard it, and the evidence, moving a
 //! filed requirement to approved (D-70).
-use super::{Operation, Outcome, Repository, node_of, outcome, today};
+use super::{Operation, Outcome, Repository, advice_for, node_of, today};
 use crate::model::{Approval, NodeData, NodeId, NodeKind, RequirementState};
 use crate::store::{Error, Result, Store};
 
@@ -33,6 +33,13 @@ impl<S: Store> Operation<S> for ReqApprove {
         }
         let why = format!("req approve {}", self.id);
         repo.transaction(&why, &self.design, |repo| repo.put(&node))?;
-        Ok(outcome(&self.id, "approved"))
+        let (missing, next) = advice_for(repo, &node)?;
+        Ok(Outcome {
+            id: Some(self.id.clone()),
+            changed: vec!["approved".into()],
+            missing,
+            next,
+            value: self.id,
+        })
     }
 }
