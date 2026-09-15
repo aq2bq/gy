@@ -1,10 +1,10 @@
 # gy の公開物 — gy05
 
-- 生成: 2026-09-15T08:12:12Z
-- seq: 51
+- 生成: 2026-09-15T10:22:54Z
+- seq: 158
 - scope: gy05
 - since: (先頭から)
-- 書き手: piko
+- 書き手: lead
 - 正本: /Users/pememo/.local/share/gy/fae59914
 
 ## 読み方
@@ -60,17 +60,19 @@ ID と別名:
 - [n-da96 (N-39) 各コマンドの出力が、そのノードに無いものと次の操作を返し、同梱 skill を流れの説明だけにする](needs/n-da96-各コマンドの出力が-そのノードに無いものと次の操作を返し-同梱-skill-を流.md) — closed
 - [n-dbcf (N-37) 操作を末端 19 の閉じた集合にし、一つの意図を一つのコマンド・一つのトランザクションにする（lint は無い）](needs/n-dbcf-操作を末端-19-の閉じた集合にし-一つの意図を一つのコマンド-一つのトランザク.md) — closed
 - [n-00dc (N-66) 移行 (b1): 辺と waits-on（Relation に WaitsOn、next の準備判定を辺読みに、gy5 link の canonical 名に waits-on）](needs/n-00dc-移行-b1-辺と-waits-on-Relation-に-WaitsOn-nex.md) — closed
-- [n-02b9 WebUI（第 3 段）: マスターが「これは何で何と関係があるか」「今マスター待ちは何か」を把握できる画面。問いは D-85 の 6 つを入力にし、作るのはマスターの指示があってから](needs/n-02b9-WebUI-第-3-段-マスターが-これは何で何と関係があるか-今マスター待ちは.md) — open
+- [n-02b9 WebUI（第 3 段）: マスターが「これは何で何と関係があるか」「今マスター待ちは何か」を把握できる画面。問いは D-85 の 6 つを入力にし、作るのはマスターの指示があってから](needs/n-02b9-WebUI-第-3-段-マスターが-これは何で何と関係があるか-今マスター待ちは.md) — closed
 - [n-0476 (N-60) 読み (2b): handover（error と進行中の要求を ref 付きで、warn は件数だけ）を views 層に作る（N-59 から分割）](needs/n-0476-読み-2b-handover-error-と進行中の要求を-ref-付きで-wa.md) — closed
 - [n-0551 (N-65) 移行 (a1): クレート gy-migrate の骨格（引数、ガード、0.4 を gy-core で読んで中間の型 Legacy へ、--dry-run、報告の器）](needs/n-0551-移行-a1-クレート-gy-migrate-の骨格-引数-ガード-0-4-を-g.md) — closed
 - [n-0cb7 (N-48) 正本の置き場所（XDG のデータディレクトリ + リポジトリのハッシュ）と形式の版 format の読み書き・判定・移行の入口の枠](needs/n-0cb7-正本の置き場所-XDG-のデータディレクトリ-リポジトリのハッシュ-と形式の版.md) — closed
 - [n-147b (N-70) 0.5.0 の準備: gy5 を gy に改名し、gy-core と 0.4 の CLI と gy-migrate を消し、docs/ledger を新しい正本へ切り替え、版とCHANGELOG を整える（公開はマスターの指示）](needs/n-147b-0-5-0-の準備-gy5-を-gy-に改名し-gy-core-と-0-4-の.md) — closed
 - [n-1aad edit --set scope=<名前> でノードを別のスコープへ移せるようにする（名前は gy.toml にあるものだけ。ID と辺は変わらない）](needs/n-1aad-edit---set-scope-名前-でノードを別のスコープへ移せるようにする.md) — closed
+- [n-24dd scope rename (c): CLI と gy.toml の書き換え（コメント・順序を保ち、失敗時はログを戻す）、文書、gy 自身の写しでの確認（n-ff2b から分割）](needs/n-24dd-scope-rename-c-CLI-と-gy-toml-の書き換え-コメント.md) — closed
 - [n-348d (N-45) 物理設計の基準を機械で測る道具 scripts/measure.sh を用意する（行数・関数の長さ・glob・文字列キー・テストの行数・差分・層の向き）](needs/n-348d-物理設計の基準を機械で測る道具-scripts-measure-sh-を用意する.md) — closed
 - [n-35cf show / list / publish のニーズの状態を next と同じ導出（open / closed / done）にする。list --status done を受ける](needs/n-35cf-show-list-publish-のニーズの状態を-next-と同じ導出-op.md) — closed
 - [n-3806 (N-67) 移行 (a2): ノードの写し（種類ごとの対応表、別名、ref、1 トランザクション）とテスト（N-65 から分割）](needs/n-3806-移行-a2-ノードの写し-種類ごとの対応表-別名-ref-1-トランザクション.md) — closed
 - [n-3a5d (N-69) 移行 (b3): 記録の凍結（publication と legacy_records）、報告（stdout と migration-report.md、source の git コミット）、gy.toml の生成と検査（N-68 から分割）](needs/n-3a5d-移行-b3-記録の凍結-publication-と-legacy_records.md) — closed
 - [n-3f44 (N-44) render と HTML 投影（html.rs、ui/、e2e/、テスト、同梱物、CI）を最初に消し、しがらみの無い木で始める](needs/n-3f44-render-と-HTML-投影-html-rs-ui-e2e-テスト-同梱物.md) — closed
+- [n-3f84 scope rename (b): 操作 scope_rename（Repository 経由の適用、履歴 1 行、undo、Outcome）とテスト（n-ff2b から分割）](needs/n-3f84-scope-rename-b-操作-scope_rename-Repositor.md) — closed
 - [n-447c (N-54) 操作 (d): edit（--title / --body / --set / --append、--reason 必須。状態と辺は変えない）と undo の操作](needs/n-447c-操作-d-edit---title---body---set---append.md) — closed
 - [n-45ef publish (a): スコープごとのディレクトリ出力と 1 ノード 1 ファイル（関係と mark を相手の題名付きで。対象スコープのディレクトリだけを作り直す）](needs/n-45ef-publish-a-スコープごとのディレクトリ出力と-1-ノード-1-ファイル.md) — closed
 - [n-478b (N-64) CLI (2b): req add / approve / revise / done / cancel の配線と末端の数の測定（AC-49）（N-62 から分割）](needs/n-478b-CLI-2b-req-add-approve-revise-done-cance.md) — closed
@@ -79,7 +81,7 @@ ID と別名:
 - [n-58b4 (N-58) 読み (1b): list（--type / --status / --targets / --grep / --actor / --since。actor と since は書き込み単位）を views 層に作る（N-57 から分割）](needs/n-58b4-読み-1b-list---type---status---targets---g.md) — closed
 - [n-5c59 publish (b): スコープごとの索引 README.md（見出し・読み方・一覧とリンク・履歴・診断）と --since、gy.toml の output、文書、gy 自身の docs/publication の作り直し（n-45ef から分割）](needs/n-5c59-publish-b-スコープごとの索引-README-md-見出し-読み方-一覧.md) — closed
 - [n-6eae publish <ID> を見出しと箇条書きの形にし、既定の読み物の見本を 2 つ（判断待ちが無いとき / あるとき）作ってマスターに見せる](needs/n-6eae-publish-ID-を見出しと箇条書きの形にし-既定の読み物の見本を-2-つ.md) — closed
-- [n-79fb edit で、未記録の成立範囲だけを 1 回記録できる（--set decision_scope=<文>。記録済みは拒む）。--set key= は自由属性を消す](needs/n-79fb-edit-で-未記録の成立範囲だけを-1-回記録できる---set-decisi.md) — open
+- [n-79fb edit で、未記録の成立範囲だけを 1 回記録できる（--set decision_scope=<文>。記録済みは拒む）。--set key= は自由属性を消す](needs/n-79fb-edit-で-未記録の成立範囲だけを-1-回記録できる---set-decisi.md) — closed
 - [n-7cc1 (N-57) 読み (1a): views の骨格と show（複数 ID、ref でも引ける、種類ごとの逐語、--full、--json）](needs/n-7cc1-読み-1a-views-の骨格と-show-複数-ID-ref-でも引ける-種類.md) — closed
 - [n-816a (N-55) 操作 (a2): question add / question close / criterion add / criterion satisfy の 4 操作（N-51 から分割）](needs/n-816a-操作-a2-question-add-question-close-criter.md) — closed
 - [n-81d8 (N-52) 操作 (b): decide（ADR 有り無し、closes / narrows / supersedes / completes / widens と mark）と link（--mark、--remove）](needs/n-81d8-操作-b-decide-ADR-有り無し-closes-narrows-supe.md) — closed
@@ -96,10 +98,11 @@ ID と別名:
 - [n-d514 (N-51) 操作 (a1): 辺を from 側だけに置き Need.targets の重複を消し、need add / need close を作る](needs/n-d514-操作-a1-辺を-from-側だけに置き-Need-targets-の重複を消し.md) — closed
 - [n-e3c1 (N-68) 移行 (b2): legacy.rs の分割、要求の 11 状態 → 4 状態と approval / completion、決定側の closes を読まない修正](needs/n-e3c1-移行-b2-legacy-rs-の分割-要求の-11-状態-4-状態と-appr.md) — closed
 - [n-edce (N-47) 辺の種類の組（論点 closes 決定、ニーズ targets 受け入れ条件など）を model の不変条件として検査し、外れた組の Link を作れなくする](needs/n-edce-辺の種類の組-論点-closes-決定-ニーズ-targets-受け入れ条件など.md) — closed
-- [n-ef16 publish のノードのファイルの形を整える: 関係は 1 か所（両向き）、成立範囲は 1 回、節の間に空行、書き手が無ければ行を出さない](needs/n-ef16-publish-のノードのファイルの形を整える-関係は-1-か所-両向き-成立範.md) — open
+- [n-ef16 publish のノードのファイルの形を整える: 関係は 1 か所（両向き）、成立範囲は 1 回、節の間に空行、書き手が無ければ行を出さない](needs/n-ef16-publish-のノードのファイルの形を整える-関係は-1-か所-両向き-成立範.md) — closed
 - [n-f088 ID の解決で、0 埋めの同一視を旧 ID の別名にだけ当て、gy が振ったハッシュ ID には当てない（d-0008 が D-8 と衝突する欠陥）。新しい ID は数字だけのハッシュを避ける](needs/n-f088-ID-の解決で-0-埋めの同一視を旧-ID-の別名にだけ当て-gy-が振ったハッ.md) — closed
 - [n-f312 (N-62) CLI (2a): decide / link / edit / undo の配線と、書きの入口での actor 検査の前倒し](needs/n-f312-CLI-2a-decide-link-edit-undo-の配線と-書きの入口で.md) — closed
 - [n-f65b (N-63) CLI (1b): need / question / criterion の 6 操作の配線とテスト（N-61 から分割）](needs/n-f65b-CLI-1b-need-question-criterion-の-6-操作の配線.md) — closed
+- [n-ff2b scope rename (a): 形式の版 2 と写し、ログの変更の種類 scope-renamed と再生](needs/n-ff2b-scope-rename-a-形式の版-2-と写し-ログの変更の種類-scope.md) — closed
 ### questions
 - [q-037e (Q-42) publish の読み物が答えるマスターの問いは何か（roadmap 未決 2、第 3 段の入力。問いが揃うまで作らない）](questions/q-037e-publish-の読み物が答えるマスターの問いは何か-roadmap-未決-2.md) — closed
 - [q-6c8e (Q-41) ニーズの waiting-on（待っている論点）は自由属性の文字列のままでよいか、閉じた関係（need waits-on question）にして書き込み時に検証するか](questions/q-6c8e-ニーズの-waiting-on-待っている論点-は自由属性の文字列のままでよいか.md) — closed
@@ -112,6 +115,8 @@ ID と別名:
 - [d-38b5 publish <ID> の答えは「見出しと箇条書き」の形にする: 見出しは旧 ID と短い題、節は 決めたこと / 理由 / 生んだ作業（状態付き）/ 状態（有効か、置き換えの有無）。要求は 来歴 / 状態 / 記録、ニーズは 目的 / 受け入れ条件 / 起票した要求](decisions/d-38b5-publish-ID-の答えは-見出しと箇条書き-の形にする-見出しは旧-ID.md)
 - [d-63f8 waits-on の先には論点に加えて要求も許し、要求が Done か Cancelled になれば待ちが解ける](decisions/d-63f8-waits-on-の先には論点に加えて要求も許し-要求が-Done-か-Canc.md)
 - [d-648a (D-87) publish の既定は 1 ページの読み物（いま判断待ち、未決の論点、注意の件数、期間の変更）とし、ノードの記述（問い 1・3・4）は指定した ID の分だけ出す。全ノードの書き出しはしない](decisions/d-648a-publish-の既定は-1-ページの読み物-いま判断待ち-未決の論点-注意の件.md)
+- [d-6e70 スコープ名の変更を操作 scope rename として閉じた集合に足す。履歴には「スコープ名の変更 旧 → 新（n ノード）」の 1 件の変更として残し、gy が gy.toml の [scopes.旧] を [scopes.新] に書き換える](decisions/d-6e70-スコープ名の変更を操作-scope-rename-として閉じた集合に足す-履歴に.md)
+- [d-736e 0.4 系のスコープに残る未着手ニーズは、消した機能に伴うものと新しい gy が別の形で満たしたものに分けて閉じる。WebUI のニーズはマスターの指示があるまで立てない](decisions/d-736e-0-4-系のスコープに残る未着手ニーズは-消した機能に伴うものと新しい-gy-が.md)
 - [d-799e (D-85) publish の読み物は 6 つの問いに答える形で作り、マスターが読んで答えられなかった問いを後から足す](decisions/d-799e-publish-の読み物は-6-つの問いに答える形で作り-マスターが読んで答えら.md)
 - [d-7c64 publish の出力は 1 ファイルでなく、スコープごとのディレクトリに 1 ノード 1 ファイルと索引 1 ファイルを書き出す形にし、出力先のスコープのディレクトリの中だけを作り直す](decisions/d-7c64-publish-の出力は-1-ファイルでなく-スコープごとのディレクトリに-1.md)
 - [d-8637 (D-83) ニーズが待っている論点は閉じた関係 waits-on（need → question）で持ち、書き込み時に検証する。自由属性 waiting-on は移行で辺に写す](decisions/d-8637-ニーズが待っている論点は閉じた関係-waits-on-need-question.md)
@@ -123,7 +128,7 @@ ID と別名:
 ### requirements
 - 無し
 ### criteria
-- [ac-09b1 (AC-49) 末端のサブコマンドが 20 以下（書き 15、読み 5）、固有オプションが 30 以下（今 29 と 36）。今日の定型 9 つがそれぞれ 1 コマンドで書ける](criteria/ac-09b1-末端のサブコマンドが-20-以下-書き-15-読み-5-固有オプションが-30.md) — satisfied
+- [ac-09b1 (AC-49) 末端のサブコマンドが 21 以下（書き 16、読み 5）、固有オプションが 30 以下（今 29 と 36）。今日の定型 9 つがそれぞれ 1 コマンドで書ける](criteria/ac-09b1-末端のサブコマンドが-21-以下-書き-16-読み-5-固有オプションが-30.md) — satisfied
 - [ac-5216 (AC-41) 確定後の転記が 0。進行管理が外の文書から gy へ写す記録が無い（今日は #6027 で約 22,800 bytes）](criteria/ac-5216-確定後の転記が-0-進行管理が外の文書から-gy-へ写す記録が無い-今日は-60.md) — unsatisfied
 - [ac-6251 (AC-50) 利用者の文書と運用に採番の規則が現れない。ID の衝突と振り直しが起きない](criteria/ac-6251-利用者の文書と運用に採番の規則が現れない-ID-の衝突と振り直しが起きない.md) — satisfied
 - [ac-7652 (AC-53) 後から検査する lint が無く、不正な状態は書き込み時に拒まれ、注意が要る状態は handover が作業として出す](criteria/ac-7652-後から検査する-lint-が無く-不正な状態は書き込み時に拒まれ-注意が要る状態.md) — satisfied
@@ -131,7 +136,7 @@ ID と別名:
 - [ac-8787 (AC-52) publish の出力が、指定した時点と範囲の記録（ノード・辺・履歴）と診断結果を含む完結した文書で、原本（正本）を読まずに理解でき、コミットして後から判断と経緯を振り返れる](criteria/ac-8787-publish-の出力が-指定した時点と範囲の記録-ノード-辺-履歴-と診断結果.md) — satisfied
 - [ac-8ca4 (AC-48) gy のコマンド・設定・ID・項目名に特定の外部サービスの語が無く、外への参照は ref 1 つ](criteria/ac-8ca4-gy-のコマンド-設定-ID-項目名に特定の外部サービスの語が無く-外への参照は.md) — satisfied
 - [ac-9be9 (AC-40) gy.toml に書けるのはスコープと出力先だけで、他のキーは読み込み時にエラー。Kokopelli の gy.toml 2,117 行が 16 行相当で読み込める](criteria/ac-9be9-gy-toml-に書けるのはスコープと出力先だけで-他のキーは読み込み時にエラー.md) — satisfied
-- [ac-a8ff (AC-51) Kokopelli の TEAM_AGENTS.md の gy に関する行数が、gy の出力が次の操作と不足を返すことで減る](criteria/ac-a8ff-Kokopelli-の-TEAM_AGENTS-md-の-gy-に関する行数が.md) — unsatisfied
+- [ac-a8ff (AC-51) Kokopelli の TEAM_AGENTS.md の gy に関する行数が、gy の出力が次の操作と不足を返すことで減る](criteria/ac-a8ff-Kokopelli-の-TEAM_AGENTS-md-の-gy-に関する行数が.md) — satisfied
 - [ac-b0f3 (AC-46) すべての書き込みに、いつ・誰が（GY_ACTOR 必須）・なぜ・出典が残り、undo できる](criteria/ac-b0f3-すべての書き込みに-いつ-誰が-GY_ACTOR-必須-なぜ-出典が残り-und.md) — satisfied
 - [ac-c21e (AC-43) セッション再開の 1 コマンド（handover）で、進行中と確定・未完了の要求が ref 付きで復元でき、warn は件数だけ](criteria/ac-c21e-セッション再開の-1-コマンド-handover-で-進行中と確定-未完了の要求.md) — satisfied
 - [ac-c2bd (AC-55) 正本が形式の版を持ち、古い版を開くと写しを残して 1 トランザクションで移行され、非互換の変更ごとに移行か対応表が同梱され、Kokopelli の写しで試した値が残っている](criteria/ac-c2bd-正本が形式の版を持ち-古い版を開くと写しを残して-1-トランザクションで移行され.md) — satisfied
@@ -155,7 +160,7 @@ ID と別名:
 | 1 | 2026-09-15 04:49 | lead | ac-b0f3 (AC-46) すべての書き込みに、いつ・誰が（GY_ACTOR 必須）・なぜ・出典が残り、undo できる | created | migrate from 0.4 | publication/0.4 0d42e55 |
 | 1 | 2026-09-15 04:49 | lead | ac-d8f9 (AC-47) Kokopelli の 0.4 台帳が一回の移行で入る。全ノードはハッシュ ID に振り直され、旧 ID と ref で引ける。lint の error が 0 | created | migrate from 0.4 | publication/0.4 0d42e55 |
 | 1 | 2026-09-15 04:49 | lead | ac-8ca4 (AC-48) gy のコマンド・設定・ID・項目名に特定の外部サービスの語が無く、外への参照は ref 1 つ | created | migrate from 0.4 | publication/0.4 0d42e55 |
-| 1 | 2026-09-15 04:49 | lead | ac-09b1 (AC-49) 末端のサブコマンドが 20 以下（書き 15、読み 5）、固有オプションが 30 以下（今 29 と 36）。今日の定型 9 つがそれぞれ 1 コマンドで書ける | created | migrate from 0.4 | publication/0.4 0d42e55 |
+| 1 | 2026-09-15 04:49 | lead | ac-09b1 (AC-49) 末端のサブコマンドが 21 以下（書き 16、読み 5）、固有オプションが 30 以下（今 29 と 36）。今日の定型 9 つがそれぞれ 1 コマンドで書ける | created | migrate from 0.4 | publication/0.4 0d42e55 |
 | 1 | 2026-09-15 04:49 | lead | ac-6251 (AC-50) 利用者の文書と運用に採番の規則が現れない。ID の衝突と振り直しが起きない | created | migrate from 0.4 | publication/0.4 0d42e55 |
 | 1 | 2026-09-15 04:49 | lead | ac-a8ff (AC-51) Kokopelli の TEAM_AGENTS.md の gy に関する行数が、gy の出力が次の操作と不足を返すことで減る | created | migrate from 0.4 | publication/0.4 0d42e55 |
 | 1 | 2026-09-15 04:49 | lead | ac-8787 (AC-52) publish の出力が、指定した時点と範囲の記録（ノード・辺・履歴）と診断結果を含む完結した文書で、原本（正本）を読まずに理解でき、コミットして後から判断と経緯を振り返れる | created | migrate from 0.4 | publication/0.4 0d42e55 |
@@ -267,11 +272,66 @@ ID と別名:
 | 49 | 2026-09-15 08:08 | lead | n-79fb edit で、未記録の成立範囲だけを 1 回記録できる（--set decision_scope=<文>。記録済みは拒む）。--set key= は自由属性を消す | created | need add n-79fb | need add |
 | 50 | 2026-09-15 08:08 | lead | n-79fb edit で、未記録の成立範囲だけを 1 回記録できる（--set decision_scope=<文>。記録済みは拒む）。--set key= は自由属性を消す | updated | link n-79fb spawned-by d-dcbb | link |
 | 51 | 2026-09-15 08:08 | lead | n-1aad edit --set scope=<名前> でノードを別のスコープへ移せるようにする（名前は gy.toml にあるものだけ。ID と辺は変わらない） | updated | need close n-1aad | 2026-09-15 lead が検収。measure 違反 0（score 139）、テスト 0 failed。一時台帳で scope a → b の移動と、無い名前の Err を確認。コミット c67be17、ローカルにインストール |
+| 52 | 2026-09-15 08:14 | lead | n-ef16 publish のノードのファイルの形を整える: 関係は 1 か所（両向き）、成立範囲は 1 回、節の間に空行、書き手が無ければ行を出さない | updated | need close n-ef16 | 2026-09-15 lead が検収。measure 違反 0（score 206）、テスト 0 failed。Kokopelli の台帳（読むだけ）の D-171 のファイルで関係の節 1 つ、成立範囲 1 回、節の前後に空行、索引に書き手の行なし。コミット 9273cc9、ローカルにインストール |
+| 53 | 2026-09-15 08:18 | lead | n-79fb edit で、未記録の成立範囲だけを 1 回記録できる（--set decision_scope=<文>。記録済みは拒む）。--set key= は自由属性を消す | updated | need close n-79fb | 2026-09-15 lead が検収。measure 違反 0（score 201）、テスト 0 failed。一時台帳で記録済みの成立範囲の Err と、--set foo= で属性が消えることを確認。コミット 352b18c、ローカルにインストール |
+| 54 | 2026-09-15 09:03 | lead | n-ff2b scope rename (a): 形式の版 2 と写し、ログの変更の種類 scope-renamed と再生 | created | need add n-ff2b | need add |
+| 55 | 2026-09-15 09:03 | lead | ac-09b1 (AC-49) 末端のサブコマンドが 21 以下（書き 16、読み 5）、固有オプションが 30 以下（今 29 と 36）。今日の定型 9 つがそれぞれ 1 コマンドで書ける | updated | edit ac-09b1 | {'code': 2, 'message': 'the mark "末端 20（書き 15、読み 5）" is not in the older decision\'s body or applicability conditions'} で scope rename を足した |
+| 56 | 2026-09-15 09:04 | lead | d-6e70 スコープ名の変更を操作 scope rename として閉じた集合に足す。履歴には「スコープ名の変更 旧 → 新（n ノード）」の 1 件の変更として残し、gy が gy.toml の [scopes.旧] を [scopes.新] に書き換える | created | decide d-6e70 | decide |
+| 57 | 2026-09-15 09:04 | lead | n-ff2b scope rename (a): 形式の版 2 と写し、ログの変更の種類 scope-renamed と再生 | updated | link n-ff2b spawned-by d-6e70 | link |
+| 58 | 2026-09-15 09:04 | lead | n-3f84 scope rename (b): 操作 scope_rename（Repository 経由の適用、履歴 1 行、undo、Outcome）とテスト（n-ff2b から分割） | created | need add n-3f84 | need add |
+| 59 | 2026-09-15 09:04 | lead | n-24dd scope rename (c): CLI と gy.toml の書き換え（コメント・順序を保ち、失敗時はログを戻す）、文書、gy 自身の写しでの確認（n-ff2b から分割） | created | need add n-24dd | need add |
+| 60 | 2026-09-15 09:04 | lead | n-3f84 scope rename (b): 操作 scope_rename（Repository 経由の適用、履歴 1 行、undo、Outcome）とテスト（n-ff2b から分割） | updated | link n-3f84 spawned-by d-6e70 | link |
+| 61 | 2026-09-15 09:04 | lead | n-24dd scope rename (c): CLI と gy.toml の書き換え（コメント・順序を保ち、失敗時はログを戻す）、文書、gy 自身の写しでの確認（n-ff2b から分割） | updated | link n-24dd spawned-by d-6e70 | link |
+| 62 | 2026-09-15 09:04 | lead | n-ff2b scope rename (a): 形式の版 2 と写し、ログの変更の種類 scope-renamed と再生 | updated | edit n-ff2b | 見込み 750〜900 行のため 3 分割 |
+| 63 | 2026-09-15 09:13 | lead | n-ff2b scope rename (a): 形式の版 2 と写し、ログの変更の種類 scope-renamed と再生 | updated | need close n-ff2b | 2026-09-15 lead が検収。measure 違反 0（score 366）、テスト 210 件 0 failed。gy 自身の正本の写し（版 1）を新しいバイナリで開くと format.1.bak と events.jsonl.1.bak を残して版 2 になり、handover と next が同じ値。コミット 9f04bbc |
+| 64 | 2026-09-15 09:18 | lead | n-3f84 scope rename (b): 操作 scope_rename（Repository 経由の適用、履歴 1 行、undo、Outcome）とテスト（n-ff2b から分割） | updated | need close n-3f84 | 2026-09-15 lead が検収。measure 違反 0（score 205）、テスト 0 failed。コミット a3fe323 |
+| 65 | 2026-09-15 09:25 | lead | n-24dd scope rename (c): CLI と gy.toml の書き換え（コメント・順序を保ち、失敗時はログを戻す）、文書、gy 自身の写しでの確認（n-ff2b から分割） | updated | need close n-24dd | 2026-09-15 lead が検収。measure 違反 0（score 140）、テスト 0 failed。一時台帳で scope rename a z がノードを移し gy.toml のコメントと output を保って [scopes.z] に書き換え、履歴が 1 行、同名は Err。末端 21。コミット 53f9fb7、ローカルにインストール |
+| 66 | 2026-09-15 09:25 | lead | ac-09b1 (AC-49) 末端のサブコマンドが 21 以下（書き 16、読み 5）、固有オプションが 30 以下（今 29 と 36）。今日の定型 9 つがそれぞれ 1 コマンドで書ける | updated | criterion satisfy ac-09b1 | 2026-09-15 d-6e70 で scope rename を足し末端 21 に改めたため一旦取り消し |
+| 67 | 2026-09-15 09:25 | lead | ac-09b1 (AC-49) 末端のサブコマンドが 21 以下（書き 16、読み 5）、固有オプションが 30 以下（今 29 と 36）。今日の定型 9 つがそれぞれ 1 コマンドで書ける | updated | criterion satisfy ac-09b1 | 2026-09-15 lead。gy --help の末端は 21（書き 16: need add / close、question add / close、decide、req add / approve / revise / done / cancel、criterion add / satisfy、link、edit、undo、scope rename。読み 5）、固有オプション 30 以下。d-6e70 で改めた数のとおり |
+| 68 | 2026-09-15 09:55 | lead | n-147b (N-70) 0.5.0 の準備: gy5 を gy に改名し、gy-core と 0.4 の CLI と gy-migrate を消し、docs/ledger を新しい正本へ切り替え、版とCHANGELOG を整える（公開はマスターの指示） | updated | edit n-147b | 0.6.0 の公開の記録 |
+| 69 | 2026-09-15 09:58 | lead | ac-a8ff (AC-51) Kokopelli の TEAM_AGENTS.md の gy に関する行数が、gy の出力が次の操作と不足を返すことで減る | updated | criterion satisfy ac-a8ff | 2026-09-15 lead が測定。Kokopelli の TEAM_AGENTS.md の gy に関する行（grep -ci gy）は移行前（bdedc1080）22 行、gy 0.5 の運用に書き直した後（1006ec8fd）20 行。全体は 175 → 172 行。減り幅は小さいが、records / guards / lint / cheatsheet の手順は消え、事実を得た担当が GY_ACTOR 付きで書き進行管理が list --since で照合する運用になった。Kokopelli の進行管理担当の完了報告（後始末: 決定 177 件の本文整理、未記録の成立範囲 81 件と空の AC 11 件の記入、scope rename、gy.toml をルートへ、docs/adr の削除、docs/gy-published への publish） |
+| 70 | 2026-09-15 10:21 | lead | d-736e 0.4 系のスコープに残る未着手ニーズは、消した機能に伴うものと新しい gy が別の形で満たしたものに分けて閉じる。WebUI のニーズはマスターの指示があるまで立てない | created | decide d-736e | decide |
+| 82 | 2026-09-15 10:21 | lead | n-02b9 WebUI（第 3 段）: マスターが「これは何で何と関係があるか」「今マスター待ちは何か」を把握できる画面。問いは D-85 の 6 つを入力にし、作るのはマスターの指示があってから | updated | need close n-02b9 | マスターの指示があってから立てる（d-edb0、d-736e）（d-736e） |
+| 84 | 2026-09-15 10:22 | lead | ac-09b1 (AC-49) 末端のサブコマンドが 21 以下（書き 16、読み 5）、固有オプションが 30 以下（今 29 と 36）。今日の定型 9 つがそれぞれ 1 コマンドで書ける | updated | edit ac-09b1 | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 98 | 2026-09-15 10:22 | lead | ac-5216 (AC-41) 確定後の転記が 0。進行管理が外の文書から gy へ写す記録が無い（今日は #6027 で約 22,800 bytes） | updated | edit ac-5216 | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 103 | 2026-09-15 10:22 | lead | ac-6251 (AC-50) 利用者の文書と運用に採番の規則が現れない。ID の衝突と振り直しが起きない | updated | edit ac-6251 | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 108 | 2026-09-15 10:22 | lead | ac-7652 (AC-53) 後から検査する lint が無く、不正な状態は書き込み時に拒まれ、注意が要る状態は handover が作業として出す | updated | edit ac-7652 | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 109 | 2026-09-15 10:22 | lead | ac-7670 (AC-45) 1 コマンドの書き込みは全部書けるか全部書かないか。途中失敗で中途半端な状態が残らない | updated | edit ac-7670 | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 112 | 2026-09-15 10:22 | lead | ac-8787 (AC-52) publish の出力が、指定した時点と範囲の記録（ノード・辺・履歴）と診断結果を含む完結した文書で、原本（正本）を読まずに理解でき、コミットして後から判断と経緯を振り返れる | updated | edit ac-8787 | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 113 | 2026-09-15 10:22 | lead | ac-8ca4 (AC-48) gy のコマンド・設定・ID・項目名に特定の外部サービスの語が無く、外への参照は ref 1 つ | updated | edit ac-8ca4 | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 116 | 2026-09-15 10:22 | lead | ac-9be9 (AC-40) gy.toml に書けるのはスコープと出力先だけで、他のキーは読み込み時にエラー。Kokopelli の gy.toml 2,117 行が 16 行相当で読み込める | updated | edit ac-9be9 | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 119 | 2026-09-15 10:22 | lead | ac-a8ff (AC-51) Kokopelli の TEAM_AGENTS.md の gy に関する行数が、gy の出力が次の操作と不足を返すことで減る | updated | edit ac-a8ff | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 123 | 2026-09-15 10:22 | lead | ac-b0f3 (AC-46) すべての書き込みに、いつ・誰が（GY_ACTOR 必須）・なぜ・出典が残り、undo できる | updated | edit ac-b0f3 | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 126 | 2026-09-15 10:22 | lead | ac-c21e (AC-43) セッション再開の 1 コマンド（handover）で、進行中と確定・未完了の要求が ref 付きで復元でき、warn は件数だけ | updated | edit ac-c21e | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 127 | 2026-09-15 10:22 | lead | ac-c2bd (AC-55) 正本が形式の版を持ち、古い版を開くと写しを残して 1 トランザクションで移行され、非互換の変更ごとに移行か対応表が同梱され、Kokopelli の写しで試した値が残っている | updated | edit ac-c2bd | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 128 | 2026-09-15 10:22 | lead | ac-ce32 (AC-44) ソースリポジトリの作業ツリーに gy のファイルが無く、台帳のための git も worktree も要らない | updated | edit ac-ce32 | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 131 | 2026-09-15 10:22 | lead | ac-d2ab (AC-57) render サブコマンド、html.rs、ui/、e2e/、html_render のテスト、同梱の dist と template、CI の該当ジョブが無く、cargo test --workspace と cargo package --list にそれらが現れない | updated | edit ac-d2ab | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 132 | 2026-09-15 10:22 | lead | ac-d8f9 (AC-47) Kokopelli の 0.4 台帳が一回の移行で入る。全ノードはハッシュ ID に振り直され、旧 ID と ref で引ける。lint の error が 0 | updated | edit ac-d8f9 | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 134 | 2026-09-15 10:22 | lead | ac-d95a (AC-56) README 日英・docs・CHEATSHEET・同梱 skill が新しい gy の 20 の操作（書き 15、読み 5。D-84）と一つの進め方だけを説明し、消した設定・操作・規則への言及が無い（grep で 0） | updated | edit ac-d95a | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 136 | 2026-09-15 10:22 | lead | ac-e8b7 (AC-54) すべての変更が物理設計の基準（1 ファイル 300 行、1 関数 40 行、glob import 0、属性の文字列キーは 1 か所、テストは操作ごとに 300 行以下、1 ニーズの差分 600 行以下）と層の依存の向きを満たし、検収前に機械で測った値が残っている | updated | edit ac-e8b7 | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 138 | 2026-09-15 10:22 | lead | ac-fc89 (AC-42) 要求ノードは確定前の記述と辺と ref だけ。スナップショットが無い（今日は 431 KB のうち 95%） | updated | edit ac-fc89 | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 139 | 2026-09-15 10:22 | lead | ac-9be9 (AC-40) gy.toml に書けるのはスコープと出力先だけで、他のキーは読み込み時にエラー。Kokopelli の gy.toml 2,117 行が 16 行相当で読み込める | updated | edit ac-9be9 | gy05 の受け入れ条件の測り方を書く（片付け） |
+| 140 | 2026-09-15 10:22 | lead | ac-5216 (AC-41) 確定後の転記が 0。進行管理が外の文書から gy へ写す記録が無い（今日は #6027 で約 22,800 bytes） | updated | edit ac-5216 | gy05 の受け入れ条件の測り方を書く（片付け） |
+| 141 | 2026-09-15 10:22 | lead | ac-fc89 (AC-42) 要求ノードは確定前の記述と辺と ref だけ。スナップショットが無い（今日は 431 KB のうち 95%） | updated | edit ac-fc89 | gy05 の受け入れ条件の測り方を書く（片付け） |
+| 142 | 2026-09-15 10:22 | lead | ac-c21e (AC-43) セッション再開の 1 コマンド（handover）で、進行中と確定・未完了の要求が ref 付きで復元でき、warn は件数だけ | updated | edit ac-c21e | gy05 の受け入れ条件の測り方を書く（片付け） |
+| 143 | 2026-09-15 10:22 | lead | ac-ce32 (AC-44) ソースリポジトリの作業ツリーに gy のファイルが無く、台帳のための git も worktree も要らない | updated | edit ac-ce32 | gy05 の受け入れ条件の測り方を書く（片付け） |
+| 144 | 2026-09-15 10:22 | lead | ac-7670 (AC-45) 1 コマンドの書き込みは全部書けるか全部書かないか。途中失敗で中途半端な状態が残らない | updated | edit ac-7670 | gy05 の受け入れ条件の測り方を書く（片付け） |
+| 145 | 2026-09-15 10:22 | lead | ac-b0f3 (AC-46) すべての書き込みに、いつ・誰が（GY_ACTOR 必須）・なぜ・出典が残り、undo できる | updated | edit ac-b0f3 | gy05 の受け入れ条件の測り方を書く（片付け） |
+| 146 | 2026-09-15 10:22 | lead | ac-d8f9 (AC-47) Kokopelli の 0.4 台帳が一回の移行で入る。全ノードはハッシュ ID に振り直され、旧 ID と ref で引ける。lint の error が 0 | updated | edit ac-d8f9 | gy05 の受け入れ条件の測り方を書く（片付け） |
+| 147 | 2026-09-15 10:22 | lead | ac-8ca4 (AC-48) gy のコマンド・設定・ID・項目名に特定の外部サービスの語が無く、外への参照は ref 1 つ | updated | edit ac-8ca4 | gy05 の受け入れ条件の測り方を書く（片付け） |
+| 148 | 2026-09-15 10:22 | lead | ac-09b1 (AC-49) 末端のサブコマンドが 21 以下（書き 16、読み 5）、固有オプションが 30 以下（今 29 と 36）。今日の定型 9 つがそれぞれ 1 コマンドで書ける | updated | edit ac-09b1 | gy05 の受け入れ条件の測り方を書く（片付け） |
+| 149 | 2026-09-15 10:22 | lead | ac-6251 (AC-50) 利用者の文書と運用に採番の規則が現れない。ID の衝突と振り直しが起きない | updated | edit ac-6251 | gy05 の受け入れ条件の測り方を書く（片付け） |
+| 150 | 2026-09-15 10:22 | lead | ac-a8ff (AC-51) Kokopelli の TEAM_AGENTS.md の gy に関する行数が、gy の出力が次の操作と不足を返すことで減る | updated | edit ac-a8ff | gy05 の受け入れ条件の測り方を書く（片付け） |
+| 151 | 2026-09-15 10:22 | lead | ac-8787 (AC-52) publish の出力が、指定した時点と範囲の記録（ノード・辺・履歴）と診断結果を含む完結した文書で、原本（正本）を読まずに理解でき、コミットして後から判断と経緯を振り返れる | updated | edit ac-8787 | gy05 の受け入れ条件の測り方を書く（片付け） |
+| 152 | 2026-09-15 10:22 | lead | ac-7652 (AC-53) 後から検査する lint が無く、不正な状態は書き込み時に拒まれ、注意が要る状態は handover が作業として出す | updated | edit ac-7652 | gy05 の受け入れ条件の測り方を書く（片付け） |
+| 153 | 2026-09-15 10:22 | lead | ac-e8b7 (AC-54) すべての変更が物理設計の基準（1 ファイル 300 行、1 関数 40 行、glob import 0、属性の文字列キーは 1 か所、テストは操作ごとに 300 行以下、1 ニーズの差分 600 行以下）と層の依存の向きを満たし、検収前に機械で測った値が残っている | updated | edit ac-e8b7 | gy05 の受け入れ条件の測り方を書く（片付け） |
+| 154 | 2026-09-15 10:22 | lead | ac-c2bd (AC-55) 正本が形式の版を持ち、古い版を開くと写しを残して 1 トランザクションで移行され、非互換の変更ごとに移行か対応表が同梱され、Kokopelli の写しで試した値が残っている | updated | edit ac-c2bd | gy05 の受け入れ条件の測り方を書く（片付け） |
+| 155 | 2026-09-15 10:22 | lead | ac-d95a (AC-56) README 日英・docs・CHEATSHEET・同梱 skill が新しい gy の 20 の操作（書き 15、読み 5。D-84）と一つの進め方だけを説明し、消した設定・操作・規則への言及が無い（grep で 0） | updated | edit ac-d95a | gy05 の受け入れ条件の測り方を書く（片付け） |
+| 156 | 2026-09-15 10:22 | lead | ac-d2ab (AC-57) render サブコマンド、html.rs、ui/、e2e/、html_render のテスト、同梱の dist と template、CI の該当ジョブが無く、cargo test --workspace と cargo package --list にそれらが現れない | updated | edit ac-d2ab | gy05 の受け入れ条件の測り方を書く（片付け） |
 
 ## 診断
 
 エラーは正本の整合の破れ。`show <ID>` で該当ノードを読み、`edit` か `link` で直す。警告は注意が要る状態で、`handover` に一覧が出る。
 
 errors: 0
-warnings: 1
-- criteria with an empty body: 18
+warnings: 0

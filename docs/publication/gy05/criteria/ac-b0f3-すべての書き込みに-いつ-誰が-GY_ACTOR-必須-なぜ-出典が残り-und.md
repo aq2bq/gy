@@ -14,6 +14,10 @@
 
 ## 本文
 
+## 測り方
+
+events.jsonl の各行に seq・at・actor・why・source があること、GY_ACTOR 未設定の書きが Err になること、undo が逆変更の行を追記することをテストで確かめる。
+
 ## 充足
 
 - satisfied（2026-09-15 N-38 / N-49 / N-55。events.jsonl の各行に seq・at・actor（GY_ACTOR 必須）・why・source。why は <操作名> <ID>、source は操作の evidence / URL（全操作、grep で確認）。undo は逆変更の行を追記（tests/undo.rs、undo_op.rs）） 2026-09-15T03:51:51.817234+00:00

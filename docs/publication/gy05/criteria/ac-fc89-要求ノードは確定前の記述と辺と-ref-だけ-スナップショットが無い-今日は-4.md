@@ -17,6 +17,10 @@
 
 ## 本文
 
+## 測り方
+
+移行後の要求ノードを show --full し、確定前の記述・辺・ref・approval / revisions / completion / cancellation 以外の記録が無いことを見る。確定後の記録は publication に凍結され legacy_records の相対パスだけが残る。
+
 ## 充足
 
 - satisfied（2026-09-15 N-68 / N-69 / N-41。移行後の要求ノードは確定前の記述（題名・本文・辺・ref・自由属性）と approval / revisions / completion / cancellation の記録だけ。確定後の記録 37 件は publication に凍結し legacy_records の相対パスだけ残す。0.4 の 431 KB の要求ファイルに対し events.jsonl の要求は 1 ノード 1 JSON） 2026-09-15T03:51:51.153329+00:00

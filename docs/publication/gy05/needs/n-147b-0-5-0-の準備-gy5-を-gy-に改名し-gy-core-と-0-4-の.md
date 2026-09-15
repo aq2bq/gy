@@ -33,4 +33,5 @@
 2026-09-15 lead。(a)(b)(c) 完了、コミット 425a2f5。gy 0.5.0、末端 20、cargo package に 0.4 の痕跡 0、cargo publish --workspace --dry-run 成功、テスト 190 件 0 failed。公開（crates.io、push、タグ）はマスターの指示待ち
 2026-09-15 14:42 マスターの指示で公開: crates.io に gy-ledger 0.5.0 と gy 0.5.0（gy-core と gy-migrate は publish = false）、main を push（0.4.2 から 38 コミット）、タグ v0.5.0 を push。公開時のコミットは c2b9b97
 2026-09-15 15:16 マスターの指示で 0.5.1 を公開: crates.io の gy-ledger と gy、main の push、タグ v0.5.1（27af90c）。内容は waits-on の要求への拡張と移行の belongs-to の写し
+2026-09-15 18:54 マスターの指示で 0.6.0 を公開: crates.io の gy-ledger と gy、main の push、タグ v0.6.0（73f0beb）。内容は形式の版 2、publish のディレクトリ出力、scope rename、edit の拡張、3 つの欠陥の修正
 

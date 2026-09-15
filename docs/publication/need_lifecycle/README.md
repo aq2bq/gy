@@ -1,10 +1,10 @@
 # gy の公開物 — need_lifecycle
 
-- 生成: 2026-09-15T08:12:19Z
-- seq: 51
+- 生成: 2026-09-15T10:22:54Z
+- seq: 158
 - scope: need_lifecycle
 - since: (先頭から)
-- 書き手: piko
+- 書き手: lead
 - 正本: /Users/pememo/.local/share/gy/fae59914
 
 ## 読み方
@@ -49,8 +49,8 @@ ID と別名:
 ## 一覧
 
 ### needs
-- [n-44d8 (N-14) ニーズのライフサイクルを設計として定義し、文書と同梱スキルに載せる](needs/n-44d8-ニーズのライフサイクルを設計として定義し-文書と同梱スキルに載せる.md) — open
-- [n-fe2d (N-15) 定義された状態のいずれでもないニーズの状態を lint が検出する](needs/n-fe2d-定義された状態のいずれでもないニーズの状態を-lint-が検出する.md) — open
+- [n-44d8 (N-14) ニーズのライフサイクルを設計として定義し、文書と同梱スキルに載せる](needs/n-44d8-ニーズのライフサイクルを設計として定義し-文書と同梱スキルに載せる.md) — closed
+- [n-fe2d (N-15) 定義された状態のいずれでもないニーズの状態を lint が検出する](needs/n-fe2d-定義された状態のいずれでもないニーズの状態を-lint-が検出する.md) — closed
 ### questions
 - 無し
 ### decisions
@@ -70,11 +70,14 @@ ID と別名:
 | 1 | 2026-09-15 04:49 | lead | d-5ee8 (D-28) ニーズの完了は need 自身の状態が記録する | created | migrate from 0.4 | publication/0.4 0d42e55 |
 | 1 | 2026-09-15 04:49 | lead | n-44d8 (N-14) ニーズのライフサイクルを設計として定義し、文書と同梱スキルに載せる | created | migrate from 0.4 | publication/0.4 0d42e55 |
 | 1 | 2026-09-15 04:49 | lead | n-fe2d (N-15) 定義された状態のいずれでもないニーズの状態を lint が検出する | created | migrate from 0.4 | publication/0.4 0d42e55 |
+| 76 | 2026-09-15 10:21 | lead | n-fe2d (N-15) 定義された状態のいずれでもないニーズの状態を lint が検出する | updated | need close n-fe2d | lint は D-75 で無くし、ニーズの状態は導出（open / closed / done）（d-736e） |
+| 78 | 2026-09-15 10:21 | lead | n-44d8 (N-14) ニーズのライフサイクルを設計として定義し、文書と同梱スキルに載せる | updated | need close n-44d8 | ニーズのライフサイクルは gy 0.5 の導出（need_state）と README・skill で定義した（d-736e） |
+| 107 | 2026-09-15 10:22 | lead | ac-736c (AC-18) ニーズの status が定義された状態のいずれでもない値のとき lint が検出する | updated | edit ac-736c | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 121 | 2026-09-15 10:22 | lead | ac-aef7 (AC-17) ニーズの完了の記録方法と next の判定が README・cheatsheet・同梱スキル・architecture.md に書かれている | updated | edit ac-aef7 | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
 
 ## 診断
 
 エラーは正本の整合の破れ。`show <ID>` で該当ノードを読み、`edit` か `link` で直す。警告は注意が要る状態で、`handover` に一覧が出る。
 
 errors: 0
-warnings: 1
-- criteria with an empty body: 2
+warnings: 0

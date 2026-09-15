@@ -3,7 +3,7 @@
 - 種類: need
 - scope: agent_footprint
 - created: 2026-09-13
-- 状態: open
+- 状態: closed
 - 別名: N-16
 
 ## 関係
@@ -54,6 +54,10 @@
 ## 完了確認（kuroko、2026-09-13）
 
 deck の報告をコミット 5cb1e0a で照合。workflow.rs 8 行 + schema.rs 425 / comparison.rs 107 / history.rs 93 / store.rs 167（declared_files.rs 264 は不変）。lib.rs は不変で公開パスは crate 直下のまま（D-35）。tests/support/mod.rs の baseline() は lint exit 0 を毎回確認する共通フィクスチャ、docs/migration-0.4.md の下流例も同じ fixture を読む。kuroko 側の再実行: fmt exit 0、clippy 警告なし、cargo test --workspace --locked 68 passed（15+7+37+9）/ 0 failed。AC-19・AC-20 satisfied。push・公開は未実施、マスター判断待ち。
+
+## 閉じ方
+
+- 事実で閉じた（workflow.rs は gy-core ごと 0.6.0 で消した（N-70）（d-736e））
 
 ## 自由属性
 

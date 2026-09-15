@@ -3,7 +3,7 @@
 - 種類: need
 - scope: guard_waiver
 - created: 2026-09-14
-- 状態: open
+- 状態: closed
 - 別名: N-32
 
 ## 関係
@@ -31,6 +31,10 @@ workflow/schema.rs（StateGuard.waived_by と validate）、workflow/store.rs（
 ## 公開
 
 2026-09-14 マスターの指示で 0.4.2 として公開。コミット b15505a（feat）と 823ae5f（chore: release 0.4.2）、タグ v0.4.2 を origin/main へ push。crates.io に gy-core 0.4.2 と gy 0.4.2 を公開した。残るのは Kokopelli への案内のみ。
+
+## 閉じ方
+
+- 事実で閉じた（遷移ガードと免除は D-60 / N-35 で消した（d-736e））
 
 ## 自由属性
 

@@ -12,6 +12,10 @@
 
 ## 本文
 
+## 測り方
+
+0.4 系の受け入れ条件。対象のニーズは D-80 / d-736e で閉じた（消した機能か、新しい gy が別の形で満たした）。測り方は当時の satisfy の evidence に記録がある。
+
 ## 充足
 
 - satisfied（{"commit": "2d3d3ce", "basis": ["N-27", "D-44", "D-47"], "checks": {"fmt": 0, "clippy": 0, "rust": 71, "node": 10, "bun_check": 0, "typescript": 0, "e2e_full": 39, "final_affected_e2e": 3}, "measurements": {"pointer_elements_without_actions": 0, "next_reading_rows": 1, "regenerated_next_rows": 0, "criterion_satisfied_rows": 1, "criterion_total_rows": 2, "open_question_rows": 1, "lint_errors": 16, "lint_warnings": 0, "viewport_width": 1440}, "contracts": ["Counted Overview populations and requirement-state links match destination counts", "Native row hit targets, SVG roles, chip aria-pressed/check/bold, Lineage on/off", "One graph neighborhood action follows selected record", "Typed next source derives from changed embedded data on reload", "Cluster selection clears previous lint source in both views"], "artifacts": {"screenshot": "/Users/pememo/go/src/github.com/aq2bq/gy/e2e/.generated/review-n27/n27-1440.png", "html": "/Users/pememo/go/src/github.com/aq2bq/gy/e2e/.generated/review-n27/gy.html", "full_e2e_log": "/private/tmp/gy-n27-e2e-verified.log", "affected_e2e_log": "/private/tmp/gy-n27-actions-final.log"}, "docs": [{"file": "docs/architecture.md", "section": "HTML action targets and derived sources", "difference": "Source restoration, card targets, roles, single focus action"}, {"file": "README.md and README.ja.md", "section": "HTML render", "difference": "Overview links, source semantics, selected chips and graph focus action"}, {"file": "e2e/README.md", "section": "N-27 action coverage", "difference": "Count/role/source verification and consolidated focus expectations"}], "migration": "No manual migration; older URLs default to no source", "acceptance": "Deck inspected 1440px image; kuroko visual receipt pending", "publication": "No push or publication"}） 2026-09-13T22:59:09.782137+00:00

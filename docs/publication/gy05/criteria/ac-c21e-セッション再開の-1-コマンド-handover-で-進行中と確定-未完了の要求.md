@@ -18,6 +18,10 @@
 
 ## 本文
 
+## 測り方
+
+gy handover を 1 回打ち、進行中の要求が ID・ref・題名・next_evidence・responsible で出て、warnings が件数だけであることを見る。Kokopelli の写しで進行中 5 件を確認。
+
 ## 充足
 
 - satisfied（2026-09-15 N-60 / N-41。gy5 handover の 1 コマンドで、進行中の要求（Filed / Approved）を ID・ref・題名・next_evidence・responsible で出し、warnings は件数だけ。Kokopelli の写しで進行中 4 件を ref 付きで復元（.local/report-n41.md）） 2026-09-15T03:51:52.221215+00:00

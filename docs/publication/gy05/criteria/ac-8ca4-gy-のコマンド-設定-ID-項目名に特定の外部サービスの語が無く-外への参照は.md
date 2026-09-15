@@ -15,6 +15,10 @@
 
 ## 本文
 
+## 測り方
+
+crates/gy-ledger/src と crates/gy/src を github / issue / pull で grep し、コマンド・設定・ID・項目名に無いことを見る。gy --help にも無い。
+
 ## 充足
 
 - satisfied（2026-09-15 lead が grep。crates/gy-ledger/src と crates/gy5/src に github / issue / pull の語は 1 か所（../../crates/gy-ledger/src/ops/config.rs:8、コメント）で、コマンド・設定・ID・項目名には無い。gy5 --help に 0 件。外への参照は要求の ref 1 つ（D-73）） 2026-09-15T03:51:51.290018+00:00

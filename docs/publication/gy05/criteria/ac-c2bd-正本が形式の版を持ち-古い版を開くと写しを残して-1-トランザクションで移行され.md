@@ -11,13 +11,19 @@
 - targeted-by n-0551 (N-65) 移行 (a1): クレート gy-migrate の骨格（引数、ガード、0.4 を gy-core で読んで中間の型 Legacy へ、--dry-run、報告の器）
 - targeted-by n-0cb7 (N-48) 正本の置き場所（XDG のデータディレクトリ + リポジトリのハッシュ）と形式の版 format の読み書き・判定・移行の入口の枠
 - targeted-by n-0dae (N-38) 正本を git の外に置き、ハッシュ ID、GY_ACTOR 必須の履歴、undo、ロックを持つ
+- targeted-by n-24dd scope rename (c): CLI と gy.toml の書き換え（コメント・順序を保ち、失敗時はログを戻す）、文書、gy 自身の写しでの確認（n-ff2b から分割）
 - targeted-by n-3806 (N-67) 移行 (a2): ノードの写し（種類ごとの対応表、別名、ref、1 トランザクション）とテスト（N-65 から分割）
 - targeted-by n-4fe0 (N-41) gy 自身の台帳と Kokopelli の 0.4 台帳を一回で移行する（自分の台帳で先に試し、旧 ID を別名に）
 - targeted-by n-66ee (N-34) 要求の状態を 4 つにし、確定後は改訂・完了・中止の記録だけを持ち、ID を振り直して ref を持たせる
 - targeted-by n-bc0c (N-42) 新しい core の骨格を 4 層と型のモデルで作り、行数・glob・文字列キー・差分の大きさを測る道具を用意する
 - targeted-by n-dbcf (N-37) 操作を末端 19 の閉じた集合にし、一つの意図を一つのコマンド・一つのトランザクションにする（lint は無い）
+- targeted-by n-ff2b scope rename (a): 形式の版 2 と写し、ログの変更の種類 scope-renamed と再生
 
 ## 本文
+
+## 測り方
+
+format ファイルの有無と版の判定（tests/format.rs）、版 1 の正本を開くと写しを残して版 2 に移ること、非互換の変更のニーズに移行が同梱されていることを見る。Kokopelli の写しでの測定値は AC-47 に記録。
 
 ## 充足
 

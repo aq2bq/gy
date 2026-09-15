@@ -13,6 +13,10 @@
 
 ## 本文
 
+## 測り方
+
+gy.toml をパースし、scopes と output 以外のキーがあれば Err になることをテスト（tests/config.rs）で確かめる。Kokopelli の 0.4 の gy.toml（2,117 行）を読ませて unknown field の Err を確認する。
+
 ## 充足
 
 - satisfied（2026-09-15 N-50。gy.toml に書けるのは [scopes.<名前>] と output だけで deny_unknown_fields。Kokopelli の gy.toml の写し 2,117 行を読ませると unknown field parent_issue で Err（tests/config.rs）。移行が生成する gy.toml は [scopes.select_bin_v2] の 1 行） 2026-09-15T03:51:51.553739+00:00

@@ -19,6 +19,10 @@
 
 ## 本文
 
+## 測り方
+
+Kokopelli の台帳の写しを gy-migrate 1 コマンドで移行し、全ノードがハッシュ ID、旧 ID・#番号・URL で resolve でき、handover の error が 0 で warnings が 0.4 の lint の warn 以下であることを見る。
+
 ## 充足
 
 - satisfied（2026-09-15 N-41（.local/report-n41.md）。Kokopelli の写し（342 ノード、コミット 8fefd31）を gy-migrate 1 コマンドで移行: 全ノードがハッシュ ID、旧 ID（N-18 等）・#6027・URL で解決、0.4 の lint error 0 / warn 81 に対し gy5 handover の warnings 13。gy 自身の台帳（253 ノード）でも next 17/17 一致。再移行の差分は publication のパスのみ） 2026-09-15T03:51:50.882447+00:00

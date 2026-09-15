@@ -12,6 +12,7 @@
 - targeted-by n-0dae (N-38) 正本を git の外に置き、ハッシュ ID、GY_ACTOR 必須の履歴、undo、ロックを持つ
 - targeted-by n-1aad edit --set scope=<名前> でノードを別のスコープへ移せるようにする（名前は gy.toml にあるものだけ。ID と辺は変わらない）
 - targeted-by n-35cf show / list / publish のニーズの状態を next と同じ導出（open / closed / done）にする。list --status done を受ける
+- targeted-by n-3f84 scope rename (b): 操作 scope_rename（Repository 経由の適用、履歴 1 行、undo、Outcome）とテスト（n-ff2b から分割）
 - targeted-by n-447c (N-54) 操作 (d): edit（--title / --body / --set / --append、--reason 必須。状態と辺は変えない）と undo の操作
 - targeted-by n-79fb edit で、未記録の成立範囲だけを 1 回記録できる（--set decision_scope=<文>。記録済みは拒む）。--set key= は自由属性を消す
 - targeted-by n-816a (N-55) 操作 (a2): question add / question close / criterion add / criterion satisfy の 4 操作（N-51 から分割）
@@ -26,8 +27,13 @@
 - targeted-by n-dbcf (N-37) 操作を末端 19 の閉じた集合にし、一つの意図を一つのコマンド・一つのトランザクションにする（lint は無い）
 - targeted-by n-edce (N-47) 辺の種類の組（論点 closes 決定、ニーズ targets 受け入れ条件など）を model の不変条件として検査し、外れた組の Link を作れなくする
 - targeted-by n-f088 ID の解決で、0 埋めの同一視を旧 ID の別名にだけ当て、gy が振ったハッシュ ID には当てない（d-0008 が D-8 と衝突する欠陥）。新しい ID は数字だけのハッシュを避ける
+- targeted-by n-ff2b scope rename (a): 形式の版 2 と写し、ログの変更の種類 scope-renamed と再生
 
 ## 本文
+
+## 測り方
+
+空の題名・成立範囲なし・許されない遷移・種類の組に無い辺・mark が本文に無い・二重の link・同じ ref の未完了・予約語の edit が Err になることをテストで確かめ、lint コマンドが無いことを gy --help で見る。
 
 ## 充足
 

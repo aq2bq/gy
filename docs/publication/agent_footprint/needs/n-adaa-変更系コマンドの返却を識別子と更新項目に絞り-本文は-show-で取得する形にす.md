@@ -3,7 +3,7 @@
 - 種類: need
 - scope: agent_footprint
 - created: 2026-09-13
-- 状態: open
+- 状態: closed
 - 別名: N-17
 
 ## 関係
@@ -56,6 +56,10 @@ N-16 と同じ報告。デック先生は N-11 の設計案を `gy node set Q-25
 ## 完了確認（kuroko、2026-09-13）
 
 deck の報告をコミット beb4449 で照合。kuroko 側の再実行: fmt exit 0、clippy 警告 0、cargo test --workspace --locked 71 passed / 0 failed（mutation_output.rs の 3 件を含む）。実機プローブ（一時台帳、本文 5,000 バイト）: node set --body-file の結果は {"node":{"body_changed":true,"changed_attributes":[],...}} の 1 行、同値再設定は body_changed=false、show の本文長は 5,000 で保持。CHANGELOG の Unreleased/Breaking、README.md 105 行付近と README.ja.md 103 行の出力説明が実装のキーと一致。AC-21 satisfied。push・公開は未実施。main は 0.4.0 から非互換変更を含むため次版は 0.5.0。
+
+## 閉じ方
+
+- 事実で閉じた（gy 0.5 の書きは Outcome（id・changed・missing・next）を返し本文は show（N-39）（d-736e））
 
 ## 自由属性
 

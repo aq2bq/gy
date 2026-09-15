@@ -1,10 +1,10 @@
 # gy の公開物 — agent_footprint
 
-- 生成: 2026-09-15T08:12:06Z
-- seq: 51
+- 生成: 2026-09-15T10:22:53Z
+- seq: 158
 - scope: agent_footprint
 - since: (先頭から)
-- 書き手: piko
+- 書き手: lead
 - 正本: /Users/pememo/.local/share/gy/fae59914
 
 ## 読み方
@@ -49,9 +49,9 @@ ID と別名:
 ## 一覧
 
 ### needs
-- [n-3ed7 (N-18) AGENTS.md を判断の所在と型だけの記述へ圧縮し、手順とツールの癖を各所へ移す](needs/n-3ed7-AGENTS-md-を判断の所在と型だけの記述へ圧縮し-手順とツールの癖を各所へ.md) — open
-- [n-6dab (N-16) workflow.rs を関心ごとに分割し、テストを有効な基準台帳のフィクスチャから構成する](needs/n-6dab-workflow-rs-を関心ごとに分割し-テストを有効な基準台帳のフィクスチャ.md) — open
-- [n-adaa (N-17) 変更系コマンドの返却を識別子と更新項目に絞り、本文は show で取得する形にする](needs/n-adaa-変更系コマンドの返却を識別子と更新項目に絞り-本文は-show-で取得する形にす.md) — open
+- [n-3ed7 (N-18) AGENTS.md を判断の所在と型だけの記述へ圧縮し、手順とツールの癖を各所へ移す](needs/n-3ed7-AGENTS-md-を判断の所在と型だけの記述へ圧縮し-手順とツールの癖を各所へ.md) — closed
+- [n-6dab (N-16) workflow.rs を関心ごとに分割し、テストを有効な基準台帳のフィクスチャから構成する](needs/n-6dab-workflow-rs-を関心ごとに分割し-テストを有効な基準台帳のフィクスチャ.md) — closed
+- [n-adaa (N-17) 変更系コマンドの返却を識別子と更新項目に絞り、本文は show で取得する形にする](needs/n-adaa-変更系コマンドの返却を識別子と更新項目に絞り-本文は-show-で取得する形にす.md) — closed
 - [n-9ed7 (N-30) E2E の 1 回の実行を軽くし、fixture の再生成をソースの変化がある時だけにする](needs/n-9ed7-E2E-の-1-回の実行を軽くし-fixture-の再生成をソースの変化がある時.md) — closed
 ### questions
 - [q-3693 (Q-28) N-16 の API 維持対象を実在する crate 直下の公開パスとするか、workflow 配下の公開パスも追加するか](questions/q-3693-N-16-の-API-維持対象を実在する-crate-直下の公開パスとするか-w.md) — closed
@@ -107,11 +107,18 @@ ID と別名:
 | 1 | 2026-09-15 04:49 | lead | q-c0fd (Q-29) N-17 の本文のみの更新とノードを持たない init の結果を、識別子・属性名だけの契約でどう表すか | created | migrate from 0.4 | publication/0.4 0d42e55 |
 | 1 | 2026-09-15 04:49 | lead | q-657a (Q-35) N-30 の直列性能検査を維持した実測が AC-35 の3分の1目標に届かない場合の完了範囲 | created | migrate from 0.4 | publication/0.4 0d42e55 |
 | 1 | 2026-09-15 04:49 | lead | q-f7b4 (Q-36) 0.4.0 が未公開だった事実を踏まえ、次の公開版を 0.4.0（0.3.1 以降の全差分を 1 つの非互換版にまとめる）とするか 0.5.0（指示どおり、未公開の 0.4.0 を飛ばす）とするか | created | migrate from 0.4 | publication/0.4 0d42e55 |
+| 75 | 2026-09-15 10:21 | lead | n-6dab (N-16) workflow.rs を関心ごとに分割し、テストを有効な基準台帳のフィクスチャから構成する | updated | need close n-6dab | workflow.rs は gy-core ごと 0.6.0 で消した（N-70）（d-736e） |
+| 79 | 2026-09-15 10:21 | lead | n-adaa (N-17) 変更系コマンドの返却を識別子と更新項目に絞り、本文は show で取得する形にする | updated | need close n-adaa | gy 0.5 の書きは Outcome（id・changed・missing・next）を返し本文は show（N-39）（d-736e） |
+| 80 | 2026-09-15 10:21 | lead | n-3ed7 (N-18) AGENTS.md を判断の所在と型だけの記述へ圧縮し、手順とツールの癖を各所へ移す | updated | need close n-3ed7 | AGENTS.md は D-66 で意見を基準に書き直し、手順は docs と skill に移した（N-43）（d-736e） |
+| 83 | 2026-09-15 10:22 | lead | ac-07ca (AC-19) gy-core/src/workflow.rs の記録比較と履歴検査が設定 schema と別ファイルにあり、分割の前後で cargo test --workspace --locked の結果が同一である | updated | edit ac-07ca | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 91 | 2026-09-15 10:22 | lead | ac-2101 (AC-21) 変更系コマンドの JSON 出力に入力として渡した本文が含まれず、CLI と MCP で同じ形を返す | updated | edit ac-2101 | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 97 | 2026-09-15 10:22 | lead | ac-510f (AC-22) AGENTS.md が判断の所在と型だけを記述し、禁止形の規則文が0件で、マスター裁量の項目が改稿前と同一である | updated | edit ac-510f | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 110 | 2026-09-15 10:22 | lead | ac-7b51 (AC-20) 統合テストが有効な基準台帳を作る共通フィクスチャから始まり、handover と下流の実行例がそのフィクスチャから構成される | updated | edit ac-7b51 | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
+| 137 | 2026-09-15 10:22 | lead | ac-f68f (AC-35) e2e のローカル既定（npm test、機能 spec）が fixture 再利用時に 30 秒台で完了し、npm run test:all は CI と同じ全件を実行して成否が 1 ワーカー実行と同一である | updated | edit ac-f68f | 本文（測り方）が空の受け入れ条件を埋める（片付け） |
 
 ## 診断
 
 エラーは正本の整合の破れ。`show <ID>` で該当ノードを読み、`edit` か `link` で直す。警告は注意が要る状態で、`handover` に一覧が出る。
 
 errors: 0
-warnings: 1
-- criteria with an empty body: 4
+warnings: 0

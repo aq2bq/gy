@@ -15,6 +15,10 @@
 
 ## 本文
 
+## 測り方
+
+gy 自身の台帳を移行した後に git status を打ち、作業ツリーに変化が無いことを見る。正本は ~/.local/share/gy/<鍵>/ にあり、.gy-dir も台帳の git も無い。
+
 ## 充足
 
 - satisfied（2026-09-15 lead。正本は ~/.local/share/gy/<リポジトリのハッシュ>/（location.rs）。gy 自身の台帳を移行しても git status に変化 0 件。リポジトリに置くのは gy.toml だけで .gy-dir も台帳の git も要らない（N-48、N-41）） 2026-09-15T03:51:51.420150+00:00
