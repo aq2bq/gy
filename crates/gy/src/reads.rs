@@ -1,9 +1,9 @@
 //! The reading commands that need more than a single view call: list and the
 //! publish reading.
-use crate::output::{emit, write};
+use crate::output::emit;
 use crate::repo;
 use crate::{Cli, Command};
-use gy_ledger::{Actor, Error, Filter, NodeKind, Result, config, list, log_seq, publish};
+use gy_ledger::{Error, Filter, NodeKind, Publication, Result, config, list, publish};
 use std::path::{Path, PathBuf};
 
 pub fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
@@ -33,8 +33,8 @@ pub fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
     emit(cli.json, &list(&repository, &filter)?)
 }
 
-/// The publication goes to `--out`, else gy.toml's `output`, else stdout. A
-/// `{seq}` in the path becomes the write sequence.
+/// The publication goes under `--out`, else gy.toml's `output` (an error when
+/// neither is given). Each target scope's directory is removed and rewritten.
 pub fn write_publish(
     cli: &Cli,
     root: &Path,
@@ -43,40 +43,35 @@ pub fn write_publish(
     out: Option<&Path>,
 ) -> Result<()> {
     let repository = repo::open(ledger)?;
-    let writer = Actor::from_env()
-        .map(|actor| actor.name().to_string())
-        .unwrap_or_else(|_| "unknown".to_string());
-    let text = publish(
-        &repository,
-        cli.scope.as_deref(),
-        since,
-        &writer,
-        &ledger.display().to_string(),
-    )?;
-    let path = match out {
-        Some(path) => Some(path.to_path_buf()),
-        None => output_path(root)?,
+    let publication = publish(&repository, cli.scope.as_deref(), since)?;
+    let out = match out {
+        Some(path) => path.to_path_buf(),
+        None => output_path(root)?
+            .ok_or_else(|| Error::invalid("publish needs --out or gy.toml output"))?,
     };
-    match path {
-        Some(path) => write_file(&substitute(&path, log_seq(&repository)), &text),
-        None => write(&text),
-    }
+    write_publication(&out, &publication)
 }
 
-fn substitute(path: &Path, seq: u64) -> PathBuf {
-    PathBuf::from(path.to_string_lossy().replace("{seq}", &seq.to_string()))
+fn write_publication(out: &Path, publication: &Publication) -> Result<()> {
+    for scope in &publication.scopes {
+        let dir = out.join(&scope.name);
+        if dir.exists() {
+            std::fs::remove_dir_all(&dir)?;
+        }
+        std::fs::create_dir_all(&dir)?;
+        for file in &scope.files {
+            let path = dir.join(&file.path);
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            std::fs::write(&path, &file.text)?;
+        }
+    }
+    Ok(())
 }
 
 fn output_path(root: &Path) -> Result<Option<PathBuf>> {
     Ok(config::read(root)?.output.map(|out| root.join(out)))
-}
-
-fn write_file(path: &Path, text: &str) -> Result<()> {
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    std::fs::write(path, text)?;
-    Ok(())
 }
 
 fn parse_kind(text: &str) -> Result<NodeKind> {

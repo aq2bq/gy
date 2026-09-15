@@ -12,7 +12,7 @@ pub use derive::{NeedState, requirement_in_progress};
 pub use handover::{Handover, ProgressRow, Warning, handover};
 pub use list::{Filter, Listing, LogRow, Row, list};
 pub use next::{NextRow, RequirementLine, next};
-pub use publish::{log_seq, publish};
+pub use publish::{Publication, publish};
 pub use show::{EdgeLine, Shown, show};
 
 /// How a need, question, or requirement reads its open/closed state.

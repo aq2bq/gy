@@ -1,6 +1,6 @@
 use gy_ledger::{
-    Actor, Alias, Approval, Closure, DecisionScope, FormatVersion, Link, MemoryStore, Node,
-    NodeData, NodeId, NodeKind, Ref, Relation, Repository, RequirementState, Store, publish,
+    Actor, Alias, DecisionScope, FormatVersion, Link, MemoryStore, Node, NodeId, NodeKind,
+    Publication, Relation, Repository, Store, publish,
 };
 
 const SCOPE: &str = "a";
@@ -27,219 +27,144 @@ fn seed<S: Store>(repo: &mut Repository<S>, nodes: &[Node]) {
     .unwrap();
 }
 
-fn render<S: Store>(repo: &Repository<S>, since: Option<u64>) -> String {
-    publish(repo, None, since, "piko", "/ledger").unwrap()
+fn render<S: Store>(repo: &Repository<S>) -> Publication {
+    publish(repo, None, None).unwrap()
 }
 
-/// A decision, a closed question, a satisfied criterion, an approved
-/// requirement with a reference, and a need filed as it.
-fn ledger() -> Repository<MemoryStore> {
-    let mut repo = repo();
-    let mut decision = Node::decision(
-        id(NodeKind::Decision, "0002"),
+/// The text of the file whose path contains `needle` in `scope`.
+fn file<'a>(publication: &'a Publication, scope: &str, needle: &str) -> &'a str {
+    let group = publication
+        .scopes
+        .iter()
+        .find(|group| group.name == scope)
+        .unwrap_or_else(|| panic!("no scope {scope}"));
+    let file = group
+        .files
+        .iter()
+        .find(|file| file.path.contains(needle))
+        .unwrap_or_else(|| panic!("no file {needle} in {scope}"));
+    &file.text
+}
+
+fn paths(publication: &Publication, scope: &str) -> Vec<String> {
+    publication
+        .scopes
+        .iter()
+        .find(|group| group.name == scope)
+        .unwrap()
+        .files
+        .iter()
+        .map(|file| file.path.clone())
+        .collect()
+}
+
+fn decision(hash: &str, alias: &str, title: &str) -> Node {
+    let mut node = Node::decision(
+        id(NodeKind::Decision, hash),
         SCOPE,
         DATE,
-        "決定の題名",
-        DecisionScope::recorded("一段目。二段目。").unwrap(),
+        title,
+        DecisionScope::recorded("scope").unwrap(),
     )
     .unwrap();
-    decision.add_alias(Alias("D-1".into()));
-    decision.set_body("## Context\nthe context\n\n## Decision\nwe chose");
-    let mut question =
-        Node::question(id(NodeKind::Question, "0001"), SCOPE, DATE, "論点の題名").unwrap();
-    question.add_alias(Alias("Q-1".into()));
-    if let NodeData::Question(data) = question.data_mut() {
-        data.closure = Some(Closure::Fact);
-        data.evidence = Some("測定で決まった".into());
-        data.decider = Some("master".into());
-        data.options = vec!["a".into(), "b".into()];
-    }
-    let mut criterion =
-        Node::criterion(id(NodeKind::Criterion, "0004"), SCOPE, DATE, "ACの題名").unwrap();
-    criterion.set_body("測り方の本文");
-    if let NodeData::Criterion(data) = criterion.data_mut() {
-        data.satisfied = true;
-        data.evidence = Some("verified".into());
-    }
-    let mut requirement = Node::requirement(
-        id(NodeKind::Requirement, "0003"),
-        SCOPE,
-        DATE,
-        "要求の題名",
-        RequirementState::Approved,
-    )
-    .unwrap();
-    requirement.add_alias(Alias("R-1".into()));
-    if let NodeData::Requirement(data) = requirement.data_mut() {
-        data.reference = Some(Ref("https://example/1".into()));
-        data.approval = Some(Approval {
-            design: "d".into(),
-            heard_by: "m".into(),
-            evidence: "e".into(),
-            at: DATE.into(),
-        });
-    }
-    requirement.set_free("next_evidence", "次の根拠");
-    requirement.link(
-        Link::new(
-            requirement.id().clone(),
-            Relation::ReliesOn,
-            decision.id().clone(),
-        )
-        .unwrap(),
-    );
-    requirement.link(
-        Link::new(
-            requirement.id().clone(),
-            Relation::Targets,
-            criterion.id().clone(),
-        )
-        .unwrap(),
-    );
-    let mut need = Node::need(id(NodeKind::Need, "0005"), SCOPE, DATE, "ニーズの題名").unwrap();
-    need.link(
-        Link::new(
-            need.id().clone(),
-            Relation::FiledAs,
-            requirement.id().clone(),
-        )
-        .unwrap(),
-    );
-    seed(
-        &mut repo,
-        &[decision, question, criterion, requirement, need],
-    );
-    repo
+    node.add_alias(Alias(alias.into()));
+    node
 }
 
 #[test]
-fn publish_has_a_header_a_reading_and_no_master_sections() {
-    let repo = ledger();
-    let text = render(&repo, None);
-    for marker in [
-        "# gy の公開物",
-        "- seq: ",
-        "- scope: ",
-        "- since: ",
-        "- 書き手: piko",
-        "- 正本: /ledger",
-        "## 読み方",
-        "## 記録",
-        "## 履歴",
-        "## 診断",
-    ] {
-        assert!(text.contains(marker), "missing {marker}:\n{text}");
-    }
-    assert!(!text.contains("いま判断待ち"), "{text}");
-    assert!(!text.contains("未決の論点"), "{text}");
-}
-
-#[test]
-fn publish_writes_every_node_verbatim_with_titled_references() {
-    let repo = ledger();
-    let text = render(&repo, None);
-    // Decision, question, requirement, and criterion records.
-    assert!(text.contains("decision_scope: 一段目。二段目。"), "{text}");
-    assert!(text.contains("## Decision\nwe chose"), "{text}");
-    assert!(text.contains("閉じ方: 事実（測定で決まった）"), "{text}");
-    assert!(text.contains("satisfied: true (verified)"), "{text}");
-    assert!(
-        text.contains("承認: design=d, heard_by=m, evidence=e, at=2026-09-15"),
-        "{text}"
-    );
-    assert!(text.contains("(R-1, https://example/1)"), "{text}");
-    assert!(text.contains("next_evidence: 次の根拠"), "{text}");
-    // Both directions of an edge, each with its target's title.
-    assert!(text.contains("relies-on d-0002 (D-1) 決定の題名"), "{text}");
-    assert!(
-        text.contains("relied-on-by r-0003 (R-1) 要求の題名"),
-        "{text}"
-    );
-    // No line is an ID alone.
-    for id in ["d-0002", "q-0001", "r-0003", "ac-0004", "n-0005"] {
-        assert!(!text.lines().any(|line| line.trim() == id), "{text}");
-    }
-}
-
-#[test]
-fn publish_keeps_a_closed_need_reason() {
+fn publish_writes_a_scope_and_kind_directory_tree() {
     let mut repo = repo();
-    let mut need = Node::need(id(NodeKind::Need, "0007"), SCOPE, DATE, "閉じたニーズ").unwrap();
-    if let NodeData::Need(data) = need.data_mut() {
-        data.closed = Some(gy_ledger::Closed {
-            by: gy_ledger::ClosedBy::External,
-            evidence: "既存で満たした".into(),
-        });
-    }
+    let criterion =
+        Node::criterion(id(NodeKind::Criterion, "0001"), SCOPE, DATE, "a criterion").unwrap();
+    let decision = decision("0002", "D-1", "a decision");
+    let other = Node::need(id(NodeKind::Need, "0003"), "b", DATE, "b need").unwrap();
+    seed(&mut repo, &[criterion, decision, other]);
+
+    let publication = render(&repo);
+    let names: Vec<&str> = publication
+        .scopes
+        .iter()
+        .map(|group| group.name.as_str())
+        .collect();
+    assert_eq!(names, ["a", "b"]);
+    assert_eq!(
+        paths(&publication, "a"),
+        [
+            "decisions/d-0002-a-decision.md",
+            "criteria/ac-0001-a-criterion.md"
+        ]
+    );
+    assert_eq!(paths(&publication, "b"), ["needs/n-0003-b-need.md"]);
+}
+
+#[test]
+fn a_file_name_is_safe_and_bounded() {
+    let mut repo = repo();
+    let long = "make / retries: safe, with spaces and a title that runs past the limit";
+    let need = Node::need(id(NodeKind::Need, "0004"), SCOPE, DATE, long).unwrap();
     seed(&mut repo, &[need]);
-    let text = render(&repo, None);
-    assert!(
-        text.contains("閉じた理由: 外部（既存で満たした）"),
-        "{text}"
+
+    let publication = render(&repo);
+    let path = &paths(&publication, "a")[0];
+    let name = path.strip_prefix("needs/n-0004-").unwrap();
+    let name = name.strip_suffix(".md").unwrap();
+    assert!(!name.contains('/'), "{path}");
+    assert!(!name.contains([':', ',', ' ']), "{path}");
+    assert!(name.chars().count() <= 40, "{path}");
+    assert_eq!(
+        path,
+        "needs/n-0004-make-retries-safe-with-spaces-and-a-titl.md"
     );
 }
 
 #[test]
-fn publish_shows_a_done_need_state() {
+fn a_decision_file_puts_its_lineage_first() {
     let mut repo = repo();
-    let requirement = Node::requirement(
-        id(NodeKind::Requirement, "0020"),
-        SCOPE,
-        DATE,
-        "完了した要求",
-        RequirementState::Done,
-    )
-    .unwrap();
-    let requirement_id = requirement.id().clone();
-    let mut need = Node::need(id(NodeKind::Need, "0021"), SCOPE, DATE, "完了したニーズ").unwrap();
-    need.link(Link::new(need.id().clone(), Relation::FiledAs, requirement_id).unwrap());
-    seed(&mut repo, &[requirement, need]);
+    let old = decision("0005", "D-1", "the old decision");
+    let mut new = decision("0006", "D-2", "the new decision");
+    new.link(
+        Link::new(new.id().clone(), Relation::Narrows, old.id().clone())
+            .unwrap()
+            .with_mark(Some("the changed part".into())),
+    );
+    seed(&mut repo, &[old, new]);
 
-    let text = render(&repo, None);
-    assert!(text.contains("完了したニーズ"), "{text}");
-    assert!(text.contains("state: done"), "{text}");
+    let publication = render(&repo);
+    let newer = file(&publication, "a", "d-0006");
+    assert!(
+        newer.starts_with("# d-0006 (D-2) the new decision\n"),
+        "{newer}"
+    );
+    assert!(
+        newer
+            .contains("## 関係\n- narrows d-0005 (D-1) the old decision（mark: the changed part）"),
+        "{newer}"
+    );
+    let older = file(&publication, "a", "d-0005");
+    assert!(
+        older.contains("## 関係\n- narrowed-by d-0006 (D-2) the new decision"),
+        "{older}"
+    );
 }
 
 #[test]
-fn publish_filters_by_since() {
+fn two_runs_produce_the_same_files() {
     let mut repo = repo();
-    seed(
-        &mut repo,
-        &[Node::need(id(NodeKind::Need, "0001"), SCOPE, DATE, "古いニーズ").unwrap()],
-    );
-    seed(
-        &mut repo,
-        &[Node::need(id(NodeKind::Need, "0002"), SCOPE, DATE, "新しいニーズ").unwrap()],
-    );
+    let criterion = Node::criterion(id(NodeKind::Criterion, "0001"), SCOPE, DATE, "an AC").unwrap();
+    let decision = decision("0002", "D-1", "a decision");
+    seed(&mut repo, &[criterion, decision]);
 
-    let all = render(&repo, None);
-    assert!(
-        all.contains("古いニーズ") && all.contains("新しいニーズ"),
-        "{all}"
-    );
-    let recent = render(&repo, Some(1));
-    assert!(!recent.contains("古いニーズ"), "{recent}");
-    assert!(recent.contains("新しいニーズ"), "{recent}");
-}
-
-#[test]
-fn publish_lists_history_and_diagnostics_deterministically() {
-    let repo = ledger();
-    let text = render(&repo, None);
-    assert!(text.contains("| seq |"), "{text}");
-    assert!(
-        text.lines()
-            .any(|line| line.starts_with("| 1 |") && line.contains("決定の題名")),
-        "{text}"
-    );
-    assert!(text.contains("errors: 0"), "{text}");
-    assert!(text.contains("warnings: 0"), "{text}");
-
-    let strip = |body: &str| {
-        body.lines()
-            .filter(|line| !line.starts_with("- 生成:"))
-            .collect::<Vec<_>>()
-            .join("\n")
-    };
-    assert_eq!(strip(&text), strip(&render(&repo, None)));
+    let first = render(&repo);
+    let second = render(&repo);
+    assert_eq!(paths(&first, "a"), paths(&second, "a"));
+    for group in &first.scopes {
+        for entry in &group.files {
+            assert_eq!(
+                entry.text,
+                file(&second, &group.name, &entry.path),
+                "{}",
+                entry.path
+            );
+        }
+    }
 }

@@ -61,15 +61,13 @@ pub enum Command {
     Next,
     /// What a session needs to resume: in-progress requirements and counts.
     Handover,
-    /// Write the record's publication: every node verbatim, the history, and
-    /// the diagnostics.
+    /// Write the publication: one file per node under a scope directory.
     Publish {
         /// Include the changes after this write sequence.
         #[arg(long, value_name = "SEQ")]
         since: Option<u64>,
-        /// Write to this path instead of gy.toml's output or stdout. `{seq}`
-        /// is replaced with the write sequence.
-        #[arg(long, value_name = "PATH")]
+        /// The output directory; defaults to gy.toml's output.
+        #[arg(long, value_name = "DIR")]
         out: Option<PathBuf>,
     },
     /// File or close a need.
