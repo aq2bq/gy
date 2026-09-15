@@ -236,7 +236,7 @@ dependencies = [
 
 [[package]]
 name = "gy"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "clap",
  "gy-ledger",
@@ -248,7 +248,7 @@ dependencies = [
 
 [[package]]
 name = "gy-core"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "chrono",
  "fs2",
@@ -261,7 +261,7 @@ dependencies = [
 
 [[package]]
 name = "gy-ledger"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "chrono",
  "fs2",
@@ -273,7 +273,7 @@ dependencies = [
 
 [[package]]
 name = "gy-migrate"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "clap",
  "gy-core",
@@ -284,7 +284,7 @@ dependencies = [
 
 [[package]]
 name = "gy-serve"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "chrono",
  "gy-ledger",

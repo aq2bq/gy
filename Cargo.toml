@@ -3,7 +3,7 @@ members = ["crates/gy", "crates/gy-core", "crates/gy-ledger", "crates/gy-migrate
 resolver = "2"
 
 [workspace.package]
-version = "0.6.0"
+version = "0.6.1"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/aq2bq/gy"
