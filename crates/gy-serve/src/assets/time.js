@@ -143,16 +143,27 @@
     draw();
   });
 
-  async function start() {
+  async function load() {
     const res = await fetch('/api/ticks');
     const body = await res.json();
     ticks = body.ticks || [];
     max = body.max || 0;
     min = ticks.length ? ticks[0].seq : 1;
+  }
+
+  /* Take the ticks again and redraw (n-478f). The head follows the end when it
+     was there; while a past point is chosen `at` does not move, so only the
+     right end of the band grows. */
+  async function refresh() {
+    await load();
     labels();
     draw();
   }
 
-  window.GyTime = { labels };
-  start();
+  window.GyTime = { labels, refresh };
+  (async () => {
+    await load();
+    labels();
+    draw();
+  })();
 })();

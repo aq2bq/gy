@@ -52,7 +52,7 @@ function counter(kind) {
 function drawNav() {
   const hash = location.hash || '#/';
   const entry = ([href, key, mark]) => `<a href="${href}" class="${hash === href ? 'on' : ''}">${mark} ${word(key)}</a>`;
-  const kind = name => `<button data-kind="${name}"><span class="dot dot-${name}"></span>${word(PLURAL[name])}${counter(name)}</button>`;
+  const kind = name => `<a href="#/list/${name}" class="${hash.startsWith(`#/list/${name}`) ? 'on' : ''}"><span class="dot dot-${name}"></span>${word(PLURAL[name])}${counter(name)}</a>`;
   const scopeRow = item =>
     `<button data-s="${esc(item.name)}" class="${scope === item.name ? 'on' : ''}">${esc(item.name)}<span class="cnt">${item.count}</span></button>`;
   const nodes = shell.scopes.reduce((sum, item) => sum + item.count, 0);

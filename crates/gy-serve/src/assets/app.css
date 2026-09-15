@@ -39,6 +39,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .lang button.on{background:var(--ink-3);color:var(--paper)}
 .live{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--decision);margin-right:6px;box-shadow:0 0 0 0 rgba(95,211,199,.6);animation:pulse 2.4s infinite}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(95,211,199,.5)}70%{box-shadow:0 0 0 9px rgba(95,211,199,0)}100%{box-shadow:0 0 0 0 rgba(95,211,199,0)}}
+.live.off{background:var(--paper-3);box-shadow:none;animation:none}
 @media (prefers-reduced-motion: reduce){.live{animation:none}}
 .topbar{display:flex;align-items:center;gap:16px;padding:18px 32px 10px;position:sticky;top:0;z-index:5;background:linear-gradient(var(--ink) 75%,transparent)}
 .search{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:8px;padding:6px 12px;color:var(--paper-3);min-width:340px;cursor:text;font-size:14px}
