@@ -6,9 +6,10 @@ use crate::graph_cache::GraphCache;
 use crate::http;
 use crate::watch::Watch;
 use gy_ledger::{Error, FileStore, MemoryStore, Repository, Result};
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, IsTerminal, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
+use std::process::Command;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -34,8 +35,30 @@ pub type Opener = Box<dyn Fn(Option<u64>) -> Result<Opened> + Send + Sync>;
 /// watch follows `ledger`'s log so a request can wait for the next write.
 pub fn serve(open: Opener, ledger: PathBuf) -> Result<()> {
     let (listener, port) = bind()?;
-    println!("gy serve  http://127.0.0.1:{port}/");
+    let url = format!("http://127.0.0.1:{port}/");
+    println!("gy serve  {url}");
+    if std::io::stdout().is_terminal() {
+        open_browser(&url);
+    }
     run(listener, open, ledger)
+}
+
+/// Open the URL once, without waiting; a failure only prints one line and the
+/// server keeps running (d-5b3d). Only called when stdout is a terminal.
+fn open_browser(url: &str) {
+    let opened = if cfg!(target_os = "macos") {
+        Command::new("open").arg(url).spawn()
+    } else if cfg!(target_os = "windows") {
+        Command::new("cmd")
+            .args(["/C", "start", ""])
+            .arg(url)
+            .spawn()
+    } else {
+        Command::new("xdg-open").arg(url).spawn()
+    };
+    if let Err(error) = opened {
+        eprintln!("could not open a browser: {error}");
+    }
 }
 
 /// The same, on a listener the caller already holds (a test wants the port).

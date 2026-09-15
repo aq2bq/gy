@@ -8,8 +8,8 @@
   the six questions first, then shows now, lists, one node, search on
   `/`, a time band that replays the log, live updates, and a fractal
   graph. Every read takes `at=<seq>`; the HTTP layer is the standard
-  library alone; the end-to-end tests live under `e2e/`. Twenty-two
-  terminal commands.
+  library alone; the end-to-end tests live under `e2e/`. It opens the
+  browser when started from a terminal. Twenty-two terminal commands.
 
 ### Fixed
 
