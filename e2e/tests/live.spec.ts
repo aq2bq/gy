@@ -17,7 +17,7 @@ const shape = (page: import('@playwright/test').Page) =>
     criteria: (document.querySelector('#nav a[href="#/list/Criterion"] .cnt') as HTMLElement | null)
       ?.innerText ?? '',
     ticks: document.querySelectorAll('#ticks rect').length,
-    at: (window as unknown as { GyShell: { at: number | null } }).GyShell.at,
+    at: (window as unknown as { GyRoot: { at: () => number | null } }).GyRoot.at(),
   }));
 
 test('a write updates the pulse, the sidebar, and the band', async ({ page }) => {

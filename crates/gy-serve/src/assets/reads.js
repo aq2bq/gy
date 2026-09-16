@@ -17,12 +17,14 @@
     return `/api/history${parts.length ? `?${parts.join('&')}` : ''}`;
   }
 
-  /* The page's answer, by route: a list, one node, or the history (n-5ca6). */
+  /* The page's answer, by route: a list, one node, the history, or the node the
+   graph has selected (n-5ca6, n-88b2). */
   function pagePath(state) {
     const route = state.route;
     if (route.name === 'list') return `/api/list?kind=${encodeURIComponent(route.arg)}${scopeParam(state) ? `&${scopeParam(state)}` : ''}`;
     if (route.name === 'node') return `/api/node/${encodeURIComponent(route.arg)}`;
     if (route.name === 'history') return historyPath(state);
+    if (route.name === 'graph') return state.graph.selected ? `/api/node/${encodeURIComponent(state.graph.selected)}` : null;
     return null;
   }
 
@@ -30,11 +32,13 @@
   function paths(state) {
     const only = scopeParam(state) ? `?${scopeParam(state)}` : '';
     const scope = scopeParam(state);
+    const ids = state.map ? state.map.nodes.map(node => node.id).join(',') : '';
     return {
       shell: `/api/shell${only}`,
       now: `/api/now${only}`,
       map: `/api/graph${only}`,
       page: pagePath(state),
+      labels: state.route.name === 'graph' && ids ? `/api/labels?ids=${ids}` : null,
       band: '/api/ticks',
       rail: `/api/history?limit=10${scope ? `&${scope}` : ''}`,
     };
@@ -61,10 +65,11 @@
     return found;
   }
 
-  /* What a body needs beyond the answer: the band's left end, and the labels
-     the rail's or the history page's rows show. */
+  /* What a body needs beyond the answer: the band's left end, the graph's labels,
+     and the labels the rail's or the history page's rows show. */
   async function filled(state, kind, body) {
     if (kind === 'band') return { ...body, min: body.ticks.length ? body.ticks[0].seq : 1 };
+    if (kind === 'labels') return body.labels || {};
     if (kind === 'rail') return { rows: body.rows, labels: await labels(state, body.rows.map(row => row.node)) };
     if (kind === 'page' && state.route.name === 'history') return { ...body, labels: await labels(state, body.rows.map(entry => entry.node)) };
     return body;

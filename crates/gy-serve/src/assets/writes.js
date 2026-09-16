@@ -1,6 +1,6 @@
 /* One write, drawn the same way on the history page and in the rail (n-b963).
-   The words stay in this one place; the rows and their order come from
-   /api/history, the aliases and titles from /api/labels. */
+   The words and the language come from the caller (n-88b2); the rows and their
+   order come from /api/history, the aliases and titles from /api/labels. */
 (function () {
   const VERBS = [
     ['need add', 'needadd'],
@@ -14,12 +14,10 @@
     ['req ', 'req'],
   ];
 
-  const t = key => window.GyShell.t(key);
-  const lang = () => window.GyShell.lang();
   const esc = text => String(text ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 
   /* The write's verb, from what the writer asked for (the why). */
-  function verb(entry) {
+  function verb(entry, t) {
     for (const [prefix, key] of VERBS) {
       if (entry.why.startsWith(prefix)) return t(`why.${key}`);
     }
@@ -30,14 +28,14 @@
   }
 
   /* Who did what to which node, in this language. */
-  function what(entry, labels) {
+  function what(entry, labels, ui, lang) {
     const who = esc(entry.actor);
-    const doing = esc(verb(entry));
+    const doing = esc(verb(entry, ui.t));
     if (!entry.node) return `${who} ${doing}`;
     const known = labels[entry.node];
     const node = `<a href="#/n/${entry.node}">${esc((known && known.alias) || entry.node)}</a>`;
     const title = known ? ` <span class="tt">${esc(known.title)}</span>` : '';
-    return lang() === 'ja' ? `${who} が ${node} ${doing}${title}` : `${who} ${doing} ${node}${title}`;
+    return lang === 'ja' ? `${who} が ${node} ${doing}${title}` : `${who} ${doing} ${node}${title}`;
   }
 
   /* The actor colour: the four colours in the order the writers appear. The
@@ -51,8 +49,8 @@
     return `a-${Math.min(3, index)}`;
   }
 
-  const when = at =>
-    new Date(at * 1000).toLocaleTimeString(lang() === 'ja' ? 'ja-JP' : 'en-GB', {
+  const when = (at, lang) =>
+    new Date(at * 1000).toLocaleTimeString(lang === 'ja' ? 'ja-JP' : 'en-GB', {
       hour: '2-digit', minute: '2-digit',
     });
 
@@ -62,8 +60,8 @@
     return `${date.getFullYear()}/${two(date.getMonth() + 1)}/${two(date.getDate())}`;
   };
 
-  function row(entry, labels, order) {
-    return `<div class="hi"><span class="when">${when(entry.at)} · ${entry.seq}</span><span class="who ${whoCls(entry.actor, order)}">${esc(entry.actor)}</span><span class="nd"><div class="what">${what(entry, labels)}</div><div class="src" title="${esc(entry.source)}">${esc(entry.source)}</div><div class="why">${esc(entry.why)}</div></span></div>`;
+  function row(entry, labels, order, ui, lang) {
+    return `<div class="hi"><span class="when">${when(entry.at, lang)} · ${entry.seq}</span><span class="who ${whoCls(entry.actor, order)}">${esc(entry.actor)}</span><span class="nd"><div class="what">${what(entry, labels, ui, lang)}</div><div class="src" title="${esc(entry.source)}">${esc(entry.source)}</div><div class="why">${esc(entry.why)}</div></span></div>`;
   }
 
   window.GyWrites = { row, when, day };

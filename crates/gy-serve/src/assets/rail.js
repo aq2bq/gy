@@ -29,7 +29,7 @@
       .map(entry => {
         const mark = fresh && entry.seq > head;
         flashed = flashed || mark;
-        return `<div class="ri${mark ? ' new' : ''}">${window.GyWrites.row(entry, labels, order)}</div>`;
+        return `<div class="ri${mark ? ' new' : ''}">${window.GyWrites.row(entry, labels, order, ui, state.lang)}</div>`;
       })
       .join('');
     el.innerHTML =

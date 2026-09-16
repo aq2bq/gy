@@ -1,110 +1,119 @@
-/* The operations half of the graph page (n-4cd8, d-b93b): the state, the
-   loads, the camera, the panel, and the controls. The canvas is in
-   graph-draw.js. */
+/* The graph page (n-4cd8, a region since d-03ca 第 3 段): the picture, the
+   crumb, and the panel. It draws from the state the root read; the pointer and
+   the keys are heard in events.js, and the geometry those handlers need is pure
+   below. The camera's ease is the root's clock (n-88b2). */
 (function () {
   const KINDS = ['Need', 'Question', 'Decision', 'Requirement', 'Criterion'];
-  const FIT_MS = 620;
-  const OPEN = ['open', 'filed', 'approved', 'satisfied', 'unsatisfied'];
+  const MIN_K = 0.15, MAX_K = 12;
 
-  const view = { graph: null, cam: { x: 0, y: 0, k: 1 }, selected: null, hover: null, labels: new Map() };
-  /* `clicked` is when the last click landed. It starts before every possible
-     time, so the first click after the page opens is never read as the second
-     of a pair: performance.now() counts from the load, and a 0 here made every
-     click in the first 350 ms a double (n-7c5d). */
-  let loaded = null, asked = new Set(), frame = null, anim = null, down = null, moved = false, clicked = -Infinity;
+  /* The last state drawn, for the two handles e2e reads (n-88b2). */
+  let current = null;
 
-  const t = key => window.GyShell.t(key);
   const esc = text => String(text ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
-  const canvas = () => document.getElementById('g');
 
-  async function draw(focus) {
-    if (!canvas()) build();
-    const scope = window.GyShell.scope();
-    const at = window.GyShell.at;
-    if (!loaded || loaded.scope !== scope || loaded.at !== at) {
-      const res = await window.GyShell.read(`/api/graph?scope=${encodeURIComponent(scope)}`);
-      const body = await res.json();
-      view.graph = { ...body, nodes: body.nodes.map(node => ({ ...node, open: node.state === null || OPEN.includes(node.state) })) };
-      loaded = { scope, at };
-      view.selected = null;
-      view.hover = null;
-      fitTo(null);
-    }
-    if (focus) {
-      select(focus);
-      fitTo({ node: focus });
+  /* The view graph-draw.js draws, built from the one state. */
+  function makeView(state) {
+    return {
+      graph: state.map,
+      cam: state.graph.cam,
+      selected: state.graph.selected,
+      hover: state.graph.hover,
+      labels: new Map(Object.entries(state.labels || {})),
+    };
+  }
+
+  /* The scaffold, once per visit: the canvas, the crumb, the panel, the hint,
+     and the legend. A language switch does not rebuild it (as before). */
+  function build(el, ui) {
+    el.innerHTML =
+      `<div class="gwrap"><canvas id="g"></canvas><div class="gcrumb" id="gcrumb"></div><div class="gpanel" id="gpanel"></div>` +
+      `<div class="ghint">${ui.t('gHint')}</div>` +
+      `<div class="legend">${KINDS.map(kind => `<span><span class="dot dot-${kind}"></span>${ui.t(kind)}</span>`).join('')}</div></div>`;
+  }
+
+  /* The panel: the selected node's answer (state.page), as the old page drew it. */
+  function panel(box, state, ui) {
+    const id = state.graph.selected;
+    const body = state.page;
+    const node = (state.map.nodes || []).find(item => item.id === id);
+    if (!id || !body || !node) {
+      box.classList.remove('on');
       return;
     }
-    if (view.selected) await select(view.selected);
-    schedule();
-  }
-
-  function schedule() {
-    if (frame) return;
-    frame = requestAnimationFrame(() => {
-      frame = null;
-      paint();
-    });
-  }
-
-  function paint() {
-    const wanted = window.GyDraw.frame(view);
-    const step = view.cam.k < 0.9 ? 'lod0' : view.cam.k < 1.6 ? 'lod1' : view.cam.k < 3.2 ? 'lod2' : 'lod3';
-    const el = document.getElementById('gcrumb');
-    if (el) el.innerHTML = window.GyDraw.crumb(view, t, step);
-    if (wanted.length) loadLabels(wanted);
-  }
-
-  async function loadLabels(ids) {
-    const missing = ids.filter(id => !asked.has(id));
-    if (!missing.length) return;
-    missing.forEach(id => asked.add(id));
-    for (let at = 0; at < missing.length; at += 200) {
-      const res = await window.GyShell.read(`/api/labels?ids=${encodeURIComponent(missing.slice(at, at + 200).join(','))}`);
-      const body = await res.json();
-      for (const [id, label] of Object.entries(body.labels || {})) view.labels.set(id, label);
-    }
-    schedule();
-  }
-
-  async function select(id) {
-    view.selected = id;
-    const panel = document.getElementById('gpanel');
-    if (!panel) return;
-    if (!id) {
-      panel.classList.remove('on');
-      schedule();
-      return;
-    }
-    const node = view.graph.nodes.find(item => item.id === id);
-    const res = await window.GyShell.read(`/api/node/${encodeURIComponent(id)}`);
-    const body = res.ok ? await res.json() : {};
-    const state = node && node.state ? t(`st.${node.kind}.${node.state}`) : '';
+    const word = node.state ? ui.t(`st.${node.kind}.${node.state}`) : '';
     const relations = (body.edges || [])
-      .map(edge => `<a href="#" data-go="${edge.to}"><span class="rl">${esc(t(`rel.${edge.name}`))}</span>${esc(edge.alias || edge.to)} ${esc((edge.title || '').slice(0, 30))}</a>`)
+      .map(edge => `<a href="#" data-go="${edge.to}"><span class="rl">${esc(ui.t(`rel.${edge.name}`))}</span>${esc(edge.alias || edge.to)} ${esc((edge.title || '').slice(0, 30))}</a>`)
       .join('');
-    panel.classList.add('on');
-    panel.innerHTML =
-      `<div class="kk"><span class="k k-${node.kind}">${t(node.kind)}</span><span>${esc((body.aliases || [])[0] || id)}</span>${window.GyShell.scopeTag(node.scope)}<span>${esc(state)}</span></div>` +
+    box.classList.add('on');
+    box.innerHTML =
+      `<div class="kk"><span class="k k-${node.kind}">${ui.t(node.kind)}</span><span>${esc((body.aliases || [])[0] || id)}</span>${ui.scopeTag(node.scope)}<span>${esc(word)}</span></div>` +
       `<div class="tt">${esc(body.title || '')}</div>` +
-      `<div class="rel">${relations || `<span style="color:var(--paper-3)">${t('noConn')}</span>`}</div>` +
-      `<a class="open" href="#/n/${id}">${t('gOpen')}</a>`;
-    schedule();
+      `<div class="rel">${relations || `<span style="color:var(--paper-3)">${ui.t('noConn')}</span>`}</div>` +
+      `<a class="open" href="#/n/${id}">${ui.t('gOpen')}</a>`;
   }
 
-  function fitTo(target) {
-    const c = canvas();
-    if (!c || !view.graph || !view.graph.bubbles.length) return;
+  const step = k => (k < 0.9 ? 'lod0' : k < 1.6 ? 'lod1' : k < 3.2 ? 'lod2' : 'lod3');
+
+  /* The region: #main only, from the state the root read. */
+  function render(state, el, ui) {
+    if (!el) return;
+    current = state;
+    el.className = 'wide';
+    if (!el.querySelector('#g')) build(el, ui);
+    const c = el.querySelector('#g');
+    if (!c || !state.map) return;
+    const view = makeView(state);
+    c.style.cursor = state.graph.hover ? 'pointer' : 'grab';
+    const crumb = el.querySelector('#gcrumb');
+    if (crumb) crumb.innerHTML = window.GyDraw.crumb(c, view, ui.t, step(view.cam.k));
+    const box = el.querySelector('#gpanel');
+    if (box) panel(box, state, ui);
+    window.GyDraw.frame(c, view);
+  }
+
+  /* The node under a canvas point, if any. */
+  function hit(state, c, clientX, clientY) {
+    if (!state.map || !c) return null;
+    const box = c.getBoundingClientRect();
+    return window.GyDraw.pick(makeView(state), clientX - box.left, clientY - box.top);
+  }
+
+  /* The bubble under a canvas point, if any. */
+  function bubbleAt(state, c, clientX, clientY) {
+    if (!state.map || !c) return null;
+    const box = c.getBoundingClientRect();
+    return window.GyDraw.pickBubble(makeView(state), clientX - box.left, clientY - box.top);
+  }
+
+  /* The camera zoomed about a canvas point (the middle when none is given). */
+  function zoomAt(state, c, ratio, clientX, clientY) {
+    const cam = state.graph.cam;
+    const box = c.getBoundingClientRect();
+    const px = clientX === undefined ? box.width / 2 : clientX - box.left;
+    const py = clientY === undefined ? box.height / 2 : clientY - box.top;
+    const k = Math.max(MIN_K, Math.min(MAX_K, cam.k * ratio));
+    const applied = k / cam.k;
+    return { k, x: px - (px - cam.x) * applied, y: py - (py - cam.y) * applied };
+  }
+
+  function panBy(state, dx, dy) {
+    return { k: state.graph.cam.k, x: state.graph.cam.x + dx, y: state.graph.cam.y + dy };
+  }
+
+  /* Where the camera goes to show a node or a scope; everything when neither. */
+  function fitTo(state, c, target) {
+    const graph = state.map;
+    if (!c || !graph || !graph.bubbles.length) return null;
     let box = null;
     if (target && target.scope) {
-      const bubble = view.graph.bubbles.find(item => item.scope === target.scope);
+      const bubble = graph.bubbles.find(item => item.scope === target.scope);
       if (bubble) box = { x0: bubble.x - bubble.r, y0: bubble.y - bubble.r, x1: bubble.x + bubble.r, y1: bubble.y + bubble.r };
     } else if (target && target.node) {
-      const node = view.graph.nodes.find(item => item.id === target.node);
+      const node = graph.nodes.find(item => item.id === target.node);
       if (node) box = { x0: node.x - 120, y0: node.y - 120, x1: node.x + 120, y1: node.y + 120 };
     }
     if (!box) {
-      box = view.graph.bubbles.reduce((held, bubble) => ({
+      box = graph.bubbles.reduce((held, bubble) => ({
         x0: Math.min(held.x0, bubble.x - bubble.r),
         y0: Math.min(held.y0, bubble.y - bubble.r),
         x1: Math.max(held.x1, bubble.x + bubble.r),
@@ -113,142 +122,28 @@
     }
     const w = c.clientWidth;
     const h = c.clientHeight - 120;
-    const k = Math.max(0.15, Math.min(12, Math.min(w / (box.x1 - box.x0), h / (box.y1 - box.y0)) * 0.86));
-    ease({ k, x: w / 2 - (box.x0 + box.x1) / 2 * k, y: h / 2 - (box.y0 + box.y1) / 2 * k });
+    const k = Math.max(MIN_K, Math.min(MAX_K, Math.min(w / (box.x1 - box.x0), h / (box.y1 - box.y0)) * 0.86));
+    return { k, x: w / 2 - (box.x0 + box.x1) / 2 * k, y: h / 2 - (box.y0 + box.y1) / 2 * k };
   }
 
-  function ease(to) {
-    const from = { ...view.cam };
-    const start = performance.now();
-    cancelAnimationFrame(anim);
-    const step = now => {
-      let p = Math.min(1, (now - start) / FIT_MS);
-      p = 1 - (1 - p) ** 3;
-      view.cam = { k: Math.exp(Math.log(from.k) + (Math.log(to.k) - Math.log(from.k)) * p), x: from.x + (to.x - from.x) * p, y: from.y + (to.y - from.y) * p };
-      schedule();
-      if (p < 1) anim = requestAnimationFrame(step);
+  /* The camera at `elapsed` ms into a fit (620 ms, cubic out); pure. The root
+     owns the clock and the one rAF (n-88b2). */
+  function eased(from, to, elapsed) {
+    let p = Math.min(1, elapsed / 620);
+    p = 1 - (1 - p) ** 3;
+    return {
+      k: Math.exp(Math.log(from.k) + (Math.log(to.k) - Math.log(from.k)) * p),
+      x: from.x + (to.x - from.x) * p,
+      y: from.y + (to.y - from.y) * p,
+      done: p >= 1,
     };
-    anim = requestAnimationFrame(step);
   }
 
-  /* Zoom about a screen point, clamped to the camera's range (n-9c84). */
-  function zoomBy(ratio, p) {
-    cancelAnimationFrame(anim);
-    const k = Math.max(0.15, Math.min(12, view.cam.k * ratio));
-    const applied = k / view.cam.k;
-    view.cam = { k, x: p.x - (p.x - view.cam.x) * applied, y: p.y - (p.y - view.cam.y) * applied };
-    schedule();
-  }
-
-  function build() {
-    const main = document.getElementById('main');
-    main.className = 'wide';
-    main.innerHTML =
-      `<div class="gwrap"><canvas id="g"></canvas><div class="gcrumb" id="gcrumb"></div><div class="gpanel" id="gpanel"></div>` +
-      `<div class="ghint">${t('gHint')}</div>` +
-      `<div class="legend">${KINDS.map(kind => `<span><span class="dot dot-${kind}"></span>${t(kind)}</span>`).join('')}</div></div>`;
-    const c = canvas();
-    const point = event => {
-      const box = c.getBoundingClientRect();
-      return { x: event.clientX - box.left, y: event.clientY - box.top };
-    };
-    c.addEventListener('pointerdown', event => {
-      down = { x: event.clientX, y: event.clientY, cx: view.cam.x, cy: view.cam.y };
-      moved = false;
-      c.setPointerCapture(event.pointerId);
-      c.classList.add('grab');
-    });
-    c.addEventListener('pointermove', event => {
-      if (down) {
-        const dx = event.clientX - down.x;
-        const dy = event.clientY - down.y;
-        if (Math.hypot(dx, dy) > 3) moved = true;
-        if (moved) {
-          cancelAnimationFrame(anim);
-          view.cam = { k: view.cam.k, x: down.cx + dx, y: down.cy + dy };
-          schedule();
-        }
-        return;
-      }
-      const p = point(event);
-      const found = window.GyDraw.pick(view, p.x, p.y);
-      if (found !== view.hover) {
-        view.hover = found;
-        c.style.cursor = found ? 'pointer' : 'grab';
-        schedule();
-      }
-    });
-    c.addEventListener('pointerup', event => {
-      c.classList.remove('grab');
-      const wasDrag = moved;
-      down = null;
-      if (wasDrag) return;
-      const p = point(event);
-      const id = window.GyDraw.pick(view, p.x, p.y);
-      const now = performance.now();
-      const double = now - clicked < 350;
-      clicked = now;
-      if (id) {
-        if (double && id === view.selected) {
-          location.hash = `#/n/${id}`;
-          return;
-        }
-        select(id);
-        if (view.cam.k < 2.2) fitTo({ node: id });
-        return;
-      }
-      if (double) {
-        zoomBy(2, p);
-        return;
-      }
-      const bubble = window.GyDraw.pickBubble(view, p.x, p.y);
-      if (bubble && view.cam.k < 1.2) {
-        select(null);
-        fitTo({ scope: bubble.scope });
-        return;
-      }
-      select(null);
-    });
-    c.addEventListener('wheel', event => {
-      event.preventDefault();
-      const p = point(event);
-      /* A line is 16 px and a page 400, so the same gesture moves the same way. */
-      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1;
-      const factor = event.ctrlKey ? 0.01 : 0.0045;
-      const ratio = Math.max(0.5, Math.min(2, Math.exp(-event.deltaY * unit * factor)));
-      zoomBy(ratio, p);
-    }, { passive: false });
-    document.getElementById('gcrumb').addEventListener('click', event => {
-      const button = event.target.closest('button');
-      if (!button) return;
-      select(null);
-      fitTo(button.id === 'gback' ? null : { scope: button.dataset.scope });
-    });
-    document.getElementById('gpanel').addEventListener('click', event => {
-      const link = event.target.closest('a[data-go]');
-      if (!link) return;
-      event.preventDefault();
-      select(link.dataset.go);
-      fitTo({ node: link.dataset.go });
-    });
-  }
-
-  /* + and − zoom about the middle of the canvas (n-9c84). Registered once: the
-     page may be rebuilt, and the handler is idle when there is no canvas. */
-  document.addEventListener('keydown', event => {
-    const c = canvas();
-    if (!c || event.metaKey || event.ctrlKey || event.altKey) return;
-    if (window.GyShell.composing(event)) return;
-    if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
-    const centre = { x: c.clientWidth / 2, y: c.clientHeight / 2 };
-    if (event.key === '+' || event.key === '=') {
-      zoomBy(1.4, centre);
-      event.preventDefault();
-    } else if (event.key === '-' || event.key === '_') {
-      zoomBy(1 / 1.4, centre);
-      event.preventDefault();
-    }
-  });
-
-  window.GyGraph = { draw, worldToScreen: (x, y) => window.GyDraw.span(view, x, y), get cam() { return view.cam; } };
+  window.GyGraph = {
+    render, hit, bubbleAt, zoomAt, panBy, fitTo, eased,
+    /* The test's two handles for e2e graph.spec.ts; they go when 第 4 段 moves
+       e2e to testids and roles (n-88b2). */
+    get cam() { return current ? current.graph.cam : null; },
+    worldToScreen: (x, y) => window.GyDraw.span(makeView(current), x, y),
+  };
 })();

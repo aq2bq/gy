@@ -25,6 +25,7 @@ fn the_read_pages_are_embedded_and_served() {
     for name in [
         "state.js",
         "reads.js",
+        "ease.js",
         "events.js",
         "root.js",
         "sidebar.js",
@@ -64,6 +65,7 @@ fn the_index_references_the_embedded_files() {
         "app.css",
         "state.js",
         "reads.js",
+        "ease.js",
         "events.js",
         "root.js",
         "sidebar.js",

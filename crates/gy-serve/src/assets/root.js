@@ -1,6 +1,6 @@
-/* The root (d-03ca, 第 2 段): the one place that reads, draws the regions in
-   order, and turns events into intents. Regions never reach back here; the
-   `window.GyShell` at the bottom is a bridge for the pages, gone in 第 3 段. */
+/* The root (d-03ca): the one place that reads, draws the regions in order,
+   turns events into intents, and moves the graph's camera. 第 3 段 took the
+   bridge away; the roles are root / reads.js / events.js / ease.js. */
 (function () {
   /* The rail's breakpoint; app.css holds the same number (change both). */
   const WIDE = window.matchMedia('(min-width: 1560px)');
@@ -59,16 +59,20 @@
   }
 
   async function reload() {
-    const extra = { now: 'map', list: 'page', node: 'page', history: 'page' }[state.route.name] || null;
-    const wants = ['shell', 'now', 'band', 'rail'].concat(extra ? [extra] : []);
-    await Promise.all(wants.map(ensure));
+    const extra = { now: ['map'], list: ['page'], node: ['page'], history: ['page'], graph: ['map', 'page'] }[state.route.name] || [];
+    await Promise.all(['shell', 'now', 'band', 'rail', ...extra].map(ensure));
+    if (state.route.name === 'graph') await ensure('labels');
     paint();
   }
 
   /* Live updates: the band always follows the log; the rest only at the head. */
   async function moved() {
     state = { ...state, band: null, rail: null };
-    if (state.at === null) state = window.GyState.apply(state, { type: 'ledgerMoved' });
+    if (state.at === null) {
+      const held = state.route.name === 'graph' ? { map: state.map, labels: state.labels } : null;
+      state = window.GyState.apply(state, { type: 'ledgerMoved' });
+      if (held) state = { ...state, ...held }; /* the graph keeps its map across a write (n-88b2) */
+    }
     await reload();
   }
 
@@ -87,24 +91,43 @@
     const main = document.getElementById('main');
     main.className = '';
     const name = state.route.name;
-    const arg = state.route.arg;
     if (name === 'now' && window.GyNow) window.GyNow.render(state, main, ui);
     else if (name === 'list' && window.GyList) window.GyList.render(state, main, ui);
     else if (name === 'eye' && window.GyEye) window.GyEye.render(state, main, ui);
     else if (name === 'node' && window.GyNode) window.GyNode.render(state, main, ui);
     else if (name === 'history' && window.GyHistory) window.GyHistory.render(state, main, ui);
-    else if (name === 'graph' && window.GyGraph) window.GyGraph.draw(arg);
+    else if (name === 'graph' && window.GyGraph) { window.GyGraph.render(state, main, ui); aimGraph(); }
     else if (name === 'missing') main.textContent = word('notYet');
+  }
+
+  /* Point the graph's camera when the page opens or its point changes: the
+     focus node in the hash, else everything. The canvas is what the fit needs,
+     so this runs after the page has drawn. */
+  let aimed = null, aimedArg = null;
+  function aimGraph() {
+    const canvas = document.getElementById('g');
+    if (!canvas || !state.map) return;
+    const key = `${state.scope}|${state.at}`;
+    const focus = state.route.arg || null;
+    if (aimed === key && aimedArg === focus) return;
+    aimed = key;
+    aimedArg = focus;
+    if (focus) run({ type: 'graphSelect', value: focus });
+    ease.start(window.GyGraph.fitTo(state, canvas, focus ? { node: focus } : null));
   }
 
   /* The insides of an intent: which ones need a read before the redraw. */
   let reloadTimer = null;
   async function run(intent) {
     state = window.GyState.apply(state, intent);
+    if (intent.type === 'setScope' || intent.type === 'setAt' || intent.type === 'go') ease.stop();
     if (intent.type === 'setScope') { await reload(); return; }
     if (intent.type === 'go') { await reload(); return; }
+    if (intent.type === 'graphSelect') { await reload(); return; }
     if (intent.type === 'historyActor' || intent.type === 'historySince') { await reload(); return; }
     if (intent.type === 'setAt') { preview(); scheduleReload(); return; }
+    if (intent.type === 'graphTarget') { ease.start(intent.value); return; }
+    if (intent.type === 'graphCam' || intent.type === 'graphHover') { paintPage(); return; }
     if (intent.type === 'paletteOpen') {
       state = { ...state, search: null };
       paintPalette();
@@ -193,20 +216,14 @@
     topbar: document.querySelector('.topbar'),
   };
 
-  /* The bridge for the pages until 第 3 段 makes them regions (n-6c63). */
-  window.GyShell = {
-    t: word,
-    lang: () => state.lang,
-    scope: () => state.scope,
-    get at() { return state.at; },
-    set at(value) { state = window.GyState.apply(state, { type: 'setAt', value }); },
-    read,
-    plural,
-    scopeTag,
-    composing,
-    composedRecently,
-    setEyes: () => {}, /* the three boxes come from state.now; nothing to push (n-45ca) */
-  };
+  /* The camera's ease: the root's clock, the graph's curve (n-88b2). */
+  const ease = window.GyEase.make({
+    get: () => state,
+    aim: value => { state = window.GyState.apply(state, { type: 'graphTarget', value }); },
+    cam: value => { state = window.GyState.apply(state, { type: 'graphCam', value }); },
+    arrived: () => { state = window.GyState.apply(state, { type: 'graphTarget', value: null }); },
+    draw: paintPage,
+  });
 
   /* The long wait for the next write (was live.js, n-478f): 30 s cut, 2 s
      retry, and state.live when the line drops. */
@@ -268,6 +285,8 @@
     liveLoop();
   }
 
-  window.GyRoot = { moved };
+  /* `at` is the test's handle for e2e live and time; it goes when 第 4 段 moves
+     e2e to testids and roles (n-88b2). */
+  window.GyRoot = { moved, at: () => state.at };
   start();
 })();

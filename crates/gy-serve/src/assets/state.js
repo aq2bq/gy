@@ -28,11 +28,12 @@
       wide: env.wide,
       list: { filter: 'open' },
       history: { actor: null, since: null },
-      graph: { cam: { x: 0, y: 0, k: 1 }, selected: null },
+      graph: { cam: { x: 0, y: 0, k: 1 }, target: null, selected: null, hover: null },
       palette: { open: false, query: '', selected: 0 },
       shell: null,
       now: null,
       map: null,
+      labels: null,
       band: null,
       page: null,
       rail: null,
@@ -55,9 +56,9 @@
       case 'setLang':
         return { ...state, lang: intent.value };
       case 'setScope':
-        return { ...state, scope: intent.value, shell: null, now: null, map: null, page: null, rail: null };
+        return { ...state, scope: intent.value, shell: null, now: null, map: null, labels: null, page: null, rail: null, graph: { ...state.graph, target: null, selected: null, hover: null } };
       case 'setAt':
-        return { ...state, at: intent.value, shell: null, now: null, map: null, page: null, rail: null };
+        return { ...state, at: intent.value, shell: null, now: null, map: null, labels: null, page: null, rail: null, graph: { ...state.graph, target: null, selected: null, hover: null } };
       case 'go':
         return { ...state, route: intent.value, page: null, list: intent.value.name === 'list' ? { ...state.list, filter: 'open' } : state.list };
       case 'setWide':
@@ -70,8 +71,12 @@
         return { ...state, history: { ...state.history, since: intent.value }, page: null };
       case 'graphCam':
         return { ...state, graph: { ...state.graph, cam: intent.value } };
+      case 'graphTarget':
+        return { ...state, graph: { ...state.graph, target: intent.value } };
       case 'graphSelect':
-        return { ...state, graph: { ...state.graph, selected: intent.value } };
+        return { ...state, graph: { ...state.graph, selected: intent.value }, page: null };
+      case 'graphHover':
+        return { ...state, graph: { ...state.graph, hover: intent.value } };
       case 'paletteOpen':
         return { ...state, palette: { ...state.palette, open: true, query: '', selected: 0 } };
       case 'paletteClose':
@@ -81,7 +86,7 @@
       case 'paletteMove':
         return { ...state, palette: { ...state.palette, selected: intent.value } };
       case 'ledgerMoved':
-        return { ...state, shell: null, now: null, map: null, page: null, rail: null };
+        return { ...state, shell: null, now: null, map: null, labels: null, page: null, rail: null };
       case 'liveChanged':
         return { ...state, live: intent.value };
       case 'dataArrived':

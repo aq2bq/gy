@@ -29,9 +29,9 @@
   }
 
   /* One frame: bubbles, the edges across and inside, the nodes, the names.
-     Answers the ids whose labels the caller should ask for. */
-  function frame(view) {
-    const c = document.getElementById('g');
+     Answers the ids whose labels the caller should ask for. The canvas is
+     handed in by its owner (n-88b2). */
+  function frame(c, view) {
     if (!c || !view.graph) return [];
     const dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight;
     if (c.width !== w * dpr) { c.width = w * dpr; c.height = h * dpr; }
@@ -103,17 +103,16 @@
   }
 
   /* The trail, the scale, and the step it is on. */
-  function crumb(view, t, step) {
+  function crumb(c, view, t, step) {
     const node = view.selected ? find(view, view.selected) : null;
-    const scope = node ? node.scope : scopeUnder(view);
+    const scope = node ? node.scope : scopeUnder(c, view);
     return `<button id="gback">${t('gBack')}</button><span id="lod" style="color:var(--paper-3)">×${view.cam.k.toFixed(2)} · ${t(step)}</span>` +
       (scope ? `<span>›</span><button data-scope="${scope}">${scope}</button>` : '') +
       (node ? `<span>›</span><span style="color:var(--paper)">${alias(view, node.id)}</span>` : '');
   }
 
   /* The bubble the middle of the view is inside, once the scale shows one. */
-  function scopeUnder(view) {
-    const c = document.getElementById('g');
+  function scopeUnder(c, view) {
     if (!c || view.cam.k <= EDGE_K || !view.graph) return null;
     const wx = (c.clientWidth / 2 - view.cam.x) / view.cam.k, wy = (c.clientHeight / 2 - view.cam.y) / view.cam.k;
     const found = view.graph.bubbles.find(bubble => Math.hypot(bubble.x - wx, bubble.y - wy) < bubble.r);

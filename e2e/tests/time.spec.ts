@@ -12,7 +12,7 @@ test.afterAll(async () => {
 });
 
 const at = (page: import('@playwright/test').Page) =>
-  page.evaluate(() => (window as unknown as { GyShell: { at: number | null } }).GyShell.at);
+  page.evaluate(() => (window as unknown as { GyRoot: { at: () => number | null } }).GyRoot.at());
 
 test('ArrowLeft rewinds the head and the pages answer for it', async ({ page, request }) => {
   const shell = await (await request.get(`${gy.url}api/shell`)).json();

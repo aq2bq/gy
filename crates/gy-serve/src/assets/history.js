@@ -10,7 +10,7 @@
   const fill = (text, values) => text.replace(/\{(\w+)\}/g, (all, key) => (key in values ? values[key] : all));
 
   /* The rows, grouped by the day they were written. */
-  function rows(data, ui) {
+  function rows(state, data, ui) {
     if (!data.rows.length) return `<div class="empty">${ui.t('histEmpty')}</div>`;
     let html = '';
     let head = '';
@@ -20,7 +20,7 @@
         head = today;
         html += `<div class="hist-day">${head}</div>`;
       }
-      html += window.GyWrites.row(entry, data.labels || {}, order);
+      html += window.GyWrites.row(entry, data.labels || {}, order, ui, state.lang);
     }
     if (data.total > data.rows.length) html += `<div class="empty">${ui.t('histOlder')}</div>`;
     return `<div class="hist">${html}</div>`;
@@ -64,7 +64,7 @@
     el.innerHTML =
       `<div class="list"><h1>${ui.t('histTitle')}</h1><div class="sub">${fill(ui.t('histSub'), { n: data.total })} · ${esc(scope)}</div>` +
       `<div class="hist-filter">${chips(state, data, ui)}<label class="hist-date">${ui.t('histDate')}<input type="date" id="hist-date" value=""></label></div>` +
-      `${rows(data, ui)}</div>`;
+      `${rows(state, data, ui)}</div>`;
   }
 
   window.GyHistory = { render, since };
