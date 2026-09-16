@@ -34,20 +34,20 @@
     return `<div class="ri${mark ? ' new' : ''}">${window.GyWrites.row(entry, known, order)}</div>`;
   }
 
-  /* The search is one element: it sits in the rail's top at this width, and in
-     the top bar otherwise. It is moved, never copied, so it is never in two
-     places or nowhere. */
+  /* The search is one element: it sits in the rail's own holder at this width,
+     and in the top bar otherwise. It is moved, never copied, and the holder is
+     never rewritten, so the panel's redraw cannot take it (n-ccd2, n-1d12). */
   function placeSearch(where) {
     const search = document.getElementById('searchbtn');
     if (!search) return;
-    const holder = where === 'rail' ? document.getElementById('rail') : document.querySelector('.topbar');
+    const holder = where === 'rail' ? document.getElementById('railSearch') : document.querySelector('.topbar');
     if (!holder || search.parentElement === holder) return;
-    if (where === 'rail') holder.insertBefore(search, holder.firstChild);
-    else holder.appendChild(search);
+    holder.appendChild(search);
   }
 
   async function draw() {
-    const box = document.getElementById('rail');
+    /* The rail rewrites only its body: the search holder beside it stays. */
+    const box = document.getElementById('railBody');
     if (!box) return;
     if (!WIDE.matches) {
       placeSearch('bar');

@@ -50,3 +50,25 @@ test('the search lives in the rail when wide and in the top bar when narrow', as
   await expect(page.locator('#searchbtn')).toHaveCount(1);
   await expect(page.locator('#rail #searchbtn')).toHaveCount(1);
 });
+
+test('the search outlives the panel redraws a scope switch causes', async ({ page }) => {
+  const errors: Error[] = [];
+  page.on('pageerror', error => errors.push(error));
+
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await page.goto(gy.url);
+  await expect(page.locator('#rail #searchbtn')).toHaveCount(1);
+
+  // Two switches: the panel is rewritten each time, and the fault only shows
+  // on the second one (n-1d12).
+  const scopes = page.locator('#nav button[data-s]:not([data-s="all"])');
+  await scopes.nth(0).click();
+  await expect(page.locator('#searchbtn')).toHaveCount(1);
+  await expect(page.locator('#rail #searchbtn')).toHaveCount(1);
+  await scopes.nth(1).click();
+  await expect(page.locator('#searchbtn')).toHaveCount(1);
+  await expect(page.locator('#rail #searchbtn')).toHaveCount(1);
+  await expect(page.locator('#rail .rail-h')).toHaveCount(1);
+
+  expect(errors).toEqual([]);
+});
