@@ -5,8 +5,10 @@ const SCOPE_KEY = 'gy-scope';
 const KINDS = ['Need', 'Question', 'Decision', 'Requirement', 'Criterion'];
 const PLURAL = { Need: 'Needs', Question: 'Questions', Decision: 'Decisions', Requirement: 'Requirements', Criterion: 'Criteria' };
 const ENTRIES = [['#/', 'now', '◉'], ['#/graph', 'graph', '✦'], ['#/history', 'history', '≡']];
-/* The three sidebar boxes and the words their pages wear (n-c122). */
+/* The three sidebar boxes and the words their pages wear (n-c122), and the
+   now page's column colours they borrow (n-4e5a). */
 const EYE_WORD = { wait: 'eyeWait', next: 'readyHead', resume: 'resumeHead' };
+const EYE_COLOR = { wait: 'requirement', next: 'need', resume: 'decision' };
 
 let words = null;
 let shell = { seq: 0, at: '', scopes: [], kinds: [] };
@@ -40,16 +42,38 @@ const esc = text => String(text).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': 
 /* The one place a scope name becomes a badge (n-d29f): the hue comes from a
    short hash of the name, so the same scope wears the same colour on every
    page and nothing has to be configured or stored. The look is app.css's .sb,
-   a filled pill beside the outline-only kind badge. */
+   a black pill with the colour in its frame. Within one ledger a hue already
+   taken by an earlier scope (the server's name order) is skipped, so two
+   scopes are told apart by colour too; past eight the ring is full and colours
+   may repeat (n-4e5a). */
 const SCOPE_HUES = [10, 40, 95, 140, 175, 210, 262, 320];
+function scopeHue(name) {
+  const text = String(name ?? '');
+  const names = shell.scopes.map(item => item.name);
+  const wanted = names.indexOf(text);
+  if (wanted < 0) return SCOPE_HUES[hashIndex(text)];
+  const taken = new Set();
+  for (let at = 0; at <= wanted; at++) {
+    let slot = hashIndex(names[at]);
+    while (taken.has(slot) && taken.size < SCOPE_HUES.length) slot = (slot + 1) % SCOPE_HUES.length;
+    if (at === wanted) return SCOPE_HUES[slot];
+    taken.add(slot);
+  }
+  return SCOPE_HUES[hashIndex(text)];
+}
+
+/* A name's own hue, before anything is taken into account. */
+function hashIndex(name) {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < name.length; index++) {
+    hash = Math.imul(hash ^ name.charCodeAt(index), 0x01000193);
+  }
+  return (hash >>> 0) % SCOPE_HUES.length;
+}
+
 function scopeTag(name) {
   const text = String(name ?? '');
-  let hash = 0x811c9dc5;
-  for (let index = 0; index < text.length; index++) {
-    hash = Math.imul(hash ^ text.charCodeAt(index), 0x01000193);
-  }
-  const hue = SCOPE_HUES[(hash >>> 0) % SCOPE_HUES.length];
-  return `<span class="sb" style="--sb:${hue}">${esc(text)}</span>`;
+  return `<span class="sb" style="--sb:${scopeHue(text)}">${esc(text)}</span>`;
 }
 
 /* An IME's own key, not the app's (n-87ab): the composition flag or keyCode
@@ -83,7 +107,7 @@ function counter(kind) {
 function drawEyes() {
   const box = document.getElementById('eyes3');
   if (!box) return;
-  const item = (key, n, name) => `<a href="#/eye/${key}" class="${n > 0 && key === 'wait' ? 'hot' : ''}"><b>${n}</b><small>${name}</small></a>`;
+  const item = (key, n, name) => `<a href="#/eye/${key}" style="--ec:var(--${EYE_COLOR[key]})"><b>${n}</b><small>${name}</small></a>`;
   box.innerHTML =
     item('wait', eyes.wait, word('eyeWait')) +
     item('next', eyes.next, word('eyeNext')) +

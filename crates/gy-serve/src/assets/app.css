@@ -17,9 +17,10 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .k{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.08em;padding:1px 7px;border-radius:3px;border:1px solid;vertical-align:middle}
 .k-Need{color:var(--need);border-color:var(--need)} .k-Question{color:var(--question);border-color:var(--question)} .k-Decision{color:var(--decision);border-color:var(--decision)} .k-Requirement{color:var(--requirement);border-color:var(--requirement)} .k-Criterion{color:var(--criterion);border-color:var(--criterion)}
-/* A scope (n-d29f): a filled pill beside the outline-only kind badge, the hue
-   from the name (shell.js scopeTag). The container decides how wide it shows. */
-.sb{display:inline-block;justify-self:start;max-width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;font-family:var(--mono);font-size:11px;padding:1px 8px;border-radius:999px;background:hsl(var(--sb) 55% 55% / .16);border:1px solid hsl(var(--sb) 45% 45%);color:hsl(var(--sb) 65% 78%)}
+/* A scope (n-d29f): a pill beside the outline-only kind badge, the hue from
+   the name (shell.js scopeTag). Black fill, white text, the colour only in the
+   frame (n-4e5a). The container decides how wide it shows. */
+.sb{display:inline-block;justify-self:start;max-width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;font-family:var(--mono);font-size:11px;padding:1px 8px;border-radius:999px;background:var(--ink);border:1px solid hsl(var(--sb) 45% 45%);color:var(--paper)}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--paper-3);vertical-align:middle;margin-right:8px;flex:none}
 .dot-Need{background:var(--need)} .dot-Question{background:var(--question)} .dot-Decision{background:var(--decision)} .dot-Requirement{background:var(--requirement)} .dot-Criterion{background:var(--criterion)}
 
@@ -32,11 +33,11 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 @media (min-width:1440px){.app{grid-template-columns:var(--side) minmax(0,1fr) var(--rail)}.rail{display:block}}
 .wordmark{font-family:var(--sans);font-weight:600;font-size:26px;letter-spacing:.06em;line-height:1;display:flex;align-items:baseline;gap:10px}
 .wordmark small{font-family:var(--mono);font-size:10px;color:var(--paper-3);letter-spacing:.12em}
-/* The three counts under the wordmark (d-3e8f). */
+/* The three counts under the wordmark (d-3e8f). Each wears the colour of the
+   now page's same column: waiting, next, in progress (n-4e5a). */
 .side .eyes3{display:flex;gap:6px;margin:2px 0 10px}
-.side .eyes3 a{flex:1;text-align:center;border:1px solid var(--line);border-radius:8px;padding:6px 0;font-weight:600;font-size:16px;color:var(--paper)}
+.side .eyes3 a{flex:1;text-align:center;border:1px solid var(--ec,var(--line));border-radius:8px;padding:6px 0;font-weight:600;font-size:16px;color:var(--ec,var(--paper))}
 .side .eyes3 a small{display:block;font-size:10px;color:var(--paper-3);font-weight:400;letter-spacing:.06em}
-.side .eyes3 a.hot{border-color:var(--requirement);color:var(--requirement)}
 /* The logo: the gothic gy, the band's ticks, and a live dot (d-4e65). */
 .wordmark .logo text{fill:var(--paper);font-family:var(--sans);font-weight:600}
 .wordmark .logo .tick{fill:var(--paper-3)}

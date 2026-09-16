@@ -13,6 +13,14 @@ test.afterAll(async () => {
 
 test('a scope wears one badge everywhere, and only a scope wears it', async ({ page }) => {
   await page.goto(`${gy.url}#/list/Need`);
+
+  // In one ledger no two scopes share a hue, so the frames tell them apart.
+  const sidebarColors = await page
+    .locator('#nav .sb')
+    .evaluateAll(els => els.map(el => getComputedStyle(el).borderColor));
+  expect(sidebarColors.length).toBeGreaterThan(1);
+  expect(new Set(sidebarColors).size).toBe(sidebarColors.length);
+
   const row = page.locator('#main .row.wide').first();
   const badge = row.locator('.sb');
   await expect(badge).toHaveCount(1);
