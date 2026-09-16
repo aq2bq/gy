@@ -3,6 +3,7 @@ const INDEX: &str = include_str!("assets/index.html");
 const CSS: &str = include_str!("assets/app.css");
 const STATE_JS: &str = include_str!("assets/state.js");
 const READS_JS: &str = include_str!("assets/reads.js");
+const WATCH_JS: &str = include_str!("assets/watch.js");
 const EASE_JS: &str = include_str!("assets/ease.js");
 const EVENTS_JS: &str = include_str!("assets/events.js");
 const ROOT_JS: &str = include_str!("assets/root.js");
@@ -32,11 +33,12 @@ const RAIL_CSS: &str = include_str!("assets/rail.css");
 const RAIL_JS: &str = include_str!("assets/rail.js");
 
 /// Every embedded file: its name and its text.
-pub const FILES: [(&str, &str); 31] = [
+pub const FILES: [(&str, &str); 32] = [
     ("index.html", INDEX),
     ("app.css", CSS),
     ("state.js", STATE_JS),
     ("reads.js", READS_JS),
+    ("watch.js", WATCH_JS),
     ("ease.js", EASE_JS),
     ("events.js", EVENTS_JS),
     ("root.js", ROOT_JS),

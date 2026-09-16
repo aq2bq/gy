@@ -53,6 +53,12 @@
     return fetch(`${url}${join}at=${state.at}`);
   }
 
+  /* The app's own words (n-39f2): a read like any other, so it lives here. */
+  async function words() {
+    const res = await fetch('/assets/i18n.json');
+    return res.json();
+  }
+
   /* The aliases of some nodes, for the rows that show names (n-b963, n-4a08). */
   async function labels(state, ids) {
     const unique = [...new Set(ids.filter(Boolean))];
@@ -75,5 +81,5 @@
     return body;
   }
 
-  window.GyReads = { path, read, filled };
+  window.GyReads = { path, read, filled, words };
 })();

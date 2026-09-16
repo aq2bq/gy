@@ -225,64 +225,17 @@
     draw: paintPage,
   });
 
-  /* The long wait for the next write (was live.js, n-478f): 30 s cut, 2 s
-     retry, and state.live when the line drops. */
-  const CUT = 30000;
-  const RETRY = 2000;
-  let known = null;
-  const pause = ms => new Promise(done => setTimeout(done, ms));
-
-  async function waitPast(after) {
-    const control = new AbortController();
-    const timer = setTimeout(() => control.abort(), CUT);
-    try {
-      const res = await fetch(`/api/wait?after=${after}`, { signal: control.signal });
-      return (await res.json()).seq;
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
-  async function liveLoop() {
-    for (;;) {
-      if (known === null) {
-        try {
-          known = (await (await fetch('/api/shell')).json()).seq;
-        } catch {
-          setLive(false);
-          await pause(RETRY);
-          continue;
-        }
-      }
-      let seq;
-      try {
-        seq = await waitPast(known);
-      } catch {
-        setLive(false);
-        await pause(RETRY);
-        continue;
-      }
-      setLive(true);
-      if (seq <= known) continue;
-      known = seq;
-      try {
-        await moved();
-      } catch {
-        setLive(false);
-      }
-    }
-  }
-
+  /* The long wait for the next write lives in watch.js (n-39f2); the root says
+     what to do when the log moves and when the line drops. */
   async function start() {
-    const res = await fetch('/assets/i18n.json');
-    words = await res.json();
+    words = await window.GyReads.words();
     window.GyEvents.wire({
       run, setAt, go, composing, composedRecently, composedEnd, resized,
       state: () => state,
     });
     WIDE.addEventListener('change', () => run({ type: 'setWide', value: WIDE.matches }));
     await reload();
-    liveLoop();
+    window.GyWatch.follow(async () => { await moved(); }, on => setLive(on));
   }
 
   start();
