@@ -77,18 +77,35 @@
         return { ...state, graph: { ...state.graph, selected: intent.value }, page: null };
       case 'graphHover':
         return { ...state, graph: { ...state.graph, hover: intent.value } };
+      /* The palette's hits belong to the word that asked for them: opening, a
+         new word, and closing all leave the old answer behind (n-ca6d). */
       case 'paletteOpen':
-        return { ...state, palette: { ...state.palette, open: true, query: '', selected: 0 } };
+        return { ...state, palette: { ...state.palette, open: true, query: '', selected: 0 }, search: null };
       case 'paletteClose':
-        return { ...state, palette: { ...state.palette, open: false } };
+        return { ...state, palette: { ...state.palette, open: false }, search: null };
       case 'paletteQuery':
-        return { ...state, palette: { ...state.palette, query: intent.value, selected: 0 } };
+        return { ...state, palette: { ...state.palette, query: intent.value, selected: 0 }, search: null };
       case 'paletteMove':
         return { ...state, palette: { ...state.palette, selected: intent.value } };
-      case 'ledgerMoved':
-        return { ...state, shell: null, now: null, map: null, labels: null, page: null, rail: null };
+      /* A write moves the ledger. The band and the rail are of the old head, and
+         at the head the shell, now, and page too. The graph page keeps its map
+         and labels: its camera and selection hold their picture (n-88b2). */
+      case 'ledgerMoved': {
+        const head = state.at === null;
+        const graph = state.route.name === 'graph';
+        return {
+          ...state,
+          band: null,
+          rail: null,
+          ...(head ? { shell: null, now: null, page: null, map: graph ? state.map : null, labels: graph ? state.labels : null } : {}),
+        };
+      }
       case 'liveChanged':
         return { ...state, live: intent.value };
+      /* A read that is out: the mark keeps it from being asked twice, and
+         `dataArrived` clears it when the answer comes (n-ca6d). */
+      case 'readStarted':
+        return { ...state, pending: { ...state.pending, [intent.kind]: true } };
       case 'dataArrived':
         return arrived(state, intent.kind, intent.body);
       default:

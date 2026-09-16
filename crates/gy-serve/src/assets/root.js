@@ -49,7 +49,7 @@
   async function ensure(kind) {
     const url = window.GyReads.path(kind, state);
     if (state[kind] || state.pending[kind] || !url) return;
-    state = { ...state, pending: { ...state.pending, [kind]: true } };
+    state = window.GyState.apply(state, { type: 'readStarted', kind });
     try {
       const body = await window.GyReads.filled(state, kind, await (await read(url)).json());
       state = window.GyState.apply(state, { type: 'dataArrived', kind, body });
@@ -65,14 +65,9 @@
     paint();
   }
 
-  /* Live updates: the band always follows the log; the rest only at the head. */
+  /* A write arrived: state.js says what that makes stale (n-ca6d). */
   async function moved() {
-    state = { ...state, band: null, rail: null };
-    if (state.at === null) {
-      const held = state.route.name === 'graph' ? { map: state.map, labels: state.labels } : null;
-      state = window.GyState.apply(state, { type: 'ledgerMoved' });
-      if (held) state = { ...state, ...held }; /* the graph keeps its map across a write (n-88b2) */
-    }
+    state = window.GyState.apply(state, { type: 'ledgerMoved' });
     await reload();
   }
 
@@ -129,7 +124,6 @@
     if (intent.type === 'graphTarget') { ease.start(intent.value); return; }
     if (intent.type === 'graphCam' || intent.type === 'graphHover') { paintPage(); return; }
     if (intent.type === 'paletteOpen') {
-      state = { ...state, search: null };
       paintPalette();
       focusPalette();
       return;
@@ -157,7 +151,6 @@
       paintPalette();
       return;
     }
-    state = { ...state, search: null };
     paintPalette();
     const body = await (await read(`/api/search?q=${encodeURIComponent(query)}`)).json();
     if (state.palette.query.trim() !== query) return;

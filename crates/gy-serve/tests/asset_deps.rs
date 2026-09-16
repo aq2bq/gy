@@ -238,3 +238,24 @@ fn the_state_is_apart_from_the_document_and_the_network() {
         );
     }
 }
+
+/// The state is built in one place: the root asks `state.js` for every new
+/// state, so the reason a field is cleared lives in the intent that names it
+/// (d-03ca, n-ca6d). A hand-built `{ ...state }` in the root is the drift this
+/// guards against.
+#[test]
+fn only_the_state_builds_the_state() {
+    let text = body("root.js");
+    let mut rest = text.as_str();
+    while let Some(at) = rest.find("state = ") {
+        let after = &rest[at + "state = ".len()..];
+        let named = after.starts_with("window.GyState.initial(")
+            || after.starts_with("window.GyState.apply(");
+        assert!(
+            named,
+            "root.js builds the state by hand: {}",
+            rest[at..].lines().next().unwrap_or("")
+        );
+        rest = after;
+    }
+}
