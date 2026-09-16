@@ -47,7 +47,7 @@
       ? `<div class="chips"><button data-f="open" class="${filter === 'open' ? 'on' : ''}">${t('filterOpen')}</button><button data-f="all" class="${filter === 'all' ? 'on' : ''}">${t('filterAll')}</button></div>`
       : '';
     document.getElementById('main').innerHTML = `<div class="list"><h1>${window.GyShell.plural(kind)}</h1><div class="sub">${sub}</div>${chips}
-      <div class="head"><span></span><span>ID</span><span>title</span><span>${t('scope')}</span><span>${t('status')}</span><span>${t('created')}</span></div>
+      <div class="head"><span></span><span>${t('colId')}</span><span>${t('colTitle')}</span><span>${t('scope')}</span><span>${t('status')}</span><span>${t('created')}</span></div>
       <div class="rows">${sorted.length ? sorted.map(row).join('') : `<div class="empty">—</div>`}</div></div>`;
     document.querySelector('.chips')?.addEventListener('click', event => {
       const button = event.target.closest('button');

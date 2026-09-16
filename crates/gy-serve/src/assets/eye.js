@@ -54,7 +54,7 @@
     const own = eye.own ? t(eye.own) : '';
     document.getElementById('main').innerHTML =
       `<div class="list eye-list"><h1>${t(eye.head)}</h1><div class="sub">${rows.length}</div>` +
-      `<div class="head"><span></span><span>ID</span><span>title</span><span>${t('status')}</span><span>${esc(own)}</span></div>` +
+      `<div class="head"><span></span><span>${t('colId')}</span><span>${t('colTitle')}</span><span>${t('status')}</span><span>${esc(own)}</span></div>` +
       `<div class="rows">${rows.length ? rows.map(rowHtml).join('') : `<div class="empty">—</div>`}</div></div>`;
   }
 
