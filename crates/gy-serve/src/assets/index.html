@@ -23,7 +23,7 @@
   <div class="eyes3" id="eyes3"></div>
   <nav class="nav" id="nav"></nav>
   <div class="foot">
-    <div class="lang" id="lang"><button data-l="en">EN</button><button data-l="ja">日本語</button></div>
+    <div class="lang" id="lang"><button data-l="en" data-act="setLang" data-arg="en">EN</button><button data-l="ja" data-act="setLang" data-arg="ja">日本語</button></div>
     <div class="live-line" id="clock"></div>
   </div>
 </aside>
@@ -38,7 +38,11 @@
   <div class="res" id="palres"></div>
   <div class="hint" id="palhint"></div>
 </div></div>
-<script src="/assets/shell.js"></script>
+<script src="/assets/state.js"></script>
+<script src="/assets/root.js"></script>
+<script src="/assets/sidebar.js"></script>
+<script src="/assets/topbar.js"></script>
+<script src="/assets/band.js"></script>
 <script src="/assets/now.js"></script>
 <script src="/assets/list.js"></script>
 <script src="/assets/eye.js"></script>
@@ -50,12 +54,11 @@
   <div class="bar">
     <span class="lbl"><span id="t-rewind"></span> <b id="scrub-at"></b></span>
     <span class="lbl" id="scrub-seq"></span>
-    <button class="now" id="scrub-now"></button>
+    <button class="now" id="scrub-now" data-act="setAt" data-arg="now"></button>
   </div>
   <div class="track" id="track"><svg id="ticks"></svg><div class="shade" id="shade"></div><div class="head" id="head"></div></div>
 </div>
 <script src="/assets/palette.js"></script>
-<script src="/assets/time.js"></script>
 <script src="/assets/graph-draw.js"></script>
 <script src="/assets/graph.js"></script>
 <script src="/assets/live.js"></script>

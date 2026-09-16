@@ -36,8 +36,9 @@
   /* The band follows the log; the sidebar and the page only at the head,
      never while a past point is chosen (n-32a9). */
   async function update() {
-    if (window.GyTime) await window.GyTime.refresh();
-    if (window.GyShell.at === null) await window.GyShell.reload();
+    /* Temporary until n-45ca folds this loop into root: the root re-reads the
+       band, and the rest of the page, at the head. */
+    if (window.GyRoot) await window.GyRoot.moved();
   }
 
   async function loop() {

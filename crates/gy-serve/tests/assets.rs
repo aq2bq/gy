@@ -23,6 +23,11 @@ fn a_traversal_or_unknown_name_is_not_a_file() {
 #[test]
 fn the_read_pages_are_embedded_and_served() {
     for name in [
+        "state.js",
+        "root.js",
+        "sidebar.js",
+        "topbar.js",
+        "band.js",
         "now.css",
         "now.js",
         "list.css",
@@ -36,7 +41,6 @@ fn the_read_pages_are_embedded_and_served() {
         "palette.css",
         "palette.js",
         "time.css",
-        "time.js",
         "live.js",
         "graph.css",
         "graph-draw.js",
@@ -56,12 +60,16 @@ fn the_index_references_the_embedded_files() {
     let html = assets::index();
     for name in [
         "app.css",
+        "state.js",
+        "root.js",
+        "sidebar.js",
+        "topbar.js",
+        "band.js",
         "now.css",
         "list.css",
         "eye.css",
         "node.css",
         "palette.css",
-        "shell.js",
         "now.js",
         "list.js",
         "eye.js",
@@ -69,7 +77,6 @@ fn the_index_references_the_embedded_files() {
         "node.js",
         "palette.js",
         "time.css",
-        "time.js",
         "live.js",
         "graph.css",
         "graph-draw.js",
@@ -138,7 +145,9 @@ fn asked_keys() -> Vec<(&'static str, String)> {
         if !name.ends_with(".js") {
             continue;
         }
-        for call in ["t('", "word('"] {
+        /* `ui.t('x')` is how a region asks now, and the bare `t('` below skips
+        it (a dot sits in front), so it is matched on its own (n-6c63). */
+        for call in ["t('", "word('", "ui.t('"] {
             let mut cut = 0;
             while let Some(at) = body[cut..].find(call) {
                 let start = cut + at;
