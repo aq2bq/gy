@@ -8,6 +8,7 @@
   --sans:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",system-ui,sans-serif;
   --mono:"SF Mono","Menlo","JetBrains Mono",ui-monospace,monospace;
   --side:232px;
+  --rail:300px;
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--ink);color:var(--paper);font-family:var(--sans);font-size:15px;line-height:1.7}
@@ -22,6 +23,10 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 /* frame */
 .app{display:grid;grid-template-columns:var(--side) minmax(0,1fr);min-height:100vh}
 .side{position:sticky;top:0;height:100vh;border-right:1px solid var(--line-soft);padding:22px 18px 110px;display:flex;flex-direction:column;gap:18px;overflow:auto}
+/* The rail, the ten newest writes, only where three columns fit (n-b963).
+   1440px is the rail's one breakpoint; rail.js matches it, so change both. */
+.rail{display:none;position:sticky;top:0;height:100vh;overflow:auto;border-left:1px solid var(--line-soft);padding:22px 18px 110px}
+@media (min-width:1440px){.app{grid-template-columns:var(--side) minmax(0,1fr) var(--rail)}.rail{display:block}}
 .wordmark{font-family:var(--sans);font-weight:600;font-size:26px;letter-spacing:.06em;line-height:1;display:flex;align-items:baseline;gap:10px}
 .wordmark small{font-family:var(--mono);font-size:10px;color:var(--paper-3);letter-spacing:.12em}
 /* The three counts under the wordmark (d-3e8f). */

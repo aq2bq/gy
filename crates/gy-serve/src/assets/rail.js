@@ -1,0 +1,72 @@
+/* The rail (n-b963): the ten newest writes, so a write by an agent shows up
+   the moment it lands. It reads /api/history?limit=10 and draws each row with
+   GyWrites; the shell redraws it after every reload, so the live poll keeps it
+   moving. On a narrow screen app.css hides it. */
+(function () {
+  const LIMIT = 10;
+  const FLASH = 1400;
+  /* The rail is shown only where app.css gives it a column; it draws nowhere
+     else, so a hidden rail holds no rows. The 1440px is app.css's breakpoint,
+     and must stay equal to it (change both files together). */
+  const WIDE = window.matchMedia('(min-width: 1440px)');
+
+  /* The newest sequence drawn while at the head; null until the first draw. */
+  let head = null;
+
+  const t = key => window.GyShell.t(key);
+
+  function historyPath() {
+    const scope = window.GyShell.scope();
+    const only = scope && scope !== 'all' ? `&scope=${encodeURIComponent(scope)}` : '';
+    return `/api/history?limit=${LIMIT}${only}`;
+  }
+
+  async function labels(ids) {
+    const unique = [...new Set(ids.filter(Boolean))];
+    if (!unique.length) return {};
+    const res = await window.GyShell.read(`/api/labels?ids=${unique.join(',')}`);
+    return (await res.json()).labels;
+  }
+
+  /* One row, wrapped so the `new` mark sits beside GyWrites' own class. */
+  function item(entry, known, order, mark) {
+    return `<div class="ri${mark ? ' new' : ''}">${window.GyWrites.row(entry, known, order)}</div>`;
+  }
+
+  async function draw() {
+    const box = document.getElementById('rail');
+    if (!box) return;
+    if (!WIDE.matches) {
+      box.innerHTML = '';
+      return;
+    }
+    const at = window.GyShell.at;
+    const data = await (await window.GyShell.read(historyPath())).json();
+    const known = await labels(data.rows.map(entry => entry.node));
+    /* A write is a surprise only while the head is in view (n-b963). */
+    const fresh = at === null && head !== null;
+    const order = [];
+    let flashed = false;
+    const rows = data.rows
+      .map(entry => {
+        const mark = fresh && entry.seq > head;
+        flashed = flashed || mark;
+        return item(entry, known, order, mark);
+      })
+      .join('');
+    const body = data.rows.length
+      ? `<div class="hist">${rows}</div>`
+      : `<div class="empty">${t('histEmpty')}</div>`;
+    box.innerHTML =
+      `<div class="rail-h"><span class="live"></span>${t('railTitle')}</div>` +
+      body +
+      `<a class="rail-all" href="#/history">${t('railAll')}</a>`;
+    if (at === null && data.rows.length) head = data.rows[0].seq;
+    if (flashed) {
+      setTimeout(() => box.querySelectorAll('.ri.new').forEach(row => row.classList.remove('new')), FLASH);
+    }
+  }
+
+  window.GyRail = { draw };
+  WIDE.addEventListener('change', () => draw());
+})();

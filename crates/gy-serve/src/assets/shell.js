@@ -133,6 +133,8 @@ function draw() {
   drawEyes();
   if (window.GyTime) window.GyTime.labels();
   route();
+  /* The rail follows every redraw: live updates, language, scope, rewind. */
+  if (window.GyRail) window.GyRail.draw();
 }
 
 /* The one place a read goes out: it carries the point in the log when one is

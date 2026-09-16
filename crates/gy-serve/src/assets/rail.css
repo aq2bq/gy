@@ -1,0 +1,15 @@
+/* The rail (n-b963): the ten newest writes as a narrow column. The layout is
+   scoped under .rail, so the history page's own rows are untouched. */
+.rail-h{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--paper-3);margin:0 0 10px}
+.rail-h .live{margin-right:0}
+.rail .hist{border-top:0}
+.rail .ri .hi{grid-template-columns:minmax(0,1fr);gap:2px;padding:9px 0}
+.rail .ri .hi .when{font-size:10px}
+.rail .ri .hi .who{display:inline-block;margin-right:5px}
+.rail .ri .hi .src{font-size:11px;max-width:100%}
+.rail-all{display:block;margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--paper-3)}
+.rail-all:hover{color:var(--paper)}
+/* A landed write glows once, at the strength of the page's .pi.new. */
+@keyframes railFlash{from{background:rgba(95,211,199,.14)}to{background:transparent}}
+.rail .ri.new .hi{animation:railFlash 1.4s ease-out}
+@media (prefers-reduced-motion: reduce){.rail .ri.new .hi{animation:none}}

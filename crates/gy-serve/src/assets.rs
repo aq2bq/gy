@@ -19,9 +19,12 @@ const LIVE_JS: &str = include_str!("assets/live.js");
 const GRAPH_CSS: &str = include_str!("assets/graph.css");
 const GRAPH_DRAW_JS: &str = include_str!("assets/graph-draw.js");
 const GRAPH_JS: &str = include_str!("assets/graph.js");
+const WRITES_JS: &str = include_str!("assets/writes.js");
+const RAIL_CSS: &str = include_str!("assets/rail.css");
+const RAIL_JS: &str = include_str!("assets/rail.js");
 
 /// Every embedded file: its name and its text.
-pub const FILES: [(&str, &str); 20] = [
+pub const FILES: [(&str, &str); 23] = [
     ("index.html", INDEX),
     ("app.css", CSS),
     ("shell.js", JS),
@@ -42,6 +45,9 @@ pub const FILES: [(&str, &str); 20] = [
     ("graph.css", GRAPH_CSS),
     ("graph-draw.js", GRAPH_DRAW_JS),
     ("graph.js", GRAPH_JS),
+    ("writes.js", WRITES_JS),
+    ("rail.css", RAIL_CSS),
+    ("rail.js", RAIL_JS),
 ];
 
 /// The one HTML document, with `%LANG%` still in place.

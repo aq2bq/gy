@@ -96,3 +96,20 @@ fn history_matches_the_view() {
     let since = answer(&repo, Some(&format!("since={}", last - 1)));
     assert_eq!(since["total"], 1);
 }
+
+/// The `limit` count caps the rows, keeps the total, and takes the default 200
+/// for anything outside 1..=200 (n-b963).
+#[test]
+fn limit_caps_rows_and_keeps_the_total() {
+    let repo = ledger();
+    let full = answer(&repo, None);
+    let total = full["total"].as_u64().unwrap() as usize;
+    assert!(total > 2, "{total}");
+    let capped = answer(&repo, Some("limit=2"));
+    assert_eq!(capped["total"], full["total"]);
+    assert_eq!(capped["rows"].as_array().unwrap().len(), 2);
+    for query in ["limit=0", "limit=x", "limit=999"] {
+        let rows = answer(&repo, Some(query));
+        assert_eq!(rows["rows"].as_array().unwrap().len(), total);
+    }
+}

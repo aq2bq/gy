@@ -1,19 +1,8 @@
 /* The history page (n-4a08): every write, newest first, with the writer and
    the node it touched. The rows and their order come from /api/history; the
-   aliases and titles from /api/labels. */
+   aliases and titles from /api/labels. One row's words are GyWrites (n-b963). */
 (function () {
   const LIMIT = 200;
-  const VERBS = [
-    ['need add', 'needadd'],
-    ['need close', 'needclose'],
-    ['question add', 'qadd'],
-    ['question close', 'qclose'],
-    ['criterion satisfy', 'acsat'],
-    ['criterion add', 'acadd'],
-    ['decide', 'decide'],
-    ['edit', 'edit'],
-    ['req ', 'req'],
-  ];
 
   let data = null;
   let labels = {};
@@ -22,7 +11,6 @@
   let order = [];
 
   const t = key => window.GyShell.t(key);
-  const lang = () => window.GyShell.lang();
   const esc = text => String(text ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
   const fill = (text, values) => text.replace(/\{(\w+)\}/g, (all, key) => (key in values ? values[key] : all));
 
@@ -31,53 +19,7 @@
     return window.GyShell.scope() === 'all' ? t('all') : window.GyShell.scope();
   }
 
-  /* The write's verb, from what the writer asked for (the why). */
-  function verb(entry) {
-    for (const [prefix, key] of VERBS) {
-      if (entry.why.startsWith(prefix)) return t(`why.${key}`);
-    }
-    if (entry.why.startsWith('link')) {
-      return `${t('why.link')} · ${entry.why.replace(/^link \S+ /, '')}`;
-    }
-    return entry.why;
-  }
-
-  const labelOf = id => (labels[id] && labels[id].alias) || id;
-
-  /* Who did what to which node, in this language. */
-  function what(entry) {
-    const who = esc(entry.actor);
-    const doing = esc(verb(entry));
-    if (!entry.node) return `${who} ${doing}`;
-    const node = `<a href="#/n/${entry.node}">${esc(labelOf(entry.node))}</a>`;
-    const title = labels[entry.node] ? ` <span class="tt">${esc(labels[entry.node].title)}</span>` : '';
-    return lang() === 'ja' ? `${who} が ${node} ${doing}${title}` : `${who} ${doing} ${node}${title}`;
-  }
-
-  /* The actor colour: the four colours in the order the writers appear. */
-  function whoCls(name) {
-    let index = order.indexOf(name);
-    if (index < 0) {
-      order.push(name);
-      index = order.length - 1;
-    }
-    return `a-${Math.min(3, index)}`;
-  }
-
-  const when = at =>
-    new Date(at * 1000).toLocaleTimeString(lang() === 'ja' ? 'ja-JP' : 'en-GB', {
-      hour: '2-digit', minute: '2-digit',
-    });
-
-  const day = at => {
-    const date = new Date(at * 1000);
-    const two = value => String(value).padStart(2, '0');
-    return `${date.getFullYear()}/${two(date.getMonth() + 1)}/${two(date.getDate())}`;
-  };
-
-  function row(entry) {
-    return `<div class="hi"><span class="when">${when(entry.at)} · ${entry.seq}</span><span class="who ${whoCls(entry.actor)}">${esc(entry.actor)}</span><span class="nd"><div class="what">${what(entry)}</div><div class="src" title="${esc(entry.source)}">${esc(entry.source)}</div><div class="why">${esc(entry.why)}</div></span></div>`;
-  }
+  const row = entry => window.GyWrites.row(entry, labels, order);
 
   /* The rows, grouped by the day they were written. */
   function rows() {
@@ -85,7 +27,7 @@
     let html = '';
     let head = '';
     for (const entry of data.rows) {
-      const today = day(entry.at);
+      const today = window.GyWrites.day(entry.at);
       if (today !== head) {
         head = today;
         html += `<div class="hist-day">${head}</div>`;

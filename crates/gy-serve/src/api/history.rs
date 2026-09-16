@@ -46,11 +46,21 @@ pub fn answer<S: Store>(repo: &Repository<S>, req: &Request) -> Response {
         .collect();
     rows.reverse();
     let total = rows.len();
+    let limit = limit_param(req);
     Response::json(&Answer {
         total,
         actors,
-        rows: &rows[..total.min(LIMIT)],
+        rows: &rows[..total.min(limit)],
     })
+}
+
+/// The `limit` count: 1..=LIMIT, and anything else is the default. The cap
+/// only trims the rows, never `total` (n-b963).
+fn limit_param(req: &Request) -> usize {
+    req.param("limit")
+        .and_then(|text| text.parse::<usize>().ok())
+        .filter(|count| (1..=LIMIT).contains(count))
+        .unwrap_or(LIMIT)
 }
 
 /// The `since` sequence, 0 when absent; a broken value is 400.
