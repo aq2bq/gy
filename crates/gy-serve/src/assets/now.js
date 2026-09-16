@@ -211,11 +211,6 @@
     return `<section class="pulse2"><h2>${t('pulse')}</h2><div class="sub">${fill(t('pulseSub'), { n: data.recent.length, t: upTo })}</div><div class="pl2">${rows}</div></section>`;
   }
 
-  function scrollTo(eye) {
-    const target = document.querySelector(`.eye[data-eye="${eye}"]`);
-    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
   async function draw() {
     const scope = window.GyShell.scope();
     const only = scope && scope !== 'all' ? `?scope=${encodeURIComponent(scope)}` : '';
@@ -227,9 +222,7 @@
       pulse();
     window.GyShell.setEyes(data.waiting.length, data.ready.length, data.resume.in_progress.length);
     await drawSky();
-    const want = window.GyShell.wantEye;
-    if (want) { window.GyShell.wantEye = null; scrollTo(want); }
   }
 
-  window.GyNow = { draw, scrollTo };
+  window.GyNow = { draw };
 })();

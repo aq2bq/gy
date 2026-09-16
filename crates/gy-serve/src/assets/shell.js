@@ -5,6 +5,8 @@ const SCOPE_KEY = 'gy-scope';
 const KINDS = ['Need', 'Question', 'Decision', 'Requirement', 'Criterion'];
 const PLURAL = { Need: 'Needs', Question: 'Questions', Decision: 'Decisions', Requirement: 'Requirements', Criterion: 'Criteria' };
 const ENTRIES = [['#/', 'now', '◉'], ['#/graph', 'graph', '✦'], ['#/history', 'history', '≡']];
+/* The three sidebar boxes and the words their pages wear (n-c122). */
+const EYE_WORD = { wait: 'eyeWait', next: 'readyHead', resume: 'resumeHead' };
 
 let words = null;
 let shell = { seq: 0, at: '', scopes: [], kinds: [] };
@@ -66,7 +68,7 @@ function counter(kind) {
 function drawEyes() {
   const box = document.getElementById('eyes3');
   if (!box) return;
-  const item = (key, n, name) => `<a href="#/" data-eye="${key}" class="${n > 0 && key === 'wait' ? 'hot' : ''}"><b>${n}</b><small>${name}</small></a>`;
+  const item = (key, n, name) => `<a href="#/eye/${key}" class="${n > 0 && key === 'wait' ? 'hot' : ''}"><b>${n}</b><small>${name}</small></a>`;
   box.innerHTML =
     item('wait', eyes.wait, word('eyeWait')) +
     item('next', eyes.next, word('eyeNext')) +
@@ -97,6 +99,7 @@ function route() {
   const list = hash.match(/^#\/list\/(\w+)$/);
   const node = hash.match(/^#\/n\/(.+)$/);
   const graph = hash.match(/^#\/graph(?:\/(.+))?$/);
+  const eye = hash.match(/^#\/eye\/(wait|next|resume)$/);
   document.getElementById('main').className = '';
   if (hash === '' || hash === '#/') {
     crumb.innerHTML = `<span>${word('now')}</span>`;
@@ -107,6 +110,9 @@ function route() {
   } else if (graph) {
     crumb.innerHTML = `<a href="#/">${word('now')}</a><span>›</span><span>${word('graph')}</span>`;
     if (window.GyGraph) window.GyGraph.draw(graph[1] ? decodeURIComponent(graph[1]) : null);
+  } else if (eye) {
+    crumb.innerHTML = `<a href="#/">${word('now')}</a><span>›</span><span>${word(EYE_WORD[eye[1]])}</span>`;
+    if (window.GyEye) window.GyEye.draw(eye[1]);
   } else if (node) {
     if (window.GyNode) window.GyNode.draw(decodeURIComponent(node[1]));
   } else if (hash === '#/history') {
@@ -160,7 +166,8 @@ function setEyes(wait, next, resume) {
 
 async function loadEyes() {
   try {
-    const res = await read('/api/now');
+    const only = scope && scope !== 'all' ? `?scope=${encodeURIComponent(scope)}` : '';
+    const res = await read(`/api/now${only}`);
     const view = await res.json();
     setEyes(view.waiting.length, view.ready.length, view.resume.in_progress.length);
   } catch {
@@ -183,17 +190,6 @@ function wire() {
     scope = button.dataset.s;
     sessionStorage.setItem(SCOPE_KEY, scope);
     refresh();
-  });
-  document.getElementById('eyes3').addEventListener('click', event => {
-    const link = event.target.closest('a[data-eye]');
-    if (!link) return;
-    const eye = link.dataset.eye;
-    if (location.hash === '' || location.hash === '#/') {
-      event.preventDefault();
-      if (window.GyNow) window.GyNow.scrollTo(eye);
-    } else {
-      window.GyShell.wantEye = eye;
-    }
   });
   window.addEventListener('hashchange', () => {
     drawNav();
@@ -221,8 +217,6 @@ window.GyShell = {
   composedRecently,
   /* The three sidebar counts; the now page passes them after it draws. */
   setEyes,
-  /* The eye to scroll to after the now page draws, or null. */
-  wantEye: null,
   /* Fetch the shell again and redraw what is on screen. */
   reload: refresh,
 };

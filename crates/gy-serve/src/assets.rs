@@ -9,6 +9,8 @@ const PALETTE_CSS: &str = include_str!("assets/palette.css");
 const PALETTE_JS: &str = include_str!("assets/palette.js");
 const LIST_CSS: &str = include_str!("assets/list.css");
 const LIST_JS: &str = include_str!("assets/list.js");
+const EYE_CSS: &str = include_str!("assets/eye.css");
+const EYE_JS: &str = include_str!("assets/eye.js");
 const HISTORY_CSS: &str = include_str!("assets/history.css");
 const HISTORY_JS: &str = include_str!("assets/history.js");
 const NODE_CSS: &str = include_str!("assets/node.css");
@@ -24,7 +26,7 @@ const RAIL_CSS: &str = include_str!("assets/rail.css");
 const RAIL_JS: &str = include_str!("assets/rail.js");
 
 /// Every embedded file: its name and its text.
-pub const FILES: [(&str, &str); 23] = [
+pub const FILES: [(&str, &str); 25] = [
     ("index.html", INDEX),
     ("app.css", CSS),
     ("shell.js", JS),
@@ -35,6 +37,8 @@ pub const FILES: [(&str, &str); 23] = [
     ("palette.js", PALETTE_JS),
     ("list.css", LIST_CSS),
     ("list.js", LIST_JS),
+    ("eye.css", EYE_CSS),
+    ("eye.js", EYE_JS),
     ("history.css", HISTORY_CSS),
     ("history.js", HISTORY_JS),
     ("node.css", NODE_CSS),
