@@ -33,7 +33,7 @@
     "filedOn": "filed", "approvedOn": "approved", "doneOn": "done", "cancelledOn": "cancelled", "pendingOn": "not yet",
     "heardBy": "heard by", "revisions": "{n} revisions after approval",
     "palPh": "Type an ID, alias, or part of a title", "palHint": "↑↓ choose · Enter open · Esc close", "notFound": "No match",
-    "gHint": "scroll to zoom · drag to pan · click a bubble or a node · double-click a node to open", "gAll": "all scopes", "gOpen": "Open →", "gBack": "↑ all scopes",
+    "gHint": "scroll to zoom · drag to pan · click a bubble or a node · double-click a node to open · + − to zoom", "gAll": "all scopes", "gOpen": "Open →", "gBack": "↑ all scopes",
     "lod0": "scopes and dots", "lod1": "dots and edges", "lod2": "+ IDs", "lod3": "+ titles",
     "st": {
       "Need": { "open": "in progress", "done": "done", "closed": "done" },
@@ -78,7 +78,7 @@
     "filedOn": "起票", "approvedOn": "確定", "doneOn": "完了", "cancelledOn": "中止", "pendingOn": "まだ",
     "heardBy": "聞いた人", "revisions": "承認後の改訂 {n} 件",
     "palPh": "ID、別名、題名の一部を打つ", "palHint": "↑↓ で選ぶ · Enter で開く · Esc で閉じる", "notFound": "見つかりません",
-    "gHint": "ホイールで拡大 · ドラッグで移動 · 泡かノードをクリック · ノードをダブルクリックで開く", "gAll": "全スコープ", "gOpen": "開く →", "gBack": "↑ 全スコープ",
+    "gHint": "ホイールで拡大 · ドラッグで移動 · 泡かノードをクリック · ノードをダブルクリックで開く · + − で拡大縮小", "gAll": "全スコープ", "gOpen": "開く →", "gBack": "↑ 全スコープ",
     "lod0": "スコープと点", "lod1": "点と辺", "lod2": "+ ID", "lod3": "+ 題名",
     "st": {
       "Need": { "open": "進行中", "done": "完了", "closed": "完了" },

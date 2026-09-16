@@ -134,6 +134,7 @@
   });
   NOW.addEventListener('click', () => setAt(max));
   document.addEventListener('keydown', event => {
+    if (window.GyShell.composing(event)) return;
     if (event.target.tagName === 'INPUT') return;
     const head = window.GyShell.at ?? max;
     if (event.key === 'ArrowLeft') setAt(head - 1);

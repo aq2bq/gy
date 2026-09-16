@@ -35,6 +35,16 @@ const plural = kind => word(PLURAL[kind] || kind);
 
 const esc = text => String(text).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 
+/* An IME's own key, not the app's (n-87ab): the composition flag or keyCode
+   229. Some IMEs report the confirming Enter with neither, so a short guard
+   after the composition ends is kept too. */
+let composedAt = 0;
+document.addEventListener('compositionend', () => {
+  composedAt = performance.now();
+});
+const composing = event => event.isComposing || event.keyCode === 229;
+const composedRecently = () => performance.now() - composedAt < 50;
+
 /* A time the way the browser writes it in this language. */
 function stamp(at) {
   return new Date(at).toLocaleString(lang === 'ja' ? 'ja-JP' : 'en-GB', {
@@ -204,6 +214,9 @@ window.GyShell = {
   },
   /* A read with the point attached; every page fetches through this. */
   read,
+  /* Whether a keydown belongs to an IME, and whether one just ended (n-87ab). */
+  composing,
+  composedRecently,
   /* The three sidebar counts; the now page passes them after it draws. */
   setEyes,
   /* The eye to scroll to after the now page draws, or null. */

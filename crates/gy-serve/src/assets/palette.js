@@ -60,6 +60,7 @@
 
   QUERY.addEventListener('input', event => search(event.target.value));
   QUERY.addEventListener('keydown', event => {
+    if (window.GyShell.composing(event)) return;
     if (event.key === 'ArrowDown') {
       selected = Math.min(hits.length - 1, selected + 1);
       draw();
@@ -70,7 +71,10 @@
       draw();
       event.preventDefault();
     }
-    if (event.key === 'Enter') go(hits[selected]);
+    if (event.key === 'Enter') {
+      if (window.GyShell.composedRecently()) return;
+      go(hits[selected]);
+    }
     if (event.key === 'Escape') close();
   });
   RESULT.addEventListener('click', event => {
@@ -82,6 +86,7 @@
   });
   document.getElementById('searchbtn').addEventListener('click', open);
   document.addEventListener('keydown', event => {
+    if (window.GyShell.composing(event)) return;
     const typing = event.target.tagName === 'INPUT';
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
       event.preventDefault();

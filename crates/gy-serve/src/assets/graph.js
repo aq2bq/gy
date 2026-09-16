@@ -127,6 +127,15 @@
     anim = requestAnimationFrame(step);
   }
 
+  /* Zoom about a screen point, clamped to the camera's range (n-9c84). */
+  function zoomBy(ratio, p) {
+    cancelAnimationFrame(anim);
+    const k = Math.max(0.15, Math.min(12, view.cam.k * ratio));
+    const applied = k / view.cam.k;
+    view.cam = { k, x: p.x - (p.x - view.cam.x) * applied, y: p.y - (p.y - view.cam.y) * applied };
+    schedule();
+  }
+
   function build() {
     const main = document.getElementById('main');
     main.className = 'wide';
@@ -184,6 +193,10 @@
         if (view.cam.k < 2.2) fitTo({ node: id });
         return;
       }
+      if (double) {
+        zoomBy(2, p);
+        return;
+      }
       const bubble = window.GyDraw.pickBubble(view, p.x, p.y);
       if (bubble && view.cam.k < 1.2) {
         select(null);
@@ -194,12 +207,12 @@
     });
     c.addEventListener('wheel', event => {
       event.preventDefault();
-      cancelAnimationFrame(anim);
       const p = point(event);
-      const k = Math.max(0.15, Math.min(12, view.cam.k * Math.exp(-event.deltaY * 0.0015)));
-      const ratio = k / view.cam.k;
-      view.cam = { k, x: p.x - (p.x - view.cam.x) * ratio, y: p.y - (p.y - view.cam.y) * ratio };
-      schedule();
+      /* A line is 16 px and a page 400, so the same gesture moves the same way. */
+      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1;
+      const factor = event.ctrlKey ? 0.01 : 0.0045;
+      const ratio = Math.max(0.5, Math.min(2, Math.exp(-event.deltaY * unit * factor)));
+      zoomBy(ratio, p);
     }, { passive: false });
     document.getElementById('gcrumb').addEventListener('click', event => {
       const button = event.target.closest('button');
@@ -215,6 +228,23 @@
       fitTo({ node: link.dataset.go });
     });
   }
+
+  /* + and − zoom about the middle of the canvas (n-9c84). Registered once: the
+     page may be rebuilt, and the handler is idle when there is no canvas. */
+  document.addEventListener('keydown', event => {
+    const c = canvas();
+    if (!c || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (window.GyShell.composing(event)) return;
+    if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
+    const centre = { x: c.clientWidth / 2, y: c.clientHeight / 2 };
+    if (event.key === '+' || event.key === '=') {
+      zoomBy(1.4, centre);
+      event.preventDefault();
+    } else if (event.key === '-' || event.key === '_') {
+      zoomBy(1 / 1.4, centre);
+      event.preventDefault();
+    }
+  });
 
   window.GyGraph = { draw, worldToScreen: (x, y) => window.GyDraw.span(view, x, y), get cam() { return view.cam; } };
 })();
