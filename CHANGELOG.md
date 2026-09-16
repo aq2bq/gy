@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.6.2 - 2026-09-16
+
+### Added
+
+- `serve`: the now page is three eyes of equal weight — what waits on
+  the master, the needs whose prerequisites are settled (`gy next`) with
+  their remaining criteria, and the requirements in progress with the
+  handover counts — then a small constellation of the nodes that matter
+  now; the sidebar keeps the three counts on every page. `GET /api/now`
+  carries `ready` and `resume` from the `next` and `handover` views.
+- `serve`: the history page (`#/history`, `GET /api/history`) lists the
+  writes newest first, grouped by day, filtered by author and date.
+- `serve`: the wheel zooms about three times faster, `+` and `-` zoom,
+  and a double-click on a bubble or empty space zooms in there.
+- `serve`: a logo — the wordmark with the band's marks and the live dot —
+  in the sidebar, the favicon, and both READMEs; one gothic face
+  everywhere; the wordmark links back to the now page.
+- `serve` opens the browser when started from a terminal.
+- `scripts/demo-ledger.sh` builds a small English demo ledger; the
+  English README's screenshots come from it.
+
+### Fixed
+
+- `serve`: a key that arrives while an IME is composing is not a page
+  command, so the Enter that confirms Japanese no longer opens the
+  search hit.
+- `serve`: a node without an alias opens; query values and the node
+  path are percent-decoded, so Japanese titles and `#` aliases can be
+  searched.
+
+### Removed
+
+- `gy-migrate` and `gy-core` leave the workspace: every 0.4 ledger has
+  moved. They remain in the history up to `v0.6.1`.
+
 ## 0.6.1 - 2026-09-16
 
 ### Added
