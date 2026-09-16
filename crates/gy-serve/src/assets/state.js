@@ -32,6 +32,7 @@
       palette: { open: false, query: '', selected: 0 },
       shell: null,
       now: null,
+      map: null,
       band: null,
       page: null,
       rail: null,
@@ -54,9 +55,9 @@
       case 'setLang':
         return { ...state, lang: intent.value };
       case 'setScope':
-        return { ...state, scope: intent.value, shell: null, now: null, page: null, rail: null };
+        return { ...state, scope: intent.value, shell: null, now: null, map: null, page: null, rail: null };
       case 'setAt':
-        return { ...state, at: intent.value, shell: null, now: null, page: null, rail: null };
+        return { ...state, at: intent.value, shell: null, now: null, map: null, page: null, rail: null };
       case 'go':
         return { ...state, route: intent.value, page: null };
       case 'setWide':
@@ -80,7 +81,7 @@
       case 'paletteMove':
         return { ...state, palette: { ...state.palette, selected: intent.value } };
       case 'ledgerMoved':
-        return { ...state, shell: null, now: null, page: null, rail: null };
+        return { ...state, shell: null, now: null, map: null, page: null, rail: null };
       case 'liveChanged':
         return { ...state, live: intent.value };
       case 'dataArrived':

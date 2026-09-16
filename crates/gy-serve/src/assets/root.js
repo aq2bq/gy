@@ -57,6 +57,7 @@
   const PATHS = {
     shell: () => `/api/shell${only()}`,
     now: () => `/api/now${only()}`,
+    map: () => `/api/graph${only()}`,
     band: () => '/api/ticks',
     rail: () => `/api/history?limit=10${scopeParam() ? `&${scopeParam()}` : ''}`,
   };
@@ -84,7 +85,9 @@
   }
 
   async function reload() {
-    await Promise.all([ensure('shell'), ensure('now'), ensure('band'), ensure('rail')]);
+    const wants = ['shell', 'now', 'band', 'rail'];
+    if (state.route.name === 'now') wants.push('map');
+    await Promise.all(wants.map(ensure));
     paint();
   }
 
@@ -111,7 +114,7 @@
     main.className = '';
     const name = state.route.name;
     const arg = state.route.arg;
-    if (name === 'now' && window.GyNow) window.GyNow.draw();
+    if (name === 'now' && window.GyNow) window.GyNow.render(state, main, ui);
     else if (name === 'list' && window.GyList) window.GyList.draw(arg);
     else if (name === 'eye' && window.GyEye) window.GyEye.draw(arg);
     else if (name === 'node' && window.GyNode) window.GyNode.draw(arg);
@@ -125,6 +128,7 @@
   async function run(intent) {
     state = window.GyState.apply(state, intent);
     if (intent.type === 'setScope') { await reload(); return; }
+    if (intent.type === 'go') { await reload(); return; }
     if (intent.type === 'setAt') { preview(); scheduleReload(); return; }
     if (intent.type === 'paletteOpen') {
       state = { ...state, search: null };

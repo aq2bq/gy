@@ -9,6 +9,7 @@ const TOPBAR_JS: &str = include_str!("assets/topbar.js");
 const BAND_JS: &str = include_str!("assets/band.js");
 const I18N: &str = include_str!("assets/i18n.json");
 const NOW_CSS: &str = include_str!("assets/now.css");
+const SKY_JS: &str = include_str!("assets/sky.js");
 const NOW_JS: &str = include_str!("assets/now.js");
 const PALETTE_CSS: &str = include_str!("assets/palette.css");
 const PALETTE_JS: &str = include_str!("assets/palette.js");
@@ -29,7 +30,7 @@ const RAIL_CSS: &str = include_str!("assets/rail.css");
 const RAIL_JS: &str = include_str!("assets/rail.js");
 
 /// Every embedded file: its name and its text.
-pub const FILES: [(&str, &str); 28] = [
+pub const FILES: [(&str, &str); 29] = [
     ("index.html", INDEX),
     ("app.css", CSS),
     ("state.js", STATE_JS),
@@ -40,6 +41,7 @@ pub const FILES: [(&str, &str); 28] = [
     ("band.js", BAND_JS),
     ("i18n.json", I18N),
     ("now.css", NOW_CSS),
+    ("sky.js", SKY_JS),
     ("now.js", NOW_JS),
     ("palette.css", PALETTE_CSS),
     ("palette.js", PALETTE_JS),

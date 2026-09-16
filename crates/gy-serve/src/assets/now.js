@@ -1,6 +1,7 @@
-/* The now page (d-3e8f): three eyes side by side — who waits, what is ready,
-   and how to resume — then the sky of the nodes that matter and the pulse. It
-   reads /api/now and /api/graph; the words come from GyShell. */
+/* The now page (d-3e8f, a region since d-03ca 第 3 段): three eyes side by side
+   — who waits, what is ready, and how to resume — then the sky of the nodes
+   that matter and the pulse. It draws inside #main from the state the root
+   read; the words come from the ui it is handed. */
 (function () {
   const VERBS = [
     ['need add', 'needadd'],
@@ -16,9 +17,11 @@
 
   let data = null;
   let actors = [];
+  let t = key => key;
+  let lang = 'en';
+  /* The sky is measured a frame later; this drops a draw whose state is gone. */
+  let drawn = 0;
 
-  const t = key => window.GyShell.t(key);
-  const lang = () => window.GyShell.lang();
   const esc = text => String(text ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
   const fill = (text, values) => text.replace(/\{(\w+)\}/g, (all, key) => (key in values ? values[key] : all));
 
@@ -26,7 +29,7 @@
   const label = row => row.alias || row.id;
   const status = row => t(`st.${row.kind}.${row.status}`);
   const when = at =>
-    new Date(at * 1000).toLocaleTimeString(lang() === 'ja' ? 'ja-JP' : 'en-GB', {
+    new Date(at * 1000).toLocaleTimeString(lang === 'ja' ? 'ja-JP' : 'en-GB', {
       hour: '2-digit', minute: '2-digit',
     });
 
@@ -131,73 +134,13 @@
   const legend = () =>
     `<span><i style="background:var(--requirement)"></i>${t('skyLegendWait')}</span><span><i style="background:var(--need)"></i>${t('skyLegendNext')}</span><span><i style="background:var(--decision)"></i>${t('skyLegendResume')}</span>`;
 
-  /* The three sets the sky lights, by column colour. */
-  function groups() {
-    return {
-      '#f28ba0': new Set(data.waiting.map(item => item.row.id)),
-      '#e9a63a': new Set(data.ready.map(item => item.row.id)),
-      '#5fd3c7': new Set(data.resume.in_progress.map(item => item.id)),
-    };
-  }
-
-  /* The sky: /api/graph shrunk, the nodes that matter lit, a click opening the
-     nearest lit node in the graph page (d-3e8f). The canvas is measured after
-     a frame, so its laid-out size is the one the fit uses. */
-  async function drawSky() {
-    const canvas = document.getElementById('sky');
-    if (!canvas) return;
+  /* The sky, drawn by the helper. The canvas is measured after a frame, so its
+     laid-out size is the one the fit uses; a draw whose state is gone drops. */
+  async function paintSky(el, state) {
+    const token = ++drawn;
     await new Promise(resolve => requestAnimationFrame(resolve));
-    const graph = await (await window.GyShell.read('/api/graph')).json();
-    const rect = canvas.getBoundingClientRect();
-    const w = Math.round(rect.width) || canvas.clientWidth;
-    const h = Math.round(rect.height) || canvas.clientHeight;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = w * dpr; canvas.height = h * dpr;
-    const ctx = canvas.getContext('2d');
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-    const sets = groups();
-    const colour = id => Object.keys(sets).find(key => sets[key].has(id)) || null;
-    const lit = graph.nodes.filter(node => colour(node.id));
-    const fit = lit.length ? lit : graph.nodes;
-    let minx = 1e9, maxx = -1e9, miny = 1e9, maxy = -1e9;
-    for (const node of fit) {
-      minx = Math.min(minx, node.x); maxx = Math.max(maxx, node.x);
-      miny = Math.min(miny, node.y); maxy = Math.max(maxy, node.y);
-    }
-    const pad = 40;
-    const k = Math.min((w - pad * 2) / Math.max(1, maxx - minx), (h - pad * 2) / Math.max(1, maxy - miny));
-    const ox = w / 2 - ((minx + maxx) / 2) * k, oy = h / 2 - ((miny + maxy) / 2) * k;
-    const P = new Map(graph.nodes.map(node => [node.id, [node.x * k + ox, node.y * k + oy]]));
-    ctx.strokeStyle = 'rgba(185,179,166,.10)'; ctx.lineWidth = 0.6;
-    for (const [a, b] of graph.edges) {
-      const A = P.get(a), B = P.get(b);
-      if (!A || !B) continue;
-      ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); ctx.stroke();
-    }
-    const ring = { '#f28ba0': 'rgba(242,139,160,.20)', '#e9a63a': 'rgba(233,166,58,.20)', '#5fd3c7': 'rgba(95,211,199,.20)' };
-    const points = {};
-    for (const node of graph.nodes) {
-      const [px, py] = P.get(node.id);
-      const col = colour(node.id);
-      if (col) {
-        ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2); ctx.fillStyle = ring[col]; ctx.fill();
-        ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
-        points[node.id] = [px, py];
-      } else {
-        ctx.beginPath(); ctx.arc(px, py, 1.4, 0, Math.PI * 2); ctx.fillStyle = 'rgba(185,179,166,.28)'; ctx.fill();
-      }
-    }
-    canvas.onclick = event => {
-      const rect = canvas.getBoundingClientRect();
-      const px = event.clientX - rect.left, py = event.clientY - rect.top;
-      let best = null, close = 400;
-      for (const [id, point] of Object.entries(points)) {
-        const distance = Math.hypot(point[0] - px, point[1] - py);
-        if (distance < close) { close = distance; best = id; }
-      }
-      if (best) location.hash = `#/graph/${best}`;
-    };
+    if (token !== drawn) return;
+    window.GySky.draw(el.querySelector('#sky'), state);
   }
 
   /* The write's verb, from what the writer asked for (the why). */
@@ -217,7 +160,7 @@
     const doing = esc(verb(entry));
     const node = entry.node ? `<a href="#/n/${entry.node}">${esc(entry.node)}</a>` : '';
     if (!node) return `${actor} ${doing}`;
-    return lang() === 'ja' ? `${actor} が ${node} ${doing}` : `${actor} ${doing} ${node}`;
+    return lang === 'ja' ? `${actor} が ${node} ${doing}` : `${actor} ${doing} ${node}`;
   }
 
   function line(entry) {
@@ -246,18 +189,23 @@
     return `<section class="pulse2"><h2>${t('pulse')}</h2><div class="sub">${sub}</div><div class="pl2">${rows}</div></section>`;
   }
 
-  async function draw() {
-    const scope = window.GyShell.scope();
-    const only = scope && scope !== 'all' ? `?scope=${encodeURIComponent(scope)}` : '';
-    data = await (await window.GyShell.read(`/api/now${only}`)).json();
+  /* The region: #main only, from the state the root read. */
+  function render(state, el, ui) {
+    if (!el) return;
+    t = ui.t;
+    lang = state.lang;
+    data = state.now;
     actors = [];
-    document.getElementById('main').innerHTML =
+    if (!data) {
+      el.innerHTML = '';
+      return;
+    }
+    el.innerHTML =
       `<div class="eyes">${waitColumn()}${readyColumn()}${resumeColumn()}</div>` +
       `<div class="sky"><canvas id="sky"></canvas><div class="cap">${t('skyCap')}</div><div class="leg">${legend()}</div></div>` +
       pulse();
-    window.GyShell.setEyes(data.waiting.length, data.ready.length, data.resume.in_progress.length);
-    await drawSky();
+    void paintSky(el, state);
   }
 
-  window.GyNow = { draw };
+  window.GyNow = { render };
 })();

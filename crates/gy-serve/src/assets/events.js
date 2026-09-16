@@ -5,6 +5,11 @@
   function wire(api) {
     document.addEventListener('click', event => {
       if (event.target.id === 'pal') { api.run({ type: 'paletteClose' }); return; }
+      if (event.target.id === 'sky') {
+        const id = window.GySky.hit(api.state(), event.target, event.clientX, event.clientY);
+        if (id) location.hash = `#/graph/${id}`;
+        return;
+      }
       const el = event.target.closest('[data-act]');
       if (!el) return;
       const act = el.dataset.act;
