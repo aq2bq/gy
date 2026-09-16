@@ -59,11 +59,11 @@
       case 'setAt':
         return { ...state, at: intent.value, shell: null, now: null, map: null, page: null, rail: null };
       case 'go':
-        return { ...state, route: intent.value, page: null };
+        return { ...state, route: intent.value, page: null, list: intent.value.name === 'list' ? { ...state.list, filter: 'open' } : state.list };
       case 'setWide':
         return { ...state, wide: intent.value };
       case 'listFilter':
-        return { ...state, list: { ...state.list, filter: intent.value }, page: null };
+        return { ...state, list: { ...state.list, filter: intent.value } };
       case 'historyActor':
         return { ...state, history: { ...state.history, actor: intent.value }, page: null };
       case 'historySince':

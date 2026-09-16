@@ -58,6 +58,7 @@
     shell: () => `/api/shell${only()}`,
     now: () => `/api/now${only()}`,
     map: () => `/api/graph${only()}`,
+    page: () => state.route.name === 'list' ? `/api/list?kind=${encodeURIComponent(state.route.arg)}${scopeParam() ? `&${scopeParam()}` : ''}` : null,
     band: () => '/api/ticks',
     rail: () => `/api/history?limit=10${scopeParam() ? `&${scopeParam()}` : ''}`,
   };
@@ -85,8 +86,8 @@
   }
 
   async function reload() {
-    const wants = ['shell', 'now', 'band', 'rail'];
-    if (state.route.name === 'now') wants.push('map');
+    const extra = state.route.name === 'now' ? 'map' : state.route.name === 'list' ? 'page' : null;
+    const wants = ['shell', 'now', 'band', 'rail'].concat(extra ? [extra] : []);
     await Promise.all(wants.map(ensure));
     paint();
   }
@@ -115,8 +116,8 @@
     const name = state.route.name;
     const arg = state.route.arg;
     if (name === 'now' && window.GyNow) window.GyNow.render(state, main, ui);
-    else if (name === 'list' && window.GyList) window.GyList.draw(arg);
-    else if (name === 'eye' && window.GyEye) window.GyEye.draw(arg);
+    else if (name === 'list' && window.GyList) window.GyList.render(state, main, ui);
+    else if (name === 'eye' && window.GyEye) window.GyEye.render(state, main, ui);
     else if (name === 'node' && window.GyNode) window.GyNode.draw(arg);
     else if (name === 'history' && window.GyHistory) window.GyHistory.draw();
     else if (name === 'graph' && window.GyGraph) window.GyGraph.draw(arg);

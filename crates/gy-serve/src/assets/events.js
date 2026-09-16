@@ -17,6 +17,7 @@
       if (act === 'setScope') api.run({ type: 'setScope', value: arg });
       else if (act === 'setLang') api.run({ type: 'setLang', value: arg });
       else if (act === 'setAt') api.setAt(arg === 'now' ? null : Number(arg));
+      else if (act === 'listFilter') api.run({ type: 'listFilter', value: arg });
       else if (act === 'paletteGo') goHit(api, Number(arg));
     });
     document.addEventListener('input', event => {
