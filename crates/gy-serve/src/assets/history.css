@@ -1,0 +1,13 @@
+/* The history page (n-4a08): the filter bar, the day headings, and the rows.
+   The rows reuse the node page's `.hist` / `.hi` grid. */
+.hist-filter{display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin-bottom:8px}
+.hist-actors{margin-bottom:0}
+.hist-date{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--paper-3)}
+.hist-date input{font:inherit;font-size:12px;background:var(--ink-2);color:var(--paper);border:1px solid var(--line);border-radius:7px;padding:3px 8px}
+.hist-day{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--paper-3);margin:20px 0 4px}
+.hi .nd a{font-family:var(--mono);font-size:12px;color:var(--paper);margin-right:8px}
+.hi .nd .tt{color:var(--paper-2)}
+.hi .who.a-0{color:var(--actor-lead)}
+.hi .who.a-1{color:var(--actor-piko)}
+.hi .who.a-2{color:var(--actor-master)}
+.hi .who.a-3{color:var(--actor-deck)}

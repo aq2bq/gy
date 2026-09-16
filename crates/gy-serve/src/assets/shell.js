@@ -85,6 +85,9 @@ function route() {
     if (window.GyGraph) window.GyGraph.draw(graph[1] ? decodeURIComponent(graph[1]) : null);
   } else if (node) {
     if (window.GyNode) window.GyNode.draw(decodeURIComponent(node[1]));
+  } else if (hash === '#/history') {
+    crumb.innerHTML = `<a href="#/">${word('now')}</a><span>›</span><span>${word('history')}</span>`;
+    if (window.GyHistory) window.GyHistory.draw();
   } else {
     crumb.innerHTML = `<span>${word('now')}</span>`;
     document.getElementById('main').textContent = word('notYet');
