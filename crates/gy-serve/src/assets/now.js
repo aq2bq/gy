@@ -39,6 +39,16 @@
   const questions = () => data.waiting.filter(item => item.waiting === 'question');
   const requirements = () => data.waiting.filter(item => item.waiting === 'requirement');
 
+  /* The one word an empty column shows: a bundle chosen by the last write's
+     sequence, so a ledger that does not move keeps the same words across
+     redraws, and a new write may pick another (n-f3be). */
+  function pick(key) {
+    const bundle = t(key);
+    if (!Array.isArray(bundle)) return bundle;
+    const seq = data.resume.last ? data.resume.last.seq : 0;
+    return bundle[seq % bundle.length];
+  }
+
   /* One question as a card, as the old page drew it. */
   function card(item) {
     const row = item.row;
@@ -47,14 +57,14 @@
   }
 
   /* The first eye: the questions that name the master, then the filed
-     requirements. An empty column says so in one large line. */
+     requirements. An empty column is good news, so it says so in one line. */
   function waitColumn() {
     const qs = questions();
     const rs = requirements();
     const sub = `${t('Questions')} ${qs.length} · ${t('Requirements')} ${rs.length}`;
     const eye = head('hot', data.waiting.length, t('eyeWait'), sub);
     if (!data.waiting.length) {
-      return `<section class="eye hot" data-eye="wait">${eye}<div class="nothing">${t('nothing')}</div></section>`;
+      return `<section class="eye hot" data-eye="wait">${eye}<div class="nothing">${esc(pick('praiseWait'))}</div></section>`;
     }
     const cards = qs.slice(0, 2).map(card).join('');
     const more = qs.length > 2
@@ -66,13 +76,22 @@
     return `<section class="eye hot" data-eye="wait">${eye}${cards}${more}${rows}</section>`;
   }
 
-  /* The second eye: the needs ready to work, with what is left to meet. */
+  /* The second eye: the needs ready to work, with what is left to meet. When
+     none is ready, an empty ledger is good news and a full one is a jam: the
+     needs still in progress are what is stuck, and only they get the count. */
   function readyColumn() {
     const rows = data.ready
       .map(item => rowHtml(item.row, fill(t('remaining'), { n: item.targets - item.satisfied, m: item.targets })))
       .join('');
-    const tail = `<a class="more" href="#/list/Need">${fill(t('allNeeds'), { n: data.in_progress.length })}</a>`;
-    return `<section class="eye next" data-eye="next">${head('next', data.ready.length, t('readyHead'), t('readySub'))}<div class="rows">${rows}</div>${tail}</section>`;
+    const body = data.ready.length
+      ? `<div class="rows">${rows}</div>`
+      : data.in_progress.length
+        ? `<div class="nothing calm">${esc(pick('blockedNext'))}</div>`
+        : `<div class="nothing">${esc(pick('praiseQuiet'))}</div>`;
+    const tail = data.in_progress.length
+      ? `<a class="more" href="#/list/Need">${fill(t('allNeeds'), { n: data.in_progress.length })}</a>`
+      : '';
+    return `<section class="eye next" data-eye="next">${head('next', data.ready.length, t('readyHead'), t('readySub'))}${body}${tail}</section>`;
   }
 
   /* The third eye: the in-progress requirements, then the counts. The outward
@@ -87,7 +106,10 @@
     const last = data.resume.last;
     const lastText = last ? `${when(last.at)} ${esc(last.actor)} · seq ${last.seq}` : t('none');
     const kv = `<div class="kv"><span>${t('openQuestions')}</span><b>${data.resume.open_questions}</b><span>${t('warnings')}</span><b>${data.resume.warnings || t('none')}</b><span>${t('lastWrite')}</span><b>${lastText}</b></div>`;
-    return `<section class="eye prog" data-eye="resume">${head('prog', data.resume.in_progress.length, t('resumeHead'), t('resumeSub'))}<div class="rows">${rows}</div>${kv}</section>`;
+    const body = data.resume.in_progress.length
+      ? `<div class="rows">${rows}</div>`
+      : `<div class="nothing">${esc(pick('praiseResume'))}</div>`;
+    return `<section class="eye prog" data-eye="resume">${head('prog', data.resume.in_progress.length, t('resumeHead'), t('resumeSub'))}${body}${kv}</section>`;
   }
 
   /* The number a requirement's outward reference ends with, as a link's word. */

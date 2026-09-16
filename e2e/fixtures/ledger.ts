@@ -28,13 +28,17 @@ const run = (dir: string, data: string, args: string[], json = true) =>
  *  a server on its own port (the brief's fixture: 3 needs with one closed,
  *  3 questions, 2 decisions with one closing a question, 4 criteria with one
  *  satisfied, 1 filed requirement). */
-export async function start(options: { large?: boolean } = {}): Promise<Ledger> {
+export async function start(
+  options: { large?: boolean; build?: (gy: (args: string[]) => string) => void } = {},
+): Promise<Ledger> {
   const dir = mkdtempSync(join(tmpdir(), 'gy-e2e-'));
   const data = join(dir, 'data');
   mkdirSync(data);
   writeFileSync(join(dir, 'gy.toml'), 'output = "pub"\n\n[scopes.a]\n[scopes.b]\n');
   const gy = (args: string[]) => run(dir, data, args);
-  if (options.large) {
+  if (options.build) {
+    options.build(gy);
+  } else if (options.large) {
     buildLarge(gy);
   } else {
     build(gy);

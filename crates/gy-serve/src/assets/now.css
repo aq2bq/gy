@@ -41,7 +41,9 @@
 .eye .more,.eye .kv{margin-top:auto;padding-top:10px}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13px;margin-top:10px;color:var(--paper-2);border-top:1px solid var(--line-soft)}
 .kv b{color:var(--paper);font-weight:500}
-.nothing{font-size:22px;font-weight:600;color:var(--paper-2);margin-top:14px}
+.nothing{font-size:22px;font-weight:600;color:var(--paper-2);margin-top:14px;text-wrap:balance}
+/* A jam is not praised in the praise voice (n-f3be). */
+.nothing.calm{font-size:13px;font-weight:400;color:var(--paper-3)}
 .sky{position:relative;margin-top:22px;height:190px;border-radius:12px;overflow:hidden;background:#0d1220;border:1px solid var(--line-soft)}
 .sky canvas{display:block;width:100%;height:100%;cursor:pointer}
 .sky .cap{position:absolute;left:16px;top:12px;font-family:var(--mono);font-size:11px;color:var(--paper-3);letter-spacing:.1em;pointer-events:none}
