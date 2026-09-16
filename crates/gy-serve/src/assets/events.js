@@ -18,10 +18,14 @@
       else if (act === 'setLang') api.run({ type: 'setLang', value: arg });
       else if (act === 'setAt') api.setAt(arg === 'now' ? null : Number(arg));
       else if (act === 'listFilter') api.run({ type: 'listFilter', value: arg });
+      else if (act === 'historyActor') api.run({ type: 'historyActor', value: arg || null });
       else if (act === 'paletteGo') goHit(api, Number(arg));
     });
     document.addEventListener('input', event => {
       if (event.target.id === 'palq') api.run({ type: 'paletteQuery', value: event.target.value });
+    });
+    document.addEventListener('change', event => {
+      if (event.target.id === 'hist-date') api.run({ type: 'historySince', value: window.GyHistory.since(api.state(), event.target.value) });
     });
     document.addEventListener('keydown', event => {
       if (api.composing(event)) return;

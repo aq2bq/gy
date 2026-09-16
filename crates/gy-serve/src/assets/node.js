@@ -1,20 +1,22 @@
-/* The node page (n-5ca6): the show view of one node, its connections, and its
-   own writes. The facts come from the typed data in the answer. */
+/* The node page (n-5ca6, a region since d-03ca 第 3 段): the show view of one
+   node, its connections, and its own writes. It draws inside #main from the
+   state the root read; the facts come from the typed data in the answer. */
 (function () {
   const SIDE = { 'spawned-by': 'L', 'spawns': 'R', 'depends-on': 'L', 'depended-on-by': 'R', 'targets': 'R', 'targeted-by': 'L', 'closes': 'R', 'closed-by': 'L', 'narrows': 'L', 'narrowed-by': 'R', 'supersedes': 'L', 'superseded-by': 'R', 'widens': 'L', 'widened-by': 'R', 'completes': 'L', 'completed-by': 'R', 'relies-on': 'L', 'relied-on-by': 'R', 'filed-as': 'R', 'filed-from': 'L', 'raised': 'R', 'raised-by': 'L', 'waits-on': 'R', 'waited-on-by': 'L', 'awaited-by': 'L', 'files': 'L' };
   const COLOUR = { Need: 'need', Question: 'question', Decision: 'decision', Requirement: 'requirement', Criterion: 'criterion' };
 
   let node = null;
+  let t = key => key;
+  let lang = 'en';
+  let tag = () => '';
 
-  const t = key => window.GyShell.t(key);
-  const lang = () => window.GyShell.lang();
   const esc = text => String(text ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
   const fill = (text, values) => text.replace(/\{(\w+)\}/g, (all, key) => (key in values ? values[key] : all));
   const card = (heading, body) => `<div class="card"><h3>${heading}</h3>${body}</div>`;
   const rel = edge => t(`rel.${edge.name}`);
 
   /* The state word the meta and the cards print, from the typed data. */
-  function state() {
+  function condition() {
     const data = node.data;
     switch (node.kind) {
       case 'Need':
@@ -30,25 +32,22 @@
     }
   }
 
-  const stateWord = () => t(`st.${node.kind}.${state()}`);
+  const stateWord = () => t(`st.${node.kind}.${condition()}`);
 
-  async function draw(id) {
-    const res = await window.GyShell.read(`/api/node/${encodeURIComponent(id)}`);
-    if (!res.ok) {
-      crumb(id, null);
-      document.getElementById('main').innerHTML = `<div class="hero"><h1>${esc(id)} — ${t('notFound')}</h1></div>`;
+  /* The region: #main only, from the state the root read. A node that is not
+     there (a null answer) shows its id and says so. */
+  function render(state, el, ui) {
+    if (!el) return;
+    t = ui.t;
+    lang = state.lang;
+    tag = ui.scopeTag;
+    node = state.page;
+    if (!node) {
+      el.innerHTML = `<div class="hero"><h1>${esc(state.route.arg)} — ${t('notFound')}</h1></div>`;
       return;
     }
-    node = await res.json();
-    crumb(node.id, node);
-    document.getElementById('main').innerHTML = `<div class="node"><div>${left()}</div><div>${right()}</div></div>`;
+    el.innerHTML = `<div class="node"><div>${left()}</div><div>${right()}</div></div>`;
     window.scrollTo(0, 0);
-  }
-
-  /* The trail: now › this kind's list › the scope (the node gives the last two). */
-  function crumb(id, found) {
-    const kind = found ? `<a href="#/list/${found.kind}">${window.GyShell.plural(found.kind)}</a><span>›</span>${window.GyShell.scopeTag(found.scope)}` : '';
-    document.getElementById('crumb').innerHTML = `<a href="#/">${t('now')}</a><span>›</span>${kind || esc(id)}`;
   }
 
   function left() {
@@ -56,11 +55,11 @@
   }
 
   function head() {
-    const word = state() ? stateWord() : '';
+    const word = condition() ? stateWord() : '';
     const meta = [
       `<span class="al">${esc((node.aliases || [])[0] || node.id)}</span>`,
       `<span>${esc(node.id)}</span>`,
-      `<span>${window.GyShell.scopeTag(node.scope)}</span>`,
+      `<span>${tag(node.scope)}</span>`,
       `<span>${fill(t('createdOn'), { d: node.created })}</span>`,
       word ? `<span>${esc(word)}</span>` : '',
     ];
@@ -164,10 +163,10 @@
     if (!at) return '';
     const date = String(at).includes('T') ? new Date(at) : new Date(at * 1000);
     if (Number.isNaN(date.getTime())) return esc(at);
-    return date.toLocaleString(lang() === 'ja' ? 'ja-JP' : 'en-GB', {
+    return date.toLocaleString(lang === 'ja' ? 'ja-JP' : 'en-GB', {
       month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
     });
   }
 
-  window.GyNode = { draw };
+  window.GyNode = { render };
 })();

@@ -1,7 +1,9 @@
-/* The top bar region (d-03ca, 第 2 段): the breadcrumb only. The node page
-   writes its own crumb until 第 3 段, so this leaves the node route alone. */
+/* The top bar region (d-03ca, 第 2 段): the breadcrumb. The node page hands it
+   the kind and the scope through state.page (第 3 段); a node that is not there
+   still shows its id. */
 (function () {
   const EYE_WORD = { wait: 'eyeWait', next: 'readyHead', resume: 'resumeHead' };
+  const esc = text => String(text ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 
   function render(state, el, ui) {
     if (!el) return;
@@ -12,7 +14,14 @@
     else if (route.name === 'graph') el.innerHTML = `${now}<span>${ui.t('graph')}</span>`;
     else if (route.name === 'eye') el.innerHTML = `${now}<span>${ui.t(EYE_WORD[route.arg])}</span>`;
     else if (route.name === 'history') el.innerHTML = `${now}<span>${ui.t('history')}</span>`;
-    /* node: the page writes it (unchanged until 第 3 段). */
+    else if (route.name === 'node') el.innerHTML = `${now}${trail(state, ui)}`;
+  }
+
+  /* The node's trail: this kind's list and the scope, from the page's answer. */
+  function trail(state, ui) {
+    const node = state.page;
+    if (!node) return `<span>${esc(state.route.arg)}</span>`;
+    return `<a href="#/list/${node.kind}">${ui.plural(node.kind)}</a><span>›</span>${ui.scopeTag(node.scope)}`;
   }
 
   window.GyTopbar = { render };

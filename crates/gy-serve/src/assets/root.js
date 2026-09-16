@@ -42,51 +42,24 @@
   const composing = event => event.isComposing || event.keyCode === 229;
   const composedRecently = () => performance.now() - composedAt < 50;
 
-  /* The one read: `at` is attached here for every path (n-32a9). */
-  function read(path) {
-    if (state.at === null) return fetch(path);
-    const join = path.includes('?') ? '&' : '?';
-    return fetch(`${path}${join}at=${state.at}`);
-  }
-
-  const scopeParam = () => {
-    const scope = state.scope;
-    return scope && scope !== 'all' ? `scope=${encodeURIComponent(scope)}` : '';
-  };
-  const only = () => (scopeParam() ? `?${scopeParam()}` : '');
-  const PATHS = {
-    shell: () => `/api/shell${only()}`,
-    now: () => `/api/now${only()}`,
-    map: () => `/api/graph${only()}`,
-    page: () => state.route.name === 'list' ? `/api/list?kind=${encodeURIComponent(state.route.arg)}${scopeParam() ? `&${scopeParam()}` : ''}` : null,
-    band: () => '/api/ticks',
-    rail: () => `/api/history?limit=10${scopeParam() ? `&${scopeParam()}` : ''}`,
-  };
+  /* The reads live in reads.js (第 3 段); the root keeps the pending marks. */
+  const read = url => window.GyReads.read(state, url);
 
   /* One read per wanted thing that is missing; dataArrived fills the state. */
   async function ensure(kind) {
-    if (state[kind] || state.pending[kind] || !PATHS[kind]) return;
+    const url = window.GyReads.path(kind, state);
+    if (state[kind] || state.pending[kind] || !url) return;
     state = { ...state, pending: { ...state.pending, [kind]: true } };
     try {
-      const body = await filled(kind, await (await read(PATHS[kind]())).json());
+      const body = await window.GyReads.filled(state, kind, await (await read(url)).json());
       state = window.GyState.apply(state, { type: 'dataArrived', kind, body });
     } catch {
       state = window.GyState.apply(state, { type: 'dataArrived', kind, body: null });
     }
   }
 
-  /* The band's left end, and the rail's labels, need a second look. */
-  async function filled(kind, body) {
-    if (kind === 'band') return { ...body, min: body.ticks.length ? body.ticks[0].seq : 1 };
-    if (kind !== 'rail') return body;
-    const ids = [...new Set(body.rows.map(row => row.node).filter(Boolean))];
-    const labels = {};
-    if (ids.length) Object.assign(labels, (await (await read(`/api/labels?ids=${ids.join(',')}`)).json()).labels);
-    return { rows: body.rows, labels };
-  }
-
   async function reload() {
-    const extra = state.route.name === 'now' ? 'map' : state.route.name === 'list' ? 'page' : null;
+    const extra = { now: 'map', list: 'page', node: 'page', history: 'page' }[state.route.name] || null;
     const wants = ['shell', 'now', 'band', 'rail'].concat(extra ? [extra] : []);
     await Promise.all(wants.map(ensure));
     paint();
@@ -118,8 +91,8 @@
     if (name === 'now' && window.GyNow) window.GyNow.render(state, main, ui);
     else if (name === 'list' && window.GyList) window.GyList.render(state, main, ui);
     else if (name === 'eye' && window.GyEye) window.GyEye.render(state, main, ui);
-    else if (name === 'node' && window.GyNode) window.GyNode.draw(arg);
-    else if (name === 'history' && window.GyHistory) window.GyHistory.draw();
+    else if (name === 'node' && window.GyNode) window.GyNode.render(state, main, ui);
+    else if (name === 'history' && window.GyHistory) window.GyHistory.render(state, main, ui);
     else if (name === 'graph' && window.GyGraph) window.GyGraph.draw(arg);
     else if (name === 'missing') main.textContent = word('notYet');
   }
@@ -130,6 +103,7 @@
     state = window.GyState.apply(state, intent);
     if (intent.type === 'setScope') { await reload(); return; }
     if (intent.type === 'go') { await reload(); return; }
+    if (intent.type === 'historyActor' || intent.type === 'historySince') { await reload(); return; }
     if (intent.type === 'setAt') { preview(); scheduleReload(); return; }
     if (intent.type === 'paletteOpen') {
       state = { ...state, search: null };
