@@ -4,7 +4,8 @@ use crate::output::emit;
 use crate::repo;
 use crate::{Cli, Command};
 use gy_ledger::{
-    Actor, Error, Filter, NodeKind, Publication, Repository, Result, config, file, list, publish,
+    Actor, Error, Filter, FormatVersion, MemoryStore, NodeKind, Publication, Repository, Result,
+    config, file, format, list, publish,
 };
 use gy_serve::server::Opened;
 use std::path::{Path, PathBuf};
@@ -43,17 +44,35 @@ pub fn serve(ledger: &Path, name: String) -> Result<()> {
     let watched = ledger.to_path_buf();
     let ledger = ledger.to_path_buf();
     gy_serve::server::serve(
-        Box::new(move |at| match at {
-            None => repo::open(&ledger).map(Opened::Now),
-            Some(seq) => {
-                // The same reader actor repo::open uses; open_at never writes.
-                let reader = |_: &str| Some("gy-read".to_string());
-                file::open_at(&ledger, seq, reader).map(|store| Opened::At(Repository::new(store)))
+        Box::new(move |at| {
+            /* Before the first write there is no ledger: show a 0-write one
+            instead of an error (n-3e6b). A read never creates it (N-63). */
+            if !ledger.join(format::FILE).is_file() {
+                return Ok(empty());
+            }
+            match at {
+                None => repo::open(&ledger).map(Opened::Now),
+                Some(seq) => {
+                    // The same reader actor repo::open uses; open_at never writes.
+                    let reader = |_: &str| Some("gy-read".to_string());
+                    file::open_at(&ledger, seq, reader)
+                        .map(|store| Opened::At(Repository::new(store)))
+                }
             }
         }),
         watched,
         name,
     )
+}
+
+/// A ledger with nothing in it, for a directory whose first write has not
+/// happened yet. Reads only; it is never saved.
+fn empty() -> Opened {
+    let actor = Actor::new("gy-read").expect("gy-read is a valid actor");
+    Opened::At(Repository::new(MemoryStore::with_actor(
+        FormatVersion::CURRENT,
+        actor,
+    )))
 }
 
 /// The publication goes under `--out`, else gy.toml's `output` (an error when

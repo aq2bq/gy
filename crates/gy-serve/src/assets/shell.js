@@ -144,8 +144,11 @@ function draw() {
   document.getElementById('searchlbl').textContent = word('searchLbl');
   /* While a past point is chosen the band owns the clock (n-32a9). */
   if (at === null) {
+    /* A ledger with no writes has no time to show: the epoch would read as a
+       fault, not as a first run (n-3e6b). */
+    const when = shell.seq > 0 ? `<br>${stamp(shell.at)}` : '';
     document.getElementById('clock').innerHTML =
-      `<span class="live"></span>${word('canon')} <b>${shell.seq}</b><br>${stamp(shell.at)}`;
+      `<span class="live"></span>${word('canon')} <b>${shell.seq}</b>${when}`;
   }
   document.querySelectorAll('#lang button').forEach(button => {
     button.classList.toggle('on', button.dataset.l === lang);

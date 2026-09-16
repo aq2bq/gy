@@ -39,6 +39,11 @@
   const questions = () => data.waiting.filter(item => item.waiting === 'question');
   const requirements = () => data.waiting.filter(item => item.waiting === 'requirement');
 
+  /* Nothing has been written yet: the page is not quiet, it has not started
+     (n-3e6b). Only the first eye speaks, so the praise words do not claim a
+     ledger that is not there. */
+  const firstRun = () => !data.seq;
+
   /* The one word an empty column shows: a bundle chosen by the last write's
      sequence, so a ledger that does not move keeps the same words across
      redraws, and a new write may pick another (n-f3be). */
@@ -64,7 +69,8 @@
     const sub = `${t('Questions')} ${qs.length} · ${t('Requirements')} ${rs.length}`;
     const eye = head('hot', data.waiting.length, t('eyeWait'), sub);
     if (!data.waiting.length) {
-      return `<section class="eye hot" data-eye="wait">${eye}<div class="nothing">${esc(pick('praiseWait'))}</div></section>`;
+      const word = firstRun() ? t('firstRun') : pick('praiseWait');
+      return `<section class="eye hot" data-eye="wait">${eye}<div class="nothing">${esc(word)}</div></section>`;
     }
     const cards = qs.slice(0, 2).map(card).join('');
     const more = qs.length > 2
@@ -85,9 +91,11 @@
       .join('');
     const body = data.ready.length
       ? `<div class="rows">${rows}</div>`
-      : data.in_progress.length
-        ? `<div class="nothing calm">${esc(pick('blockedNext'))}</div>`
-        : `<div class="nothing">${esc(pick('praiseQuiet'))}</div>`;
+      : firstRun()
+        ? ''
+        : data.in_progress.length
+          ? `<div class="nothing calm">${esc(pick('blockedNext'))}</div>`
+          : `<div class="nothing">${esc(pick('praiseQuiet'))}</div>`;
     const tail = data.in_progress.length
       ? `<a class="more" href="#/list/Need">${fill(t('allNeeds'), { n: data.in_progress.length })}</a>`
       : '';
@@ -108,7 +116,9 @@
     const kv = `<div class="kv"><span>${t('openQuestions')}</span><b>${data.resume.open_questions}</b><span>${t('warnings')}</span><b>${data.resume.warnings || t('none')}</b><span>${t('lastWrite')}</span><b>${lastText}</b></div>`;
     const body = data.resume.in_progress.length
       ? `<div class="rows">${rows}</div>`
-      : `<div class="nothing">${esc(pick('praiseResume'))}</div>`;
+      : firstRun()
+        ? ''
+        : `<div class="nothing">${esc(pick('praiseResume'))}</div>`;
     return `<section class="eye prog" data-eye="resume">${head('prog', data.resume.in_progress.length, t('resumeHead'), t('resumeSub'))}${body}${kv}</section>`;
   }
 
@@ -224,13 +234,16 @@
     return `a-${Math.min(3, index)}`;
   }
 
-  /* The pulse, in two columns. */
+  /* The pulse, in two columns. With no writes there is no "up to" time: the
+     line the empty rail and history use says it instead (n-3e6b). */
   function pulse() {
     const rows = data.recent
       .map((entry, index) => `<div class="pi ${actorCls(entry.actor)}${index === 0 ? ' new' : ''}">${line(entry)}</div>`)
       .join('');
-    const upTo = data.recent.length ? when(data.recent[0].at) : '';
-    return `<section class="pulse2"><h2>${t('pulse')}</h2><div class="sub">${fill(t('pulseSub'), { n: data.recent.length, t: upTo })}</div><div class="pl2">${rows}</div></section>`;
+    const sub = data.recent.length
+      ? fill(t('pulseSub'), { n: data.recent.length, t: when(data.recent[0].at) })
+      : t('histEmpty');
+    return `<section class="pulse2"><h2>${t('pulse')}</h2><div class="sub">${sub}</div><div class="pl2">${rows}</div></section>`;
   }
 
   async function draw() {
