@@ -7,7 +7,11 @@
   const OPEN = ['open', 'filed', 'approved', 'satisfied', 'unsatisfied'];
 
   const view = { graph: null, cam: { x: 0, y: 0, k: 1 }, selected: null, hover: null, labels: new Map() };
-  let loaded = null, asked = new Set(), frame = null, anim = null, down = null, moved = false, clicked = 0;
+  /* `clicked` is when the last click landed. It starts before every possible
+     time, so the first click after the page opens is never read as the second
+     of a pair: performance.now() counts from the load, and a 0 here made every
+     click in the first 350 ms a double (n-7c5d). */
+  let loaded = null, asked = new Set(), frame = null, anim = null, down = null, moved = false, clicked = -Infinity;
 
   const t = key => window.GyShell.t(key);
   const esc = text => String(text ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
