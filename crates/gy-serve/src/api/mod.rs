@@ -15,12 +15,12 @@ use crate::http::{Request, Response};
 use gy_ledger::{Repository, Store};
 
 /// The one entry point: any other method is 405, any other path is 404.
-pub fn route<S: Store>(repo: &Repository<S>, req: &Request) -> Response {
+pub fn route<S: Store>(repo: &Repository<S>, req: &Request, name: &str) -> Response {
     if req.method != "GET" {
         return Response::method_not_allowed();
     }
     match req.path.as_str() {
-        "/" | "/index.html" => index(req),
+        "/" | "/index.html" => index(req, name),
         "/api/shell" => shell::shell(repo, req),
         "/api/now" => now::answer(repo, req),
         "/api/history" => history::answer(repo, req),
@@ -35,12 +35,34 @@ pub fn route<S: Store>(repo: &Repository<S>, req: &Request) -> Response {
     }
 }
 
-/// The first HTML; the language comes from `Accept-Language` (ac-b9b1).
-fn index(req: &Request) -> Response {
+/// The first HTML; the language comes from `Accept-Language` (ac-b9b1) and the
+/// tab's title from the caller (n-07f0).
+fn index(req: &Request, name: &str) -> Response {
     let ja = req
         .header("accept-language")
         .is_some_and(|value| value.trim_start().starts_with("ja"));
-    Response::html(assets::index().replace("%LANG%", if ja { "ja" } else { "en" }))
+    let title = if name.is_empty() {
+        "gy".to_string()
+    } else {
+        format!("gy - {}", escape_html(name))
+    };
+    Response::html(
+        assets::index()
+            /* The fixed word first, the name last: a name cannot be caught by
+            a later replacement (a directory named `%LANG%` stays itself). */
+            .replace("%LANG%", if ja { "ja" } else { "en" })
+            .replace("%NAME%", &title),
+    )
+}
+
+/// What a name may not carry into the `<title>`: the four characters that could
+/// close it or open a tag. `&` goes first, so an escaped name is not escaped
+/// twice.
+fn escape_html(text: &str) -> String {
+    text.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
 }
 
 /// `/assets/<name>`, or 404: a missing file and a `..` path are the same.

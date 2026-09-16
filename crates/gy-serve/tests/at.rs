@@ -95,7 +95,7 @@ fn get(path: &str, query: Option<&str>) -> Request {
 }
 
 fn json(open: &Opener, path: &str, query: Option<&str>) -> serde_json::Value {
-    serde_json::from_slice(&answer(open, &get(path, query)).body).unwrap()
+    serde_json::from_slice(&answer(open, &get(path, query), "gy").body).unwrap()
 }
 
 fn rows(value: &serde_json::Value) -> usize {
@@ -130,7 +130,10 @@ fn at_reads_an_earlier_point_in_the_log() {
     assert_eq!(early_shell["seq"], 2);
     assert!(total(&early_shell, "Need") < total(&shell, "Need"));
 
-    assert_eq!(answer(&open, &get("/api/list", Some("at=abc"))).status, 400);
+    assert_eq!(
+        answer(&open, &get("/api/list", Some("at=abc")), "gy").status,
+        400
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 

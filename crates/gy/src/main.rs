@@ -171,6 +171,15 @@ fn main() {
     }
 }
 
+/// The ledger directory's own name, for the browser tab (n-07f0). A root with
+/// no name (the filesystem root) or a name that is not UTF-8 gives none.
+fn tab_name(root: &Path) -> String {
+    root.file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("")
+        .to_string()
+}
+
 fn run(cli: &Cli) -> Result<()> {
     let root = repo::root(cli.directory.as_deref())?;
     let ledger = location::ledger_dir(&root);
@@ -191,7 +200,7 @@ fn run(cli: &Cli) -> Result<()> {
         Command::Publish { since, out } => {
             reads::write_publish(cli, &root, &ledger, *since, out.as_deref())
         }
-        Command::Serve => reads::serve(&ledger),
+        Command::Serve => reads::serve(&ledger, tab_name(&root)),
         Command::Need { action } => write_need(cli, &root, &ledger, action),
         Command::Question { action } => write_question(cli, &root, &ledger, action),
         Command::Criterion { action } => write_criterion(cli, &root, &ledger, action),

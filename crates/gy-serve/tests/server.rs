@@ -27,7 +27,7 @@ fn start() -> u16 {
     let _ = std::fs::create_dir_all(&dir);
     let (listener, port) = bind().unwrap();
     thread::spawn(move || {
-        let _ = run(listener, open, dir);
+        let _ = run(listener, open, dir, "gy".to_string());
     });
     port
 }

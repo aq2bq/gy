@@ -42,12 +42,12 @@ fn ledger() -> Repository<MemoryStore> {
 }
 
 fn answer(repo: &Repository<MemoryStore>, query: Option<&str>) -> serde_json::Value {
-    let res = route(repo, &Request::new("GET", "/api/history", query, &[]));
+    let res = route(repo, &Request::new("GET", "/api/history", query, &[]), "gy");
     serde_json::from_slice(&res.body).unwrap()
 }
 
 fn status(repo: &Repository<MemoryStore>, query: Option<&str>) -> u16 {
-    route(repo, &Request::new("GET", "/api/history", query, &[])).status
+    route(repo, &Request::new("GET", "/api/history", query, &[]), "gy").status
 }
 
 #[test]

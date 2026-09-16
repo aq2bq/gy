@@ -61,7 +61,7 @@ fn get(path: &str, query: Option<&str>) -> Request {
 }
 
 fn shell(query: Option<&str>) -> serde_json::Value {
-    let res = route(&ledger(), &get("/api/shell", query));
+    let res = route(&ledger(), &get("/api/shell", query), "gy");
     assert_eq!(res.status, 200);
     serde_json::from_slice(&res.body).unwrap()
 }
@@ -105,14 +105,22 @@ fn shell_filters_by_scope() {
 
 #[test]
 fn other_methods_are_not_allowed() {
-    let res = route(&ledger(), &Request::new("POST", "/api/shell", None, &[]));
+    let res = route(
+        &ledger(),
+        &Request::new("POST", "/api/shell", None, &[]),
+        "gy",
+    );
     assert_eq!(res.status, 405);
 }
 
 #[test]
 fn a_traversal_or_unknown_path_is_not_found() {
     for path in ["/assets/../Cargo.toml", "/assets/missing.js", "/nope"] {
-        assert_eq!(route(&ledger(), &get(path, None)).status, 404, "{path}");
+        assert_eq!(
+            route(&ledger(), &get(path, None), "gy").status,
+            404,
+            "{path}"
+        );
     }
 }
 
@@ -139,7 +147,7 @@ fn now_matches_the_view() {
     .unwrap();
 
     let view = gy_ledger::now(&repo, None).unwrap();
-    let answer = json(&route(&repo, &get("/api/now", None)));
+    let answer = json(&route(&repo, &get("/api/now", None), "gy"));
     assert_eq!(answer["seq"], view.seq);
     assert!(answer["at"].as_str().unwrap().starts_with("20"));
     assert_eq!(
@@ -183,7 +191,7 @@ fn now_matches_the_view() {
         view.recent.len()
     );
 
-    let scoped = json(&route(&repo, &get("/api/now", Some("scope=b"))));
+    let scoped = json(&route(&repo, &get("/api/now", Some("scope=b")), "gy"));
     let view_b = gy_ledger::now(&repo, Some("b")).unwrap();
     assert_eq!(scoped["scope"], "b");
     assert_eq!(
@@ -220,9 +228,18 @@ fn row_ids(rows: &[gy_ledger::NodeRow]) -> Vec<String> {
 fn the_index_language_follows_accept_language() {
     let index = |lang: &str| {
         let headers = [("accept-language".to_string(), lang.to_string())];
-        let res = route(&ledger(), &Request::new("GET", "/", None, &headers));
+        let res = route(&ledger(), &Request::new("GET", "/", None, &headers), "gy");
         String::from_utf8(res.body).unwrap()
     };
     assert!(index("ja,en;q=0.9").contains(r#"lang="ja""#));
     assert!(index("en-US").contains(r#"lang="en""#));
+}
+
+/// The name goes in last, so a name that looks like the other placeholder is
+/// not replaced by it (n-07f0).
+#[test]
+fn the_title_name_is_not_replaced_again() {
+    let res = route(&ledger(), &Request::new("GET", "/", None, &[]), "%LANG%");
+    let html = String::from_utf8(res.body).unwrap();
+    assert!(html.contains("<title>gy - %LANG%</title>"), "{html}");
 }

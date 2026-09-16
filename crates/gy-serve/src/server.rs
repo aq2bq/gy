@@ -32,15 +32,16 @@ pub enum Opened {
 pub type Opener = Box<dyn Fn(Option<u64>) -> Result<Opened> + Send + Sync>;
 
 /// Serve until stopped, printing the one line the master needs to open. The
-/// watch follows `ledger`'s log so a request can wait for the next write.
-pub fn serve(open: Opener, ledger: PathBuf) -> Result<()> {
+/// watch follows `ledger`'s log so a request can wait for the next write. The
+/// name is the ledger directory's, for the tab's title (n-07f0).
+pub fn serve(open: Opener, ledger: PathBuf, name: String) -> Result<()> {
     let (listener, port) = bind()?;
     let url = format!("http://127.0.0.1:{port}/");
     println!("gy serve  {url}");
     if std::io::stdout().is_terminal() {
         open_browser(&url);
     }
-    run(listener, open, ledger)
+    run(listener, open, ledger, name)
 }
 
 /// Open the URL once, without waiting; a failure only prints one line and the
@@ -62,17 +63,19 @@ fn open_browser(url: &str) {
 }
 
 /// The same, on a listener the caller already holds (a test wants the port).
-pub fn run(listener: TcpListener, open: Opener, ledger: PathBuf) -> Result<()> {
+pub fn run(listener: TcpListener, open: Opener, ledger: PathBuf, name: String) -> Result<()> {
     let open = Arc::new(open);
+    let name = Arc::new(name);
     let watch = Watch::start(ledger);
     let cache = GraphCache::new();
     for stream in listener.incoming() {
         let Ok(stream) = stream else { continue };
         let open = open.clone();
+        let name = name.clone();
         let watch = watch.clone();
         let cache = cache.clone();
         std::thread::spawn(move || {
-            let _ = connection(&open, &watch, &cache, stream);
+            let _ = connection(&open, &watch, &cache, &name, stream);
         });
     }
     Ok(())
@@ -99,6 +102,7 @@ fn connection(
     open: &Opener,
     watch: &Watch,
     cache: &GraphCache,
+    name: &str,
     mut stream: TcpStream,
 ) -> std::io::Result<()> {
     let _ = stream.set_read_timeout(Some(READ_TIMEOUT));
@@ -117,7 +121,7 @@ fn connection(
             Err(response) => response,
         }
     } else {
-        answer(open, &session)
+        answer(open, &session, name)
     };
     respond(stream, answer)
 }
@@ -125,14 +129,14 @@ fn connection(
 /// The answer to one framework-free request: `at` picks the point in the log,
 /// and a broken one is 400. The scrubber always sees the whole log, so
 /// `/api/ticks` ignores `at` (n-10e1).
-pub fn answer(open: &Opener, session: &http::Request) -> http::Response {
+pub fn answer(open: &Opener, session: &http::Request, name: &str) -> http::Response {
     let at = match requested_at(session) {
         Ok(at) => at,
         Err(response) => return response,
     };
     match open(at) {
-        Ok(Opened::Now(repo)) => api::route(&repo, session),
-        Ok(Opened::At(repo)) => api::route(&repo, session),
+        Ok(Opened::Now(repo)) => api::route(&repo, session, name),
+        Ok(Opened::At(repo)) => api::route(&repo, session, name),
         Err(error) => http::Response::text(500, &error.to_string()),
     }
 }

@@ -90,12 +90,12 @@ fn ledger() -> Repository<MemoryStore> {
 }
 
 fn answer(repo: &Repository<MemoryStore>, path: &str, query: Option<&str>) -> serde_json::Value {
-    let res = route(repo, &Request::new("GET", path, query, &[]));
+    let res = route(repo, &Request::new("GET", path, query, &[]), "gy");
     serde_json::from_slice(&res.body).unwrap()
 }
 
 fn status(path: &str, query: Option<&str>) -> u16 {
-    route(&ledger(), &Request::new("GET", path, query, &[])).status
+    route(&ledger(), &Request::new("GET", path, query, &[]), "gy").status
 }
 
 fn ids(value: &serde_json::Value) -> Vec<String> {

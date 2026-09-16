@@ -39,7 +39,7 @@ pub fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
 /// Serve the ledger over HTTP on localhost until stopped (n-a493). The CLI
 /// only wires it: gy-serve owns the server, and no write path exists. A read
 /// may name a sequence, which opens the ledger as it stood then (n-10e1).
-pub fn serve(ledger: &Path) -> Result<()> {
+pub fn serve(ledger: &Path, name: String) -> Result<()> {
     let watched = ledger.to_path_buf();
     let ledger = ledger.to_path_buf();
     gy_serve::server::serve(
@@ -52,6 +52,7 @@ pub fn serve(ledger: &Path) -> Result<()> {
             }
         }),
         watched,
+        name,
     )
 }
 
