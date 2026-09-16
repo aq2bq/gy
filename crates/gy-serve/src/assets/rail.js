@@ -1,14 +1,15 @@
 /* The rail (n-b963): the ten newest writes, so a write by an agent shows up
    the moment it lands. It reads /api/history?limit=10 and draws each row with
    GyWrites; the shell redraws it after every reload, so the live poll keeps it
-   moving. On a narrow screen app.css hides it. */
+   moving. On a narrow screen app.css hides it, and the search lives in the top
+   bar instead (n-ccd2). */
 (function () {
   const LIMIT = 10;
   const FLASH = 1400;
   /* The rail is shown only where app.css gives it a column; it draws nowhere
-     else, so a hidden rail holds no rows. The 1440px is app.css's breakpoint,
+     else, so a hidden rail holds no rows. The 1560px is app.css's breakpoint,
      and must stay equal to it (change both files together). */
-  const WIDE = window.matchMedia('(min-width: 1440px)');
+  const WIDE = window.matchMedia('(min-width: 1560px)');
 
   /* The newest sequence drawn while at the head; null until the first draw. */
   let head = null;
@@ -33,10 +34,23 @@
     return `<div class="ri${mark ? ' new' : ''}">${window.GyWrites.row(entry, known, order)}</div>`;
   }
 
+  /* The search is one element: it sits in the rail's top at this width, and in
+     the top bar otherwise. It is moved, never copied, so it is never in two
+     places or nowhere. */
+  function placeSearch(where) {
+    const search = document.getElementById('searchbtn');
+    if (!search) return;
+    const holder = where === 'rail' ? document.getElementById('rail') : document.querySelector('.topbar');
+    if (!holder || search.parentElement === holder) return;
+    if (where === 'rail') holder.insertBefore(search, holder.firstChild);
+    else holder.appendChild(search);
+  }
+
   async function draw() {
     const box = document.getElementById('rail');
     if (!box) return;
     if (!WIDE.matches) {
+      placeSearch('bar');
       box.innerHTML = '';
       return;
     }
@@ -61,6 +75,7 @@
       `<div class="rail-h"><span class="live"></span>${t('railTitle')}</div>` +
       body +
       `<a class="rail-all" href="#/history">${t('railAll')}</a>`;
+    placeSearch('rail');
     if (at === null && data.rows.length) head = data.rows[0].seq;
     if (flashed) {
       setTimeout(() => box.querySelectorAll('.ri.new').forEach(row => row.classList.remove('new')), FLASH);

@@ -28,3 +28,25 @@ test('the rail shows the ten newest writes, and only on a wide screen', async ({
   await page.setViewportSize({ width: 1600, height: 900 });
   await expect(page.locator('#rail .hi')).toHaveCount(10);
 });
+
+test('the search lives in the rail when wide and in the top bar when narrow', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await page.goto(gy.url);
+  await expect(page.locator('#rail #searchbtn')).toHaveCount(1);
+  await expect(page.locator('.topbar #searchbtn')).toHaveCount(0);
+  await page.keyboard.press('Control+k');
+  await expect(page.locator('#pal')).toHaveClass(/on/);
+  await page.keyboard.press('Escape');
+
+  await page.setViewportSize({ width: 1152, height: 720 });
+  await expect(page.locator('.topbar #searchbtn')).toHaveCount(1);
+  await expect(page.locator('#rail #searchbtn')).toHaveCount(0);
+  await page.keyboard.press('Control+k');
+  await expect(page.locator('#pal')).toHaveClass(/on/);
+  await page.keyboard.press('Escape');
+
+  // One element moves: it is never doubled or dropped on the way.
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await expect(page.locator('#searchbtn')).toHaveCount(1);
+  await expect(page.locator('#rail #searchbtn')).toHaveCount(1);
+});

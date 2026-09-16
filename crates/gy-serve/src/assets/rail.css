@@ -2,6 +2,8 @@
    scoped under .rail, so the history page's own rows are untouched. */
 .rail-h{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--paper-3);margin:0 0 10px}
 .rail-h .live{margin-right:0}
+/* The search is one element, moved here at this width (n-ccd2). */
+.rail #searchbtn{width:100%;min-width:0;margin-bottom:16px}
 .rail .hist{border-top:0}
 .rail .ri .hi{grid-template-columns:minmax(0,1fr);gap:2px;padding:9px 0}
 .rail .ri .hi .when{font-size:10px}
