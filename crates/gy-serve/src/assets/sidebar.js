@@ -49,7 +49,7 @@
     const nodes = (shell.scopes || []).reduce((sum, item) => sum + item.count, 0);
     el.querySelector('#nav').innerHTML =
       ENTRIES.map(entry).join('') +
-      `<div class="h">${ui.t('nodes'))}</div>` +
+      `<div class="h">${ui.t('nodes')}</div>` +
       KINDS.map(kind).join('') +
       `<div class="h">${ui.t('scopes')}</div>` +
       `<button data-s="all" data-act="setScope" data-arg="all" class="${state.scope === 'all' ? 'on' : ''}">${ui.t('all')}<span class="cnt">${nodes}</span></button>` +
@@ -62,7 +62,7 @@
     const seq = shell ? shell.seq : 0;
     if (state.at === null) {
       const when = seq > 0 ? `<br>${stamp(shell.at)}` : '';
-      clock.innerHTML = `<span class="live"></span>${ui.t('canon')} <b>${seq}</b>${when}`;
+      clock.innerHTML = `<span class="live${state.live ? '' : ' off'}"></span>${ui.t('canon')} <b>${seq}</b>${when}`;
       return;
     }
     const tick = ui.tickAt(state.at);
@@ -75,6 +75,8 @@
     el.querySelectorAll('#lang button').forEach(button => {
       button.classList.toggle('on', button.dataset.l === state.lang);
     });
+    const logo = el.querySelector('.wordmark .logo');
+    if (logo) logo.classList.toggle('off', !state.live);
     drawEyes(state, el, ui);
     drawNav(state, el, ui);
     drawClock(state, el, ui);

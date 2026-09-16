@@ -2,8 +2,6 @@
    order, and turns events into intents. Regions never reach back here; the
    `window.GyShell` at the bottom is a bridge for the pages, gone in 第 3 段. */
 (function () {
-  const PLURAL = { Need: 'Needs', Question: 'Questions', Decision: 'Decisions', Requirement: 'Requirements', Criterion: 'Criteria' };
-  const SCOPE_HUES = [10, 40, 95, 140, 175, 210, 262, 320];
   /* The rail's breakpoint; app.css holds the same number (change both). */
   const WIDE = window.matchMedia('(min-width: 1560px)');
 
@@ -31,52 +29,13 @@
     const found = key.split('.').reduce((value, part) => (value ? value[part] : undefined), words[state.lang]);
     return found ?? key;
   }
-  const plural = kind => word(PLURAL[kind] || kind);
 
-  /* A name's own hue, before anything is taken into account (n-d29f). */
-  function hashIndex(name) {
-    let hash = 0x811c9dc5;
-    for (let index = 0; index < name.length; index++) {
-      hash = Math.imul(hash ^ name.charCodeAt(index), 0x01000193);
-    }
-    return (hash >>> 0) % SCOPE_HUES.length;
-  }
-
-  /* The scope badge (n-4e5a): a hue already taken in this ledger is skipped,
-     in the server's scope order, so two scopes are told apart by colour. */
-  function scopeTag(name) {
-    const text = String(name ?? '');
-    const names = (state.shell ? state.shell.scopes : []).map(item => item.name);
-    const wanted = names.indexOf(text);
-    let hue = SCOPE_HUES[hashIndex(text)];
-    if (wanted >= 0) {
-      const taken = new Set();
-      for (let at = 0; at <= wanted; at++) {
-        let slot = hashIndex(names[at]);
-        while (taken.has(slot) && taken.size < SCOPE_HUES.length) slot = (slot + 1) % SCOPE_HUES.length;
-        if (at === wanted) hue = SCOPE_HUES[slot];
-        else taken.add(slot);
-      }
-    }
-    return `<span class="sb" style="--sb:${hue}">${esc(text)}</span>`;
-  }
-
-  const esc = text => String(text ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
-
-  /* Times the band and the clock read out. */
-  function when(at) {
-    return new Date(at * 1000).toLocaleString(state.lang === 'ja' ? 'ja-JP' : 'en-GB', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-  }
-  const day = at => new Date(at * 1000).toLocaleDateString(state.lang === 'ja' ? 'ja-JP' : 'en-GB');
-  function tickAt(seq) {
-    const ticks = state.band ? state.band.ticks : [];
-    let found = null;
-    for (const tick of ticks) {
-      if (tick.seq > seq) break;
-      found = tick;
-    }
-    return found;
-  }
+  /* The shared pure helpers, bound to this state (state.js holds them). */
+  const plural = kind => window.GyState.plural(kind, word);
+  const scopeTag = name => window.GyState.scopeTag(name, state.shell ? state.shell.scopes : []);
+  const when = at => window.GyState.when(at, state.lang);
+  const day = at => window.GyState.day(at, state.lang);
+  const tickAt = seq => window.GyState.tickAt(state.band ? state.band.ticks : [], seq);
 
   /* An IME's own key, not the app's (n-87ab). */
   let composedAt = 0;
@@ -90,38 +49,48 @@
     return fetch(`${path}${join}at=${state.at}`);
   }
 
-  const only = () => {
+  const scopeParam = () => {
     const scope = state.scope;
-    return scope && scope !== 'all' ? `?scope=${encodeURIComponent(scope)}` : '';
+    return scope && scope !== 'all' ? `scope=${encodeURIComponent(scope)}` : '';
   };
-  const PATHS = { shell: () => `/api/shell${only()}`, now: () => `/api/now${only()}`, band: () => '/api/ticks' };
+  const only = () => (scopeParam() ? `?${scopeParam()}` : '');
+  const PATHS = {
+    shell: () => `/api/shell${only()}`,
+    now: () => `/api/now${only()}`,
+    band: () => '/api/ticks',
+    rail: () => `/api/history?limit=10${scopeParam() ? `&${scopeParam()}` : ''}`,
+  };
 
   /* One read per wanted thing that is missing; dataArrived fills the state. */
   async function ensure(kind) {
     if (state[kind] || state.pending[kind] || !PATHS[kind]) return;
     state = { ...state, pending: { ...state.pending, [kind]: true } };
     try {
-      const body = await (await read(PATHS[kind]())).json();
-      state = window.GyState.apply(state, { type: 'dataArrived', kind, body: filled(kind, body) });
+      const body = await filled(kind, await (await read(PATHS[kind]())).json());
+      state = window.GyState.apply(state, { type: 'dataArrived', kind, body });
     } catch {
       state = window.GyState.apply(state, { type: 'dataArrived', kind, body: null });
     }
   }
 
-  /* The band comes as { max, ticks }; the left end is the first tick's sequence. */
-  function filled(kind, body) {
-    if (kind !== 'band') return body;
-    return { ...body, min: body.ticks.length ? body.ticks[0].seq : 1 };
+  /* The band's left end, and the rail's labels, need a second look. */
+  async function filled(kind, body) {
+    if (kind === 'band') return { ...body, min: body.ticks.length ? body.ticks[0].seq : 1 };
+    if (kind !== 'rail') return body;
+    const ids = [...new Set(body.rows.map(row => row.node).filter(Boolean))];
+    const labels = {};
+    if (ids.length) Object.assign(labels, (await (await read(`/api/labels?ids=${ids.join(',')}`)).json()).labels);
+    return { rows: body.rows, labels };
   }
 
   async function reload() {
-    await Promise.all([ensure('shell'), ensure('now'), ensure('band')]);
+    await Promise.all([ensure('shell'), ensure('now'), ensure('band'), ensure('rail')]);
     paint();
   }
 
   /* Live updates: the band always follows the log; the rest only at the head. */
   async function moved() {
-    state = { ...state, band: null };
+    state = { ...state, band: null, rail: null };
     if (state.at === null) state = window.GyState.apply(state, { type: 'ledgerMoved' });
     await reload();
   }
@@ -132,10 +101,9 @@
     if (window.GySidebar) window.GySidebar.render(state, document.querySelector('.side'), ui);
     if (window.GyTopbar) window.GyTopbar.render(state, document.getElementById('crumb'), ui);
     if (window.GyBand) window.GyBand.render(state, document.querySelector('.scrub'), ui);
-    const label = document.getElementById('searchlbl');
-    if (label) label.textContent = word('searchLbl'); /* temporary: palette's (n-45ca) */
+    if (window.GyRail) window.GyRail.render(state, document.getElementById('railBody'), ui);
+    if (window.GyPalette) window.GyPalette.render(state, document.getElementById('pal'), ui);
     paintPage();
-    if (window.GyRail) window.GyRail.draw(); /* temporary: rail region is n-45ca */
   }
 
   function paintPage() {
@@ -156,16 +124,54 @@
   let reloadTimer = null;
   async function run(intent) {
     state = window.GyState.apply(state, intent);
-    if (intent.type === 'setScope' || intent.type === 'setAt') {
-      if (intent.type === 'setAt') {
-        preview();
-        scheduleReload();
-        return;
-      }
-      await reload();
-    } else {
-      paint();
+    if (intent.type === 'setScope') { await reload(); return; }
+    if (intent.type === 'setAt') { preview(); scheduleReload(); return; }
+    if (intent.type === 'paletteOpen') {
+      state = { ...state, search: null };
+      paintPalette();
+      focusPalette();
+      return;
     }
+    if (intent.type === 'paletteQuery') { searchChanged(); return; }
+    if (intent.type === 'paletteMove' || intent.type === 'paletteClose') { paintPalette(); return; }
+    if (intent.type === 'liveChanged') { paintLive(); return; }
+    paint();
+  }
+
+  function paintPalette() {
+    if (window.GyPalette) window.GyPalette.render(state, document.getElementById('pal'), ui);
+  }
+
+  function focusPalette() {
+    const query = document.getElementById('palq');
+    if (query) query.focus();
+  }
+
+  /* Each keystroke asks once; a reply for an older query is dropped. */
+  async function searchChanged() {
+    const query = state.palette.query.trim();
+    if (!query) {
+      state = window.GyState.apply(state, { type: 'dataArrived', kind: 'search', body: { hits: [] } });
+      paintPalette();
+      return;
+    }
+    state = { ...state, search: null };
+    paintPalette();
+    const body = await (await read(`/api/search?q=${encodeURIComponent(query)}`)).json();
+    if (state.palette.query.trim() !== query) return;
+    state = window.GyState.apply(state, { type: 'dataArrived', kind: 'search', body });
+    paintPalette();
+  }
+
+  /* The connection mark, drawn by the sidebar and the rail from state.live. */
+  function setLive(on) {
+    if (state.live === on) return;
+    state = window.GyState.apply(state, { type: 'liveChanged', value: on });
+    paintLive();
+  }
+  function paintLive() {
+    if (window.GySidebar) window.GySidebar.render(state, document.querySelector('.side'), ui);
+    if (window.GyRail) window.GyRail.render(state, document.getElementById('railBody'), ui);
   }
 
   /* While the head is dragged: the band and the clock follow at once. */
@@ -193,51 +199,20 @@
     run({ type: 'go', value: route });
   }
 
-  /* Events: one delegated click and one keydown for the whole app. */
-  function wire() {
-    document.addEventListener('click', event => {
-      const el = event.target.closest('[data-act]');
-      if (!el) return;
-      const act = el.dataset.act;
-      const arg = el.dataset.arg ?? null;
-      if (act === 'setScope') run({ type: 'setScope', value: arg });
-      else if (act === 'setLang') run({ type: 'setLang', value: arg });
-      else if (act === 'setAt') setAt(arg === 'now' ? null : Number(arg));
-    });
-    document.addEventListener('keydown', event => {
-      if (composing(event) || event.target.tagName === 'INPUT') return;
-      const head = state.at === null ? (state.band ? state.band.max : 0) : state.at;
-      if (event.key === 'ArrowLeft') setAt(head - 1);
-      if (event.key === 'ArrowRight') setAt(head + 1);
-    });
-    document.addEventListener('compositionend', () => { composedAt = performance.now(); });
-    wireTrack();
-    window.addEventListener('hashchange', () => go(window.GyState.parseRoute(location.hash)));
-    window.addEventListener('resize', () => { if (window.GyBand) window.GyBand.render(state, document.querySelector('.scrub'), ui); });
-    WIDE.addEventListener('change', () => run({ type: 'setWide', value: WIDE.matches }));
+  /* Events: the wiring is in events.js; here is what it may call. */
+  function composedEnd() { composedAt = performance.now(); }
+  function resized() {
+    if (window.GyBand) window.GyBand.render(state, document.querySelector('.scrub'), ui);
   }
 
-  /* The band's drag: the root turns a pointer position into a sequence. */
-  let dragging = false;
-  function wireTrack() {
-    const track = document.querySelector('#track');
-    if (!track) return;
-    const seqFrom = event => {
-      const box = track.getBoundingClientRect();
-      const band = state.band;
-      return band.min + ((event.clientX - box.left) / box.width) * (band.max - band.min);
-    };
-    track.addEventListener('pointerdown', event => {
-      dragging = true;
-      track.setPointerCapture(event.pointerId);
-      if (state.band) setAt(seqFrom(event));
-    });
-    track.addEventListener('pointermove', event => { if (dragging && state.band) setAt(seqFrom(event)); });
-    track.addEventListener('pointerup', () => { dragging = false; });
-  }
-
-  /* What the regions may use; read-only helpers, not a way back into root. */
-  const ui = { t: word, plural, scopeTag, tickAt, when, day };
+  /* What the regions may use; read-only helpers and the elements palette needs
+     to place the search (it owns the frame, not its holders). */
+  const ui = {
+    t: word, plural, scopeTag, tickAt, when, day,
+    search: document.getElementById('searchbtn'),
+    railSearch: document.getElementById('railSearch'),
+    topbar: document.querySelector('.topbar'),
+  };
 
   /* The bridge for the pages until 第 3 段 makes them regions (n-6c63). */
   window.GyShell = {
@@ -252,14 +227,66 @@
     composing,
     composedRecently,
     setEyes: () => {}, /* the three boxes come from state.now; nothing to push (n-45ca) */
-    reload,
   };
+
+  /* The long wait for the next write (was live.js, n-478f): 30 s cut, 2 s
+     retry, and state.live when the line drops. */
+  const CUT = 30000;
+  const RETRY = 2000;
+  let known = null;
+  const pause = ms => new Promise(done => setTimeout(done, ms));
+
+  async function waitPast(after) {
+    const control = new AbortController();
+    const timer = setTimeout(() => control.abort(), CUT);
+    try {
+      const res = await fetch(`/api/wait?after=${after}`, { signal: control.signal });
+      return (await res.json()).seq;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function liveLoop() {
+    for (;;) {
+      if (known === null) {
+        try {
+          known = (await (await fetch('/api/shell')).json()).seq;
+        } catch {
+          setLive(false);
+          await pause(RETRY);
+          continue;
+        }
+      }
+      let seq;
+      try {
+        seq = await waitPast(known);
+      } catch {
+        setLive(false);
+        await pause(RETRY);
+        continue;
+      }
+      setLive(true);
+      if (seq <= known) continue;
+      known = seq;
+      try {
+        await moved();
+      } catch {
+        setLive(false);
+      }
+    }
+  }
 
   async function start() {
     const res = await fetch('/assets/i18n.json');
     words = await res.json();
-    wire();
+    window.GyEvents.wire({
+      run, setAt, go, composing, composedRecently, composedEnd, resized,
+      state: () => state,
+    });
+    WIDE.addEventListener('change', () => run({ type: 'setWide', value: WIDE.matches }));
     await reload();
+    liveLoop();
   }
 
   window.GyRoot = { moved };

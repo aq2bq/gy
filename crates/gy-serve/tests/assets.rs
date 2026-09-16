@@ -24,6 +24,7 @@ fn a_traversal_or_unknown_name_is_not_a_file() {
 fn the_read_pages_are_embedded_and_served() {
     for name in [
         "state.js",
+        "events.js",
         "root.js",
         "sidebar.js",
         "topbar.js",
@@ -41,7 +42,6 @@ fn the_read_pages_are_embedded_and_served() {
         "palette.css",
         "palette.js",
         "time.css",
-        "live.js",
         "graph.css",
         "graph-draw.js",
         "graph.js",
@@ -61,6 +61,7 @@ fn the_index_references_the_embedded_files() {
     for name in [
         "app.css",
         "state.js",
+        "events.js",
         "root.js",
         "sidebar.js",
         "topbar.js",
@@ -77,7 +78,6 @@ fn the_index_references_the_embedded_files() {
         "node.js",
         "palette.js",
         "time.css",
-        "live.js",
         "graph.css",
         "graph-draw.js",
         "graph.js",

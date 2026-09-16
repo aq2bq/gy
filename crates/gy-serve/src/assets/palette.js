@@ -1,100 +1,50 @@
-/* The search palette (n-5ca6): /, ⌘K, Ctrl+K, or the top bar opens it. It
-   asks /api/search and opens the page of the chosen hit. */
+/* The palette region (d-03ca, 第 2 段; was n-5ca6): the search frame
+   (#searchbtn) and the overlay (#pal). It decides where the frame lives from
+   state.wide, moving the one element and never copying it. Keys arrive as
+   intents from the root. */
 (function () {
-  const PANEL = document.getElementById('pal');
-  const QUERY = document.getElementById('palq');
-  const RESULT = document.getElementById('palres');
-  const HINT = document.getElementById('palhint');
-
-  let hits = [];
-  let selected = 0;
-
-  const t = key => window.GyShell.t(key);
   const esc = text => String(text ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 
-  function open() {
-    PANEL.classList.add('on');
-    QUERY.value = '';
-    QUERY.placeholder = t('palPh');
-    HINT.textContent = t('palHint');
-    QUERY.focus();
-    search('');
+  function render(state, el, ui) {
+    if (!el || !ui.search) return;
+    place(state, ui);
+    const label = ui.search.querySelector('#searchlbl');
+    if (label) label.textContent = ui.t('searchLbl');
+
+    el.classList.toggle('on', state.palette.open);
+    const query = el.querySelector('#palq');
+    if (query.value !== state.palette.query) query.value = state.palette.query;
+    query.placeholder = ui.t('palPh');
+    el.querySelector('#palhint').textContent = ui.t('palHint');
+    el.querySelector('#palres').innerHTML = results(state, ui);
   }
 
-  function close() {
-    PANEL.classList.remove('on');
+  /* One element, moved to the rail's holder when wide, else the top bar. */
+  function place(state, ui) {
+    const holder = state.wide ? ui.railSearch : ui.topbar;
+    if (holder && ui.search.parentElement !== holder) holder.appendChild(ui.search);
   }
 
-  async function search(text) {
-    const query = text.trim();
-    if (!query) {
-      hits = [];
-      selected = 0;
-      draw();
-      return;
-    }
-    const res = await window.GyShell.read(`/api/search?q=${encodeURIComponent(query)}`);
-    const body = await res.json();
-    hits = body.hits || [];
-    selected = 0;
-    draw();
-  }
-
-  function draw() {
+  function results(state, ui) {
+    const hits = state.search ? state.search.hits || [] : [];
     if (!hits.length) {
-      RESULT.innerHTML = QUERY.value.trim()
-        ? `<div class="r"><span class="t" style="color:var(--paper-3)">${t('notFound')}</span></div>`
-        : '';
-      return;
+      return state.palette.query.trim() ? `<div class="r"><span class="t" style="color:var(--paper-3)">${ui.t('notFound')}</span></div>` : '';
     }
-    RESULT.innerHTML = hits
-      .map((hit, index) => `<div class="r ${index === selected ? 'sel' : ''}" data-i="${index}"><span class="dot dot-${hit.kind}"></span><span class="id">${esc(hit.alias || hit.id)}</span><span class="t">${esc(hit.title)}</span>${window.GyShell.scopeTag(hit.scope)}</div>`)
+    return hits
+      .map((hit, index) => `<div class="r ${index === state.palette.selected ? 'sel' : ''}" data-act="paletteGo" data-arg="${index}"><span class="dot dot-${hit.kind}"></span><span class="id">${esc(hit.alias || hit.id)}</span><span class="t">${esc(hit.title)}</span>${ui.scopeTag(hit.scope)}</div>`)
       .join('');
   }
 
-  function go(hit) {
-    if (!hit) return;
-    close();
-    location.hash = `#/n/${hit.id}`;
+  /* The palette's keys as intents; the root turns them into runs. No listeners
+     here: the root holds the one keydown (d-03ca). */
+  function key(state, event) {
+    const hits = state.search ? state.search.hits || [] : [];
+    if (event.key === 'ArrowDown') return { type: 'paletteMove', value: Math.min(hits.length - 1, state.palette.selected + 1), prevent: true };
+    if (event.key === 'ArrowUp') return { type: 'paletteMove', value: Math.max(0, state.palette.selected - 1), prevent: true };
+    if (event.key === 'Escape') return { type: 'paletteClose' };
+    if (event.key === 'Enter') return { type: 'paletteEnter' };
+    return null;
   }
 
-  QUERY.addEventListener('input', event => search(event.target.value));
-  QUERY.addEventListener('keydown', event => {
-    if (window.GyShell.composing(event)) return;
-    if (event.key === 'ArrowDown') {
-      selected = Math.min(hits.length - 1, selected + 1);
-      draw();
-      event.preventDefault();
-    }
-    if (event.key === 'ArrowUp') {
-      selected = Math.max(0, selected - 1);
-      draw();
-      event.preventDefault();
-    }
-    if (event.key === 'Enter') {
-      if (window.GyShell.composedRecently()) return;
-      go(hits[selected]);
-    }
-    if (event.key === 'Escape') close();
-  });
-  RESULT.addEventListener('click', event => {
-    const row = event.target.closest('.r');
-    if (row && hits[row.dataset.i]) go(hits[row.dataset.i]);
-  });
-  PANEL.addEventListener('click', event => {
-    if (event.target === PANEL) close();
-  });
-  document.getElementById('searchbtn').addEventListener('click', open);
-  document.addEventListener('keydown', event => {
-    if (window.GyShell.composing(event)) return;
-    const typing = event.target.tagName === 'INPUT';
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-      event.preventDefault();
-      open();
-    }
-    if (event.key === '/' && !typing) {
-      event.preventDefault();
-      open();
-    }
-  });
+  window.GyPalette = { render, key };
 })();

@@ -35,6 +35,8 @@
       band: null,
       page: null,
       rail: null,
+      search: null,
+      live: true,
       pending: {},
     };
   }
@@ -79,6 +81,8 @@
         return { ...state, palette: { ...state.palette, selected: intent.value } };
       case 'ledgerMoved':
         return { ...state, shell: null, now: null, page: null, rail: null };
+      case 'liveChanged':
+        return { ...state, live: intent.value };
       case 'dataArrived':
         return arrived(state, intent.kind, intent.body);
       default:
@@ -86,5 +90,57 @@
     }
   }
 
-  window.GyState = { initial, apply, parseRoute };
+  /* Pure text and time helpers (no DOM, no fetch), so root and the regions share
+   one copy. They live here with the state because they judge nothing else. */
+  const PLURAL = { Need: 'Needs', Question: 'Questions', Decision: 'Decisions', Requirement: 'Requirements', Criterion: 'Criteria' };
+  const SCOPE_HUES = [10, 40, 95, 140, 175, 210, 262, 320];
+  const esc = text => String(text ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+
+  function plural(kind, translate) {
+    return translate(PLURAL[kind] || kind);
+  }
+
+  /* A name's own hue, before anything is taken into account (n-d29f). */
+  function hashIndex(name) {
+    let hash = 0x811c9dc5;
+    for (let index = 0; index < name.length; index++) {
+      hash = Math.imul(hash ^ name.charCodeAt(index), 0x01000193);
+    }
+    return (hash >>> 0) % SCOPE_HUES.length;
+  }
+
+  /* The scope badge (n-4e5a): a hue already taken in this ledger is skipped, in
+     the server's scope order, so two scopes are told apart by colour. */
+  function scopeTag(name, scopes) {
+    const text = String(name ?? '');
+    const names = (scopes || []).map(item => item.name);
+    const wanted = names.indexOf(text);
+    let hue = SCOPE_HUES[hashIndex(text)];
+    if (wanted >= 0) {
+      const taken = new Set();
+      for (let at = 0; at <= wanted; at++) {
+        let slot = hashIndex(names[at]);
+        while (taken.has(slot) && taken.size < SCOPE_HUES.length) slot = (slot + 1) % SCOPE_HUES.length;
+        if (at === wanted) hue = SCOPE_HUES[slot];
+        else taken.add(slot);
+      }
+    }
+    return `<span class="sb" style="--sb:${hue}">${esc(text)}</span>`;
+  }
+
+  const loc = lang => (lang === 'ja' ? 'ja-JP' : 'en-GB');
+  const when = (at, lang) => new Date(at * 1000).toLocaleString(loc(lang), { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const day = (at, lang) => new Date(at * 1000).toLocaleDateString(loc(lang));
+
+  /* The tick at or before a sequence, so a point between writes has a time. */
+  function tickAt(ticks, seq) {
+    let found = null;
+    for (const tick of ticks || []) {
+      if (tick.seq > seq) break;
+      found = tick;
+    }
+    return found;
+  }
+
+  window.GyState = { initial, apply, parseRoute, esc, plural, scopeTag, when, day, tickAt };
 })();

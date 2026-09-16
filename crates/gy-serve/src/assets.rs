@@ -2,6 +2,7 @@
 const INDEX: &str = include_str!("assets/index.html");
 const CSS: &str = include_str!("assets/app.css");
 const STATE_JS: &str = include_str!("assets/state.js");
+const EVENTS_JS: &str = include_str!("assets/events.js");
 const ROOT_JS: &str = include_str!("assets/root.js");
 const SIDEBAR_JS: &str = include_str!("assets/sidebar.js");
 const TOPBAR_JS: &str = include_str!("assets/topbar.js");
@@ -20,7 +21,6 @@ const HISTORY_JS: &str = include_str!("assets/history.js");
 const NODE_CSS: &str = include_str!("assets/node.css");
 const NODE_JS: &str = include_str!("assets/node.js");
 const TIME_CSS: &str = include_str!("assets/time.css");
-const LIVE_JS: &str = include_str!("assets/live.js");
 const GRAPH_CSS: &str = include_str!("assets/graph.css");
 const GRAPH_DRAW_JS: &str = include_str!("assets/graph-draw.js");
 const GRAPH_JS: &str = include_str!("assets/graph.js");
@@ -33,6 +33,7 @@ pub const FILES: [(&str, &str); 28] = [
     ("index.html", INDEX),
     ("app.css", CSS),
     ("state.js", STATE_JS),
+    ("events.js", EVENTS_JS),
     ("root.js", ROOT_JS),
     ("sidebar.js", SIDEBAR_JS),
     ("topbar.js", TOPBAR_JS),
@@ -51,7 +52,6 @@ pub const FILES: [(&str, &str); 28] = [
     ("node.css", NODE_CSS),
     ("node.js", NODE_JS),
     ("time.css", TIME_CSS),
-    ("live.js", LIVE_JS),
     ("graph.css", GRAPH_CSS),
     ("graph-draw.js", GRAPH_DRAW_JS),
     ("graph.js", GRAPH_JS),

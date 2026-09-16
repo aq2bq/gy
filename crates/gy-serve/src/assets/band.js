@@ -48,5 +48,13 @@
     return svg;
   }
 
-  window.GyBand = { render };
+  /* The sequence under a pointer x, for the root's drag (it may not read the
+     band's geometry itself). */
+  function seqFrom(state, el, clientX) {
+    const box = el.querySelector('#track').getBoundingClientRect();
+    const band = state.band;
+    return band.min + ((clientX - box.left) / box.width) * (band.max - band.min);
+  }
+
+  window.GyBand = { render, seqFrom };
 })();
