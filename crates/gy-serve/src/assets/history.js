@@ -23,7 +23,7 @@
 
   /* The rows, grouped by the day they were written. */
   function rows() {
-    if (!data.rows.length) return `<div class="empty">${t('emptyWrites')}</div>`;
+    if (!data.rows.length) return `<div class="empty">${t('histEmpty')}</div>`;
     let html = '';
     let head = '';
     for (const entry of data.rows) {

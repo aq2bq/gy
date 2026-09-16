@@ -125,3 +125,46 @@ fn the_dictionary_has_the_same_keys_in_both_languages() {
     assert!(!en.is_empty());
     assert_eq!(en, ja);
 }
+
+/// The plain keys a page asks the dictionary for, as `(file, key)` pairs.
+/// A template key (`st.${kind}`) is not a plain key and is skipped.
+fn asked_keys() -> Vec<(&'static str, String)> {
+    let mut asked = Vec::new();
+    for (name, body) in assets::FILES {
+        if !name.ends_with(".js") {
+            continue;
+        }
+        for call in ["t('", "word('"] {
+            let mut cut = 0;
+            while let Some(at) = body[cut..].find(call) {
+                let start = cut + at;
+                cut = start + call.len();
+                let before = body[..start].chars().next_back().unwrap_or(' ');
+                if before.is_alphanumeric() || before == '_' || before == '.' {
+                    continue;
+                }
+                if let Some(end) = body[cut..].find('\'') {
+                    asked.push((name, body[cut..cut + end].to_string()));
+                }
+            }
+        }
+    }
+    asked
+}
+
+/// A word a page asks for by name must be in the dictionary: a missing key
+/// shows its own name on the screen (found in history.js while n-b963 landed).
+#[test]
+fn every_plain_key_the_pages_ask_for_is_in_the_dictionary() {
+    let json: Value = serde_json::from_str(assets::get("i18n.json").unwrap().0).unwrap();
+    let mut known = BTreeSet::new();
+    keys(&json["en"], "", &mut known);
+    let asked = asked_keys();
+    assert!(asked.len() > 20, "only {} keys asked", asked.len());
+    for (name, key) in asked {
+        assert!(
+            known.contains(&key),
+            "{name} asks for the missing key {key}"
+        );
+    }
+}
