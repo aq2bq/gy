@@ -2,7 +2,7 @@ use gy_ledger::link::Link;
 use gy_ledger::{
     Actor, ClosedBy, Closure, CriterionSatisfy, FormatVersion, MemoryStore, NeedClose, Node,
     NodeData, NodeId, NodeKind, Operation, QuestionClose, Relation, Repository, ReqApprove,
-    ReqDone, RequirementState, now,
+    ReqDone, RequirementState, handover, next, now,
 };
 
 fn id(kind: NodeKind, hash: &str) -> NodeId {
@@ -235,5 +235,46 @@ fn now_filters_by_scope() {
     assert!(
         b.recent.iter().all(|entry| in_b.contains(&entry.node)),
         "a recent entry is outside scope b"
+    );
+}
+
+#[test]
+fn now_reports_ready_and_resume_from_the_other_views() {
+    let repo = ledger();
+    let view = now(&repo, None).unwrap();
+
+    // ready is next, row for row and count for count.
+    let ready = next(&repo, None).unwrap();
+    assert_eq!(view.ready.len(), ready.len());
+    for (mine, theirs) in view.ready.iter().zip(&ready) {
+        assert_eq!(mine.row.id, theirs.id);
+        assert_eq!(
+            (mine.satisfied, mine.targets),
+            (theirs.satisfied, theirs.targets)
+        );
+    }
+
+    // resume is handover, plus the last write.
+    let session = handover(&repo, None).unwrap();
+    let mine: Vec<&String> = view.resume.in_progress.iter().map(|row| &row.id).collect();
+    let theirs: Vec<&String> = session.in_progress.iter().map(|row| &row.id).collect();
+    assert_eq!(mine, theirs);
+    assert_eq!(view.resume.open_questions, session.open_questions);
+    assert_eq!(
+        view.resume.warnings,
+        session
+            .warnings
+            .iter()
+            .map(|warning| warning.count)
+            .sum::<usize>()
+    );
+    assert_eq!(view.resume.last.as_ref().unwrap().seq, view.seq);
+
+    // The scope narrows both, the same way the views do.
+    let b = now(&repo, Some("b")).unwrap();
+    assert_eq!(b.ready.len(), next(&repo, Some("b")).unwrap().len());
+    assert_eq!(
+        b.resume.in_progress.len(),
+        handover(&repo, Some("b")).unwrap().in_progress.len()
     );
 }

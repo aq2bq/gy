@@ -50,19 +50,23 @@ impl fmt::Display for NextRow {
 
 /// The ready needs, ordered by created then id (no priority; D-62).
 pub fn next<S: Store>(repo: &Repository<S>, scope: Option<&str>) -> Result<Vec<NextRow>> {
-    let all = repo.all()?;
+    Ok(ready_rows(&repo.all()?, scope))
+}
+
+/// The ready rows, so `now` reports the same judgement and order as `next`.
+pub(crate) fn ready_rows(all: &[Node], scope: Option<&str>) -> Vec<NextRow> {
     let mut needs: Vec<&Node> = all
         .iter()
         .filter(|node| node.kind() == NodeKind::Need)
         .filter(|node| scope.is_none_or(|scope| node.scope() == scope))
-        .filter(|node| ready(node, &all))
+        .filter(|node| ready(node, all))
         .collect();
     needs.sort_by(|a, b| {
         a.created()
             .cmp(b.created())
             .then_with(|| a.id().to_string().cmp(&b.id().to_string()))
     });
-    Ok(needs.iter().map(|need| row(need, &all)).collect())
+    needs.iter().map(|need| row(need, all)).collect()
 }
 
 fn row(need: &Node, all: &[Node]) -> NextRow {

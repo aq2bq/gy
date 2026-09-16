@@ -24,6 +24,11 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .side{position:sticky;top:0;height:100vh;border-right:1px solid var(--line-soft);padding:22px 18px 110px;display:flex;flex-direction:column;gap:18px;overflow:auto}
 .wordmark{font-family:var(--sans);font-weight:600;font-size:26px;letter-spacing:.06em;line-height:1;display:flex;align-items:baseline;gap:10px}
 .wordmark small{font-family:var(--mono);font-size:10px;color:var(--paper-3);letter-spacing:.12em}
+/* The three counts under the wordmark (d-3e8f). */
+.side .eyes3{display:flex;gap:6px;margin:2px 0 10px}
+.side .eyes3 a{flex:1;text-align:center;border:1px solid var(--line);border-radius:8px;padding:6px 0;font-weight:600;font-size:16px;color:var(--paper)}
+.side .eyes3 a small{display:block;font-size:10px;color:var(--paper-3);font-weight:400;letter-spacing:.06em}
+.side .eyes3 a.hot{border-color:var(--requirement);color:var(--requirement)}
 /* The logo: the gothic gy, the band's ticks, and a live dot (d-4e65). */
 .wordmark .logo text{fill:var(--paper);font-family:var(--sans);font-weight:600}
 .wordmark .logo .tick{fill:var(--paper-3)}

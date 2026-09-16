@@ -1,7 +1,7 @@
 //! GET /api/now: the `now` view as JSON, with the time written out (n-688a).
 //! The judgement lives in gy-ledger; this file only shapes the answer.
 use crate::http::{Request, Response};
-use gy_ledger::{LogRow, NodeRow, Repository, Store, Waiting, now};
+use gy_ledger::{LogRow, NodeRow, Ready, Repository, Resume, Store, Waiting, now};
 use serde::Serialize;
 
 /// The view with `at` as an RFC3339 time instead of epoch seconds.
@@ -12,6 +12,8 @@ struct Answer<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     scope: Option<&'a str>,
     waiting: &'a [Waiting],
+    ready: &'a [Ready],
+    resume: &'a Resume,
     in_progress: &'a [NodeRow],
     open_questions: &'a [NodeRow],
     unmet: &'a [NodeRow],
@@ -31,6 +33,8 @@ pub fn answer<S: Store>(repo: &Repository<S>, req: &Request) -> Response {
         at,
         scope: view.scope.as_deref(),
         waiting: &view.waiting,
+        ready: &view.ready,
+        resume: &view.resume,
         in_progress: &view.in_progress,
         open_questions: &view.open_questions,
         unmet: &view.unmet,

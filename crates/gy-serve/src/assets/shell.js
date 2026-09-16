@@ -11,6 +11,8 @@ let shell = { seq: 0, at: '', scopes: [], kinds: [] };
 let scope = sessionStorage.getItem(SCOPE_KEY) || 'all';
 /* The point in the log every read asks for; null is the head (n-32a9). */
 let at = null;
+/* The three numbers the sidebar keeps from the now view (d-3e8f). */
+let eyes = { wait: 0, next: 0, resume: 0 };
 
 /* ?lang= wins, then the stored choice, then what the server sent (ac-b9b1). */
 function pickLang() {
@@ -47,6 +49,18 @@ function counter(kind) {
   return kind === 'Decision'
     ? `<span class="cnt"><b>${row.total}</b></span>`
     : `<span class="cnt"><b>${row.open}</b> / ${row.total}</span>`;
+}
+
+/* The three counts under the wordmark. The numbers come from the now page (or
+   one /api/now read); the words from the dictionary. */
+function drawEyes() {
+  const box = document.getElementById('eyes3');
+  if (!box) return;
+  const item = (key, n, name) => `<a href="#/" data-eye="${key}" class="${n > 0 && key === 'wait' ? 'hot' : ''}"><b>${n}</b><small>${name}</small></a>`;
+  box.innerHTML =
+    item('wait', eyes.wait, word('eyeWait')) +
+    item('next', eyes.next, word('eyeNext')) +
+    item('resume', eyes.resume, word('eyeResume'));
 }
 
 function drawNav() {
@@ -106,6 +120,7 @@ function draw() {
     button.classList.toggle('on', button.dataset.l === lang);
   });
   drawNav();
+  drawEyes();
   if (window.GyTime) window.GyTime.labels();
   route();
 }
@@ -122,6 +137,23 @@ async function refresh() {
   const res = await read(`/api/shell?scope=${encodeURIComponent(scope)}`);
   shell = await res.json();
   draw();
+  loadEyes();
+}
+
+/* The three counts, from one read of the now view. A failure keeps them. */
+function setEyes(wait, next, resume) {
+  eyes = { wait, next, resume };
+  drawEyes();
+}
+
+async function loadEyes() {
+  try {
+    const res = await read('/api/now');
+    const view = await res.json();
+    setEyes(view.waiting.length, view.ready.length, view.resume.in_progress.length);
+  } catch {
+    /* Nothing to update. */
+  }
 }
 
 function wire() {
@@ -139,6 +171,17 @@ function wire() {
     scope = button.dataset.s;
     sessionStorage.setItem(SCOPE_KEY, scope);
     refresh();
+  });
+  document.getElementById('eyes3').addEventListener('click', event => {
+    const link = event.target.closest('a[data-eye]');
+    if (!link) return;
+    const eye = link.dataset.eye;
+    if (location.hash === '' || location.hash === '#/') {
+      event.preventDefault();
+      if (window.GyNow) window.GyNow.scrollTo(eye);
+    } else {
+      window.GyShell.wantEye = eye;
+    }
   });
   window.addEventListener('hashchange', () => {
     drawNav();
@@ -161,6 +204,10 @@ window.GyShell = {
   },
   /* A read with the point attached; every page fetches through this. */
   read,
+  /* The three sidebar counts; the now page passes them after it draws. */
+  setEyes,
+  /* The eye to scroll to after the now page draws, or null. */
+  wantEye: null,
   /* Fetch the shell again and redraw what is on screen. */
   reload: refresh,
 };

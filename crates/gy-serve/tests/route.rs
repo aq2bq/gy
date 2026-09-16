@@ -152,6 +152,32 @@ fn now_matches_the_view() {
         row_ids(&view.open_questions)
     );
     assert_eq!(json_ids(&answer["unmet"]), row_ids(&view.unmet));
+    let ready: Vec<String> = answer["ready"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|item| item["row"]["id"].as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(
+        ready,
+        view.ready
+            .iter()
+            .map(|item| item.row.id.clone())
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(
+        json_ids(&answer["resume"]["in_progress"]),
+        view.resume
+            .in_progress
+            .iter()
+            .map(|row| row.id.clone())
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(
+        answer["resume"]["open_questions"],
+        view.resume.open_questions
+    );
+    assert_eq!(answer["resume"]["warnings"], view.resume.warnings);
     assert_eq!(
         answer["recent"].as_array().unwrap().len(),
         view.recent.len()

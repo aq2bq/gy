@@ -1,11 +1,7 @@
-/* The now page (n-b709): the heading, the three sections, and the pulse. It
-   reads /api/now and draws into main#main; the words come from GyShell. */
+/* The now page (d-3e8f): three eyes side by side — who waits, what is ready,
+   and how to resume — then the sky of the nodes that matter and the pulse. It
+   reads /api/now and /api/graph; the words come from GyShell. */
 (function () {
-  const SECTIONS = [
-    ['in_progress', 'inprogress', 'Need', 'emptyNeeds'],
-    ['open_questions', 'openq', 'Question', 'emptyQ'],
-    ['unmet', 'unmet', 'Criterion', 'emptyAC'],
-  ];
   const VERBS = [
     ['need add', 'needadd'],
     ['need close', 'needclose'],
@@ -26,60 +22,150 @@
   const esc = text => String(text ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
   const fill = (text, values) => text.replace(/\{(\w+)\}/g, (all, key) => (key in values ? values[key] : all));
 
-  /* The scope in view, as its name or "all scopes". */
-  function scopeName() {
-    return data.scope || t('all');
-  }
-
   /* The label a row shows: the first alias, else the id. */
-  function label(row) {
-    return row.alias || row.id;
-  }
+  const label = row => row.alias || row.id;
+  const status = row => t(`st.${row.kind}.${row.status}`);
+  const when = at =>
+    new Date(at * 1000).toLocaleTimeString(lang() === 'ja' ? 'ja-JP' : 'en-GB', {
+      hour: '2-digit', minute: '2-digit',
+    });
 
-  /* The state word of a row, in this language. */
-  function status(row) {
-    return t(`st.${row.kind}.${row.status}`);
-  }
+  const head = (cls, n, name, sub) =>
+    `<div class="head"><span class="n">${n}</span><span class="l">${esc(name)}</span><span class="h">${esc(sub)}</span></div>`;
 
-  function rowHtml(row) {
-    return `<a class="row" href="#/n/${row.id}"><span class="dot dot-${row.kind}"></span><span class="id">${esc(label(row))}</span><span class="t" title="${esc(row.title)}">${esc(row.title)}</span><span class="st">${esc(status(row))}</span></a>`;
-  }
+  const rowHtml = (row, st) =>
+    `<a class="row" href="#/n/${row.id}"><span class="dot dot-${row.kind}"></span><span class="id">${esc(label(row))}</span><span class="t" title="${esc(row.title)}">${esc(row.title)}</span><span class="st">${st}</span></a>`;
 
-  /* The first four waits become cards; a requirement shows its reference
-     where a question shows its options. */
+  const questions = () => data.waiting.filter(item => item.waiting === 'question');
+  const requirements = () => data.waiting.filter(item => item.waiting === 'requirement');
+
+  /* One question as a card, as the old page drew it. */
   function card(item) {
     const row = item.row;
-    const who = item.waiting === 'question' ? `${esc(label(row))} · ${t('decider')} ${esc(item.decider)}` : esc(label(row));
-    const body = item.waiting === 'question'
-      ? `<ol class="opts">${item.options.map(option => `<li>${esc(option)}</li>`).join('')}</ol>`
-      : `<div class="opts">${esc(item.reference || '')}</div>`;
-    return `<a class="wait" href="#/n/${row.id}"><div class="who">${who}</div><div class="t">${esc(row.title)}</div>${body}</a>`;
+    const options = item.options.map(option => `<li>${esc(option)}</li>`).join('');
+    return `<a class="wait" href="#/n/${row.id}"><div class="who">${esc(label(row))} · ${t('decider')} ${esc(item.decider)}</div><div class="t">${esc(row.title)}</div><ol class="opts">${options}</ol></a>`;
   }
 
-  function hero() {
-    const waiting = data.waiting;
-    const eyebrow = `<div class="eyebrow">${t('waiting')}</div>`;
-    if (!waiting.length) {
-      const count = data.in_progress.length;
-      const paragraph = count
-        ? fill(t('nothingP'), { s: scopeName(), n: count })
-        : fill(t('nothingPEmpty'), { s: scopeName() });
-      return `<div class="hero">${eyebrow}<h1>${t('nothing')}</h1><p>${paragraph}</p></div>`;
+  /* The first eye: the questions that name the master, then the filed
+     requirements. An empty column says so in one large line. */
+  function waitColumn() {
+    const qs = questions();
+    const rs = requirements();
+    const sub = `${t('Questions')} ${qs.length} · ${t('Requirements')} ${rs.length}`;
+    const eye = head('hot', data.waiting.length, t('eyeWait'), sub);
+    if (!data.waiting.length) {
+      return `<section class="eye hot" data-eye="wait">${eye}<div class="nothing">${t('nothing')}</div></section>`;
     }
-    const cards = waiting.slice(0, 4).map(card).join('');
-    const rest = waiting.slice(4).map(item => rowHtml(item.row)).join('');
-    return `<div class="hero">${eyebrow}<h1>${fill(t('waitingH'), { n: waiting.length })}</h1></div>` +
-      cards + (rest ? `<div class="rows" style="margin-top:14px">${rest}</div>` : '');
+    const cards = qs.slice(0, 2).map(card).join('');
+    const more = qs.length > 2
+      ? `<a class="more" href="#/list/Question">${fill(t('moreQuestions'), { n: qs.length - 2 })}</a>`
+      : '';
+    const rows = rs.length
+      ? `<div class="rows">${rs.map(item => rowHtml(item.row, status(item.row))).join('')}</div>`
+      : '';
+    return `<section class="eye hot" data-eye="wait">${eye}${cards}${more}${rows}</section>`;
   }
 
-  function sections() {
-    return SECTIONS.map(([field, title, kind, empty]) => {
-      const rows = data[field];
-      const body = rows.length
-        ? rows.slice(0, 8).map(rowHtml).join('')
-        : `<div class="empty">${t(empty)}</div>`;
-      return `<section class="sec"><h2>${t(title)}<span class="cnt">${rows.length}</span><a class="more" href="#/list/${kind}">${t('seeall')}</a></h2><div class="rows">${body}</div></section>`;
+  /* The second eye: the needs ready to work, with what is left to meet. */
+  function readyColumn() {
+    const rows = data.ready
+      .map(item => rowHtml(item.row, fill(t('remaining'), { n: item.targets - item.satisfied, m: item.targets })))
+      .join('');
+    const tail = `<a class="more" href="#/list/Need">${fill(t('allNeeds'), { n: data.in_progress.length })}</a>`;
+    return `<section class="eye next" data-eye="next">${head('next', data.ready.length, t('readyHead'), t('readySub'))}<div class="rows">${rows}</div>${tail}</section>`;
+  }
+
+  /* The third eye: the in-progress requirements, then the counts. The outward
+     reference is a span, not a link: the row itself is a link to the node page
+     (a nested anchor would break the grid). */
+  function resumeColumn() {
+    const rows = data.resume.in_progress.map(item => {
+      const tail = referenceTail(item.reference);
+      const ref = tail ? ` · <span class="ref">${esc(tail)}</span>` : '';
+      return rowHtml({ id: item.id, kind: 'Requirement', title: item.title, alias: null }, esc(t(`st.Requirement.${item.state}`)) + ref);
     }).join('');
+    const last = data.resume.last;
+    const lastText = last ? `${when(last.at)} ${esc(last.actor)} · seq ${last.seq}` : t('none');
+    const kv = `<div class="kv"><span>${t('openQuestions')}</span><b>${data.resume.open_questions}</b><span>${t('warnings')}</span><b>${data.resume.warnings || t('none')}</b><span>${t('lastWrite')}</span><b>${lastText}</b></div>`;
+    return `<section class="eye prog" data-eye="resume">${head('prog', data.resume.in_progress.length, t('resumeHead'), t('resumeSub'))}<div class="rows">${rows}</div>${kv}</section>`;
+  }
+
+  /* The number a requirement's outward reference ends with, as a link's word. */
+  function referenceTail(reference) {
+    if (!reference) return '';
+    return String(reference).split('/').filter(Boolean).pop() || '';
+  }
+
+  const legend = () =>
+    `<span><i style="background:var(--requirement)"></i>${t('skyLegendWait')}</span><span><i style="background:var(--need)"></i>${t('skyLegendNext')}</span><span><i style="background:var(--decision)"></i>${t('skyLegendResume')}</span>`;
+
+  /* The three sets the sky lights, by column colour. */
+  function groups() {
+    return {
+      '#f28ba0': new Set(data.waiting.map(item => item.row.id)),
+      '#e9a63a': new Set(data.ready.map(item => item.row.id)),
+      '#5fd3c7': new Set(data.resume.in_progress.map(item => item.id)),
+    };
+  }
+
+  /* The sky: /api/graph shrunk, the nodes that matter lit, a click opening the
+     nearest lit node in the graph page (d-3e8f). The canvas is measured after
+     a frame, so its laid-out size is the one the fit uses. */
+  async function drawSky() {
+    const canvas = document.getElementById('sky');
+    if (!canvas) return;
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    const graph = await (await window.GyShell.read('/api/graph')).json();
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.round(rect.width) || canvas.clientWidth;
+    const h = Math.round(rect.height) || canvas.clientHeight;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    const sets = groups();
+    const colour = id => Object.keys(sets).find(key => sets[key].has(id)) || null;
+    const lit = graph.nodes.filter(node => colour(node.id));
+    const fit = lit.length ? lit : graph.nodes;
+    let minx = 1e9, maxx = -1e9, miny = 1e9, maxy = -1e9;
+    for (const node of fit) {
+      minx = Math.min(minx, node.x); maxx = Math.max(maxx, node.x);
+      miny = Math.min(miny, node.y); maxy = Math.max(maxy, node.y);
+    }
+    const pad = 40;
+    const k = Math.min((w - pad * 2) / Math.max(1, maxx - minx), (h - pad * 2) / Math.max(1, maxy - miny));
+    const ox = w / 2 - ((minx + maxx) / 2) * k, oy = h / 2 - ((miny + maxy) / 2) * k;
+    const P = new Map(graph.nodes.map(node => [node.id, [node.x * k + ox, node.y * k + oy]]));
+    ctx.strokeStyle = 'rgba(185,179,166,.10)'; ctx.lineWidth = 0.6;
+    for (const [a, b] of graph.edges) {
+      const A = P.get(a), B = P.get(b);
+      if (!A || !B) continue;
+      ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); ctx.stroke();
+    }
+    const ring = { '#f28ba0': 'rgba(242,139,160,.20)', '#e9a63a': 'rgba(233,166,58,.20)', '#5fd3c7': 'rgba(95,211,199,.20)' };
+    const points = {};
+    for (const node of graph.nodes) {
+      const [px, py] = P.get(node.id);
+      const col = colour(node.id);
+      if (col) {
+        ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2); ctx.fillStyle = ring[col]; ctx.fill();
+        ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+        points[node.id] = [px, py];
+      } else {
+        ctx.beginPath(); ctx.arc(px, py, 1.4, 0, Math.PI * 2); ctx.fillStyle = 'rgba(185,179,166,.28)'; ctx.fill();
+      }
+    }
+    canvas.onclick = event => {
+      const rect = canvas.getBoundingClientRect();
+      const px = event.clientX - rect.left, py = event.clientY - rect.top;
+      let best = null, close = 400;
+      for (const [id, point] of Object.entries(points)) {
+        const distance = Math.hypot(point[0] - px, point[1] - py);
+        if (distance < close) { close = distance; best = id; }
+      }
+      if (best) location.hash = `#/graph/${best}`;
+    };
   }
 
   /* The write's verb, from what the writer asked for (the why). */
@@ -99,9 +185,7 @@
     const doing = esc(verb(entry));
     const node = entry.node ? `<a href="#/n/${entry.node}">${esc(entry.node)}</a>` : '';
     if (!node) return `${actor} ${doing}`;
-    return lang() === 'ja'
-      ? `${actor} が ${node} ${doing}`
-      : `${actor} ${doing} ${node}`;
+    return lang() === 'ja' ? `${actor} が ${node} ${doing}` : `${actor} ${doing} ${node}`;
   }
 
   function line(entry) {
@@ -118,31 +202,34 @@
     return `a-${Math.min(3, index)}`;
   }
 
-  function when(at) {
-    return new Date(at * 1000).toLocaleTimeString(lang() === 'ja' ? 'ja-JP' : 'en-GB', {
-      hour: '2-digit', minute: '2-digit',
-    });
+  /* The pulse, in two columns. */
+  function pulse() {
+    const rows = data.recent
+      .map((entry, index) => `<div class="pi ${actorCls(entry.actor)}${index === 0 ? ' new' : ''}">${line(entry)}</div>`)
+      .join('');
+    const upTo = data.recent.length ? when(data.recent[0].at) : '';
+    return `<section class="pulse2"><h2>${t('pulse')}</h2><div class="sub">${fill(t('pulseSub'), { n: data.recent.length, t: upTo })}</div><div class="pl2">${rows}</div></section>`;
   }
 
-  function pulse() {
-    const rows = data.recent.map((entry, index) => {
-      const cls = `pi ${actorCls(entry.actor)}${index === 0 ? ' new' : ''}`;
-      return `<div class="${cls}">${line(entry)}</div>`;
-    }).join('');
-    const upTo = data.recent.length ? when(data.recent[0].at) : '';
-    const sub = fill(t('pulseSub'), { n: data.recent.length, t: upTo });
-    return `<aside class="pulse"><h2>${t('pulse')}</h2><div class="sub">${sub}</div><div class="pl">${rows}</div></aside>`;
+  function scrollTo(eye) {
+    const target = document.querySelector(`.eye[data-eye="${eye}"]`);
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   async function draw() {
     const scope = window.GyShell.scope();
     const only = scope && scope !== 'all' ? `?scope=${encodeURIComponent(scope)}` : '';
-    const res = await window.GyShell.read(`/api/now${only}`);
-    data = await res.json();
+    data = await (await window.GyShell.read(`/api/now${only}`)).json();
     actors = [];
     document.getElementById('main').innerHTML =
-      `<div class="home"><div>${hero()}${sections()}</div>${pulse()}</div>`;
+      `<div class="eyes">${waitColumn()}${readyColumn()}${resumeColumn()}</div>` +
+      `<div class="sky"><canvas id="sky"></canvas><div class="cap">${t('skyCap')}</div><div class="leg">${legend()}</div></div>` +
+      pulse();
+    window.GyShell.setEyes(data.waiting.length, data.ready.length, data.resume.in_progress.length);
+    await drawSky();
+    const want = window.GyShell.wantEye;
+    if (want) { window.GyShell.wantEye = null; scrollTo(want); }
   }
 
-  window.GyNow = { draw };
+  window.GyNow = { draw, scrollTo };
 })();

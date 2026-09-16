@@ -2,7 +2,9 @@
 //! open (d-995c, n-688a). The one place this judgement lives, so the CLI, MCP,
 //! and serve give the same answer.
 use super::derive::{need_state, question_open, reference};
+use super::handover::{Handover, ProgressRow, handover};
 use super::list::LogRow;
+use super::next::ready_rows;
 use super::{NeedState, open_or_closed};
 use crate::model::{Node, NodeData, NodeKind, RequirementState};
 use crate::ops::repository::{Repository, Result, Store};
@@ -41,6 +43,26 @@ pub enum Waiting {
     },
 }
 
+/// One need ready to work, exactly as `next` orders it, with its criteria
+/// counts (d-3e8f).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Ready {
+    pub row: NodeRow,
+    pub satisfied: usize,
+    pub targets: usize,
+}
+
+/// How a session resumes: the in-progress requirements, the counts that route
+/// the next step, and the last write (d-3e8f).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Resume {
+    pub in_progress: Vec<ProgressRow>,
+    pub open_questions: usize,
+    pub warnings: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last: Option<LogRow>,
+}
+
 /// The now view: where the log stands, who waits, what is in progress, what is
 /// still open, and the writes that just happened.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -51,6 +73,8 @@ pub struct Now {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scope: Option<String>,
     pub waiting: Vec<Waiting>,
+    pub ready: Vec<Ready>,
+    pub resume: Resume,
     pub in_progress: Vec<NodeRow>,
     pub open_questions: Vec<NodeRow>,
     pub unmet: Vec<NodeRow>,
@@ -79,16 +103,49 @@ pub fn now<S: Store>(repo: &Repository<S>, scope: Option<&str>) -> Result<Now> {
         .collect();
     unmet.sort_by(newest_first);
     let last = repo.store().history().last();
+    let session = handover(repo, scope)?;
     Ok(Now {
         seq: last.map_or(0, |entry| entry.seq),
         at: last.map_or(0, |entry| entry.at),
         scope: scope.map(ToString::to_string),
         waiting: waiting(&visible, &all),
+        ready: ready(&all, scope),
+        resume: resume(repo, scope, &all, session),
         in_progress: rows(&in_progress, &all),
         open_questions: rows(&open_questions, &all),
         unmet: rows(&unmet, &all),
         recent: recent(repo, scope, &all),
     })
+}
+
+/// The resume eye, from the handover view plus the last write (d-3e8f).
+fn resume<S: Store>(
+    repo: &Repository<S>,
+    scope: Option<&str>,
+    all: &[Node],
+    session: Handover,
+) -> Resume {
+    Resume {
+        in_progress: session.in_progress,
+        open_questions: session.open_questions,
+        warnings: session.warnings.iter().map(|warning| warning.count).sum(),
+        last: last_row(repo, scope, all),
+    }
+}
+
+/// The ready needs, with the counts `next` gives them (d-3e8f).
+fn ready(all: &[Node], scope: Option<&str>) -> Vec<Ready> {
+    ready_rows(all, scope)
+        .into_iter()
+        .filter_map(|next| {
+            let node = all.iter().find(|node| node.id().to_string() == next.id)?;
+            Some(Ready {
+                row: row(node, all),
+                satisfied: next.satisfied,
+                targets: next.targets,
+            })
+        })
+        .collect()
 }
 
 /// The master's queue: the questions that name the master, then the filed
@@ -201,6 +258,11 @@ fn recent<S: Store>(repo: &Repository<S>, scope: Option<&str>, all: &[Node]) -> 
             source: entry.source.clone(),
         })
         .collect()
+}
+
+/// The last write, with the same scope rule as `recent` (d-3e8f).
+fn last_row<S: Store>(repo: &Repository<S>, scope: Option<&str>, all: &[Node]) -> Option<LogRow> {
+    recent(repo, scope, all).into_iter().next()
 }
 
 fn scope_of<'a>(all: &'a [Node], id: &str) -> Option<&'a str> {

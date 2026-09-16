@@ -14,7 +14,7 @@ test.afterAll(async () => {
 test('the now page and a long list draw in two seconds', async ({ page }) => {
   const started = Date.now();
   await page.goto(gy.url);
-  await expect(page.locator('.hero h1')).toBeVisible();
+  await expect(page.locator('.eyes')).toBeVisible();
   expect(Date.now() - started).toBeLessThan(2000);
 
   const listed = Date.now();
