@@ -17,12 +17,13 @@ test('an unwritten ledger opens, and its first write wakes the page', async ({ p
   const praise = [...words.en.praiseWait, ...words.en.praiseResume, ...words.en.praiseQuiet, ...words.en.blockedNext];
 
   await page.goto(gy.url);
-  const note = page.locator('.eye.hot .nothing');
+  const eyes = page.getByTestId('main').getByRole('region');
+  const note = eyes.nth(0).getByRole('status');
   await expect(note).toHaveText(words.en.firstRun);
   expect(praise).not.toContain(await note.innerText());
   // Only the first eye speaks: the other two stay silent.
-  await expect(page.locator('.eye.next .nothing')).toHaveCount(0);
-  await expect(page.locator('.eye.prog .nothing')).toHaveCount(0);
+  await expect(eyes.nth(1).getByRole('status')).toHaveCount(0);
+  await expect(eyes.nth(2).getByRole('status')).toHaveCount(0);
 
   // One write wakes the page with no reload: the note turns into a praise word.
   gy.gy(['--scope', 'a', 'criterion', 'add', 'the first write']);

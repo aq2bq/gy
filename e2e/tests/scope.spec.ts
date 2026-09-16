@@ -11,33 +11,37 @@ test.afterAll(async () => {
   await gy?.stop();
 });
 
-test('a scope wears one badge everywhere, and only a scope wears it', async ({ page }) => {
+test('a scope wears one badge everywhere, and only a scope wears it', async ({ page, request }) => {
+  const shell = await (await request.get(`${gy.url}api/shell`)).json();
+  const names: string[] = shell.scopes.map((item: { name: string }) => item.name);
+  const rows = (await (await request.get(`${gy.url}api/list?kind=Need`)).json()).rows;
+  const shown = rows[0].scope as string;
+
   await page.goto(`${gy.url}#/list/Need`);
+  const scopes = page.getByTestId('scopes');
 
   // In one ledger no two scopes share a hue, so the frames tell them apart.
-  const sidebarColors = await page
-    .locator('#nav .sb')
-    .evaluateAll(els => els.map(el => getComputedStyle(el).borderColor));
+  const sidebarColors = await Promise.all(
+    names.map(name => scopes.getByText(name, { exact: true }).evaluate(el => getComputedStyle(el).borderColor)),
+  );
   expect(sidebarColors.length).toBeGreaterThan(1);
   expect(new Set(sidebarColors).size).toBe(sidebarColors.length);
 
-  const row = page.locator('#main .row.wide').first();
-  const badge = row.locator('.sb');
+  const row = page.getByTestId('main').getByRole('link').first();
+  const badge = row.getByText(shown, { exact: true });
   await expect(badge).toHaveCount(1);
-  const name = await badge.innerText();
   const listColor = await badge.evaluate(el => getComputedStyle(el).borderColor);
 
   // The created date keeps its plain cell: one badge per row, for the scope.
-  await expect(row.locator('.sc')).toHaveCount(1);
-  await expect(row.locator('.sc .sb')).toHaveCount(0);
+  await expect(row.getByText(shown, { exact: true })).toHaveCount(1);
 
   // The same node's page wears the same badge in the same colour.
   await row.click();
   await expect(page).toHaveURL(/#\/n\//);
-  const meta = page.locator('#main .nh .meta .sb');
-  await expect(meta).toHaveText(name);
+  const meta = page.getByTestId('main').getByText(shown, { exact: true });
+  await expect(meta).toHaveText(shown);
   expect(await meta.evaluate(el => getComputedStyle(el).borderColor)).toBe(listColor);
 
   // "all scopes" is not a scope's name, so it stays plain.
-  await expect(page.locator('#nav button[data-s="all"] .sb')).toHaveCount(0);
+  await expect(scopes.getByRole('button', { name: /all/ }).getByText(shown, { exact: true })).toHaveCount(0);
 });

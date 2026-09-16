@@ -34,19 +34,21 @@ test('a quiet counter is praised, and a jammed next is told plainly', async ({ p
   const words = await (await request.get(`${gy.url}assets/i18n.json`)).json();
 
   await page.goto(gy.url);
+  const eyes = page.getByTestId('main').getByRole('region');
 
   // Waiting is empty: a praise word from the bundle.
-  const wait = await page.locator('.eye.hot .nothing').innerText();
+  const wait = await eyes.nth(0).getByRole('status').innerText();
   expect(words.en.praiseWait).toContain(wait);
 
   // Requirements in progress are empty: praised too.
-  const resume = await page.locator('.eye.prog .nothing').innerText();
+  const resume = await eyes.nth(2).getByRole('status').innerText();
   expect(words.en.praiseResume).toContain(resume);
 
   // Ready is empty, but 2 needs are in progress: a plain word, not praise.
-  await expect(page.locator('.eye.next .nothing.calm')).toHaveText(words.en.blockedNext[0]);
-  await expect(page.locator('.eye.next .nothing:not(.calm)')).toHaveCount(0);
+  await expect(eyes.nth(1).getByRole('status')).toHaveCount(1);
+  await expect(eyes.nth(1).getByRole('status')).toHaveText(words.en.blockedNext[0]);
   // The count is worth showing exactly when needs are stuck.
-  await expect(page.locator('.eye.next .more')).toContainText('2');
-  await expect(page.locator('.eye.hot .more, .eye.prog .more')).toHaveCount(0);
+  await expect(eyes.nth(1).getByRole('link')).toContainText('2');
+  await expect(eyes.nth(0).getByRole('link')).toHaveCount(0);
+  await expect(eyes.nth(2).getByRole('link')).toHaveCount(0);
 });

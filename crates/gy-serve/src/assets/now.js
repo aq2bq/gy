@@ -73,7 +73,7 @@
     const eye = head('hot', data.waiting.length, t('eyeWait'), sub);
     if (!data.waiting.length) {
       const word = firstRun() ? t('firstRun') : pick('praiseWait');
-      return `<section class="eye hot" data-eye="wait">${eye}<div class="nothing">${esc(word)}</div></section>`;
+      return `<section class="eye hot" data-eye="wait" aria-label="${esc(t('eyeWait'))}">${eye}<div class="nothing" role="status">${esc(word)}</div></section>`;
     }
     const cards = qs.slice(0, 2).map(card).join('');
     const more = qs.length > 2
@@ -82,7 +82,7 @@
     const rows = rs.length
       ? `<div class="rows">${rs.map(item => rowHtml(item.row, status(item.row))).join('')}</div>`
       : '';
-    return `<section class="eye hot" data-eye="wait">${eye}${cards}${more}${rows}</section>`;
+    return `<section class="eye hot" data-eye="wait" aria-label="${esc(t('eyeWait'))}">${eye}${cards}${more}${rows}</section>`;
   }
 
   /* The second eye: the needs ready to work, with what is left to meet. When
@@ -97,12 +97,12 @@
       : firstRun()
         ? ''
         : data.in_progress.length
-          ? `<div class="nothing calm">${esc(pick('blockedNext'))}</div>`
-          : `<div class="nothing">${esc(pick('praiseQuiet'))}</div>`;
+          ? `<div class="nothing calm" role="status">${esc(pick('blockedNext'))}</div>`
+          : `<div class="nothing" role="status">${esc(pick('praiseQuiet'))}</div>`;
     const tail = data.in_progress.length
       ? `<a class="more" href="#/list/Need">${fill(t('allNeeds'), { n: data.in_progress.length })}</a>`
       : '';
-    return `<section class="eye next" data-eye="next">${head('next', data.ready.length, t('readyHead'), t('readySub'))}${body}${tail}</section>`;
+    return `<section class="eye next" data-eye="next" aria-label="${esc(t('eyeNext'))}">${head('next', data.ready.length, t('readyHead'), t('readySub'))}${body}${tail}</section>`;
   }
 
   /* The third eye: the in-progress requirements, then the counts. The outward
@@ -121,8 +121,8 @@
       ? `<div class="rows">${rows}</div>`
       : firstRun()
         ? ''
-        : `<div class="nothing">${esc(pick('praiseResume'))}</div>`;
-    return `<section class="eye prog" data-eye="resume">${head('prog', data.resume.in_progress.length, t('resumeHead'), t('resumeSub'))}${body}${kv}</section>`;
+        : `<div class="nothing" role="status">${esc(pick('praiseResume'))}</div>`;
+    return `<section class="eye prog" data-eye="resume" aria-label="${esc(t('eyeResume'))}">${head('prog', data.resume.in_progress.length, t('resumeHead'), t('resumeSub'))}${body}${kv}</section>`;
   }
 
   /* The number a requirement's outward reference ends with, as a link's word. */

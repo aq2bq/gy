@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { start, type Ledger } from '../fixtures/ledger';
 
 let gy: Ledger;
@@ -11,6 +11,9 @@ test.afterAll(async () => {
   await gy?.stop();
 });
 
+const main = (page: Page) => page.getByTestId('main');
+const eyes = (page: Page) => main(page).getByRole('region');
+
 test('the three eyes match /api/now', async ({ page, request }) => {
   const answer = await (await request.get(`${gy.url}api/now`)).json();
   await page.goto(gy.url);
@@ -21,24 +24,26 @@ test('the three eyes match /api/now', async ({ page, request }) => {
     String(answer.ready.length),
     String(answer.resume.in_progress.length),
   ];
-  await expect(page.locator('.eye .head .n')).toHaveText(counts);
-  await expect(page.locator('#eyes3 b')).toHaveText(counts);
+  for (let index = 0; index < counts.length; index++) {
+    await expect(eyes(page).nth(index).getByText(counts[index], { exact: true })).toBeVisible();
+    await expect(page.getByTestId('eyes').getByRole('link').nth(index)).toContainText(counts[index]);
+  }
 
   // The sky and the two-column pulse are on the page.
-  await expect(page.locator('.sky canvas')).toBeVisible();
-  await expect(page.locator('.pl2 .pi')).toHaveCount(answer.recent.length);
+  await expect(main(page).locator('canvas')).toBeVisible();
+  await expect(main(page).getByRole('list', { name: /Pulse/ }).getByRole('listitem')).toHaveCount(answer.recent.length);
 });
 
 test('the language switch redraws without a reload', async ({ page }) => {
   await page.goto(gy.url);
-  const label = page.locator('.eye .head .l').first();
+  const label = eyes(page).first();
   const english = await label.innerText();
 
   // A reload would drop this mark; the switch must keep it.
   await page.evaluate(() => {
     (window as unknown as { kept?: boolean }).kept = true;
   });
-  await page.locator('#lang button[data-l="ja"]').click();
+  await page.getByTestId('sidebar').getByRole('button', { name: '日本語' }).click();
 
   await expect(label).not.toHaveText(english);
   expect(await page.evaluate(() => (window as unknown as { kept?: boolean }).kept)).toBe(true);
@@ -46,8 +51,8 @@ test('the language switch redraws without a reload', async ({ page }) => {
 
 test('the wordmark returns to the now page from a list', async ({ page }) => {
   await page.goto(`${gy.url}#/list/Need`);
-  await page.locator('.wordmark').click();
+  await page.getByTestId('sidebar').getByRole('link').first().click();
 
   await expect(page).toHaveURL(/#\/$/);
-  await expect(page.locator('.eyes')).toBeVisible();
+  await expect(eyes(page)).toHaveCount(3);
 });

@@ -122,7 +122,7 @@
       ? rows.map(entry => `<div class="hi" role="listitem"><span class="when">${when(entry.at)} · ${entry.seq}</span><span class="who">${esc(entry.actor)}</span><span><div class="src">${esc(entry.source)}</div><div class="why">${esc(entry.why)}</div></span></div>`).join('')
       : `<div class="empty">${t('migrated')}</div>`;
     return `<div class="card" style="margin-top:0"><h3>${t('connections')}</h3><div class="map">${map()}</div></div>` +
-      card(fill(t('hist'), { n: rows.length }), `<div class="hist" role="list">${history}</div>`);
+      card(fill(t('hist'), { n: rows.length }), `<div class="hist" role="list" aria-label="${esc(t('histTitle'))}">${history}</div>`);
   }
 
   /* The ego map: what points here on the left, what this points at on the

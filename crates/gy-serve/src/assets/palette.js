@@ -31,7 +31,7 @@
       return state.palette.query.trim() ? `<div class="r"><span class="t" style="color:var(--paper-3)">${ui.t('notFound')}</span></div>` : '';
     }
     return hits
-      .map((hit, index) => `<div class="r ${index === state.palette.selected ? 'sel' : ''}" data-act="paletteGo" data-arg="${index}"><span class="dot dot-${hit.kind}"></span><span class="id">${esc(hit.alias || hit.id)}</span><span class="t">${esc(hit.title)}</span>${ui.scopeTag(hit.scope)}</div>`)
+      .map((hit, index) => `<div class="r ${index === state.palette.selected ? 'sel' : ''}" role="option" aria-selected="${index === state.palette.selected}" data-act="paletteGo" data-arg="${index}"><span class="dot dot-${hit.kind}"></span><span class="id">${esc(hit.alias || hit.id)}</span><span class="t">${esc(hit.title)}</span>${ui.scopeTag(hit.scope)}</div>`)
       .join('');
   }
 
