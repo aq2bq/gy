@@ -34,7 +34,7 @@
       .join('');
     el.innerHTML =
       `<div class="rail-h"><span class="live${state.live ? '' : ' off'}"></span>${ui.t('railTitle')}</div>` +
-      (rows.length ? `<div class="hist">${body}</div>` : `<div class="empty">${ui.t('histEmpty')}</div>`) +
+      (rows.length ? `<div class="hist" role="list">${body}</div>` : `<div class="empty">${ui.t('histEmpty')}</div>`) +
       `<a class="rail-all" href="#/history">${ui.t('railAll')}</a>`;
     if (state.at === null && rows.length) head = rows[0].seq;
     if (flashed) {

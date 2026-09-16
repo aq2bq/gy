@@ -29,11 +29,12 @@ test('the history page matches /api/history and filters by actor', async ({ page
   const answer = await (await request.get(`${gy.url}api/history`)).json();
   await page.goto(`${gy.url}#/history`);
 
-  await expect(page.locator('.hi')).toHaveCount(answer.rows.length);
-  await expect(page.locator('.hi .when').first()).toContainText(`· ${answer.rows[0].seq}`);
+  const main = page.getByTestId('main');
+  await expect(main.getByRole('listitem')).toHaveCount(answer.rows.length);
+  await expect(main.getByRole('listitem').first()).toContainText(`· ${answer.rows[0].seq}`);
 
-  await page.locator('#hist-actors button[data-a="reviewer"]').click();
+  await main.getByRole('button', { name: 'reviewer' }).click();
   const filtered = await (await request.get(`${gy.url}api/history?actor=reviewer`)).json();
   expect(filtered.rows.length).toBeLessThan(answer.rows.length);
-  await expect(page.locator('.hi')).toHaveCount(filtered.rows.length);
+  await expect(main.getByRole('listitem')).toHaveCount(filtered.rows.length);
 });

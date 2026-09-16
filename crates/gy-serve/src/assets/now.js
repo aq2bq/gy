@@ -181,12 +181,12 @@
      line the empty rail and history use says it instead (n-3e6b). */
   function pulse() {
     const rows = data.recent
-      .map((entry, index) => `<div class="pi ${actorCls(entry.actor)}${index === 0 ? ' new' : ''}">${line(entry)}</div>`)
+      .map((entry, index) => `<div class="pi ${actorCls(entry.actor)}${index === 0 ? ' new' : ''}" role="listitem">${line(entry)}</div>`)
       .join('');
     const sub = data.recent.length
       ? fill(t('pulseSub'), { n: data.recent.length, t: when(data.recent[0].at) })
       : t('histEmpty');
-    return `<section class="pulse2"><h2>${t('pulse')}</h2><div class="sub">${sub}</div><div class="pl2">${rows}</div></section>`;
+    return `<section class="pulse2"><h2>${t('pulse')}</h2><div class="sub">${sub}</div><div class="pl2" role="list" aria-label="${esc(t('pulse'))}">${rows}</div></section>`;
   }
 
   /* The region: #main only, from the state the root read. */

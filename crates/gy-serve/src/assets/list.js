@@ -23,11 +23,11 @@
     return `<a class="row wide" href="#/n/${row.id}"><span class="dot dot-${row.kind}"></span><span class="id">${esc(label)}</span><span class="t" title="${esc(row.title)}">${esc(row.title)}</span>${ui.scopeTag(row.scope)}<span class="st">${esc(word)}</span><span class="sc">${esc(row.created)}</span></a>`;
   }
 
-  /* The chips carry the act events.js reads and the data-f e2e clicks; data-f
-     goes when 第 4 段 moves e2e to testids and roles. */
+  /* The chips name the act events.js reads and the act it carries (第 4 段 took
+     the old mark away). */
   function chips(filter, ui) {
     const chip = (value, key) =>
-      `<button data-f="${value}" data-act="listFilter" data-arg="${value}" class="${filter === value ? 'on' : ''}">${ui.t(key)}</button>`;
+      `<button data-act="listFilter" data-arg="${value}" class="${filter === value ? 'on' : ''}">${ui.t(key)}</button>`;
     return `<div class="chips">${chip('open', 'filterOpen')}${chip('all', 'filterAll')}</div>`;
   }
 

@@ -16,6 +16,13 @@
     const band = state.band;
     const width = track.clientWidth;
     const seqAt = state.at === null ? band.max : state.at;
+    /* The point in view, for the eye and for what reads the screen (n-5e43). */
+    el.dataset.at = state.at === null ? 'now' : String(state.at);
+    track.setAttribute('role', 'slider');
+    track.setAttribute('aria-label', ui.t('rewind'));
+    track.setAttribute('aria-valuemin', String(band.min));
+    track.setAttribute('aria-valuemax', String(band.max));
+    track.setAttribute('aria-valuenow', String(seqAt));
     const x = seq => ((seq - band.min) / Math.max(1, band.max - band.min)) * width;
 
     scale.setAttribute('viewBox', `0 0 ${width} 46`);

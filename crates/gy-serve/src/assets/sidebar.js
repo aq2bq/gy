@@ -51,9 +51,10 @@
       ENTRIES.map(entry).join('') +
       `<div class="h">${ui.t('nodes')}</div>` +
       KINDS.map(kind).join('') +
-      `<div class="h">${ui.t('scopes')}</div>` +
+      `<div data-testid="scopes"><div class="h">${ui.t('scopes')}</div>` +
       `<button data-s="all" data-act="setScope" data-arg="all" class="${state.scope === 'all' ? 'on' : ''}">${ui.t('all')}<span class="cnt">${nodes}</span></button>` +
-      shell.scopes.map(scopeRow).join('');
+      shell.scopes.map(scopeRow).join('') +
+      `</div>`;
   }
 
   function drawClock(state, el, ui) {

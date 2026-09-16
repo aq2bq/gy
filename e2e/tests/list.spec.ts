@@ -16,21 +16,23 @@ test('the list rows match /api/list', async ({ page, request }) => {
   const open = rows.filter((row: { status?: string }) => row.status === 'open');
 
   await page.goto(`${gy.url}#/list/Question`);
+  const main = page.getByTestId('main');
   // The page opens on the open rows.
-  await expect(page.locator('.row')).toHaveCount(open.length);
+  await expect(main.getByRole('link')).toHaveCount(open.length);
 
   // The subtitle carries the open count and the total.
-  const subtitle = await page.locator('.list .sub').innerText();
-  expect(subtitle).toContain(String(open.length));
-  expect(subtitle).toContain(String(rows.length));
+  const subtitle = main.getByText(/\d+ open of \d+/);
+  await expect(subtitle).toContainText(String(open.length));
+  await expect(subtitle).toContainText(String(rows.length));
 });
 
 test('the open and all switch changes the rows', async ({ page, request }) => {
   const rows = (await (await request.get(`${gy.url}api/list?kind=Question`)).json()).rows;
 
   await page.goto(`${gy.url}#/list/Question`);
-  const open = await page.locator('.row').count();
-  await page.locator('.chips button[data-f="all"]').click();
-  await expect(page.locator('.row')).toHaveCount(rows.length);
+  const main = page.getByTestId('main');
+  const open = await main.getByRole('link').count();
+  await main.getByRole('button', { name: 'all' }).click();
+  await expect(main.getByRole('link')).toHaveCount(rows.length);
   expect(rows.length).toBeGreaterThan(open);
 });

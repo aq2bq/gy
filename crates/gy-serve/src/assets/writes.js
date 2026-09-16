@@ -61,7 +61,7 @@
   };
 
   function row(entry, labels, order, ui, lang) {
-    return `<div class="hi"><span class="when">${when(entry.at, lang)} · ${entry.seq}</span><span class="who ${whoCls(entry.actor, order)}">${esc(entry.actor)}</span><span class="nd"><div class="what">${what(entry, labels, ui, lang)}</div><div class="src" title="${esc(entry.source)}">${esc(entry.source)}</div><div class="why">${esc(entry.why)}</div></span></div>`;
+    return `<div class="hi" role="listitem"><span class="when">${when(entry.at, lang)} · ${entry.seq}</span><span class="who ${whoCls(entry.actor, order)}">${esc(entry.actor)}</span><span class="nd"><div class="what">${what(entry, labels, ui, lang)}</div><div class="src" title="${esc(entry.source)}">${esc(entry.source)}</div><div class="why">${esc(entry.why)}</div></span></div>`;
   }
 
   window.GyWrites = { row, when, day };

@@ -23,16 +23,16 @@
       html += window.GyWrites.row(entry, data.labels || {}, order, ui, state.lang);
     }
     if (data.total > data.rows.length) html += `<div class="empty">${ui.t('histOlder')}</div>`;
-    return `<div class="hist">${html}</div>`;
+    return `<div class="hist" role="list">${html}</div>`;
   }
 
-  /* The writer chips: "all", then every writer the answer names. data-a stays
-     for e2e until 第 4 段 moves it to the act. */
+  /* The writer chips: "all", then every writer the answer names; the act events.js
+     reads is the only marker (第 4 段 took the old mark away). */
   function chips(state, data, ui) {
     const actor = state.history.actor;
-    const all = `<button data-a="" data-act="historyActor" data-arg="" class="${actor === null ? 'on' : ''}">${ui.t('filterActorAll')}</button>`;
+    const all = `<button data-act="historyActor" data-arg="" class="${actor === null ? 'on' : ''}">${ui.t('filterActorAll')}</button>`;
     const names = data.actors
-      .map(name => `<button data-a="${esc(name)}" data-act="historyActor" data-arg="${esc(name)}" class="${actor === name ? 'on' : ''}">${esc(name)}</button>`)
+      .map(name => `<button data-act="historyActor" data-arg="${esc(name)}" class="${actor === name ? 'on' : ''}">${esc(name)}</button>`)
       .join('');
     return `<div class="chips hist-actors" id="hist-actors">${all}${names}</div>`;
   }

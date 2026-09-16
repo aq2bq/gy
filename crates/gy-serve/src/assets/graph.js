@@ -26,7 +26,7 @@
      and the legend. A language switch does not rebuild it (as before). */
   function build(el, ui) {
     el.innerHTML =
-      `<div class="gwrap"><canvas id="g"></canvas><div class="gcrumb" id="gcrumb"></div><div class="gpanel" id="gpanel"></div>` +
+      `<div class="gwrap" data-settled="true"><canvas id="g"></canvas><div class="gcrumb" id="gcrumb"></div><div class="gpanel" id="gpanel"></div>` +
       `<div class="ghint">${ui.t('gHint')}</div>` +
       `<div class="legend">${KINDS.map(kind => `<span><span class="dot dot-${kind}"></span>${ui.t(kind)}</span>`).join('')}</div></div>`;
   }
@@ -62,6 +62,8 @@
     if (!el.querySelector('#g')) build(el, ui);
     const c = el.querySelector('#g');
     if (!c || !state.map) return;
+    /* Whether the camera has come to rest, for what reads the screen (n-5e43). */
+    c.parentElement.dataset.settled = String(state.graph.target === null);
     const view = makeView(state);
     c.style.cursor = state.graph.hover ? 'pointer' : 'grab';
     const crumb = el.querySelector('#gcrumb');
@@ -141,9 +143,10 @@
 
   window.GyGraph = {
     render, hit, bubbleAt, zoomAt, panBy, fitTo, eased,
-    /* The test's two handles for e2e graph.spec.ts; they go when 第 4 段 moves
-       e2e to testids and roles (n-88b2). */
-    get cam() { return current ? current.graph.cam : null; },
+    /* The one handle e2e still needs: a world point's place on the canvas. The
+       canvas is drawn, so a node's position is nowhere in the DOM; every other
+       reading comes from data-settled and the screen. It goes when 第 4 段's
+       spec stops aiming at canvas points (n-5e43). */
     worldToScreen: (x, y) => window.GyDraw.span(makeView(current), x, y),
   };
 })();

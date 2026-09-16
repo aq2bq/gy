@@ -285,8 +285,5 @@
     liveLoop();
   }
 
-  /* `at` is the test's handle for e2e live and time; it goes when 第 4 段 moves
-     e2e to testids and roles (n-88b2). */
-  window.GyRoot = { moved, at: () => state.at };
   start();
 })();
