@@ -85,7 +85,7 @@
       .join('');
     panel.classList.add('on');
     panel.innerHTML =
-      `<div class="kk"><span class="k k-${node.kind}">${t(node.kind)}</span><span>${esc((body.aliases || [])[0] || id)}</span><span>${esc(node.scope)}</span><span>${esc(state)}</span></div>` +
+      `<div class="kk"><span class="k k-${node.kind}">${t(node.kind)}</span><span>${esc((body.aliases || [])[0] || id)}</span>${window.GyShell.scopeTag(node.scope)}<span>${esc(state)}</span></div>` +
       `<div class="tt">${esc(body.title || '')}</div>` +
       `<div class="rel">${relations || `<span style="color:var(--paper-3)">${t('noConn')}</span>`}</div>` +
       `<a class="open" href="#/n/${id}">${t('gOpen')}</a>`;

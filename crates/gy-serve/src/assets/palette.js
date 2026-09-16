@@ -48,7 +48,7 @@
       return;
     }
     RESULT.innerHTML = hits
-      .map((hit, index) => `<div class="r ${index === selected ? 'sel' : ''}" data-i="${index}"><span class="dot dot-${hit.kind}"></span><span class="id">${esc(hit.alias || hit.id)}</span><span class="t">${esc(hit.title)}</span><span class="sc">${esc(hit.scope)}</span></div>`)
+      .map((hit, index) => `<div class="r ${index === selected ? 'sel' : ''}" data-i="${index}"><span class="dot dot-${hit.kind}"></span><span class="id">${esc(hit.alias || hit.id)}</span><span class="t">${esc(hit.title)}</span>${window.GyShell.scopeTag(hit.scope)}</div>`)
       .join('');
   }
 

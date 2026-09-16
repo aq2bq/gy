@@ -47,7 +47,7 @@
 
   /* The trail: now › this kind's list › the scope (the node gives the last two). */
   function crumb(id, found) {
-    const kind = found ? `<a href="#/list/${found.kind}">${window.GyShell.plural(found.kind)}</a><span>›</span><span>${esc(found.scope)}</span>` : '';
+    const kind = found ? `<a href="#/list/${found.kind}">${window.GyShell.plural(found.kind)}</a><span>›</span>${window.GyShell.scopeTag(found.scope)}` : '';
     document.getElementById('crumb').innerHTML = `<a href="#/">${t('now')}</a><span>›</span>${kind || esc(id)}`;
   }
 
@@ -60,7 +60,7 @@
     const meta = [
       `<span class="al">${esc((node.aliases || [])[0] || node.id)}</span>`,
       `<span>${esc(node.id)}</span>`,
-      `<span>${esc(node.scope)}</span>`,
+      `<span>${window.GyShell.scopeTag(node.scope)}</span>`,
       `<span>${fill(t('createdOn'), { d: node.created })}</span>`,
       word ? `<span>${esc(word)}</span>` : '',
     ];

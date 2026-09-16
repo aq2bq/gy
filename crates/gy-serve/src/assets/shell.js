@@ -37,6 +37,21 @@ const plural = kind => word(PLURAL[kind] || kind);
 
 const esc = text => String(text).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 
+/* The one place a scope name becomes a badge (n-d29f): the hue comes from a
+   short hash of the name, so the same scope wears the same colour on every
+   page and nothing has to be configured or stored. The look is app.css's .sb,
+   a filled pill beside the outline-only kind badge. */
+const SCOPE_HUES = [10, 40, 95, 140, 175, 210, 262, 320];
+function scopeTag(name) {
+  const text = String(name ?? '');
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < text.length; index++) {
+    hash = Math.imul(hash ^ text.charCodeAt(index), 0x01000193);
+  }
+  const hue = SCOPE_HUES[(hash >>> 0) % SCOPE_HUES.length];
+  return `<span class="sb" style="--sb:${hue}">${esc(text)}</span>`;
+}
+
 /* An IME's own key, not the app's (n-87ab): the composition flag or keyCode
    229. Some IMEs report the confirming Enter with neither, so a short guard
    after the composition ends is kept too. */
@@ -80,7 +95,7 @@ function drawNav() {
   const entry = ([href, key, mark]) => `<a href="${href}" class="${hash === href ? 'on' : ''}">${mark} ${word(key)}</a>`;
   const kind = name => `<a href="#/list/${name}" class="${hash.startsWith(`#/list/${name}`) ? 'on' : ''}"><span class="dot dot-${name}"></span>${word(PLURAL[name])}${counter(name)}</a>`;
   const scopeRow = item =>
-    `<button data-s="${esc(item.name)}" class="${scope === item.name ? 'on' : ''}">${esc(item.name)}<span class="cnt">${item.count}</span></button>`;
+    `<button data-s="${esc(item.name)}" class="${scope === item.name ? 'on' : ''}">${scopeTag(item.name)}<span class="cnt">${item.count}</span></button>`;
   const nodes = shell.scopes.reduce((sum, item) => sum + item.count, 0);
   document.getElementById('nav').innerHTML =
     ENTRIES.map(entry).join('') +
@@ -203,6 +218,8 @@ window.GyShell = {
   lang: () => lang,
   scope: () => scope,
   plural: kind => word(PLURAL[kind] || kind),
+  /* A scope name as the one badge (n-d29f); every page draws it through this. */
+  scopeTag,
   /* The point in the log, or null for the head. */
   get at() {
     return at;

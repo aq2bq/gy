@@ -59,7 +59,7 @@
 
   function row(row_) {
     const label = row_.alias || row_.id;
-    return `<a class="row wide" href="#/n/${row_.id}"><span class="dot dot-${row_.kind}"></span><span class="id">${esc(label)}</span><span class="t" title="${esc(row_.title)}">${esc(row_.title)}</span><span class="sc">${esc(row_.scope)}</span><span class="st">${esc(word(row_))}</span><span class="sc">${esc(row_.created)}</span></a>`;
+    return `<a class="row wide" href="#/n/${row_.id}"><span class="dot dot-${row_.kind}"></span><span class="id">${esc(label)}</span><span class="t" title="${esc(row_.title)}">${esc(row_.title)}</span>${window.GyShell.scopeTag(row_.scope)}<span class="st">${esc(word(row_))}</span><span class="sc">${esc(row_.created)}</span></a>`;
   }
 
   window.GyList = { draw };

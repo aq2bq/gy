@@ -17,6 +17,9 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .k{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.08em;padding:1px 7px;border-radius:3px;border:1px solid;vertical-align:middle}
 .k-Need{color:var(--need);border-color:var(--need)} .k-Question{color:var(--question);border-color:var(--question)} .k-Decision{color:var(--decision);border-color:var(--decision)} .k-Requirement{color:var(--requirement);border-color:var(--requirement)} .k-Criterion{color:var(--criterion);border-color:var(--criterion)}
+/* A scope (n-d29f): a filled pill beside the outline-only kind badge, the hue
+   from the name (shell.js scopeTag). The container decides how wide it shows. */
+.sb{display:inline-block;justify-self:start;max-width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;font-family:var(--mono);font-size:11px;padding:1px 8px;border-radius:999px;background:hsl(var(--sb) 55% 55% / .16);border:1px solid hsl(var(--sb) 45% 45%);color:hsl(var(--sb) 65% 78%)}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--paper-3);vertical-align:middle;margin-right:8px;flex:none}
 .dot-Need{background:var(--need)} .dot-Question{background:var(--question)} .dot-Decision{background:var(--decision)} .dot-Requirement{background:var(--requirement)} .dot-Criterion{background:var(--criterion)}
 
