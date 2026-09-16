@@ -114,7 +114,7 @@
 
   function body() {
     const text = (node.body || '').trim() || t('noBody');
-    return `<details class="body"><summary>${t('readBody')}</summary><pre>${esc(text)}</pre></details>`;
+    return `<div class="body"><div class="bt">${t('bodyTitle')}</div><pre>${esc(text)}</pre></div>`;
   }
 
   function right() {

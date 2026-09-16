@@ -23,6 +23,11 @@ test('the decision page matches /api/node', async ({ page, request }) => {
   // Every edge is a box, plus the node itself in the middle.
   await expect(page.locator('.map .box')).toHaveCount(node.edges.length + 1);
 
+  // The body is open from the start, with no fold to open (n-d9a6).
+  await expect(page.locator('summary')).toHaveCount(0);
+  await expect(page.locator('.body .bt')).toBeVisible();
+  await expect(page.locator('.body pre')).not.toBeEmpty();
+
   // A box opens the page of the node it points at.
   const peer = node.edges[0];
   await page.locator(`.map a[href="#/n/${peer.to}"]`).click();

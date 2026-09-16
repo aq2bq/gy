@@ -13,9 +13,11 @@
 .opts li .tag{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--question);margin-right:8px}
 .fact{font-size:14px;color:var(--paper-2);max-width:66ch}
 .fact b{color:var(--paper);font-weight:500}
-details.body{margin-top:26px}
-details.body summary{cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--paper-3);text-transform:uppercase}
-details.body pre{white-space:pre-wrap;font-family:var(--sans);color:var(--paper-2);font-size:14px;border-left:1px solid var(--line);padding-left:18px;margin:12px 0 0}
+/* The body (n-d9a6): open from the start, no fold. The heading keeps the old
+   summary's look as a quiet mark where the body begins. */
+.body{margin-top:26px}
+.body .bt{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--paper-3);text-transform:uppercase}
+.body pre{white-space:pre-wrap;font-family:var(--sans);color:var(--paper-2);font-size:14px;border-left:1px solid var(--line);padding-left:18px;margin:12px 0 0}
 .map{border:1px solid var(--line-soft);border-radius:12px;background:var(--ink-2);padding:10px;overflow-x:auto}
 .map svg{display:block;width:100%;height:auto}
 .map text{font-family:var(--sans);font-size:13px;fill:var(--paper)}
