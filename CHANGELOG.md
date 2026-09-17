@@ -4,11 +4,26 @@
 
 ### Changed
 
+- **The first line of a write that mints a node is labelled**: `id:
+  n-1d12` where it used to be the bare `n-1d12`. Anything reading the id
+  out of the output has to read it as `^id: ` now — gy's own test helper
+  made exactly that assumption and had to be fixed. `--json` is
+  untouched and still carries `id`.
 - **Incompatible**: `NeedAdd`, `QuestionAdd`, `CriterionAdd` and `ReqAdd`
   each carry a `body`, so a caller that builds one as a struct literal
   has a field to fill (`None` keeps the old behaviour). Nothing else in
   the API, the CLI, the store format, `gy.toml`, the diagnostics or the
   exit codes changed, and no ledger needs migrating.
+
+### Updating
+
+```
+cargo install gy --locked    # gy 0.8.0
+```
+
+The bundled skills (`gy-ledger`, `gy-question`) changed with this
+release: they no longer tell you to write a node and then edit the body
+in. A copy kept outside the crate still says the old thing.
 
 ### Added
 
@@ -22,8 +37,6 @@
 - `list --since` takes a date (`YYYY-MM-DD`, UTC, that day's start
   onwards) as well as a write sequence. A sequence is a number inside
   the ledger; a date is what anyone asking for today's writes has.
-- A write that mints a node labels it: `id: n-1d12` on the first line,
-  where it used to be a bare hash that filtering could drop.
 - `serve`: a write in the rail or the history page is a link across its
   whole width, not only on the node's name.
 
