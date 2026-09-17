@@ -1,5 +1,61 @@
 # Changelog
 
+## 0.7.0 - 2026-09-17
+
+### Changed
+
+- **Incompatible**: `gy-serve`'s public functions take the name shown in
+  the browser tab: `server::serve`, `server::run`, `server::answer` and
+  `api::route`. A caller passes the directory that holds `gy.toml`; the
+  `gy` binary does. Nothing else in the API, the CLI, the store format,
+  `gy.toml`, the diagnostics or the exit codes changed, and no ledger
+  needs migrating.
+
+### Added
+
+- `serve`: a rail down the right side, from 1560px wide, showing the ten
+  newest writes as they land — a write reaches it in about a quarter of
+  a second — with the search at its top.
+- `serve`: the three sidebar boxes open the nodes they count
+  (`#/eye/wait`, `#/eye/next`, `#/eye/resume`), so the number pressed and
+  the rows shown are one reading of one answer.
+- `serve`: a zero that is good news is said out loud — nobody waiting,
+  nothing half-done, a quiet ledger — while a ready column emptied by
+  blocked needs stays plain. A ledger with no writes at all says so and
+  how to start it, instead of `no ledger at …`.
+- `serve`: a scope wears a badge, black with a coloured frame, the same
+  colour on every page and never the same as its neighbour's.
+- `serve`: an id can be copied with one press, on the node page and the
+  graph's card.
+- `serve`: the tab is titled `gy - <the directory that holds gy.toml>`,
+  so two ledgers side by side can be told apart.
+- `serve`: a node's body is open from the start, with no fold.
+
+### Fixed
+
+- `serve`: choosing a scope no longer takes the search box with it, and
+  the page no longer throws on the next redraw.
+- `serve`: the first click after the graph page opens is no longer read
+  as the second half of a double click.
+- `serve`: an empty history page showed the dictionary key
+  `emptyWrites`; the list headings mixed English into Japanese; a
+  satisfied criterion said `met` twice; the connection map drew its edge
+  labels on top of its boxes; the sidebar counts ignored the chosen
+  scope on every page but the first.
+- `serve`: plainer Japanese for three labels — `通し番号`, `いまの空`,
+  `最近の動き`.
+
+### Internal
+
+- `serve`: the browser assets are one state, one place that draws, one
+  that listens, one that reads and one that waits; every region draws
+  its own element and nothing else. Six tests hold that shape — who may
+  reach for whom, who may touch the document, who may open a socket, who
+  may build a state — so the rules are checked rather than remembered.
+- e2e asks by test id, role and text, with a test that fails on a bare
+  class selector; the suite no longer reaches into the page's internals
+  for the camera or the rewind point.
+
 ## 0.6.2 - 2026-09-16
 
 ### Added
