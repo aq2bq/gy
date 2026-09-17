@@ -1,66 +1,15 @@
 //! decide, link, edit, and undo: the write commands whose arguments need more
 //! than a flat option list.
-use crate::Cli;
+use crate::cli::{Cli, DecideArgs, EditArgs, LinkArgs, ReqAction, ScopeAction, UndoArgs};
 use crate::output::emit;
 use crate::repo;
 use crate::write::{self, Written};
-use clap::{Args, Subcommand};
 use gy_ledger::link::Link as LinkOp;
 use gy_ledger::{
     Decide, DecisionScope, Edit, Error, NodeId, Operation, Outcome, Ref, Relation, Repository,
     ReqAdd, ReqApprove, ReqCancel, ReqDone, ReqRevise, Result, ScopeRename, Store, Undo, config,
 };
 use std::path::Path;
-
-#[derive(Args)]
-pub struct DecideArgs {
-    title: String,
-    #[arg(long = "scope-note", value_name = "TEXT")]
-    scope_note: String,
-    #[arg(long = "body-file", value_name = "PATH")]
-    body_file: Option<String>,
-    #[arg(long, value_name = "Q")]
-    closes: Vec<String>,
-    /// One lineage relation and its decision: <relation> <D>, at most once.
-    #[arg(long, num_args = 2, value_names = ["RELATION", "D"])]
-    relate: Vec<String>,
-    #[arg(long, value_name = "TEXT")]
-    mark: Option<String>,
-    #[arg(long, value_name = "TEXT")]
-    source: Option<String>,
-}
-
-#[derive(Args)]
-pub struct LinkArgs {
-    from: String,
-    relation: String,
-    to: String,
-    #[arg(long, value_name = "TEXT")]
-    mark: Option<String>,
-    #[arg(long)]
-    remove: bool,
-}
-
-#[derive(Args)]
-pub struct EditArgs {
-    id: String,
-    #[arg(long, value_name = "TEXT")]
-    reason: String,
-    #[arg(long, value_name = "TITLE")]
-    title: Option<String>,
-    #[arg(long = "body-file", value_name = "PATH")]
-    body_file: Option<String>,
-    #[arg(long, value_name = "KEY=VALUE")]
-    set: Vec<String>,
-    #[arg(long, value_name = "KEY=VALUE")]
-    append: Vec<String>,
-}
-
-#[derive(Args)]
-pub struct UndoArgs {
-    #[arg(long, value_name = "TEXT")]
-    reason: String,
-}
 
 pub fn decide(cli: &Cli, root: &Path, ledger: &Path, args: &DecideArgs) -> Result<()> {
     let mut repository = repo::open_write(ledger)?;
@@ -139,12 +88,6 @@ pub fn undo(cli: &Cli, ledger: &Path, args: &UndoArgs) -> Result<()> {
     emit(cli.json, &Written::of(&outcome))
 }
 
-#[derive(Subcommand)]
-pub enum ScopeAction {
-    /// Move every node of a scope to a new name and rewrite gy.toml.
-    Rename { old: String, new: String },
-}
-
 pub fn scope(cli: &Cli, root: &Path, ledger: &Path, action: &ScopeAction) -> Result<()> {
     let mut repository = repo::open_write(ledger)?.with_scopes(write::scope_names(root)?);
     let outcome = match action {
@@ -166,54 +109,6 @@ pub fn scope(cli: &Cli, root: &Path, ledger: &Path, action: &ScopeAction) -> Res
         }
     };
     emit(cli.json, &Written::of(&outcome))
-}
-
-#[derive(Subcommand)]
-pub enum ReqAction {
-    /// File a requirement against needs, decisions, and criteria.
-    Add {
-        title: String,
-        #[arg(long = "need", value_name = "N", required = true)]
-        needs: Vec<String>,
-        #[arg(long = "relies-on", value_name = "D")]
-        relies_on: Vec<String>,
-        #[arg(long, value_name = "AC")]
-        targets: Vec<String>,
-        #[arg(long = "ref", value_name = "REF")]
-        reference: Option<String>,
-    },
-    /// Record the approval that confirms a requirement.
-    Approve {
-        id: String,
-        #[arg(long, value_name = "TEXT")]
-        design: String,
-        #[arg(long = "heard-by", value_name = "NAME")]
-        heard_by: String,
-        #[arg(long, value_name = "TEXT")]
-        evidence: String,
-    },
-    /// Send an approved requirement back to filed.
-    Revise {
-        id: String,
-        #[arg(long, value_name = "TEXT")]
-        reason: String,
-        #[arg(long, value_name = "TEXT")]
-        source: String,
-    },
-    /// Record that an approved requirement shipped.
-    Done {
-        id: String,
-        #[arg(long, value_name = "TEXT")]
-        evidence: String,
-    },
-    /// Cancel a requirement that was not done.
-    Cancel {
-        id: String,
-        #[arg(long, value_name = "TEXT")]
-        reason: String,
-        #[arg(long, value_name = "TEXT")]
-        source: String,
-    },
 }
 
 pub fn req(cli: &Cli, root: &Path, ledger: &Path, action: &ReqAction) -> Result<()> {

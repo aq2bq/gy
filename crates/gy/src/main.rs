@@ -1,167 +1,21 @@
 //! gy: the ledger CLI. It wires the gy-ledger views and ops to commands and
 //! does nothing else (D-76).
+mod cli;
 mod output;
 mod reads;
 mod repo;
 mod write;
 mod writes;
 
-use clap::{Parser, Subcommand};
+use clap::Parser;
+use cli::{Cli, Command, CriterionAction, NeedAction, QuestionAction};
 use gy_ledger::{
     CriterionAdd, CriterionSatisfy, NeedAdd, NeedClose, Operation, QuestionAdd, QuestionClose,
     Result, handover, location, next, show,
 };
 use output::{emit, emit_list, report};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use write::Written;
-use writes::{DecideArgs, EditArgs, LinkArgs, UndoArgs};
-
-#[derive(Parser)]
-#[command(name = "gy", version, about = "The gy ledger")]
-pub struct Cli {
-    /// Print the result as JSON (diagnostics go to stderr).
-    #[arg(long, global = true)]
-    pub json: bool,
-    /// The directory whose gy.toml names the repository (searched upward).
-    #[arg(short = 'C', global = true, value_name = "DIR")]
-    pub directory: Option<PathBuf>,
-    /// The scope a write uses; required when gy.toml has more than one.
-    #[arg(long, global = true, value_name = "NAME")]
-    pub scope: Option<String>,
-    #[command(subcommand)]
-    pub command: Command,
-}
-
-#[derive(Subcommand)]
-pub enum Command {
-    /// Show one or more nodes by id, alias, or outward reference.
-    Show {
-        #[arg(required = true, value_name = "ID")]
-        ids: Vec<String>,
-        /// Show every field, every free attribute, and both edge directions.
-        #[arg(long)]
-        full: bool,
-    },
-    /// List node rows, or write units when --actor or --since is given.
-    List {
-        #[arg(long = "type", value_name = "KIND")]
-        kind: Option<String>,
-        #[arg(long, value_name = "STATUS")]
-        status: Option<String>,
-        #[arg(long, value_name = "ID")]
-        targets: Option<String>,
-        #[arg(long, value_name = "TEXT")]
-        grep: Option<String>,
-        #[arg(long, value_name = "NAME")]
-        actor: Option<String>,
-        #[arg(long, value_name = "SEQ")]
-        since: Option<u64>,
-    },
-    /// The needs that are ready to work.
-    Next,
-    /// What a session needs to resume: in-progress requirements and counts.
-    Handover,
-    /// Write the publication: one file per node under a scope directory.
-    Publish {
-        /// Include the changes after this write sequence.
-        #[arg(long, value_name = "SEQ")]
-        since: Option<u64>,
-        /// The output directory; defaults to gy.toml's output.
-        #[arg(long, value_name = "DIR")]
-        out: Option<PathBuf>,
-    },
-    /// Read the ledger in a browser, on 127.0.0.1 until stopped.
-    Serve,
-    /// File or close a need.
-    Need {
-        #[command(subcommand)]
-        action: NeedAction,
-    },
-    /// Open or close a question.
-    Question {
-        #[command(subcommand)]
-        action: QuestionAction,
-    },
-    /// Add an acceptance criterion, or record it satisfied.
-    Criterion {
-        #[command(subcommand)]
-        action: CriterionAction,
-    },
-    /// File a requirement, or advance one.
-    Req {
-        #[command(subcommand)]
-        action: writes::ReqAction,
-    },
-    /// Rename a scope: move every node and rewrite gy.toml.
-    Scope {
-        #[command(subcommand)]
-        action: writes::ScopeAction,
-    },
-    /// Create a decision, optionally closing questions and linking one relation.
-    Decide(DecideArgs),
-    /// Add or remove one edge between two nodes.
-    Link(LinkArgs),
-    /// Change a node's title, body, or free attributes.
-    Edit(EditArgs),
-    /// Invert the last write as a new transaction.
-    Undo(UndoArgs),
-}
-
-#[derive(Subcommand)]
-pub enum NeedAction {
-    /// File a need against existing criteria.
-    Add {
-        title: String,
-        #[arg(long, value_name = "AC", required = true)]
-        targets: Vec<String>,
-        #[arg(long, value_name = "D")]
-        spawned_by: Option<String>,
-    },
-    /// Close a need by a fact or an external tracker.
-    Close {
-        id: String,
-        #[arg(long, value_name = "KIND")]
-        by: String,
-        #[arg(long, value_name = "TEXT")]
-        evidence: String,
-    },
-}
-
-#[derive(Subcommand)]
-pub enum QuestionAction {
-    /// Open a question with a decider and at least two options.
-    Add {
-        title: String,
-        #[arg(long, value_name = "NAME")]
-        decider: String,
-        #[arg(long = "options", value_name = "OPTION", required = true)]
-        options: Vec<String>,
-    },
-    /// Close a question by a fact, a decision, or neither.
-    Close {
-        id: String,
-        #[arg(long, value_name = "KIND")]
-        by: String,
-        #[arg(long, value_name = "TEXT")]
-        evidence: String,
-        #[arg(long, value_name = "D")]
-        decision: Option<String>,
-    },
-}
-
-#[derive(Subcommand)]
-pub enum CriterionAction {
-    /// Add an acceptance criterion.
-    Add { title: String },
-    /// Record evidence that a criterion holds, or revoke it.
-    Satisfy {
-        id: String,
-        #[arg(long, value_name = "TEXT")]
-        evidence: String,
-        #[arg(long)]
-        revoke: bool,
-    },
-}
 
 fn main() {
     let cli = Cli::parse();
