@@ -122,6 +122,7 @@
     if (intent.type === 'historyActor' || intent.type === 'historySince') { await reload(); return; }
     if (intent.type === 'setAt') { preview(); scheduleReload(); return; }
     if (intent.type === 'graphTarget') { ease.start(intent.value); return; }
+    if (intent.type === 'copied') { scheduleCopy(); paint(); return; }
     if (intent.type === 'graphCam' || intent.type === 'graphHover') { paintPage(); return; }
     if (intent.type === 'paletteOpen') {
       paintPalette();
@@ -132,6 +133,17 @@
     if (intent.type === 'paletteMove' || intent.type === 'paletteClose') { paintPalette(); return; }
     if (intent.type === 'liveChanged') { paintLive(); return; }
     paint();
+  }
+
+  /* The copy sign stays for a second, then the root clears it (n-6afd). */
+  let copyTimer = null;
+  function scheduleCopy() {
+    if (copyTimer) clearTimeout(copyTimer);
+    copyTimer = setTimeout(() => {
+      copyTimer = null;
+      state = window.GyState.apply(state, { type: 'copied', value: null });
+      paint();
+    }, 1000);
   }
 
   function paintPalette() {
@@ -204,6 +216,7 @@
      to place the search (it owns the frame, not its holders). */
   const ui = {
     t: word, plural, scopeTag, tickAt, when, day,
+    canCopy: !!navigator.clipboard,
     search: document.getElementById('searchbtn'),
     railSearch: document.getElementById('railSearch'),
     topbar: document.querySelector('.topbar'),

@@ -42,6 +42,7 @@
     else if (act === 'setAt') api.setAt(arg === 'now' ? null : Number(arg));
     else if (act === 'listFilter') api.run({ type: 'listFilter', value: arg });
     else if (act === 'historyActor') api.run({ type: 'historyActor', value: arg || null });
+    else if (act === 'copy') copy(api, arg);
     else if (act === 'paletteGo') goHit(api, Number(arg));
   }
 
@@ -74,6 +75,16 @@
       event.preventDefault();
       api.run({ type: 'graphCam', value: window.GyGraph.zoomAt(state, canvas, 1 / 1.4) });
     }
+  }
+
+  /* The copy mark: write the text, then let the state show the sign (n-6afd). No
+     clipboard, no sign: a mark that does nothing is worse than no mark. */
+  function copy(api, text) {
+    if (!navigator.clipboard) return;
+    navigator.clipboard.writeText(text).then(
+      () => api.run({ type: 'copied', value: text }),
+      () => {},
+    );
   }
 
   /* The palette's own keys, while its input has the focus. */

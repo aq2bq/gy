@@ -9,6 +9,7 @@
   let t = key => key;
   let lang = 'en';
   let tag = () => '';
+  let copy = () => '';
 
   const esc = text => String(text ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
   const fill = (text, values) => text.replace(/\{(\w+)\}/g, (all, key) => (key in values ? values[key] : all));
@@ -41,6 +42,7 @@
     t = ui.t;
     lang = state.lang;
     tag = ui.scopeTag;
+    copy = text => window.GyCopy.tag(text, state, ui);
     node = state.page;
     if (!node) {
       el.innerHTML = `<div class="hero"><h1>${esc(state.route.arg)} — ${t('notFound')}</h1></div>`;
@@ -58,7 +60,7 @@
     const word = condition() ? stateWord() : '';
     const meta = [
       `<span class="al">${esc((node.aliases || [])[0] || node.id)}</span>`,
-      `<span>${esc(node.id)}</span>`,
+      copy(node.id),
       `<span>${tag(node.scope)}</span>`,
       `<span>${fill(t('createdOn'), { d: node.created })}</span>`,
       word ? `<span>${esc(word)}</span>` : '',

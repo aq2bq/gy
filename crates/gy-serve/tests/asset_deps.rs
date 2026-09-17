@@ -9,7 +9,7 @@ use gy_serve::assets;
 /// cannot arrive without someone naming its role. The checks below read this
 /// table, never a file name. `network` is the one role that may open a socket;
 /// `asset` is for the files that are not code (html, css, words).
-const ROLES: [(&str, &str); 32] = [
+const ROLES: [(&str, &str); 33] = [
     ("index.html", "asset"),
     ("app.css", "asset"),
     ("state.js", "core"),
@@ -40,6 +40,7 @@ const ROLES: [(&str, &str); 32] = [
     ("graph-draw.js", "part"),
     ("graph.js", "region"),
     ("writes.js", "part"),
+    ("copy.js", "part"),
     ("rail.css", "asset"),
     ("rail.js", "region"),
 ];

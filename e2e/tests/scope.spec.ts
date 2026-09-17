@@ -15,7 +15,10 @@ test('a scope wears one badge everywhere, and only a scope wears it', async ({ p
   const shell = await (await request.get(`${gy.url}api/shell`)).json();
   const names: string[] = shell.scopes.map((item: { name: string }) => item.name);
   const rows = (await (await request.get(`${gy.url}api/list?kind=Need`)).json()).rows;
-  const shown = rows[0].scope as string;
+  // The list opens on the open rows, newest first: the first row shown is the
+  // first open row in the answer, which is not always the answer's first row.
+  const open = rows.filter((row: { status?: string }) => row.status === 'open');
+  const shown = open[0].scope as string;
 
   await page.goto(`${gy.url}#/list/Need`);
   const scopes = page.getByTestId('scopes');

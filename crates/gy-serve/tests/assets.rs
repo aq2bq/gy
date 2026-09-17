@@ -52,6 +52,7 @@ fn the_read_pages_are_embedded_and_served() {
         "rail.css",
         "rail.js",
         "writes.js",
+        "copy.js",
     ] {
         let (body, kind) = assets::get(name).unwrap();
         assert!(!body.is_empty(), "{name} is empty");
@@ -92,6 +93,7 @@ fn the_index_references_the_embedded_files() {
         "rail.css",
         "rail.js",
         "writes.js",
+        "copy.js",
     ] {
         assert!(
             html.contains(&format!("assets/{name}")),

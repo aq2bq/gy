@@ -40,6 +40,7 @@
       search: null,
       live: true,
       pending: {},
+      copied: null,
     };
   }
 
@@ -102,6 +103,10 @@
       }
       case 'liveChanged':
         return { ...state, live: intent.value };
+      /* The name just copied, for the mark's sign; the root's timer clears it
+         (n-6afd). */
+      case 'copied':
+        return { ...state, copied: intent.value };
       /* A read that is out: the mark keeps it from being asked twice, and
          `dataArrived` clears it when the answer comes (n-ca6d). */
       case 'readStarted':

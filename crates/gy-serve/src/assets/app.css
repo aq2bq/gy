@@ -70,4 +70,9 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .crumb{font-family:var(--mono);font-size:12px;color:var(--paper-3);display:flex;gap:10px;align-items:center}
 .crumb a:hover{color:var(--paper)}
 main{padding:0 32px 150px;max-width:1280px}
+/* The ID's copy mark (n-6afd): a small sign beside the name it copies. */
+.cp{display:inline-flex;align-items:center;gap:5px;min-width:0}
+.cpb{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;padding:0;border:1px solid var(--line);border-radius:5px;background:transparent;color:var(--paper-3);font:inherit;font-size:11px;line-height:1;cursor:pointer;flex:none}
+.cpb:hover{color:var(--paper);border-color:var(--paper-3)}
+.cpb.on{color:var(--decision);border-color:var(--decision)}
 @media (max-width:900px){.app{grid-template-columns:1fr}.side{position:static;height:auto}.search{min-width:0;width:100%}}

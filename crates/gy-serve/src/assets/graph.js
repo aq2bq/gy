@@ -46,7 +46,7 @@
       .join('');
     box.classList.add('on');
     box.innerHTML =
-      `<div class="kk"><span class="k k-${node.kind}">${ui.t(node.kind)}</span><span>${esc((body.aliases || [])[0] || id)}</span>${ui.scopeTag(node.scope)}<span>${esc(word)}</span></div>` +
+      `<div class="kk"><span class="k k-${node.kind}">${ui.t(node.kind)}</span>${window.GyCopy.tag((body.aliases || [])[0] || id, state, ui)}${ui.scopeTag(node.scope)}<span>${esc(word)}</span></div>` +
       `<div class="tt">${esc(body.title || '')}</div>` +
       `<div class="rel">${relations || `<span style="color:var(--paper-3)">${ui.t('noConn')}</span>`}</div>` +
       `<a class="open" href="#/n/${id}">${ui.t('gOpen')}</a>`;

@@ -29,11 +29,12 @@ const GRAPH_CSS: &str = include_str!("assets/graph.css");
 const GRAPH_DRAW_JS: &str = include_str!("assets/graph-draw.js");
 const GRAPH_JS: &str = include_str!("assets/graph.js");
 const WRITES_JS: &str = include_str!("assets/writes.js");
+const COPY_JS: &str = include_str!("assets/copy.js");
 const RAIL_CSS: &str = include_str!("assets/rail.css");
 const RAIL_JS: &str = include_str!("assets/rail.js");
 
 /// Every embedded file: its name and its text.
-pub const FILES: [(&str, &str); 32] = [
+pub const FILES: [(&str, &str); 33] = [
     ("index.html", INDEX),
     ("app.css", CSS),
     ("state.js", STATE_JS),
@@ -64,6 +65,7 @@ pub const FILES: [(&str, &str); 32] = [
     ("graph-draw.js", GRAPH_DRAW_JS),
     ("graph.js", GRAPH_JS),
     ("writes.js", WRITES_JS),
+    ("copy.js", COPY_JS),
     ("rail.css", RAIL_CSS),
     ("rail.js", RAIL_JS),
 ];
