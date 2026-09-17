@@ -83,9 +83,10 @@
     }
     if (node.kind === 'Criterion') {
       const criterion = data.Criterion;
-      const heading = criterion.satisfied ? t('met') : t('unmetH');
-      const text = criterion.satisfied ? criterion.evidence || t('measure') : t('measure');
-      return card(heading, `<div class="scope c">${esc(text)}</div>`);
+      /* The heading names what the card holds: the evidence when there is one,
+         the way it will be measured when there is not (n-cb74). */
+      const evidence = criterion.evidence || '';
+      return card(evidence ? t('metEvidence') : t('howMeasured'), `<div class="scope c">${esc(evidence || t('measure'))}</div>`);
     }
     if (node.kind === 'Requirement') {
       return requirement(data.Requirement);
@@ -126,7 +127,9 @@
   }
 
   /* The ego map: what points here on the left, what this points at on the
-     right, from the edges the answer names (the prototype's egoSvg). */
+     right, from the edges the answer names (the prototype's egoSvg). The
+     columns are narrow enough to leave a gap beside the middle box, and each
+     relation's name sits in that gap, so no name lands on a box (n-6f69). */
   function map() {
     const left = [];
     const right = [];
@@ -135,22 +138,24 @@
     });
     const rows = Math.max(left.length, right.length, 1);
     const rh = 72, width = 640, height = Math.max(200, rows * rh + 48);
-    const cx = width / 2, cy = height / 2, bw = 196, bh = 48;
+    const cx = width / 2, cy = height / 2, bw = 130, bh = 48;
+    const lx = 16 + bw / 2, rx = width - 16 - bw / 2;
     const short = text => (text.length > 14 ? `${text.slice(0, 14)}…` : text);
     const box = (edge, x, y) => `<a href="#/n/${edge.to}"><g transform="translate(${x - bw / 2},${y - bh / 2})"><rect class="box" width="${bw}" height="${bh}" rx="7" stroke="var(--${COLOUR[edge.kind] || 'paper'})"/><text class="al" x="10" y="17">${esc(edge.alias || edge.to)}${edge.kind ? ` · ${t(edge.kind)}` : ''}</text><text x="10" y="36">${esc(short(edge.title || edge.to))}</text></g></a>`;
-    const line = (x1, y1, x2, y2, label, side) => {
+    /* The line runs from a box's edge to the middle box's edge; the name sits
+       on the curve's middle, in the gap the boxes leave between them. */
+    const line = (x1, y1, x2, y2, label) => {
       const mx = (x1 + x2) / 2;
-      const lx = side === 'L' ? (x1 + cx - bw / 2) / 2 : (cx + bw / 2 + x2) / 2;
-      return `<path class="edge" d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}"/><text class="rel" x="${lx}" y="${(y1 + y2) / 2 - 6}" text-anchor="middle">${esc(label)}</text>`;
+      return `<path class="edge" d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}"/><text class="rel" x="${mx}" y="${(y1 + y2) / 2 - 6}" text-anchor="middle">${esc(label)}</text>`;
     };
     let svg = '';
     left.forEach((edge, index) => {
       const y = cy + (index - (left.length - 1) / 2) * rh;
-      svg += line(bw / 2 + 16, y, cx - bw / 2, cy, rel(edge), 'L') + box(edge, bw / 2 + 16, y);
+      svg += line(lx + bw / 2, y, cx - bw / 2, cy, rel(edge)) + box(edge, lx, y);
     });
     right.forEach((edge, index) => {
       const y = cy + (index - (right.length - 1) / 2) * rh;
-      svg += line(cx + bw / 2, cy, width - bw / 2 - 16, y, rel(edge), 'R') + box(edge, width - bw / 2 - 16, y);
+      svg += line(cx + bw / 2, cy, rx - bw / 2, y, rel(edge)) + box(edge, rx, y);
     });
     svg += `<g transform="translate(${cx - bw / 2},${cy - bh / 2})"><rect class="box center" width="${bw}" height="${bh}" rx="7" stroke="var(--${COLOUR[node.kind]})"/><text class="al" x="10" y="17">${esc((node.aliases || [])[0] || node.id)} · ${t(node.kind)}</text><text x="10" y="36">${esc(short(node.title))}</text></g>`;
     if (!left.length && !right.length) {
