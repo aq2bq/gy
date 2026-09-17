@@ -1,6 +1,6 @@
 mod common;
 
-use common::{first_line, fixture, stderr, stdout};
+use common::{fixture, id_of, stderr, stdout};
 
 #[test]
 fn question_add_then_close() {
@@ -19,7 +19,7 @@ fn question_add_then_close() {
     assert!(out.status.success(), "{}", stderr(&out));
     assert!(stdout(&out).contains("changed: created, decider, options"));
     assert!(stdout(&out).contains("missing: 本文（選択肢の根拠）"));
-    let id = first_line(&out);
+    let id = id_of(&out);
 
     let out = fx.run(&[
         "question",
@@ -67,7 +67,7 @@ fn question_errors_and_json() {
     ]);
     assert_eq!(out.status.code(), Some(2));
 
-    let id = first_line(&fx.run(&[
+    let id = id_of(&fx.run(&[
         "question",
         "add",
         "q",

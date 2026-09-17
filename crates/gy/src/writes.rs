@@ -79,7 +79,7 @@ pub fn decide(cli: &Cli, root: &Path, ledger: &Path, args: &DecideArgs) -> Resul
         relates,
     }
     .run(&mut repository)?;
-    emit(cli.json, &Written::of(&outcome))
+    emit(cli.json, &Written::of(&outcome).created(true))
 }
 
 /// The single lineage relation decide takes: a canonical name and a decision,
@@ -223,7 +223,12 @@ pub fn req(cli: &Cli, root: &Path, ledger: &Path, action: &ReqAction) -> Result<
         Some(id) => write::requirement_reference(&repository, id)?,
         None => None,
     };
-    emit(cli.json, &Written::of(&outcome).reference(reference))
+    emit(
+        cli.json,
+        &Written::of(&outcome)
+            .created(matches!(action, ReqAction::Add { .. }))
+            .reference(reference),
+    )
 }
 
 fn apply<S: Store>(

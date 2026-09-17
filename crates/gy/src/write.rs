@@ -12,6 +12,9 @@ use std::path::Path;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Written {
     pub id: Option<String>,
+    /// A node was created: the id line wears its name (n-16c8, r-045a).
+    #[serde(skip)]
+    pub created: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reference: Option<String>,
     pub changed: Vec<String>,
@@ -22,11 +25,18 @@ impl Written {
     pub fn of<T>(outcome: &Outcome<T>) -> Self {
         Self {
             id: outcome.id.as_ref().map(ToString::to_string),
+            created: false,
             reference: None,
             changed: outcome.changed.clone(),
             missing: outcome.missing.clone(),
             next: outcome.next.clone(),
         }
+    }
+    /// A creating write names its id line; the others return an id the caller
+    /// already knows, so it stays bare.
+    pub fn created(mut self, created: bool) -> Self {
+        self.created = created;
+        self
     }
     /// Put a requirement's outward reference beside its id (proposal-v3 12).
     pub fn reference(mut self, reference: Option<String>) -> Self {
@@ -37,9 +47,10 @@ impl Written {
 impl Display for Written {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(id) = &self.id {
+            let name = if self.created { "id: " } else { "" };
             match &self.reference {
-                Some(reference) => writeln!(f, "{id} ({reference})")?,
-                None => writeln!(f, "{id}")?,
+                Some(reference) => writeln!(f, "{name}{id} ({reference})")?,
+                None => writeln!(f, "{name}{id}")?,
             }
         }
         writeln!(f, "changed: {}", self.changed.join(", "))?;

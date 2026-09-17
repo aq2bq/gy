@@ -1,12 +1,12 @@
 mod common;
 
-use common::{first_line, fixture, stderr, stdout};
+use common::{fixture, id_of, stderr, stdout};
 
 #[test]
 fn undo_restores_the_previous_value() {
     let fx = fixture();
     let out = fx.run(&["criterion", "add", "a criterion"]);
-    let id = first_line(&out);
+    let id = id_of(&out);
     let out = fx.run(&["criterion", "satisfy", &id, "--evidence", "verified"]);
     assert!(out.status.success(), "{}", stderr(&out));
     assert!(stdout(&fx.run(&["show", &id])).contains("satisfied: true"));

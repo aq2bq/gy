@@ -234,7 +234,10 @@ fn write_need(cli: &Cli, root: &Path, ledger: &Path, action: &NeedAction) -> Res
         }
         .run(&mut repository)?,
     };
-    emit(cli.json, &Written::of(&outcome))
+    emit(
+        cli.json,
+        &Written::of(&outcome).created(matches!(action, NeedAction::Add { .. })),
+    )
 }
 
 fn write_question(cli: &Cli, root: &Path, ledger: &Path, action: &QuestionAction) -> Result<()> {
@@ -264,7 +267,10 @@ fn write_question(cli: &Cli, root: &Path, ledger: &Path, action: &QuestionAction
         }
         .run(&mut repository)?,
     };
-    emit(cli.json, &Written::of(&outcome))
+    emit(
+        cli.json,
+        &Written::of(&outcome).created(matches!(action, QuestionAction::Add { .. })),
+    )
 }
 
 fn write_criterion(cli: &Cli, root: &Path, ledger: &Path, action: &CriterionAction) -> Result<()> {
@@ -286,5 +292,8 @@ fn write_criterion(cli: &Cli, root: &Path, ledger: &Path, action: &CriterionActi
         }
         .run(&mut repository)?,
     };
-    emit(cli.json, &Written::of(&outcome))
+    emit(
+        cli.json,
+        &Written::of(&outcome).created(matches!(action, CriterionAction::Add { .. })),
+    )
 }

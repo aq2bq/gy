@@ -109,7 +109,7 @@ Writes (16):
 | `scope rename <old> <new>` | Move every node of a scope to a new name and rewrite gy.toml, keeping its comments and order |
 | `undo --reason <text>` | Invert the last transaction |
 
-Every write prints what it changed, what the node still lacks, and the shape of the command that could come next, so the next step is visible without a separate instruction sheet. Pass `--json` for the same content as data.
+Every write prints what it changed, what the node still lacks, and the shape of the command that could come next, so the next step is visible without a separate instruction sheet. A write that creates a node (`need add`, `question add`, `criterion add`, `decide`, `req add`) prints `id: <ID>` as its first line. Pass `--json` for the same content as data.
 
 ## Resuming a session
 

@@ -21,4 +21,4 @@ description: gy に論点を立てて閉じるとき、決定者と選択肢と�
 
 ## 迷ったら
 
-`question add` の出力が、次に打てるコマンド（`question close` と `decide`）を示す。
+`question add` の出力は、先頭に `id: <ID>` を出し、次に打てるコマンド（`question close` と `decide`）を示す。

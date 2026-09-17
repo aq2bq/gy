@@ -1,6 +1,6 @@
 mod common;
 
-use common::{first_line, fixture, stderr, stdout};
+use common::{fixture, id_of, stderr, stdout};
 use gy_ledger::{Node, NodeId, NodeKind};
 
 fn criterion(hash: &str) -> Node {
@@ -22,7 +22,7 @@ fn need_add_then_close() {
     assert!(out.status.success(), "{}", stderr(&out));
     assert!(stdout(&out).contains("changed: created, targets"));
     assert!(stdout(&out).contains("missing: 本文, filed-as の要求"));
-    let id = first_line(&out);
+    let id = id_of(&out);
 
     let out = fx.run(&[
         "need",

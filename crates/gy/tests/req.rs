@@ -1,6 +1,6 @@
 mod common;
 
-use common::{criterion, decision, first_line, fixture, need, stderr, stdout};
+use common::{criterion, decision, fixture, id_of, need, stderr, stdout};
 
 fn seed(fx: &common::Fixture) {
     let mut decision = decision("0002", "a decision");
@@ -32,7 +32,7 @@ fn req_add_approve_done_with_the_ref_on_the_id_line() {
     assert!(text.contains("changed: created, needs"), "{text}");
     assert!(text.contains("(https://example/7)"), "{text}");
     assert!(text.contains("missing: relies-on の決定"), "{text}");
-    let id = first_line(&out).split(' ').next().unwrap().to_string();
+    let id = id_of(&out);
 
     let out = fx.run(&[
         "req",
@@ -58,7 +58,7 @@ fn req_revise_and_cancel() {
     let fx = fixture();
     seed(&fx);
     let out = fx.run(&["req", "add", "a requirement", "--need", "n-0003"]);
-    let id = first_line(&out);
+    let id = id_of(&out);
 
     let out = fx.run(&[
         "req",
@@ -134,7 +134,7 @@ fn req_errors_and_json() {
     assert!(json["id"].is_string());
     assert_eq!(json["reference"], "https://example/9");
 
-    let id = first_line(&fx.run(&["req", "add", "r", "--need", "n-0003"]));
+    let id = id_of(&fx.run(&["req", "add", "r", "--need", "n-0003"]));
     let out = fx.run(&["req", "done", &id, "--evidence", "x"]);
     assert_eq!(out.status.code(), Some(2));
 

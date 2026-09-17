@@ -1,6 +1,6 @@
 mod common;
 
-use common::{decision, first_line, fixture, question, stderr, stdout};
+use common::{decision, fixture, id_of, question, stderr, stdout};
 
 #[test]
 fn decide_creates_closes_and_links_one_relation() {
@@ -25,7 +25,7 @@ fn decide_creates_closes_and_links_one_relation() {
     assert!(out.status.success(), "{}", stderr(&out));
     assert!(stdout(&out).contains("changed: created, closes, narrows"));
     assert!(stdout(&out).contains("missing: 本文"));
-    let id = first_line(&out);
+    let id = id_of(&out);
 
     assert!(stdout(&fx.run(&["show", "q-0001"])).contains("state: closed"));
     let text = stdout(&fx.run(&["show", "--full", &id]));

@@ -64,12 +64,13 @@ pub fn stderr(output: &Output) -> String {
     String::from_utf8(output.stderr.clone()).unwrap()
 }
 
-pub fn first_line(output: &Output) -> String {
-    stdout(output)
-        .lines()
-        .next()
-        .unwrap_or_default()
-        .to_string()
+/// The id a write printed on its first line: `id: <ID>` for a creating write
+/// (n-16c8, r-045a), the bare id for the others.
+pub fn id_of(output: &Output) -> String {
+    let text = stdout(output);
+    let line = text.lines().next().unwrap_or_default();
+    let id = line.strip_prefix("id: ").unwrap_or(line);
+    id.split_whitespace().next().unwrap_or_default().to_string()
 }
 
 impl Fixture {

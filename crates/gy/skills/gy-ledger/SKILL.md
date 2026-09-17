@@ -15,7 +15,7 @@ gy の書き込みは、そのノードにまだ無いもの（`missing`）と�
 
 ## 1 つのニーズを進める
 
-- ニーズは受け入れ条件を `targets` で指す。`need add` の `next` が次のコマンドを示す。
+- ニーズは受け入れ条件を `targets` で指す。`need add` は出力の先頭に `id: <ID>` を出し、`next` が次のコマンドを示す。
 - 本文と `filed-as` の要求を整え、要求は `req add` で立てる。使える決定と受け入れ条件を添える。
 - 着手の前提は `depends-on` と `waits-on` の辺で表す。`next` はこれを見る。
 - 決定が要るときは `decide`、論点が生まれたら `question add`。

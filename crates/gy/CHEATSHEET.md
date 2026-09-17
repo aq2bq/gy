@@ -1,5 +1,7 @@
 gy は要求が確定するまでの状態をグラフで持ち、書き込みはすべて 1 トランザクションで追記する。不正は書いた時点で拒まれる。
 
+ノードを作る書き込み（`need add` / `question add` / `criterion add` / `decide` / `req add`）は、人向けの出力の先頭に `id: <ID>` を出す。ほかの書き込みは、既に知っている ID を裸で返す。
+
 セッション開始:
   gy handover
   gy next

@@ -1,6 +1,6 @@
 mod common;
 
-use common::{first_line, fixture, stderr, stdout};
+use common::{fixture, id_of, stderr, stdout};
 
 #[test]
 fn the_first_write_creates_the_ledger_and_resolves_one_scope() {
@@ -26,7 +26,7 @@ fn criterion_add_satisfy_and_revoke() {
     let out = fx.run(&["criterion", "add", "a criterion"]);
     assert!(out.status.success(), "{}", stderr(&out));
     assert!(stdout(&out).contains("changed: created"));
-    let id = first_line(&out);
+    let id = id_of(&out);
     assert!(
         stdout(&out).contains(&format!("next: criterion satisfy {id} --evidence …")),
         "{}",
