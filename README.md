@@ -103,7 +103,7 @@ Writes (16):
 | `req revise <ID> --reason <text> --source <text>` | Send an approved requirement back to filed |
 | `req done <ID> --evidence <text>` | Record that an approved requirement shipped |
 | `req cancel <ID> --reason <text> --source <text>` | Cancel a requirement that was not done |
-| `decide "<title>" --scope-note <text> [--body-file <path>] [--closes <Q>]... [--relate <relation> <D> --mark <text>]` | Create a decision, close questions, and record one lineage edge |
+| `decide "<title>" --scope-note <text> [--body-file <path>] [--closes <Q>]... [--relate <relation> <D> --mark <text>] [--source <text>]` | Create a decision, close questions, and record one lineage edge |
 | `link <from> <relation> <to> [--mark <text>] [--remove]` | Add or remove one edge |
 | `edit <ID> --reason <text> [--title] [--body-file] [--set k=v] [--append k=v]` | Change a node's title, body, or free attributes. A free attribute is a string; `--set` overwrites it, `--set k=` drops it, and `--append` adds one line, separated by a newline. `--set scope=<name>` moves the node to a scope gy.toml declares, and `--set decision_scope=<text>` records a decision's unrecorded applicability conditions once |
 | `scope rename <old> <new>` | Move every node of a scope to a new name and rewrite gy.toml, keeping its comments and order |

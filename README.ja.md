@@ -103,7 +103,7 @@ gy はその終盤のためにあります。計画も日程も持ちません�
 | `req revise <ID> --reason <文> --source <文>` | 確定した要求を起票済みへ戻す |
 | `req done <ID> --evidence <文>` | 確定した要求が完了したことを記録する |
 | `req cancel <ID> --reason <文> --source <文>` | 完了しなかった要求を中止する |
-| `decide "<題>" --scope-note <文> [--body-file <path>] [--closes <Q>]... [--relate <関係> <D> --mark <文>]` | 決定を作り、論点を閉じ、系譜の辺を 1 つ記録する |
+| `decide "<題>" --scope-note <文> [--body-file <path>] [--closes <Q>]... [--relate <関係> <D> --mark <文>] [--source <文>]` | 決定を作り、論点を閉じ、系譜の辺を 1 つ記録する |
 | `link <from> <関係> <to> [--mark <文>] [--remove]` | 辺を 1 つ追加または削除する |
 | `edit <ID> --reason <文> [--title] [--body-file] [--set k=v] [--append k=v]` | 題名・本文・自由属性を変える。自由属性は文字列で、`--set` は上書き、`--set k=` は消去、`--append` は改行区切りで 1 行足す。`--set scope=<名前>` で gy.toml にあるスコープへ移せ、`--set decision_scope=<文>` で未記録の成立範囲を 1 回だけ記録できる |
 | `scope rename <旧> <新>` | あるスコープの全ノードを新しい名へ移し、gy.toml をコメントと順序を保ったまま書き換える |
