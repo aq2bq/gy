@@ -92,13 +92,13 @@ Writes (16):
 
 | Operation | Result |
 | --- | --- |
-| `need add "<title>" --targets <AC>... [--spawned-by <D>]` | File a need against acceptance criteria |
+| `need add "<title>" --targets <AC>... [--spawned-by <D>] [--body-file <path>]` | File a need against acceptance criteria |
 | `need close <ID> --by fact\|external --evidence <text>` | Close a need without a requirement |
-| `question add "<title>" --decider <name> --options <text>...` | Open a question with a decider and at least two options |
+| `question add "<title>" --decider <name> --options <text>... [--body-file <path>]` | Open a question with a decider and at least two options |
 | `question close <ID> --by fact\|decision\|non-decision --evidence <text> [--decision <D>]` | Close a question and, when decided, record the decision |
-| `criterion add "<title>"` | Add an acceptance criterion |
+| `criterion add "<title>" [--body-file <path>]` | Add an acceptance criterion |
 | `criterion satisfy <AC> --evidence <text> [--revoke]` | Record that a criterion holds, or revoke it |
-| `req add "<title>" --need <N>... [--relies-on <D>]... [--targets <AC>]... [--ref <ref>]` | File a requirement against needs, decisions, and criteria |
+| `req add "<title>" --need <N>... [--relies-on <D>]... [--targets <AC>]... [--ref <ref>] [--body-file <path>]` | File a requirement against needs, decisions, and criteria |
 | `req approve <ID\|ref> --design <text> --heard-by <name> --evidence <text>` | Confirm the design of a requirement |
 | `req revise <ID> --reason <text> --source <text>` | Send an approved requirement back to filed |
 | `req done <ID> --evidence <text>` | Record that an approved requirement shipped |

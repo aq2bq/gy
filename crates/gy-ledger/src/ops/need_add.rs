@@ -9,6 +9,7 @@ pub struct NeedAdd {
     pub title: String,
     pub targets: Vec<NodeId>,
     pub spawned_by: Option<NodeId>,
+    pub body: Option<String>,
 }
 impl<S: Store> Operation<S> for NeedAdd {
     type Output = NodeId;
@@ -29,6 +30,9 @@ impl<S: Store> Operation<S> for NeedAdd {
                 Relation::SpawnedBy,
                 decision.clone(),
             )?);
+        }
+        if let Some(body) = &self.body {
+            node.set_body(body.clone());
         }
         let why = format!("need add {id}");
         repo.transaction(&why, "need add", |repo| repo.put(&node))?;

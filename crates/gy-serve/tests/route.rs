@@ -132,6 +132,7 @@ fn now_matches_the_view() {
         title: "who decides".to_string(),
         decider: "master".to_string(),
         options: vec!["x".to_string(), "y".to_string()],
+        body: None,
     }
     .run(&mut repo)
     .unwrap();
@@ -142,6 +143,7 @@ fn now_matches_the_view() {
         relies_on: Vec::new(),
         targets: Vec::new(),
         reference: None,
+        body: None,
     }
     .run(&mut repo)
     .unwrap();

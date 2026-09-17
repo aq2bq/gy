@@ -139,6 +139,7 @@ fn apply<S: Store>(
             relies_on,
             targets,
             reference,
+            body_file,
         } => ReqAdd {
             scope: write::scope(root, cli.scope.as_deref())?,
             title: title.clone(),
@@ -146,6 +147,7 @@ fn apply<S: Store>(
             relies_on: write::resolve_all(repository, relies_on)?,
             targets: write::resolve_all(repository, targets)?,
             reference: reference.clone().map(Ref),
+            body: write::body_file(body_file.as_deref())?,
         }
         .run(repository),
         _ => advance(repository, action),

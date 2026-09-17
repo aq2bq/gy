@@ -40,6 +40,7 @@ fn add(targets: Vec<NodeId>, spawned_by: Option<NodeId>) -> NeedAdd {
         title: "a need".into(),
         targets,
         spawned_by,
+        body: None,
     }
 }
 

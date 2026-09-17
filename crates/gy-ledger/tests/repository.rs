@@ -139,6 +139,7 @@ fn the_live_history_matches_a_reopened_one() {
         title: "a need".into(),
         targets: vec![target],
         spawned_by: None,
+        body: None,
     }
     .run(&mut repo)
     .unwrap()

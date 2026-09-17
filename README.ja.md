@@ -92,13 +92,13 @@ gy はその終盤のためにあります。計画も日程も持ちません�
 
 | 操作 | 結果 |
 | --- | --- |
-| `need add "<題>" --targets <AC>... [--spawned-by <D>]` | 受け入れ条件を対象にニーズを立てる |
+| `need add "<題>" --targets <AC>... [--spawned-by <D>] [--body-file <path>]` | 受け入れ条件を対象にニーズを立てる |
 | `need close <ID> --by fact\|external --evidence <文>` | 要求を経由せずニーズを閉じる |
-| `question add "<題>" --decider <名> --options <文>...` | 決定者と 2 つ以上の選択肢を持つ論点を立てる |
+| `question add "<題>" --decider <名> --options <文>... [--body-file <path>]` | 決定者と 2 つ以上の選択肢を持つ論点を立てる |
 | `question close <ID> --by fact\|decision\|non-decision --evidence <文> [--decision <D>]` | 論点を閉じ、決定で閉じる場合は決定も残す |
-| `criterion add "<題>"` | 受け入れ条件を追加する |
+| `criterion add "<題>" [--body-file <path>]` | 受け入れ条件を追加する |
 | `criterion satisfy <AC> --evidence <文> [--revoke]` | 受け入れ条件が成り立つ根拠を記録する。`--revoke` で取り消す |
-| `req add "<題>" --need <N>... [--relies-on <D>]... [--targets <AC>]... [--ref <ref>]` | ニーズ・決定・受け入れ条件に対して要求を立てる |
+| `req add "<題>" --need <N>... [--relies-on <D>]... [--targets <AC>]... [--ref <ref>] [--body-file <path>]` | ニーズ・決定・受け入れ条件に対して要求を立てる |
 | `req approve <ID\|ref> --design <文> --heard-by <名> --evidence <文>` | 要求の設計を確定する |
 | `req revise <ID> --reason <文> --source <文>` | 確定した要求を起票済みへ戻す |
 | `req done <ID> --evidence <文>` | 確定した要求が完了したことを記録する |

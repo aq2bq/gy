@@ -8,6 +8,7 @@ pub struct QuestionAdd {
     pub title: String,
     pub decider: String,
     pub options: Vec<String>,
+    pub body: Option<String>,
 }
 impl<S: Store> Operation<S> for QuestionAdd {
     type Output = NodeId;
@@ -23,6 +24,9 @@ impl<S: Store> Operation<S> for QuestionAdd {
         if let NodeData::Question(data) = node.data_mut() {
             data.decider = Some(self.decider);
             data.options = self.options;
+        }
+        if let Some(body) = &self.body {
+            node.set_body(body.clone());
         }
         let why = format!("question add {id}");
         repo.transaction(&why, "question add", |repo| repo.put(&node))?;

@@ -13,6 +13,7 @@ pub struct ReqAdd {
     pub relies_on: Vec<NodeId>,
     pub targets: Vec<NodeId>,
     pub reference: Option<Ref>,
+    pub body: Option<String>,
 }
 impl<S: Store> Operation<S> for ReqAdd {
     type Output = NodeId;
@@ -62,6 +63,9 @@ impl ReqAdd {
         )?;
         if let NodeData::Requirement(data) = node.data_mut() {
             data.reference = self.reference.clone();
+        }
+        if let Some(body) = &self.body {
+            node.set_body(body.clone());
         }
         for decision in &self.relies_on {
             node.link(ModelLink::new(

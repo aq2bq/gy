@@ -13,6 +13,7 @@ fn add(title: &str) -> CriterionAdd {
     CriterionAdd {
         scope: SCOPE.into(),
         title: title.into(),
+        body: None,
     }
 }
 

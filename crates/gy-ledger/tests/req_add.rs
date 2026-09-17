@@ -56,6 +56,7 @@ fn add(needs: Vec<NodeId>, reference: Option<Ref>) -> ReqAdd {
         relies_on: vec![],
         targets: vec![],
         reference,
+        body: None,
     }
 }
 

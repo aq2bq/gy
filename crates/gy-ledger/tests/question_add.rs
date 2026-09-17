@@ -17,6 +17,7 @@ fn add(decider: &str, options: &[&str]) -> QuestionAdd {
         title: "a question".into(),
         decider: decider.into(),
         options: options.iter().map(|option| option.to_string()).collect(),
+        body: None,
     }
 }
 

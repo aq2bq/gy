@@ -24,6 +24,7 @@ fn add(repo: &mut Repository<FileStore>, title: &str) -> u64 {
     CriterionAdd {
         scope: "a".to_string(),
         title: title.to_string(),
+        body: None,
     }
     .run(repo)
     .unwrap();

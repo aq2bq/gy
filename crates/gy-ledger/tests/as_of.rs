@@ -14,6 +14,7 @@ fn ledger(dir: &Path) -> (Repository<FileStore>, NodeId) {
     let criterion = CriterionAdd {
         scope: "a".to_string(),
         title: "measurable".to_string(),
+        body: None,
     }
     .run(&mut repo)
     .unwrap()
@@ -24,6 +25,7 @@ fn ledger(dir: &Path) -> (Repository<FileStore>, NodeId) {
         title: "first".to_string(),
         targets: vec![criterion.clone()],
         spawned_by: None,
+        body: None,
     }
     .run(&mut repo)
     .unwrap()
@@ -34,6 +36,7 @@ fn ledger(dir: &Path) -> (Repository<FileStore>, NodeId) {
         title: "second".to_string(),
         targets: vec![criterion],
         spawned_by: None,
+        body: None,
     }
     .run(&mut repo)
     .unwrap()

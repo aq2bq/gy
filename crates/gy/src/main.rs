@@ -74,11 +74,13 @@ fn write_need(cli: &Cli, root: &Path, ledger: &Path, action: &NeedAction) -> Res
             title,
             targets,
             spawned_by,
+            body_file,
         } => NeedAdd {
             scope: write::scope(root, cli.scope.as_deref())?,
             title: title.clone(),
             targets: write::resolve_all(&repository, targets)?,
             spawned_by: write::resolve_opt(&repository, spawned_by.as_deref())?,
+            body: write::body_file(body_file.as_deref())?,
         }
         .run(&mut repository)?,
         NeedAction::Close { id, by, evidence } => NeedClose {
@@ -101,11 +103,13 @@ fn write_question(cli: &Cli, root: &Path, ledger: &Path, action: &QuestionAction
             title,
             decider,
             options,
+            body_file,
         } => QuestionAdd {
             scope: write::scope(root, cli.scope.as_deref())?,
             title: title.clone(),
             decider: decider.clone(),
             options: options.clone(),
+            body: write::body_file(body_file.as_deref())?,
         }
         .run(&mut repository)?,
         QuestionAction::Close {
@@ -130,9 +134,10 @@ fn write_question(cli: &Cli, root: &Path, ledger: &Path, action: &QuestionAction
 fn write_criterion(cli: &Cli, root: &Path, ledger: &Path, action: &CriterionAction) -> Result<()> {
     let mut repository = repo::open_write(ledger)?;
     let outcome = match action {
-        CriterionAction::Add { title } => CriterionAdd {
+        CriterionAction::Add { title, body_file } => CriterionAdd {
             scope: write::scope(root, cli.scope.as_deref())?,
             title: title.clone(),
+            body: write::body_file(body_file.as_deref())?,
         }
         .run(&mut repository)?,
         CriterionAction::Satisfy {

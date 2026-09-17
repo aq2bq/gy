@@ -104,6 +104,8 @@ pub enum NeedAction {
         targets: Vec<String>,
         #[arg(long, value_name = "D")]
         spawned_by: Option<String>,
+        #[arg(long = "body-file", value_name = "PATH")]
+        body_file: Option<String>,
     },
     /// Close a need by a fact or an external tracker.
     Close {
@@ -124,6 +126,8 @@ pub enum QuestionAction {
         decider: String,
         #[arg(long = "options", value_name = "OPTION", required = true)]
         options: Vec<String>,
+        #[arg(long = "body-file", value_name = "PATH")]
+        body_file: Option<String>,
     },
     /// Close a question by a fact, a decision, or neither.
     Close {
@@ -140,7 +144,11 @@ pub enum QuestionAction {
 #[derive(Subcommand)]
 pub enum CriterionAction {
     /// Add an acceptance criterion.
-    Add { title: String },
+    Add {
+        title: String,
+        #[arg(long = "body-file", value_name = "PATH")]
+        body_file: Option<String>,
+    },
     /// Record evidence that a criterion holds, or revoke it.
     Satisfy {
         id: String,
@@ -220,6 +228,8 @@ pub enum ReqAction {
         targets: Vec<String>,
         #[arg(long = "ref", value_name = "REF")]
         reference: Option<String>,
+        #[arg(long = "body-file", value_name = "PATH")]
+        body_file: Option<String>,
     },
     /// Record the approval that confirms a requirement.
     Approve {

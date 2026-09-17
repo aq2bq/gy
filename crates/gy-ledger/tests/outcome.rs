@@ -75,6 +75,7 @@ fn req_add(need: &NodeId) -> ReqAdd {
         relies_on: Vec::new(),
         targets: Vec::new(),
         reference: None,
+        body: None,
     }
 }
 
@@ -108,6 +109,7 @@ fn add_operations_report_what_their_new_node_lacks() {
         title: "a need".into(),
         targets: vec![ac_id],
         spawned_by: None,
+        body: None,
     }
     .run(&mut repo)
     .unwrap();
@@ -128,6 +130,7 @@ fn add_operations_report_what_their_new_node_lacks() {
         title: "q".into(),
         decider: "m".into(),
         options: vec!["a".into(), "b".into()],
+        body: None,
     }
     .run(&mut repo)
     .unwrap();
@@ -144,6 +147,7 @@ fn add_operations_report_what_their_new_node_lacks() {
     let criterion = CriterionAdd {
         scope: SCOPE.into(),
         title: "an AC".into(),
+        body: None,
     }
     .run(&mut repo)
     .unwrap();

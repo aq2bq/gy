@@ -16,13 +16,13 @@ gy は要求が確定するまでの状態をグラフで持ち、書き込み�
   gy serve                                              台帳をブラウザで読む。127.0.0.1、GET だけ、書く経路は無い。止めるまで。端末から起動したときはブラウザを開く
 
 書き (16):
-  gy need add "<題>" --targets <AC>... [--spawned-by <D>]
+  gy need add "<題>" --targets <AC>... [--spawned-by <D>] [--body-file <path>]
   gy need close <ID> --by fact|external --evidence <文>
-  gy question add "<題>" --decider <名> --options <文>...        選択肢は 2 つ以上
+  gy question add "<題>" --decider <名> --options <文>... [--body-file <path>]        選択肢は 2 つ以上
   gy question close <ID> --by fact|decision|non-decision --evidence <文> [--decision <D>]
-  gy criterion add "<題>"
+  gy criterion add "<題>" [--body-file <path>]
   gy criterion satisfy <AC> --evidence <文> [--revoke]
-  gy req add "<題>" --need <N>... [--relies-on <D>]... [--targets <AC>]... [--ref <URL>]
+  gy req add "<題>" --need <N>... [--relies-on <D>]... [--targets <AC>]... [--ref <URL>] [--body-file <path>]
   gy req approve <ID|ref> --design <文> --heard-by <名> --evidence <文>
   gy req revise <ID> --reason <文> --source <文>
   gy req done <ID> --evidence <文>

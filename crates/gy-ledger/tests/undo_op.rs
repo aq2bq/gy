@@ -36,6 +36,7 @@ fn add_need<S: Store>(repo: &mut Repository<S>) -> NodeId {
         title: "a need".into(),
         targets: vec![target],
         spawned_by: None,
+        body: None,
     }
     .run(repo)
     .unwrap()
