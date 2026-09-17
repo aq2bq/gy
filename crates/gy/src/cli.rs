@@ -42,8 +42,9 @@ pub enum Command {
         grep: Option<String>,
         #[arg(long, value_name = "NAME")]
         actor: Option<String>,
-        #[arg(long, value_name = "SEQ")]
-        since: Option<u64>,
+        /// A write sequence, or a date (YYYY-MM-DD, UTC): that day's start onwards.
+        #[arg(long, value_name = "SEQ|DATE")]
+        since: Option<String>,
     },
     /// The needs that are ready to work.
     Next,

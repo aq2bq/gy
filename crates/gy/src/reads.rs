@@ -4,8 +4,8 @@ use crate::output::emit;
 use crate::repo;
 use crate::{Cli, Command};
 use gy_ledger::{
-    Actor, Error, Filter, FormatVersion, MemoryStore, NodeKind, Publication, Repository, Result,
-    config, file, format, list, publish,
+    Actor, Error, Filter, FormatVersion, Listing, MemoryStore, NodeKind, Publication, Repository,
+    Result, Store, config, file, format, list, publish,
 };
 use gy_serve::server::Opened;
 use std::path::{Path, PathBuf};
@@ -32,7 +32,10 @@ pub fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
             .transpose()?,
         grep: grep.clone(),
         actor: actor.clone(),
-        since: *since,
+        since: since
+            .as_deref()
+            .map(|text| parse_since(&repository, text))
+            .transpose()?,
     };
     emit(cli.json, &list(&repository, &filter)?)
 }
@@ -126,8 +129,68 @@ fn output_path(root: &Path) -> Result<Option<PathBuf>> {
 }
 
 fn parse_kind(text: &str) -> Result<NodeKind> {
+    let wanted = text.to_lowercase();
     NodeKind::ALL
         .into_iter()
-        .find(|kind| kind.name() == text || kind.prefix() == text)
-        .ok_or_else(|| Error::invalid(format!("unknown type {text}")))
+        .find(|kind| kind.name() == wanted || kind.prefix() == wanted)
+        .ok_or_else(|| {
+            Error::invalid(format!(
+                "unknown type {text}; expected one of Need, Question, Decision, Requirement, Criterion (or n, q, d, r, ac)"
+            ))
+        })
+}
+
+/// The `--since` value: a write sequence, or a date (`YYYY-MM-DD`, UTC) whose
+/// day onwards is meant. A date becomes the sequence just before that day, so
+/// every write from the day's start is kept (n-a56f).
+fn parse_since<S: Store>(repository: &Repository<S>, text: &str) -> Result<u64> {
+    if let Ok(seq) = text.parse::<u64>() {
+        return Ok(seq);
+    }
+    let start = day_start(text)?;
+    let rows = match list(
+        repository,
+        &Filter {
+            since: Some(0),
+            ..Default::default()
+        },
+    )? {
+        Listing::History(rows) => rows,
+        Listing::Nodes(_) => Vec::new(),
+    };
+    Ok(rows
+        .iter()
+        .filter(|row| row.at < start)
+        .map(|row| row.seq)
+        .max()
+        .unwrap_or(0))
+}
+
+/// The seconds since the epoch at the start of a UTC day. Dates are UTC, like
+/// `created` and `today` are (n-a56f); the days-in-civil sum is the usual one.
+fn day_start(text: &str) -> Result<u64> {
+    let shape = || {
+        Error::invalid(format!(
+            "unknown since {text}; expected a sequence or a date (YYYY-MM-DD, UTC)"
+        ))
+    };
+    let parts: Vec<&str> = text.split('-').collect();
+    if parts.len() != 3 || parts.iter().any(|part| part.is_empty()) {
+        return Err(shape());
+    }
+    let number = |part: &str| part.parse::<i64>().map_err(|_| shape());
+    let (year, month, day) = (number(parts[0])?, number(parts[1])?, number(parts[2])?);
+    if !(1..=12).contains(&month) || !(1..=31).contains(&day) {
+        return Err(shape());
+    }
+    let year = if month <= 2 { year - 1 } else { year };
+    let era = if year >= 0 { year } else { year - 399 } / 400;
+    let year_of_era = year - era * 400;
+    let day_of_year = (153 * (if month > 2 { month - 3 } else { month + 9 }) + 2) / 5 + day - 1;
+    let day_of_era = year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year;
+    let days = era * 146097 + day_of_era - 719468;
+    if days < 0 {
+        return Err(shape());
+    }
+    Ok(days as u64 * 86400)
 }

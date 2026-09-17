@@ -202,6 +202,18 @@ enum Status {
     Requirement(RequirementState),
 }
 
+/// The status words a filter takes, whatever their case (n-a56f).
+const STATUS_WORDS: [&str; 8] = [
+    "open",
+    "closed",
+    "done",
+    "satisfied",
+    "unsatisfied",
+    "filed",
+    "approved",
+    "cancelled",
+];
+
 fn parse_status(text: &str) -> Result<Status> {
     let states = [
         RequirementState::Filed,
@@ -209,7 +221,8 @@ fn parse_status(text: &str) -> Result<Status> {
         RequirementState::Done,
         RequirementState::Cancelled,
     ];
-    match text {
+    let wanted = text.to_lowercase();
+    match wanted.as_str() {
         "open" => Ok(Status::Open),
         "closed" => Ok(Status::Closed),
         "done" => Ok(Status::Done),
@@ -217,9 +230,14 @@ fn parse_status(text: &str) -> Result<Status> {
         "unsatisfied" => Ok(Status::Unsatisfied),
         _ => states
             .into_iter()
-            .find(|state| state.name() == text)
+            .find(|state| state.name() == wanted)
             .map(Status::Requirement)
-            .ok_or_else(|| Error::invalid(format!("unknown status {text}"))),
+            .ok_or_else(|| {
+                Error::invalid(format!(
+                    "unknown status {text}; expected one of {}",
+                    STATUS_WORDS.join(", ")
+                ))
+            }),
     }
 }
 

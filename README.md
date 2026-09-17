@@ -82,7 +82,7 @@ Reads (6):
 | Operation | Result |
 | --- | --- |
 | `show <ID\|ref>... [--full]` | One or more nodes by ID, alias, or reference, with what each still lacks |
-| `list [--type] [--status] [--targets] [--grep] [--actor] [--since]` | Node rows, or write units when `--actor` or `--since` is given |
+| `list [--type] [--status] [--targets] [--grep] [--actor] [--since]` | Node rows, or write units when `--actor` or `--since` is given. The type and status words ignore case, and `--since` takes a sequence or a date (`YYYY-MM-DD`, UTC, from that day's start) |
 | `next` | The needs whose prerequisites are settled |
 | `handover` | In-progress requirements and the counts a session needs to resume |
 | `publish [--scope] [--since] [--out]` | Write the record at a point and range into a directory: one file per node and a scope index |

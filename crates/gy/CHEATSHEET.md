@@ -9,7 +9,7 @@ gy は要求が確定するまでの状態をグラフで持ち、書き込み�
 
 読み (6):
   gy show <ID|ref>... [--full]                         ノードを表示し、足りないものも出す
-  gy list [--type] [--status] [--targets] [--grep] [--actor] [--since]   一覧。--actor / --since で書き込み単位
+  gy list [--type] [--status] [--targets] [--grep] [--actor] [--since]   一覧。--actor / --since で書き込み単位。綴りは大小を問わない。--since は seq か日付（YYYY-MM-DD、UTC のその日の 0 時から）
   gy next                                              前提の片付いたニーズ
   gy handover                                          進行中の要求と再開に要る件数
   gy publish [--scope] [--since] [--out]                記録の公開物（範囲内の全ノードの逐語・履歴・診断）。コミットして後から振り返る
