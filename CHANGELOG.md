@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.8.0 - 2026-09-17
+
+### Changed
+
+- **Incompatible**: `NeedAdd`, `QuestionAdd`, `CriterionAdd` and `ReqAdd`
+  each carry a `body`, so a caller that builds one as a struct literal
+  has a field to fill (`None` keeps the old behaviour). Nothing else in
+  the API, the CLI, the store format, `gy.toml`, the diagnostics or the
+  exit codes changed, and no ledger needs migrating.
+
+### Added
+
+- `need add`, `question add`, `criterion add` and `req add` take
+  `--body-file`, the way `decide` already did: a node with a body is one
+  write instead of two, and the log stops filling with edits whose only
+  reason is that the body had to go in afterwards.
+- `list --type` and `--status` match a kind or a status whatever its
+  case, so the spellings on screen — `Need`, `Requirement` — work as
+  typed, and a word that fits neither is answered with the ones that do.
+- `list --since` takes a date (`YYYY-MM-DD`, UTC, that day's start
+  onwards) as well as a write sequence. A sequence is a number inside
+  the ledger; a date is what anyone asking for today's writes has.
+- A write that mints a node labels it: `id: n-1d12` on the first line,
+  where it used to be a bare hash that filtering could drop.
+- `serve`: a write in the rail or the history page is a link across its
+  whole width, not only on the node's name.
+
+### Internal
+
+- The command line's types are `cli.rs`, so `main.rs` wires and
+  `writes.rs` runs; a test walks the binary's own `--help` and fails if
+  the cheatsheet or either README names an option the binary does not
+  offer, or misses one it does. It found `decide --source`, undocumented
+  since it was added.
+
 ## 0.7.0 - 2026-09-17
 
 ### Changed
