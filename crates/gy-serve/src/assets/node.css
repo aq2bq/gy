@@ -28,7 +28,11 @@
 .map .center{fill:var(--ink);stroke-width:2}
 .hist{display:flex;flex-direction:column}
 .hi{display:grid;grid-template-columns:118px 64px minmax(0,1fr);gap:12px;padding:8px 0;border-top:1px solid var(--line-soft);font-size:13px}
+/* The bottom line closes the list. A writes row sits in a list item wrapper of
+   its own, so on the history page every row would otherwise be its parent's
+   last child; only the list's last row keeps the line (n-bc89). */
 .hi:last-child{border-bottom:1px solid var(--line-soft)}
+.list .hist > div:not(:last-child) > .hi{border-bottom:0}
 .hi .when{font-family:var(--mono);font-size:11px;color:var(--paper-3)}
 .hi .who{font-family:var(--mono);font-size:11px;color:var(--actor-lead)}
 .hi .src{color:var(--paper-2)} .hi .why{color:var(--paper-3);font-size:12px}
