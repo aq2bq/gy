@@ -41,7 +41,7 @@
 .more:hover{color:var(--paper)}
 .eye .more,.eye .kv{margin-top:auto;padding-top:10px}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13px;margin-top:10px;color:var(--paper-2);border-top:1px solid var(--line-soft)}
-.kv b{color:var(--paper);font-weight:500}
+.kv b{color:var(--paper);font-weight:500;white-space:normal;overflow-wrap:anywhere}
 .nothing{font-size:22px;font-weight:600;color:var(--paper-2);margin-top:14px;text-wrap:balance}
 /* A jam is not praised in the praise voice (n-f3be). */
 .nothing.calm{font-size:13px;font-weight:400;color:var(--paper-3)}
@@ -65,4 +65,5 @@
 .pi .what a:hover{text-decoration:underline;text-underline-offset:3px}
 .pi .src{color:var(--paper-3);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:44ch}
 .empty{color:var(--paper-3);padding:10px 0;border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft)}
-@media (max-width:900px){.eyes{grid-template-columns:1fr}.pl2{grid-template-columns:1fr}}
+@media (max-width:900px){.eyes{grid-template-columns:1fr}.pl2{grid-template-columns:1fr}}.errors{margin:10px 0;padding:8px 12px;border:1px solid var(--criterion);border-radius:8px}
+.errors .err{font-family:var(--mono);font-size:12px;color:var(--criterion)}

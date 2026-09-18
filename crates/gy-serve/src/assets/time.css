@@ -11,3 +11,4 @@
 .track .head::after{content:"";position:absolute;left:-6px;bottom:-3px;width:14px;height:6px;background:var(--paper);border-radius:2px}
 .track .shade{position:absolute;top:0;bottom:0;right:0;background:rgba(13,18,32,.75);pointer-events:none}
 @media (max-width:900px){.scrub{left:0}}
+.track .unpushed{fill:none;stroke:var(--paper-3);stroke-dasharray:3 3;opacity:.8}

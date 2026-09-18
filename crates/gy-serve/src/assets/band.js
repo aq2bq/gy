@@ -41,6 +41,12 @@
   /* The baseline, one day label per day, then a bar per write. */
   function ticks(band, x, ui) {
     let svg = `<line x1="0" y1="38" x2="100%" y2="38" stroke="var(--line)"/>`;
+    const sync = window.GySync;
+    if (sync && sync.last_ok_seq != null && sync.last_ok_seq < band.max) {
+      const left = x(Math.max(band.min, sync.last_ok_seq));
+      const right = x(band.max);
+      svg += `<rect class="unpushed" x="${left}" y="6" width="${Math.max(1, right - left)}" height="32"/>`;
+    }
     const days = new Set();
     for (const tick of band.ticks) {
       const label = ui.day(tick.at);

@@ -49,6 +49,15 @@
   rejected line touched. On a synced copy `handover` fetches first (giving
   up after five seconds), and `undo` refuses to undo another writer's
   last write.
+- **serve keeps a synced copy in step and shows it** (n-94bb 3A): while
+  `gy serve` runs on a synced copy, gy runs a bounded `gy sync` every ten
+  seconds and logs to stderr the startup line (port, ledger directory,
+  remote) and each round that changed something or failed, in the local
+  time. The Now page shows the last sync (time, sequence), how many writes
+  are not pushed and the last error's first line; a write not yet pushed
+  carries a small mark in the live rail and the history, and the time band
+  draws the unpushed range dotted. `/api/now` carries `resume.sync` and
+  `resume.errors` on a synced copy only.
 
 ## 0.9.0 - 2026-09-18
 

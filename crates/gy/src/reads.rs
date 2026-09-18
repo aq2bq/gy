@@ -121,18 +121,10 @@ pub fn serve(root: &Path, ledger: &Path, name: String) -> Result<()> {
     )
 }
 
-/// The wall clock for serve's log lines, `HH:MM:SS` (n-94bb).
+/// The wall clock for serve's log lines, `HH:MM:SS` in the reader's own place
+/// (d-b1f8, n-94bb).
 fn clock() -> String {
-    let secs = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|elapsed| elapsed.as_secs())
-        .unwrap_or(0);
-    format!(
-        "{:02}:{:02}:{:02}",
-        (secs / 3600) % 24,
-        (secs / 60) % 60,
-        secs % 60
-    )
+    gy_ledger::local_clock()
 }
 
 /// A ledger with nothing in it, for a directory whose first write has not

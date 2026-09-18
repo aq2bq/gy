@@ -113,13 +113,31 @@
     }).join('');
     const last = data.resume.last;
     const lastText = last ? `${window.GyTime.time(last.at, lang)} ${esc(last.actor)} · seq ${last.seq}` : t('none');
-    const kv = `<div class="kv"><span>${t('openQuestions')}</span><b>${data.resume.open_questions}</b><span>${t('warnings')}</span><b>${data.resume.warnings || t('none')}</b><span>${t('lastWrite')}</span><b>${lastText}</b></div>`;
+    const kv = `<div class="kv"><span>${t('openQuestions')}</span><b>${data.resume.open_questions}</b><span>${t('warnings')}</span><b>${data.resume.warnings || t('none')}</b><span>${t('lastWrite')}</span><b>${lastText}</b>${syncParts()}</div>`;
     const body = data.resume.in_progress.length
       ? `<div class="rows">${rows}</div>`
       : firstRun()
         ? ''
         : `<div class="nothing" role="status">${esc(pick('praiseResume'))}</div>`;
     return `<section class="eye prog" data-eye="resume" aria-label="${esc(t('eyeResume'))}">${head('prog', data.resume.in_progress.length, t('resumeHead'), t('resumeSub'))}${body}${kv}</section>`;
+  }
+
+  /* The shared copy's sync as one kv pair per fact, like the other pairs
+     (n-94bb). The last line of a failure is cut short; --json keeps it whole. */
+  function syncParts() {
+    const sync = data.resume.sync;
+    if (!sync) return '';
+    let out = '';
+    if (sync.last_ok_at && sync.last_ok_seq != null) {
+      let value = `${window.GyTime.time(sync.last_ok_at, lang)} (seq ${sync.last_ok_seq})`;
+      if (sync.pending) value += ` · ${sync.pending} ${t('notPushed')}`;
+      out += `<span>${t('lastSynced')}</span><b>${value}</b>`;
+    }
+    if (sync.last_error) {
+      const first = String(sync.last_error).split('\n')[0].slice(0, 80);
+      out += `<span>${t('syncFailed')}</span><b>${esc(first)}…</b>`;
+    }
+    return out;
   }
 
   /* The number a requirement's outward reference ends with, as a link's word. */
@@ -197,8 +215,14 @@
       el.innerHTML = '';
       return;
     }
+    window.GySync = (data.resume && data.resume.sync) || null;
+    const errors = (data.resume && data.resume.errors) || [];
+    const errorBlock = errors.length
+      ? `<div class="errors" role="status">${errors.map(line => `<div class="err">${esc(line)}</div>`).join('')}</div>`
+      : '';
     el.innerHTML =
       `<div class="eyes">${waitColumn()}${readyColumn()}${resumeColumn()}</div>` +
+      errorBlock +
       `<div class="sky"><canvas id="sky"></canvas><div class="cap">${t('skyCap')}</div><div class="leg">${legend()}</div></div>` +
       pulse();
     void paintSky(el, state);

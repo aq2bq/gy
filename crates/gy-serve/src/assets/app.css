@@ -76,3 +76,4 @@ main{padding:0 32px 150px;max-width:1280px}
 .cpb:hover{color:var(--paper);border-color:var(--paper-3)}
 .cpb.on{color:var(--decision);border-color:var(--decision)}
 @media (max-width:900px){.app{grid-template-columns:1fr}.side{position:static;height:auto}.search{min-width:0;width:100%}}
+.pushmark{font-family:var(--mono);font-size:9px;font-style:normal;color:var(--criterion);margin-left:3px}

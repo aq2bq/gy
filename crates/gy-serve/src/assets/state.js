@@ -48,6 +48,11 @@
   function arrived(state, kind, body) {
     const pending = { ...state.pending };
     delete pending[kind];
+    if (kind === 'now') {
+      /* The band and the write rows read the shared copy's sync from here
+         (n-94bb); a local ledger leaves it null. */
+      window.GySync = (body.resume && body.resume.sync) || null;
+    }
     return { ...state, [kind]: body, pending };
   }
 

@@ -53,8 +53,12 @@
      hit. The wrapper carries the list item's role and the link keeps its own,
      so the screen reader is told both (n-bc89); a row with no node is plain. */
   function row(entry, labels, order, ui, lang) {
+    const sync = window.GySync;
+    const push = sync && sync.last_ok_seq != null && entry.seq > sync.last_ok_seq
+      ? `<i class="pushmark" role="img" aria-label="${esc(ui.t('notPushed'))}" title="${esc(ui.t('notPushed'))}">↑</i>`
+      : '';
     const body =
-      `<span class="when">${window.GyTime.time(entry.at, lang)} · ${entry.seq}</span>` +
+      `<span class="when">${window.GyTime.time(entry.at, lang)} · ${entry.seq}${push}</span>` +
       `<span class="who ${whoCls(entry.actor, order)}">${esc(entry.actor)}</span>` +
       `<span class="nd"><div class="what">${what(entry, labels, ui, lang)}</div><div class="src" title="${esc(entry.source)}">${esc(entry.source)}</div><div class="why">${esc(entry.why)}</div></span>`;
     return entry.node

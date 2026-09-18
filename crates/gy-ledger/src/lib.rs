@@ -18,7 +18,7 @@ pub use model::{
 pub use ops::{
     CriterionAdd, CriterionSatisfy, Decide, Edit, NeedAdd, NeedClose, Operation, Outcome,
     QuestionAdd, QuestionClose, Repository, ReqAdd, ReqApprove, ReqCancel, ReqDone, ReqRevise,
-    ScopeRename, Undo, config, link, local_day_start, local_time, retry,
+    ScopeRename, Undo, config, link, local_clock, local_day_start, local_time, retry,
 };
 pub use store::remote::{
     Pulled, Range, Sync, clear_rejected, reconcile, record_timeout, record_timeout_after,

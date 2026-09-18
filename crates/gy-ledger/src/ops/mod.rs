@@ -126,6 +126,12 @@ fn backoff(attempt: u32) -> std::time::Duration {
     std::time::Duration::from_millis(millis)
 }
 
+/// The current local wall clock as `HH:MM:SS`, for a running log line
+/// (d-b1f8, n-94bb).
+pub fn local_clock() -> String {
+    chrono::Local::now().format("%H:%M:%S").to_string()
+}
+
 /// A stored `created` instant in the reader's own place, as `YYYY-MM-DD HH:MM`
 /// for the human views (n-b6b6). `publish` and `--json` keep the UTC value; a
 /// value that is not an RFC 3339 instant comes back unchanged.

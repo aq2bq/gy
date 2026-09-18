@@ -5,6 +5,7 @@ use super::derive::{need_state, question_open, reference};
 use super::handover::{Handover, ProgressRow, handover};
 use super::list::LogRow;
 use super::next::ready_rows;
+use super::sync_row::SyncRow;
 use super::{NeedState, open_or_closed};
 use crate::model::{Node, NodeData, NodeKind, RequirementState};
 use crate::ops::advice;
@@ -63,6 +64,10 @@ pub struct Resume {
     pub in_progress: Vec<ProgressRow>,
     pub open_questions: usize,
     pub warnings: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sync: Option<SyncRow>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub errors: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last: Option<LogRow>,
 }
@@ -130,6 +135,8 @@ fn resume<S: Store>(
     session: Handover,
 ) -> Resume {
     Resume {
+        sync: session.sync.clone(),
+        errors: session.errors.clone(),
         in_progress: session.in_progress,
         open_questions: session.open_questions,
         warnings: session.warnings.iter().map(|warning| warning.count).sum(),

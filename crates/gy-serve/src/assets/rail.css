@@ -8,7 +8,7 @@
 .rail #searchbtn{width:100%;min-width:0}
 .rail .hist{border-top:0}
 .rail .ri .hi{grid-template-columns:minmax(0,1fr);gap:2px;padding:9px 0}
-.rail .ri .hi .when{font-size:10px}
+.rail .ri .hi .when{font-size:10px;white-space:nowrap}
 .rail .ri .hi .who{display:inline-block;margin-right:5px}
 .rail .ri .hi .src{font-size:11px;max-width:100%}
 .rail-all{display:block;margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--paper-3)}
