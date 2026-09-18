@@ -182,7 +182,7 @@ fn criterion_line(data: &Criterion) -> String {
         line.push_str(&format!(" ({evidence})"));
     }
     if let Some(at) = &data.satisfied_at {
-        line.push_str(&format!(" at {at}"));
+        line.push_str(&format!(" at {}", local_time(at)));
     }
     line
 }

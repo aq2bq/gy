@@ -163,7 +163,15 @@ fn a_criterion_shows_satisfaction_and_a_question_shows_closure() {
         &[criterion_id.to_string(), question_id.to_string()],
         false,
     );
-    assert!(text.contains("satisfied: true (verified) at 2026-09-15"));
+    let at = chrono::DateTime::parse_from_rfc3339(DATE)
+        .unwrap()
+        .with_timezone(&chrono::Local)
+        .format("%Y-%m-%d %H:%M")
+        .to_string();
+    assert!(
+        text.contains(&format!("satisfied: true (verified) at {at}")),
+        "{text}"
+    );
     assert!(text.contains("state: closed"));
     assert!(text.contains("decider: master"));
     assert!(text.contains("options: a, b"));

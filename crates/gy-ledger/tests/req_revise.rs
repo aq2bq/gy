@@ -60,6 +60,8 @@ fn req_revise_returns_to_filed_and_keeps_the_record() {
             assert_eq!(data.revisions.len(), 1);
             assert_eq!(data.revisions[0].reason, "scope changed");
             assert_eq!(data.revisions[0].source, "conversation");
+            let at = &data.revisions[0].at;
+            assert!(at.len() == 20 && at.ends_with('Z'), "{at}");
         }
         _ => panic!("not a requirement"),
     }

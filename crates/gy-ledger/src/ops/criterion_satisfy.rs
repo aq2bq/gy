@@ -1,6 +1,6 @@
 //! criterion satisfy: record evidence that a criterion holds, or revoke it
 //! while keeping the evidence.
-use super::{Operation, Outcome, Repository, advice_for, today};
+use super::{Operation, Outcome, Repository, advice_for, now};
 use crate::model::{Node, NodeData, NodeId, NodeKind};
 use crate::store::{Error, Result, Store};
 
@@ -45,7 +45,7 @@ fn update(node: &mut Node, id: &NodeId, evidence: &str, revoke: bool) -> Result<
                 return Err(Error::invalid(format!("{id} is already satisfied")));
             } else {
                 data.satisfied = true;
-                data.satisfied_at = Some(today());
+                data.set_satisfied_at(now())?;
             }
             data.evidence = Some(evidence.to_string());
             Ok(())

@@ -1,6 +1,6 @@
 use gy_ledger::{
-    FileStore, FormatVersion, Node, NodeId, NodeKind, Repository, Store, format, location, log,
-    next,
+    Approval, FileStore, FormatVersion, Node, NodeData, NodeId, NodeKind, Repository,
+    RequirementState, Revision, Store, format, location, log, next,
 };
 
 const DATE: &str = "2026-09-15T00:00:00Z";
@@ -142,6 +142,106 @@ fn opening_a_version_two_ledger_raises_created_and_rebuilds_the_snapshot() {
         .map(|row| row.id)
         .collect();
     assert_eq!(ready, ["n-0001", "n-0002"]);
+}
+
+#[test]
+fn a_version_three_ledger_raises_every_old_instant_on_read() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    format::write(dir, FormatVersion::CURRENT).unwrap();
+
+    let mut criterion = Node::criterion(
+        NodeId::from_hash(NodeKind::Criterion, "0001").unwrap(),
+        "a",
+        DATE,
+        "a criterion",
+    )
+    .unwrap();
+    if let NodeData::Criterion(data) = criterion.data_mut() {
+        data.satisfied = true;
+        data.satisfied_at = Some("2026-09-15".into());
+    }
+    let mut requirement = Node::requirement(
+        NodeId::from_hash(NodeKind::Requirement, "0002").unwrap(),
+        "a",
+        DATE,
+        "a requirement",
+        RequirementState::Filed,
+    )
+    .unwrap();
+    if let NodeData::Requirement(data) = requirement.data_mut() {
+        data.approval = Some(Approval {
+            design: "d".into(),
+            heard_by: "h".into(),
+            evidence: "e".into(),
+            at: "2026-09-15".into(),
+        });
+        data.revisions.push(Revision {
+            reason: "r".into(),
+            source: "s".into(),
+            at: "2026-09-15".into(),
+        });
+    }
+    let criterion_value = serde_json::to_value(&criterion).unwrap();
+    let requirement_value = serde_json::to_value(&requirement).unwrap();
+
+    // A version 3 snapshot still holding the old, date-only instants.
+    let snapshot = serde_json::json!({
+        "seq": 1,
+        "nodes": {"ac-0001": criterion_value.clone(), "r-0002": requirement_value.clone()},
+    });
+    std::fs::write(dir.join("snapshot.json"), snapshot.to_string()).unwrap();
+    log::append(
+        dir,
+        &event(
+            1,
+            "seed",
+            vec![
+                log::Change::Created {
+                    node: "ac-0001".into(),
+                    value: criterion_value,
+                },
+                log::Change::Created {
+                    node: "r-0002".into(),
+                    value: requirement_value,
+                },
+            ],
+        ),
+    )
+    .unwrap();
+
+    // The snapshot path normalizes every instant it reads.
+    let repository = Repository::new(FileStore::open_with(dir, actor).unwrap());
+    raised_instants(&repository);
+
+    // The event path normalizes the same way when the snapshot is gone.
+    std::fs::remove_file(dir.join("snapshot.json")).unwrap();
+    let repository = Repository::new(FileStore::open_with(dir, actor).unwrap());
+    raised_instants(&repository);
+}
+
+fn raised_instants<S: Store>(repository: &Repository<S>) {
+    let criterion = repository
+        .get(&NodeId::from_hash(NodeKind::Criterion, "0001").unwrap())
+        .unwrap()
+        .unwrap();
+    match criterion.data() {
+        NodeData::Criterion(data) => {
+            assert_eq!(data.satisfied_at.as_deref(), Some("2026-09-15T00:00:00Z"));
+        }
+        _ => panic!("not a criterion"),
+    }
+    let requirement = repository
+        .get(&NodeId::from_hash(NodeKind::Requirement, "0002").unwrap())
+        .unwrap()
+        .unwrap();
+    match requirement.data() {
+        NodeData::Requirement(data) => {
+            assert_eq!(data.approval.as_ref().unwrap().at, "2026-09-15T00:00:00Z");
+            assert_eq!(data.revisions[0].at, "2026-09-15T00:00:00Z");
+        }
+        _ => panic!("not a requirement"),
+    }
 }
 
 #[test]

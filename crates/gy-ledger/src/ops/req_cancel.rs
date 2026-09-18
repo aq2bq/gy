@@ -1,6 +1,6 @@
 //! req cancel: cancel a requirement that was not done, recording the reason
 //! and where it came from (D-70).
-use super::{Operation, Outcome, Repository, advice_for, node_of, today};
+use super::{Operation, Outcome, Repository, advice_for, node_of, now};
 use crate::model::{Cancellation, NodeData, NodeId, NodeKind, RequirementState};
 use crate::store::{Error, Result, Store};
 
@@ -18,11 +18,11 @@ impl<S: Store> Operation<S> for ReqCancel {
         let mut node = node_of(repo, &self.id, NodeKind::Requirement)?;
         node.advance(RequirementState::Cancelled)?;
         if let NodeData::Requirement(data) = node.data_mut() {
-            data.cancellation = Some(Cancellation {
-                reason: self.reason.clone(),
-                source: self.source.clone(),
-                at: today(),
-            });
+            data.cancellation = Some(Cancellation::new(
+                self.reason.clone(),
+                self.source.clone(),
+                now(),
+            )?);
         }
         let why = format!("req cancel {}", self.id);
         repo.transaction(&why, &self.source, |repo| repo.put(&node))?;

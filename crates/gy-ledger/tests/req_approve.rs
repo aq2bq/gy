@@ -49,7 +49,11 @@ fn req_approve_records_the_approval() {
             let approval = data.approval.as_ref().unwrap();
             assert_eq!(approval.heard_by, "master");
             assert_eq!(approval.design, "design:1");
-            assert!(!approval.at.is_empty());
+            assert!(
+                approval.at.len() == 20 && approval.at.ends_with('Z'),
+                "{}",
+                approval.at
+            );
         }
         _ => panic!("not a requirement"),
     }

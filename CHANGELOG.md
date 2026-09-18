@@ -17,6 +17,15 @@
   the ledger with "format 3 is newer than this build supports". The
   `satisfied_at` of a criterion and a requirement's own dates stay days for
   now (n-86cc).
+- **Incompatible: the other recorded dates are instants too** (n-86cc):
+  a criterion's `satisfied_at` and a requirement's approval, revision,
+  completion and cancellation `at` are stored as UTC RFC 3339 with seconds
+  and take the moment of the write. `show` prints them in your own time
+  zone; `--json` and `publish` keep UTC. The ledger format stays 3; a
+  reader raises an old `YYYY-MM-DD` in any of these fields, in the log and
+  in an older snapshot alike, so nothing needs doing by hand. A value
+  migrated from 0.4 with a `+00:00` offset is kept as it is and still
+  reads as an instant.
 - **`question add` and `show` name the need or requirement an open
   question still lacks** (n-fa11, d-09b6): `missing:` gains
   `待つニーズ（waits-on）か生んだ要求（raised）` until some node points a

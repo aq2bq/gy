@@ -1,4 +1,5 @@
 //! How a requirement moves and how a question closes.
+use super::node::{Criterion, valid_created};
 use crate::store::{Error, Result};
 use serde::{Deserialize, Serialize};
 
@@ -91,4 +92,59 @@ pub struct Cancellation {
     pub reason: String,
     pub source: String,
     pub at: String,
+}
+
+/// The form every stored instant takes: the node's own `created` form (n-86cc).
+fn valid_instant(text: &str) -> Result<()> {
+    if valid_created(text) {
+        Ok(())
+    } else {
+        Err(Error::invalid("the instant must be YYYY-MM-DDTHH:MM:SSZ"))
+    }
+}
+
+impl Approval {
+    /// An approval record at a UTC instant in the node's own form (n-86cc).
+    pub fn new(design: String, heard_by: String, evidence: String, at: String) -> Result<Self> {
+        valid_instant(&at)?;
+        Ok(Self {
+            design,
+            heard_by,
+            evidence,
+            at,
+        })
+    }
+}
+
+impl Revision {
+    /// A revision record at a UTC instant in the node's own form (n-86cc).
+    pub fn new(reason: String, source: String, at: String) -> Result<Self> {
+        valid_instant(&at)?;
+        Ok(Self { reason, source, at })
+    }
+}
+
+impl Completion {
+    /// A completion record at a UTC instant in the node's own form (n-86cc).
+    pub fn new(evidence: String, at: String) -> Result<Self> {
+        valid_instant(&at)?;
+        Ok(Self { evidence, at })
+    }
+}
+
+impl Cancellation {
+    /// A cancellation record at a UTC instant in the node's own form (n-86cc).
+    pub fn new(reason: String, source: String, at: String) -> Result<Self> {
+        valid_instant(&at)?;
+        Ok(Self { reason, source, at })
+    }
+}
+
+impl Criterion {
+    /// Record the instant a criterion was satisfied, in the node's own form.
+    pub fn set_satisfied_at(&mut self, at: String) -> Result<()> {
+        valid_instant(&at)?;
+        self.satisfied_at = Some(at);
+        Ok(())
+    }
 }

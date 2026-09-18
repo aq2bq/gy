@@ -276,8 +276,8 @@ fn required(value: String, message: &str) -> Result<String> {
     Ok(value)
 }
 
-/// A `created` instant in `YYYY-MM-DDTHH:MM:SSZ` form (n-b6b6).
-fn valid_created(text: &str) -> bool {
+/// A stored instant in `YYYY-MM-DDTHH:MM:SSZ` form, `created` or any `at` (n-86cc).
+pub(crate) fn valid_created(text: &str) -> bool {
     let b = text.as_bytes();
     let at = [b'-', b'-', b'T', b':', b':', b'Z'];
     let on = [4, 7, 10, 13, 16, 19];

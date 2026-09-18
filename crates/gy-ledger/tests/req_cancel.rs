@@ -46,6 +46,8 @@ fn req_cancel_records_the_cancellation() {
     match node.data() {
         NodeData::Requirement(data) => {
             assert_eq!(data.cancellation.as_ref().unwrap().reason, "not needed");
+            let at = &data.cancellation.as_ref().unwrap().at;
+            assert!(at.len() == 20 && at.ends_with('Z'), "{at}");
         }
         _ => panic!("not a requirement"),
     }

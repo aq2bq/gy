@@ -79,14 +79,10 @@ pub trait Operation<S: Store> {
     fn run(self, repo: &mut Repository<S>) -> Result<Outcome<Self::Output>>;
 }
 
-/// Today's date, `YYYY-MM-DD`. Kept for the fields that still record a day:
-/// `satisfied_at` and a requirement's own `at` (n-b6b6 keeps the node's
-/// `created` on `now`; the rest move in n-86cc).
-pub fn today() -> String {
-    chrono::Utc::now().format("%Y-%m-%d").to_string()
-}
-
-/// The instant a new node was made: UTC, RFC 3339, seconds, `Z` (n-b6b6).
+/// The instant a write records: UTC, RFC 3339, seconds, `Z`. Every stored
+/// instant — a node's `created`, a criterion's `satisfied_at`, a requirement's
+/// approval / revision / completion / cancellation — takes this form (n-b6b6,
+/// n-86cc).
 pub fn now() -> String {
     chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()
 }

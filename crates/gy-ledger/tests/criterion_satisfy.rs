@@ -45,7 +45,8 @@ fn criterion_satisfy_records_evidence_and_the_date() {
         NodeData::Criterion(data) => {
             assert!(data.satisfied);
             assert_eq!(data.evidence.as_deref(), Some("verified in production"));
-            assert!(data.satisfied_at.is_some());
+            let at = data.satisfied_at.as_deref().unwrap();
+            assert!(at.len() == 20 && at.ends_with('Z'), "{at}");
         }
         _ => panic!("not a criterion"),
     }

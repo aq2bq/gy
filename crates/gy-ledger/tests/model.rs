@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use gy_ledger::{
-    Attributes, Closure, DecisionScope, Link, Node, NodeData, NodeId, NodeKind, Relation,
-    RequirementState, bearer_count, free_attribute,
+    Approval, Attributes, Cancellation, Closure, Completion, DecisionScope, Link, Node, NodeData,
+    NodeId, NodeKind, Relation, RequirementState, Revision, bearer_count, free_attribute,
 };
 
 const DATE: &str = "2026-09-15T00:00:00Z";
@@ -63,6 +63,24 @@ fn a_date_only_created_is_rejected() {
         )
         .is_ok()
     );
+}
+
+#[test]
+fn a_date_only_instant_is_rejected() {
+    let dated = "2026-09-15".to_string();
+    assert!(Approval::new("d".into(), "h".into(), "e".into(), dated.clone()).is_err());
+    assert!(Revision::new("r".into(), "s".into(), dated.clone()).is_err());
+    assert!(Completion::new("e".into(), dated.clone()).is_err());
+    assert!(Cancellation::new("r".into(), "s".into(), dated).is_err());
+    assert!(Approval::new("d".into(), "h".into(), "e".into(), DATE.into()).is_ok());
+
+    let mut criterion =
+        Node::criterion(id(NodeKind::Criterion, "0001"), SCOPE, DATE, "a criterion").unwrap();
+    if let NodeData::Criterion(data) = criterion.data_mut() {
+        assert!(data.set_satisfied_at("2026-09-15".into()).is_err());
+        assert!(data.set_satisfied_at(DATE.into()).is_ok());
+        assert_eq!(data.satisfied_at.as_deref(), Some(DATE));
+    }
 }
 
 #[test]

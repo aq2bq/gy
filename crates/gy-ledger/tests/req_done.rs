@@ -55,6 +55,8 @@ fn req_done_records_the_completion() {
     match node.data() {
         NodeData::Requirement(data) => {
             assert_eq!(data.completion.as_ref().unwrap().evidence, "shipped");
+            let at = &data.completion.as_ref().unwrap().at;
+            assert!(at.len() == 20 && at.ends_with('Z'), "{at}");
         }
         _ => panic!("not a requirement"),
     }
