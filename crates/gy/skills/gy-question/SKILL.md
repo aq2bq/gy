@@ -9,6 +9,8 @@ description: gy に論点を立てて閉じるとき、決定者と選択肢と�
 
 `question add` は決定者（`--decider`）と、互いに異なる選択肢（`--options`）を 2 つ以上求める。誰の合意で閉じるかが決まっていないものは、論点にしない。本文は選択肢の根拠なので、`--body-file` で作成と一緒に書く。
 
+論点は何のためかを辺で持つ。それを待つニーズがあれば `link <need> waits-on <q>` で繋ぐ（要求が生んだなら `raised`）。繋がるまで出力の `missing` に「待つニーズ（waits-on）か生んだ要求（raised）」が出て、`handover` は誰も待っていない開いた論点を数える。ニーズは必須ではない。論点 → 決定 → `spawned-by` でニーズ、の順でもよい。
+
 ## 3 つの閉じ方
 
 `question close --by` は次のいずれかを取る。
@@ -21,4 +23,4 @@ description: gy に論点を立てて閉じるとき、決定者と選択肢と�
 
 ## 迷ったら
 
-`question add` の出力は、先頭に `id: <ID>` を出し、次に打てるコマンド（`question close` と `decide`）を示す。
+`question add` の出力は、先頭に `id: <ID>` を出し、次に打てるコマンド（`question close`、`decide`、`link … waits-on`）を示す。

@@ -111,6 +111,10 @@ Writes (16):
 
 Every write prints what it changed, what the node still lacks, and the shape of the command that could come next, so the next step is visible without a separate instruction sheet. A write that creates a node (`need add`, `question add`, `criterion add`, `decide`, `req add`) prints `id: <ID>` as its first line. Pass `--json` for the same content as data.
 
+## Dates and times
+
+A node's `created`, a criterion's `satisfied_at` and a requirement's recorded dates are stored as UTC instants; `show` and `list` print them in your own time zone (`TZ`) as `YYYY-MM-DD HH:MM`, while `--json` and `publish` keep the stored value (`2026-09-18T07:28:56Z`). To name a point in time to another agent, use the write sequence or a node id, not a date.
+
 ## Resuming a session
 
 A new session starts with three commands. `handover` shows the in-progress requirements with their references, the number of open questions, the number of ready needs, and the errors and warning counts. `next` lists the needs whose prerequisites are settled, and the agent presents one of them to the master. `show` reads one node in full.
