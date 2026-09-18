@@ -1,6 +1,52 @@
 # Changelog
 
-## Unreleased
+## 0.9.0 - 2026-09-18
+
+### Updating
+
+For an agent that drives gy from the command line, this is the whole
+migration. Nothing has to be done to a ledger by hand.
+
+```
+cargo install gy --locked    # gy 0.9.0
+```
+
+- **What you run does not change.** Every subcommand and option is the
+  same as in 0.8.1, and `gy.toml` accepts the same keys. The output shape
+  of a write is unchanged: `id: <ID>` first for a write that mints a node,
+  then `changed:`, `missing:`, `next:`; the bare id for the others; and the
+  same keys under `--json`.
+- **What you read changes in four places.**
+  1. Dates are moments, shown in your own time zone. `show` and `list`
+     print `created` (and a criterion's `satisfied_at`, a requirement's
+     approval and completion) as `YYYY-MM-DD HH:MM` in the time zone of
+     the process (`TZ`); `--json` and `publish` carry the stored UTC
+     instant, `2026-09-18T07:28:56Z`. Do not compare a printed date with a
+     stored one; when you need to name a point in time to another agent,
+     use the write sequence (`seq`) or the node id.
+  2. `--since <YYYY-MM-DD>` starts at that day's midnight in your own time
+     zone, not in UTC.
+  3. `handover` may print two more warning lines, `open questions nobody
+     waits on: N` and `criteria unmet with every need closed: N`. They are
+     counts, like the other warnings; find the nodes with `list` and read
+     the gap in `show`'s `missing:`.
+  4. `missing:` and `next:` say more. An open question nobody waits on
+     lists `待つニーズ（waits-on）か生んだ要求（raised）` and offers
+     `link <need> waits-on <q>`; a closed need lists the unmet criteria it
+     leaves as `未達の受け入れ条件 <ac>` and offers `criterion satisfy`.
+     Neither is a rule: a question still needs no need, and a close is not
+     refused.
+- **The ledger migrates itself.** The first time 0.9.0 opens a ledger it
+  moves the format from 2 to 3: the log is not rewritten, an old
+  `YYYY-MM-DD` reads as `T00:00:00Z`, the snapshot is rebuilt, and
+  `format.2.bak` keeps the old version file. Every ledger a project has
+  must then be opened with 0.9.0 or later: a 0.8.x build says `format 3 is
+  newer than this build supports` and stops. Update every machine that
+  shares a ledger at the same time.
+- **A write that races another writer is retried for you.** You no longer
+  see `another writer advanced the ledger; reopen and retry`; only a write
+  that lost five times fails, with `gave up after 5 retries`. The event
+  line then carries `"retries": n`, which a reader may ignore.
 
 ### Changed
 

@@ -10,7 +10,7 @@ rust-version.workspace = true
 readme = "../../README.md"
 
 [dependencies]
-gy-ledger = { path = "../gy-ledger", version = "0.8.1" }
+gy-ledger = { path = "../gy-ledger", version = "0.9.0" }
 chrono.workspace = true
 serde.workspace = true
 serde_json.workspace = true
