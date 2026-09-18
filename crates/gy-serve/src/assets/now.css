@@ -30,7 +30,8 @@
 .eye .row:hover .t{color:#fff;text-decoration:underline;text-underline-offset:4px}
 .eye .row .st{font-size:11px;color:var(--paper-3);white-space:nowrap;padding-top:3px}
 .wait{display:block;border:1px solid var(--requirement);border-radius:10px;padding:14px 18px;margin-top:10px;background:rgba(242,139,160,.06)}
-.wait .who{font-family:var(--mono);font-size:11px;color:var(--requirement);letter-spacing:.1em}
+.wait .who{font-family:var(--mono);font-size:11px;color:var(--requirement);letter-spacing:.1em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wait .who .unwaited{font-style:normal;color:var(--paper-3)}
 .wait .t{font-family:var(--sans);font-weight:500;font-size:18px;margin:4px 0 6px;white-space:normal}
 .wait .opts{color:var(--paper-2);font-size:13px;margin:0;padding-left:18px}
 .eye .wait{margin-top:8px;padding:10px 12px;border-radius:8px}

@@ -33,6 +33,15 @@
       hour: '2-digit', minute: '2-digit',
     });
 
+  /* Days between a row's `created` (a UTC date) and today, counted as UTC
+     dates; today or a future date reads as today (n-fa11). */
+  const age = row => {
+    const now = new Date();
+    const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const days = Math.floor((today - Date.parse(`${row.created}T00:00:00Z`)) / 86400000);
+    return days > 0 ? fill(t('unwaitedDays'), { n: days }) : t('today');
+  };
+
   const head = (cls, n, name, sub) =>
     `<div class="head"><span class="n">${n}</span><span class="l">${esc(name)}</span><span class="h">${esc(sub)}</span></div>`;
 
@@ -61,7 +70,8 @@
   function card(item) {
     const row = item.row;
     const options = item.options.map(option => `<li>${esc(option)}</li>`).join('');
-    return `<a class="wait" href="#/n/${row.id}"><div class="who">${esc(label(row))} · ${t('decider')} ${esc(item.decider)}</div><div class="t">${esc(row.title)}</div><ol class="opts">${options}</ol></a>`;
+    const mark = row.unwaited ? ` <i class="unwaited">${esc(t('unwaited'))} · ${esc(age(row))}</i>` : '';
+    return `<a class="wait" href="#/n/${row.id}"><div class="who">${esc(label(row))} · ${t('decider')} ${esc(item.decider)}${mark}</div><div class="t">${esc(row.title)}</div><ol class="opts">${options}</ol></a>`;
   }
 
   /* The first eye: the questions that name the master, then the filed

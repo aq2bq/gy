@@ -3,6 +3,7 @@
 use super::derive::{NeedState, need_state};
 use super::open_or_closed;
 use crate::model::{Node, NodeData, NodeId, NodeKind, Relation, RequirementState};
+use crate::ops::advice;
 use crate::ops::repository::{Error, Repository, Result, Store};
 use serde::Serialize;
 use std::fmt;
@@ -30,6 +31,8 @@ pub struct Row {
     pub title: String,
     pub scope: String,
     pub created: String,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub unwaited: bool,
 }
 impl fmt::Display for Row {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -169,6 +172,7 @@ fn row(node: &Node, all: &[Node]) -> Row {
         title: node.title().to_string(),
         scope: node.scope().to_string(),
         created: node.created().to_string(),
+        unwaited: advice::unwaited(node, all),
     }
 }
 

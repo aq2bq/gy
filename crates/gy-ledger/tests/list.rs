@@ -230,3 +230,19 @@ fn list_is_empty_when_nothing_matches() {
     assert!(node_rows(&repo, &Filter::default()).is_empty());
     assert_eq!(list(&repo, &Filter::default()).unwrap().to_string(), "");
 }
+
+#[test]
+fn list_marks_questions_nobody_waits_on() {
+    let mut repo = repo();
+    let question =
+        Node::question(id(NodeKind::Question, "0030"), SCOPE, DATE, "a question").unwrap();
+    let need = Node::need(id(NodeKind::Need, "0031"), SCOPE, DATE, "a need").unwrap();
+    seed(&mut repo, &[question, need]);
+
+    let rows = node_rows(&repo, &Filter::default());
+    let asked = rows.iter().find(|row| row.id == "q-0030").unwrap();
+    assert!(asked.unwaited);
+    assert_eq!(asked.created, DATE);
+    let wanted = rows.iter().find(|row| row.id == "n-0031").unwrap();
+    assert!(!wanted.unwaited);
+}

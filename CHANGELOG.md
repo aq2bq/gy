@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **`question add` and `show` name the need or requirement an open
+  question still lacks** (n-fa11, d-09b6): `missing:` gains
+  `待つニーズ（waits-on）か生んだ要求（raised）` until some node points a
+  `waits-on` or `raised` edge at the question, and `next:` gains
+  `link <need> waits-on <q>`. A question still needs no need to be filed;
+  this is advice, not a rule.
+- **`handover` counts the open questions nobody waits on** as one more
+  warning line, `open questions nobody waits on: N`, absent when N is 0.
+  The list itself is not printed, as with the other warnings.
+- **`/api/now` and `/api/list` rows carry `created`, and `unwaited: true`**
+  on an open question nobody waits on (the key is absent otherwise). The
+  page marks such a question on the waiting card and in the list with
+  "nobody waits on this" and its age in days.
+
 ## 0.8.1 - 2026-09-18
 
 ### Fixed

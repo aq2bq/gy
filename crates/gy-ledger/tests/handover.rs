@@ -1,6 +1,6 @@
 use gy_ledger::{
-    Actor, DecisionScope, FormatVersion, Link, MemoryStore, Node, NodeData, NodeId, NodeKind, Ref,
-    Relation, Repository, RequirementState, Store, handover,
+    Actor, Closure, DecisionScope, FormatVersion, Handover, Link, MemoryStore, Node, NodeData,
+    NodeId, NodeKind, Ref, Relation, Repository, RequirementState, Store, handover,
 };
 
 const SCOPE: &str = "a";
@@ -36,6 +36,18 @@ fn requirement(hash: &str, scope: &str, state: RequirementState) -> Node {
         state,
     )
     .unwrap()
+}
+
+fn question(hash: &str, scope: &str) -> Node {
+    Node::question(id(NodeKind::Question, hash), scope, DATE, "a question").unwrap()
+}
+
+fn warning_count(report: &Handover, label: &str) -> usize {
+    report
+        .warnings
+        .iter()
+        .find(|warning| warning.label == label)
+        .map_or(0, |warning| warning.count)
 }
 
 #[test]
@@ -163,4 +175,35 @@ fn handover_filters_by_scope() {
     let report = handover(&repo, Some("b")).unwrap();
     assert_eq!(report.in_progress.len(), 1);
     assert_eq!(report.in_progress[0].id, "r-0011");
+}
+
+#[test]
+fn handover_counts_open_questions_nobody_waits_on() {
+    let mut repo = repo();
+    let waited = question("0001", SCOPE);
+    let raised = question("0002", SCOPE);
+    let mut closed = question("0003", SCOPE);
+    if let NodeData::Question(data) = closed.data_mut() {
+        data.closure = Some(Closure::Fact);
+    }
+    let lonely = question("0004", SCOPE);
+    let elsewhere = question("0005", "b");
+    let mut need = Node::need(id(NodeKind::Need, "0006"), SCOPE, DATE, "a need").unwrap();
+    need.link(Link::new(need.id().clone(), Relation::WaitsOn, waited.id().clone()).unwrap());
+    let mut req = requirement("0007", SCOPE, RequirementState::Filed);
+    req.link(Link::new(req.id().clone(), Relation::Raised, raised.id().clone()).unwrap());
+    seed(
+        &mut repo,
+        &[waited, raised, closed, lonely, elsewhere, need, req],
+    );
+
+    let all = handover(&repo, None).unwrap();
+    assert_eq!(
+        warning_count(&all, "open questions nobody waits on"),
+        2,
+        "{:?}",
+        all.warnings
+    );
+    let scoped = handover(&repo, Some(SCOPE)).unwrap();
+    assert_eq!(warning_count(&scoped, "open questions nobody waits on"), 1);
 }

@@ -17,10 +17,20 @@
     return (OPEN[row.kind] || []).includes(row.status);
   }
 
+  /* Days between a row's `created` (a UTC date) and today, counted as UTC
+     dates; today or a future date reads as today (n-fa11). */
+  const age = (row, ui) => {
+    const now = new Date();
+    const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const days = Math.floor((today - Date.parse(`${row.created}T00:00:00Z`)) / 86400000);
+    return days > 0 ? fill(ui.t('unwaitedDays'), { n: days }) : ui.t('today');
+  };
+
   function rowHtml(row, ui) {
     const label = row.alias || row.id;
     const word = row.status ? ui.t(`st.${row.kind}.${row.status}`) : '';
-    return `<a class="row wide" href="#/n/${row.id}"><span class="dot dot-${row.kind}"></span><span class="id">${esc(label)}</span><span class="t" title="${esc(row.title)}">${esc(row.title)}</span>${ui.scopeTag(row.scope)}<span class="st">${esc(word)}</span><span class="sc">${esc(row.created)}</span></a>`;
+    const mark = row.unwaited ? ` <i class="unwaited">${esc(ui.t('unwaited'))} · ${esc(age(row, ui))}</i>` : '';
+    return `<a class="row wide" href="#/n/${row.id}"><span class="dot dot-${row.kind}"></span><span class="id">${esc(label)}</span><span class="t" title="${esc(row.title)}">${esc(row.title)}${mark}</span>${ui.scopeTag(row.scope)}<span class="st">${esc(word)}</span><span class="sc">${esc(row.created)}</span></a>`;
   }
 
   /* The chips name the act events.js reads and the act it carries (第 4 段 took

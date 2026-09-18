@@ -278,3 +278,23 @@ fn now_reports_ready_and_resume_from_the_other_views() {
         handover(&repo, Some("b")).unwrap().in_progress.len()
     );
 }
+
+#[test]
+fn now_marks_questions_nobody_waits_on() {
+    let repo = ledger();
+    let view = now(&repo, None).unwrap();
+    assert_eq!(view.open_questions.len(), 1);
+    assert!(view.open_questions[0].unwaited);
+    assert_eq!(view.open_questions[0].created, "2026-09-03");
+    let rows = view
+        .waiting
+        .iter()
+        .filter_map(|item| match item {
+            gy_ledger::Waiting::Question { row, .. } => Some(row.unwaited),
+            gy_ledger::Waiting::Requirement { .. } => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(rows, [true, true]);
+    assert!(view.in_progress.iter().all(|row| !row.unwaited));
+    assert!(view.ready.iter().all(|item| !item.row.unwaited));
+}

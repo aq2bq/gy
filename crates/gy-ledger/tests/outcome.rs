@@ -134,13 +134,15 @@ fn add_operations_report_what_their_new_node_lacks() {
     }
     .run(&mut repo)
     .unwrap();
-    assert_eq!(asked.missing, ["本文（選択肢の根拠）"]);
+    const NO_WAITER: &str = "待つニーズ（waits-on）か生んだ要求（raised）";
+    assert_eq!(asked.missing, ["本文（選択肢の根拠）", NO_WAITER]);
     let asked_id = asked.id.clone().unwrap();
     assert_eq!(
         asked.next,
         [
             format!("question close {asked_id} --by … --evidence …"),
-            format!("decide … --closes {asked_id}")
+            format!("decide … --closes {asked_id}"),
+            format!("link <need> waits-on {asked_id}")
         ]
     );
 

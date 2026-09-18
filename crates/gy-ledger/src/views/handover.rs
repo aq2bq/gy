@@ -3,6 +3,7 @@
 //! step, integrity errors, and warnings as counts only (proposal-v3 14).
 use super::derive::{edges, find, ready, reference, requirement_in_progress};
 use crate::model::{Node, NodeData, NodeKind, Relation};
+use crate::ops::advice;
 use crate::ops::repository::{Repository, Result, Store};
 use serde::Serialize;
 use std::collections::BTreeSet;
@@ -158,6 +159,11 @@ fn warnings(all: &[Node], scope: Option<&str>, in_progress: &[&Node]) -> Vec<War
         "criteria with an empty body",
         empty_bodies(all, scope),
     );
+    push(
+        &mut warnings,
+        "open questions nobody waits on",
+        nobody_waits(all, scope),
+    );
     warnings
 }
 
@@ -194,6 +200,13 @@ fn empty_bodies(all: &[Node], scope: Option<&str>) -> usize {
                 && node.kind() == NodeKind::Criterion
                 && node.body().trim().is_empty()
         })
+        .count()
+}
+
+/// Open questions in scope that no node waits on or raised (n-fa11, d-09b6).
+fn nobody_waits(all: &[Node], scope: Option<&str>) -> usize {
+    all.iter()
+        .filter(|node| in_scope(node, scope) && advice::unwaited(node, all))
         .count()
 }
 

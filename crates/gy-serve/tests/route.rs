@@ -206,6 +206,26 @@ fn now_matches_the_view() {
     );
 }
 
+#[test]
+fn now_json_carries_unwaited_questions() {
+    let mut repo = ledger();
+    QuestionAdd {
+        scope: "a".to_string(),
+        title: "who decides".to_string(),
+        decider: "master".to_string(),
+        options: vec!["x".to_string(), "y".to_string()],
+        body: None,
+    }
+    .run(&mut repo)
+    .unwrap();
+    let answer = json(&route(&repo, &get("/api/now", None), "gy"));
+    let open = answer["open_questions"].as_array().unwrap();
+    assert_eq!(open.len(), 1);
+    assert_eq!(open[0]["unwaited"], true);
+    assert!(open[0]["created"].as_str().is_some());
+    assert!(answer["in_progress"][0].get("unwaited").is_none());
+}
+
 /// One response's body as JSON.
 fn json(res: &gy_serve::http::Response) -> serde_json::Value {
     serde_json::from_slice(&res.body).unwrap()

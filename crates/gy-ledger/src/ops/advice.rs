@@ -10,7 +10,7 @@ use crate::model::{
 pub fn missing(node: &Node, all: &[Node]) -> Vec<String> {
     match node.data() {
         NodeData::Need(data) if data.closed.is_none() => need_missing(node),
-        NodeData::Question(data) if data.closure.is_none() => body(node, "本文（選択肢の根拠）"),
+        NodeData::Question(data) if data.closure.is_none() => question_missing(node, all),
         NodeData::Decision(_) => decision_missing(node, all),
         NodeData::Requirement(data) if pre_approval(data) => requirement_missing(node),
         NodeData::Criterion(data) if !data.satisfied => body(node, "本文（測り方）"),
@@ -30,6 +30,7 @@ pub fn next(node: &Node, all: &[Node]) -> Vec<String> {
         NodeData::Question(data) if data.closure.is_none() => vec![
             format!("question close {id} --by … --evidence …"),
             format!("decide … --closes {id}"),
+            format!("link <need> waits-on {id}"),
         ],
         NodeData::Decision(_) => decision_next(node, all),
         NodeData::Requirement(data) => requirement_next(id, data),
@@ -44,6 +45,27 @@ fn need_missing(node: &Node) -> Vec<String> {
         out.push("filed-as の要求".to_string());
     }
     out
+}
+
+/// A question's gaps: its body, and the need or requirement that asks it. An
+/// open question nobody waits on is the one that ages into "why did I ask
+/// this" (n-fa11, d-09b6).
+fn question_missing(node: &Node, all: &[Node]) -> Vec<String> {
+    let mut out = body(node, "本文（選択肢の根拠）");
+    if unwaited(node, all) {
+        out.push("待つニーズ（waits-on）か生んだ要求（raised）".to_string());
+    }
+    out
+}
+
+/// Whether nobody asks this open question: no node points a `waits-on` or a
+/// `raised` edge at it. The one judgement handover, now, and list share.
+pub fn unwaited(node: &Node, all: &[Node]) -> bool {
+    matches!(node.data(), NodeData::Question(data) if data.closure.is_none())
+        && !all.iter().any(|other| {
+            linked(other, Relation::WaitsOn).contains(node.id())
+                || linked(other, Relation::Raised).contains(node.id())
+        })
 }
 
 fn decision_missing(node: &Node, all: &[Node]) -> Vec<String> {

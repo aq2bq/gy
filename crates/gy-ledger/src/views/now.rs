@@ -7,6 +7,7 @@ use super::list::LogRow;
 use super::next::ready_rows;
 use super::{NeedState, open_or_closed};
 use crate::model::{Node, NodeData, NodeKind, RequirementState};
+use crate::ops::advice;
 use crate::ops::repository::{Repository, Result, Store};
 use serde::Serialize;
 
@@ -24,6 +25,9 @@ pub struct NodeRow {
     pub title: String,
     pub scope: String,
     pub status: String,
+    pub created: String,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub unwaited: bool,
 }
 
 /// One thing the master waits on: an open question whose decider names the
@@ -220,6 +224,8 @@ fn row(node: &Node, all: &[Node]) -> NodeRow {
         title: node.title().to_string(),
         scope: node.scope().to_string(),
         status: state_name(node, all),
+        created: node.created().to_string(),
+        unwaited: advice::unwaited(node, all),
     }
 }
 
