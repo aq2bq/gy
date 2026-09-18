@@ -1,6 +1,6 @@
 use gy_ledger::{
-    Actor, ClosedBy, FormatVersion, MemoryStore, NeedClose, Node, NodeData, NodeId, NodeKind,
-    Operation, Repository,
+    Actor, ClosedBy, FormatVersion, Link, MemoryStore, NeedClose, Node, NodeData, NodeId, NodeKind,
+    Operation, Relation, Repository, Store,
 };
 
 const SCOPE: &str = "a";
@@ -39,6 +39,28 @@ fn close(id: &NodeId, by: ClosedBy, evidence: &str) -> NeedClose {
         by,
         evidence: evidence.into(),
     }
+}
+
+fn seed<S: Store>(repo: &mut Repository<S>, nodes: &[Node]) {
+    repo.transaction("seed", "test", |repo| {
+        for node in nodes {
+            repo.put(node)?;
+        }
+        Ok(())
+    })
+    .unwrap();
+}
+
+fn target(need: &mut Node, criterion: &Node) {
+    need.link(Link::new(need.id().clone(), Relation::Targets, criterion.id().clone()).unwrap());
+}
+
+fn satisfied(hash: &str) -> Node {
+    let mut node = criterion(hash);
+    if let NodeData::Criterion(data) = node.data_mut() {
+        data.satisfied = true;
+    }
+    node
 }
 
 #[test]
@@ -98,4 +120,58 @@ fn closing_a_non_need_is_rejected() {
             .run(&mut repo)
             .is_err()
     );
+}
+
+#[test]
+fn closed_need_reports_an_unmet_criterion_no_open_need_bears() {
+    let mut repo = repo();
+    let ac = criterion("0001");
+    let ac_id = ac.id().clone();
+    let mut node = need("0002");
+    target(&mut node, &ac);
+    let id = node.id().clone();
+    seed(&mut repo, &[ac, node]);
+
+    let outcome = close(&id, ClosedBy::Fact, "resolved")
+        .run(&mut repo)
+        .unwrap();
+    assert_eq!(outcome.missing, [format!("未達の受け入れ条件 {ac_id}")]);
+    assert_eq!(
+        outcome.next,
+        [format!("criterion satisfy {ac_id} --evidence …")]
+    );
+}
+
+#[test]
+fn closed_need_omits_a_criterion_an_open_need_still_bears() {
+    let mut repo = repo();
+    let ac = criterion("0001");
+    let mut first = need("0002");
+    target(&mut first, &ac);
+    let first_id = first.id().clone();
+    let mut second = need("0003");
+    target(&mut second, &ac);
+    seed(&mut repo, &[ac, first, second]);
+
+    let outcome = close(&first_id, ClosedBy::Fact, "resolved")
+        .run(&mut repo)
+        .unwrap();
+    assert!(outcome.missing.is_empty(), "{:?}", outcome.missing);
+    assert!(outcome.next.is_empty());
+}
+
+#[test]
+fn closed_need_omits_a_satisfied_criterion() {
+    let mut repo = repo();
+    let ac = satisfied("0001");
+    let mut node = need("0002");
+    target(&mut node, &ac);
+    let id = node.id().clone();
+    seed(&mut repo, &[ac, node]);
+
+    let outcome = close(&id, ClosedBy::Fact, "resolved")
+        .run(&mut repo)
+        .unwrap();
+    assert!(outcome.missing.is_empty(), "{:?}", outcome.missing);
+    assert!(outcome.next.is_empty());
 }

@@ -9,7 +9,13 @@ use crate::model::{
 /// approved, satisfied, or done reports none: its gaps are settled.
 pub fn missing(node: &Node, all: &[Node]) -> Vec<String> {
     match node.data() {
-        NodeData::Need(data) if data.closed.is_none() => need_missing(node),
+        NodeData::Need(data) => {
+            if data.closed.is_none() {
+                need_missing(node)
+            } else {
+                closed_need_missing(node, all)
+            }
+        }
         NodeData::Question(data) if data.closure.is_none() => question_missing(node, all),
         NodeData::Decision(_) => decision_missing(node, all),
         NodeData::Requirement(data) if pre_approval(data) => requirement_missing(node),
@@ -23,10 +29,16 @@ pub fn missing(node: &Node, all: &[Node]) -> Vec<String> {
 pub fn next(node: &Node, all: &[Node]) -> Vec<String> {
     let id = node.id();
     match node.data() {
-        NodeData::Need(data) if data.closed.is_none() => vec![
-            format!("edit {id} --body-file … --reason …"),
-            format!("req add \"<題>\" --need {id} …"),
-        ],
+        NodeData::Need(data) => {
+            if data.closed.is_none() {
+                vec![
+                    format!("edit {id} --body-file … --reason …"),
+                    format!("req add \"<題>\" --need {id} …"),
+                ]
+            } else {
+                closed_need_next(node, all)
+            }
+        }
         NodeData::Question(data) if data.closure.is_none() => vec![
             format!("question close {id} --by … --evidence …"),
             format!("decide … --closes {id}"),
@@ -45,6 +57,53 @@ fn need_missing(node: &Node) -> Vec<String> {
         out.push("filed-as の要求".to_string());
     }
     out
+}
+
+/// The unmet criteria a closed need still targets that no open need bears: the
+/// gaps nobody can work anymore. A closed need is its own bearer, so this is
+/// exactly the orphaned ones among its targets.
+fn closed_need_missing(node: &Node, all: &[Node]) -> Vec<String> {
+    orphaned_criteria(node, all)
+        .into_iter()
+        .map(|criterion| format!("未達の受け入れ条件 {}", criterion.id()))
+        .collect()
+}
+
+/// The commands that would close the gaps `closed_need_missing` reports.
+fn closed_need_next(node: &Node, all: &[Node]) -> Vec<String> {
+    orphaned_criteria(node, all)
+        .into_iter()
+        .map(|criterion| format!("criterion satisfy {} --evidence …", criterion.id()))
+        .collect()
+}
+
+/// The criteria a need targets that are unmet and whose every bearing need is
+/// closed.
+fn orphaned_criteria<'a>(need: &Node, all: &'a [Node]) -> Vec<&'a Node> {
+    linked(need, Relation::Targets)
+        .into_iter()
+        .filter_map(|id| find(all, &id))
+        .filter(|criterion| unmet_orphaned(criterion, all))
+        .collect()
+}
+
+/// Whether a criterion is unsatisfied and every need that targets it is
+/// closed, so no open need bears the gap. A criterion no need targets is not
+/// orphaned: the bearer-less gap is reported where criteria are looked at.
+pub fn unmet_orphaned(criterion: &Node, all: &[Node]) -> bool {
+    if !unsatisfied(criterion) {
+        return false;
+    }
+    let bearers: Vec<&Node> = all
+        .iter()
+        .filter(|node| node.kind() == NodeKind::Need)
+        .filter(|need| linked(need, Relation::Targets).contains(criterion.id()))
+        .collect();
+    !bearers.is_empty() && bearers.iter().all(|need| closed_need(need))
+}
+
+fn closed_need(node: &Node) -> bool {
+    matches!(node.data(), NodeData::Need(data) if data.closed.is_some())
 }
 
 /// A question's gaps: its body, and the need or requirement that asks it. An

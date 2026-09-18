@@ -53,6 +53,14 @@
   on an open question nobody waits on (the key is absent otherwise). The
   page marks such a question on the waiting card and in the list with
   "nobody waits on this" and its age in days.
+- **`need close` and `show` name the unmet criteria a closed need leaves
+  behind** (n-f7ef, d-f7b6): when every need that targets a criterion is
+  closed and the criterion is not satisfied, the close prints
+  `missing: 未達の受け入れ条件 <ac>` and `next: criterion satisfy <ac>
+  --evidence …`. The close itself is not refused. To withdraw a criterion
+  instead, remove the need's `targets` edge to it (`link --remove`).
+- **`handover` counts those criteria** as one more warning line,
+  `criteria unmet with every need closed: N`, absent when N is 0.
 
 ## 0.8.1 - 2026-09-18
 

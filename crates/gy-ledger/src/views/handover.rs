@@ -164,6 +164,11 @@ fn warnings(all: &[Node], scope: Option<&str>, in_progress: &[&Node]) -> Vec<War
         "open questions nobody waits on",
         nobody_waits(all, scope),
     );
+    push(
+        &mut warnings,
+        "criteria unmet with every need closed",
+        orphaned_criteria(all, scope),
+    );
     warnings
 }
 
@@ -207,6 +212,13 @@ fn empty_bodies(all: &[Node], scope: Option<&str>) -> usize {
 fn nobody_waits(all: &[Node], scope: Option<&str>) -> usize {
     all.iter()
         .filter(|node| in_scope(node, scope) && advice::unwaited(node, all))
+        .count()
+}
+
+/// Criteria in scope whose every bearing need is closed (n-f7ef, d-f7b6).
+fn orphaned_criteria(all: &[Node], scope: Option<&str>) -> usize {
+    all.iter()
+        .filter(|node| in_scope(node, scope) && advice::unmet_orphaned(node, all))
         .count()
 }
 

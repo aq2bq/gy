@@ -1,6 +1,6 @@
 use gy_ledger::{
-    Actor, Closure, DecisionScope, FormatVersion, Handover, Link, MemoryStore, Node, NodeData,
-    NodeId, NodeKind, Ref, Relation, Repository, RequirementState, Store, handover,
+    Actor, Closed, ClosedBy, Closure, DecisionScope, FormatVersion, Handover, Link, MemoryStore,
+    Node, NodeData, NodeId, NodeKind, Ref, Relation, Repository, RequirementState, Store, handover,
 };
 
 const SCOPE: &str = "a";
@@ -40,6 +40,33 @@ fn requirement(hash: &str, scope: &str, state: RequirementState) -> Node {
 
 fn question(hash: &str, scope: &str) -> Node {
     Node::question(id(NodeKind::Question, hash), scope, DATE, "a question").unwrap()
+}
+
+fn need(hash: &str, scope: &str) -> Node {
+    Node::need(id(NodeKind::Need, hash), scope, DATE, "a need").unwrap()
+}
+
+fn criterion(hash: &str, scope: &str) -> Node {
+    Node::criterion(id(NodeKind::Criterion, hash), scope, DATE, "a criterion").unwrap()
+}
+
+fn targets(need: &mut Node, criterion: &Node) {
+    need.link(Link::new(need.id().clone(), Relation::Targets, criterion.id().clone()).unwrap());
+}
+
+fn close_need(need: &mut Node) {
+    if let NodeData::Need(data) = need.data_mut() {
+        data.closed = Some(Closed {
+            by: ClosedBy::Fact,
+            evidence: "resolved".into(),
+        });
+    }
+}
+
+fn satisfy(criterion: &mut Node) {
+    if let NodeData::Criterion(data) = criterion.data_mut() {
+        data.satisfied = true;
+    }
 }
 
 fn warning_count(report: &Handover, label: &str) -> usize {
@@ -206,4 +233,66 @@ fn handover_counts_open_questions_nobody_waits_on() {
     );
     let scoped = handover(&repo, Some(SCOPE)).unwrap();
     assert_eq!(warning_count(&scoped, "open questions nobody waits on"), 1);
+}
+
+const ORPHANED: &str = "criteria unmet with every need closed";
+
+#[test]
+fn handover_counts_unmet_criteria_with_every_need_closed() {
+    let mut repo = repo();
+    let ac = criterion("0001", SCOPE);
+    let mut bearer = need("0002", SCOPE);
+    targets(&mut bearer, &ac);
+    close_need(&mut bearer);
+    let elsewhere = criterion("0003", "b");
+    let mut other = need("0004", "b");
+    targets(&mut other, &elsewhere);
+    close_need(&mut other);
+    seed(&mut repo, &[ac, bearer, elsewhere, other]);
+
+    let all = handover(&repo, None).unwrap();
+    assert_eq!(warning_count(&all, ORPHANED), 2, "{:?}", all.warnings);
+    let scoped = handover(&repo, Some(SCOPE)).unwrap();
+    assert_eq!(warning_count(&scoped, ORPHANED), 1);
+}
+
+#[test]
+fn handover_stops_counting_a_satisfied_criterion() {
+    let mut repo = repo();
+    let mut ac = criterion("0001", SCOPE);
+    let mut need = need("0002", SCOPE);
+    targets(&mut need, &ac);
+    close_need(&mut need);
+    satisfy(&mut ac);
+    seed(&mut repo, &[ac, need]);
+
+    let report = handover(&repo, None).unwrap();
+    assert_eq!(warning_count(&report, ORPHANED), 0, "{:?}", report.warnings);
+}
+
+#[test]
+fn handover_stops_counting_a_criterion_an_open_need_bears() {
+    let mut repo = repo();
+    let ac = criterion("0001", SCOPE);
+    let mut closed = need("0002", SCOPE);
+    targets(&mut closed, &ac);
+    close_need(&mut closed);
+    let mut open = need("0003", SCOPE);
+    targets(&mut open, &ac);
+    seed(&mut repo, &[ac, closed, open]);
+
+    let report = handover(&repo, None).unwrap();
+    assert_eq!(warning_count(&report, ORPHANED), 0, "{:?}", report.warnings);
+}
+
+#[test]
+fn handover_ignores_a_criterion_no_need_targets() {
+    let mut repo = repo();
+    let ac = criterion("0001", SCOPE);
+    let mut need = need("0002", SCOPE);
+    close_need(&mut need);
+    seed(&mut repo, &[ac, need]);
+
+    let report = handover(&repo, None).unwrap();
+    assert_eq!(warning_count(&report, ORPHANED), 0, "{:?}", report.warnings);
 }
