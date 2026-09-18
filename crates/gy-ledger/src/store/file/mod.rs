@@ -88,6 +88,28 @@ impl FileStore {
     pub fn migrated(&self) -> Option<(u32, u32)> {
         self.migrated
     }
+    /// Undo only the writer's own last transaction (n-ecbf 2B2, ac-6f67). A
+    /// shared copy compares the human too; a local ledger the actor only.
+    pub(super) fn own_write(&self, last: &log::Event) -> Result<()> {
+        let human = if self.remote.is_some() {
+            super::remote::git::user(&self.dir)?.0
+        } else {
+            None
+        };
+        let mine = if self.remote.is_some() {
+            last.actor == self.actor.name() && last.by == human
+        } else {
+            last.actor == self.actor.name()
+        };
+        if mine {
+            return Ok(());
+        }
+        let who = last.by.clone().unwrap_or_else(|| last.actor.clone());
+        Err(super::Error::invalid(format!(
+            "the last write is {who}'s (seq {}); undo only your own",
+            last.seq
+        )))
+    }
     /// How many log events the last open replayed: 0 when the snapshot covered
     /// the whole log.
     pub fn replayed(&self) -> usize {

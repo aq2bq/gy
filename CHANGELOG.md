@@ -37,6 +37,18 @@
   synced copy prints `sync: N writes not pushed; remote last reached …`
   with the last error's first line (the full text under `--json`). A copy
   that cannot reach its remote keeps accepting reads and writes.
+- **Unpushed writes are re-seated after a remote that moved ahead, and
+  only the ones that no longer hold are rejected** (n-ecbf 2B): sync takes
+  the remote's lines, then keeps each local line unless a node it touched
+  was changed or deleted remotely, an edge points at a node that is gone,
+  its id collides, or it depends on a rejected line; kept lines get new
+  sequence numbers. A rejected line is kept in the copy's `rejected.jsonl`
+  and told to its writer only: the next gy command prints
+  `notice: your write seq N (…) did not land: …` on stderr and `handover`
+  lists it under errors, until that writer next writes to a node the
+  rejected line touched. On a synced copy `handover` fetches first (giving
+  up after five seconds), and `undo` refuses to undo another writer's
+  last write.
 
 ## 0.9.0 - 2026-09-18
 

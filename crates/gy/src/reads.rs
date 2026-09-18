@@ -66,6 +66,18 @@ fn watchdog(ledger: &Path) {
     });
 }
 
+/// `handover`, after reaching the remote when the copy is shared: the fetch
+/// gets five seconds, then the view is built from the copy as it stands
+/// (n-ecbf 2B2).
+pub fn handover(cli: &Cli, root: &Path, ledger: &Path) -> Result<()> {
+    repo::refresh(root, ledger)?;
+    let repository = repo::open(ledger)?;
+    emit(
+        cli.json,
+        &gy_ledger::handover(&repository, cli.scope.as_deref())?,
+    )
+}
+
 /// Serve the ledger over HTTP on localhost until stopped (n-a493). The CLI
 /// only wires it: gy-serve owns the server, and no write path exists. A read
 /// may name a sequence, which opens the ledger as it stood then (n-10e1).

@@ -206,3 +206,68 @@ fn judge(
     }
     None
 }
+pub fn rejected_notices(ledger: &Path) -> Vec<String> {
+    read_rejected(ledger)
+        .iter()
+        .map(|rejected| {
+            format!(
+                "notice: your write seq {} ({}) did not land: {}; redo it against the current ledger if it still applies",
+                rejected.event.seq, rejected.event.why, rejected.reason
+            )
+        })
+        .collect()
+}
+pub fn clear_rejected(ledger: &Path, event: &log::Event) -> Result<()> {
+    let Ok(text) = std::fs::read_to_string(ledger.join("rejected.jsonl")) else {
+        return Ok(());
+    };
+    let mine = named_nodes(event);
+    let mut kept = Vec::new();
+    let mut removed = false;
+    for line in text.lines() {
+        match serde_json::from_str::<Rejected>(line) {
+            Ok(rejected)
+                if rejected.event.actor == event.actor
+                    && rejected.event.by == event.by
+                    && named_nodes(&rejected.event)
+                        .iter()
+                        .any(|node| mine.contains(node)) =>
+            {
+                removed = true;
+            }
+            _ => kept.push(line),
+        }
+    }
+    if !removed {
+        return Ok(());
+    }
+    let mut out = kept.join("\n");
+    if !out.is_empty() {
+        out.push('\n');
+    }
+    let temporary = ledger.join(format!(".rejected.{}.tmp", std::process::id()));
+    std::fs::write(&temporary, out)?;
+    std::fs::rename(&temporary, ledger.join("rejected.jsonl"))?;
+    Ok(())
+}
+fn read_rejected(ledger: &Path) -> Vec<Rejected> {
+    std::fs::read_to_string(ledger.join("rejected.jsonl"))
+        .map(|text| {
+            text.lines()
+                .filter_map(|line| serde_json::from_str(line).ok())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+fn named_nodes(event: &log::Event) -> BTreeSet<String> {
+    event
+        .changes
+        .iter()
+        .filter_map(|change| match change {
+            log::Change::Created { node, .. }
+            | log::Change::Updated { node, .. }
+            | log::Change::Deleted { node, .. } => Some(node.clone()),
+            log::Change::ScopeRenamed { .. } => None,
+        })
+        .collect()
+}

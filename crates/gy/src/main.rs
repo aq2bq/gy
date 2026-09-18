@@ -11,7 +11,7 @@ use clap::Parser;
 use cli::{Cli, Command, CriterionAction, NeedAction, QuestionAction};
 use gy_ledger::{
     CriterionAdd, CriterionSatisfy, NeedAdd, NeedClose, QuestionAdd, QuestionClose, Result, config,
-    handover, location, next, reconcile, retry, show,
+    location, next, reconcile, retry, show,
 };
 use output::{emit, emit_list, report};
 use std::path::Path;
@@ -38,6 +38,7 @@ fn run(cli: &Cli) -> Result<()> {
     let root = repo::root(cli.directory.as_deref())?;
     let ledger = location::ledger_dir(&root);
     reconcile_copy(&root, &ledger)?;
+    repo::announce_rejected(&ledger);
     let outcome = match &cli.command {
         Command::Show { ids, full } => {
             let repository = repo::open(&ledger)?;
@@ -48,10 +49,7 @@ fn run(cli: &Cli) -> Result<()> {
             let repository = repo::open(&ledger)?;
             emit_list(cli.json, &next(&repository, cli.scope.as_deref())?)
         }
-        Command::Handover => {
-            let repository = repo::open(&ledger)?;
-            emit(cli.json, &handover(&repository, cli.scope.as_deref())?)
-        }
+        Command::Handover => reads::handover(cli, &root, &ledger),
         Command::Publish { since, out } => {
             reads::write_publish(cli, &root, &ledger, *since, out.as_deref())
         }
@@ -87,6 +85,13 @@ fn reconcile_copy(root: &Path, ledger: &Path) -> Result<()> {
 /// A write to a shared copy starts a detached `gy sync` (n-ecbf).
 fn after_write(cli: &Cli, root: &Path, ledger: &Path, outcome: &Result<()>) {
     if outcome.is_ok() && writes(&cli.command) {
+        // A write on a node a refused write touched clears that notice
+        // (n-ecbf 2B2), then a detached sync pushes the write.
+        if let Ok((events, _)) = gy_ledger::log::read(ledger) {
+            if let Some(event) = events.last() {
+                let _ = gy_ledger::clear_rejected(ledger, event);
+            }
+        }
         let _ = repo::background_sync(root, ledger);
     }
 }

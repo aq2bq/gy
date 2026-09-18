@@ -3,6 +3,7 @@
 use gy_ledger::{Actor, Error, FileStore, FormatVersion, Repository, Result, format};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
 
 /// A placeholder actor for reads. Only a write names the real `GY_ACTOR`.
 const READ_ACTOR: &str = "gy-read";
@@ -96,6 +97,50 @@ pub fn background_sync(root: &Path, ledger: &Path) -> Result<()> {
     let child = command.spawn()?;
     std::fs::write(&pid_path, child.id().to_string())?;
     Ok(())
+}
+
+/// Say once, on stderr, which refused writes this copy still carries (n-ecbf
+/// 2B2). Standard output is never touched.
+pub fn announce_rejected(ledger: &Path) {
+    for notice in gy_ledger::rejected_notices(ledger) {
+        eprintln!("{notice}");
+    }
+}
+
+/// Reach the remote before handover: run `gy sync` and give it five seconds,
+/// then keep the copy as it stands (n-ecbf 2B2).
+pub fn refresh(root: &Path, ledger: &Path) -> Result<()> {
+    if !ledger.join("remote").is_file() {
+        return Ok(());
+    }
+    let mut command = Command::new(std::env::current_exe()?);
+    command
+        .arg("-C")
+        .arg(root)
+        .arg("sync")
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        command.process_group(0);
+    }
+    let mut child = command.spawn()?;
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        if child.try_wait()?.is_some() {
+            return Ok(());
+        }
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            gy_ledger::record_timeout_after(ledger, 5);
+            return Ok(());
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
 }
 
 fn read_pid(path: &Path) -> Option<u32> {

@@ -104,13 +104,21 @@ pub fn handover<S: Store>(repo: &Repository<S>, scope: Option<&str>) -> Result<H
         .filter(|node| in_scope(node, scope) && node.kind() == NodeKind::Need && ready(node, &all))
         .count();
     Ok(Handover {
-        errors: integrity(&all),
+        errors: errors_with_rejected(&all, repo),
         sync: sync_row(repo),
         in_progress: in_progress.iter().map(|node| progress(node)).collect(),
         open_questions,
         ready_needs,
         warnings: warnings(&all, scope, &in_progress),
     })
+}
+
+/// Integrity errors, then the refused writes this copy still carries
+/// (n-ecbf 2B2). A local ledger has none.
+fn errors_with_rejected<S: Store>(all: &[Node], repo: &Repository<S>) -> Vec<String> {
+    let mut errors = integrity(all);
+    errors.extend(repo.store().rejected());
+    errors
 }
 
 fn progress(node: &Node) -> ProgressRow {

@@ -11,6 +11,7 @@ mod state;
 pub mod sync;
 
 pub use prepare::reconcile;
+pub use rebase::{clear_rejected, rejected_notices};
 pub use report::{Pulled, Range, Sync};
-pub use state::record_timeout;
+pub use state::{record_timeout, record_timeout_after};
 pub use sync::sync;

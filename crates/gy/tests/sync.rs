@@ -111,6 +111,76 @@ fn a_live_pid_stops_a_second_background_sync() {
 }
 
 #[test]
+fn a_rejected_write_is_noticed_without_touching_the_output() {
+    let fx = fixture();
+    fx.seed(&[common::need("0001", "a need")]);
+    let rejected = serde_json::json!({
+        "at": 0,
+        "event": {
+            "seq": 2, "at": 0, "actor": "piko", "why": "a write", "source": "test",
+            "changes": [{"change": "created", "node": "ac-0002",
+                         "value": serde_json::to_value(common::criterion("0002", "an ac")).unwrap()}],
+        },
+        "reason": "the remote changed ac-0002",
+    });
+    std::fs::write(fx.ledger().join("rejected.jsonl"), format!("{rejected}\n")).unwrap();
+
+    let out = fx.run(&["show", "n-0001"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    assert!(stdout(&out).contains("a need"));
+    assert!(!stdout(&out).contains("notice"), "{}", stdout(&out));
+    assert!(
+        stderr(&out).contains("notice: your write seq 2"),
+        "{}",
+        stderr(&out)
+    );
+}
+
+#[test]
+fn handover_reaches_the_remote_first() {
+    let temp = tempfile::tempdir().unwrap();
+    let remote = temp.path().join("remote.git");
+    init_remote(&remote);
+    let source = fixture();
+    write_toml(&source, &format!("file://{}", remote.display()));
+    source.seed(&[common::criterion("0001", "from the peer")]);
+    front_sync(&source);
+
+    // A machine with no copy reaches the remote through handover, then reads.
+    let fresh = fixture();
+    write_toml(&fresh, &format!("file://{}", remote.display()));
+    let out = fresh.run(&["handover"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    let out = fresh.run(&["list", "--type", "criterion"]);
+    assert!(stdout(&out).contains("from the peer"), "{}", stdout(&out));
+}
+
+#[test]
+fn handover_still_shows_a_copy_when_the_remote_is_unreachable() {
+    let temp = tempfile::tempdir().unwrap();
+    let remote = temp.path().join("remote.git");
+    init_remote(&remote);
+    let fx = fixture();
+    write_toml(&fx, &format!("file://{}", remote.display()));
+    fx.seed(&[common::need("0001", "a need")]);
+    front_sync(&fx);
+    git(
+        &fx.ledger(),
+        &[
+            "remote",
+            "set-url",
+            "origin",
+            "file:///nonexistent/ledger.git",
+        ],
+    );
+
+    let out = fx.run(&["handover"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    assert!(stdout(&out).contains("ready needs"), "{}", stdout(&out));
+    assert!(wait_for(|| sync_state(&fx)["last_error"].is_string()));
+}
+
+#[test]
 fn an_unreachable_remote_records_the_error_and_the_write_passes() {
     let temp = tempfile::tempdir().unwrap();
     let remote = temp.path().join("remote.git");

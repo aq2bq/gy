@@ -199,6 +199,11 @@ pub trait Store: IdSource {
     fn sync_state(&self) -> Option<SyncStatus> {
         None
     }
+    /// The refused writes a shared copy still carries, as notice lines
+    /// (n-ecbf 2B2). A local ledger has none.
+    fn rejected(&self) -> Vec<String> {
+        Vec::new()
+    }
     /// Invert the last transaction as a new transaction with this why and
     /// source (D-82). Nothing to invert is an error, and whether it inverted a
     /// write or an undo is returned (n-162c).

@@ -8,12 +8,18 @@ use std::path::Path;
 /// Record that a background sync gave up after its deadline (n-ecbf). The
 /// child calls this from its watchdog, so the next command can report it.
 pub fn record_timeout(ledger: &Path) {
+    record_timeout_after(ledger, 30);
+}
+
+/// Record a give-up after `secs` seconds, named for the caller (n-ecbf).
+pub fn record_timeout_after(ledger: &Path, secs: u64) {
     if !git::is_repo(ledger) {
         return;
     }
     let mut state = read_state(ledger);
-    state.last_error =
-        Some("the background sync gave up after 30 seconds waiting for the remote".into());
+    state.last_error = Some(format!(
+        "the sync gave up after {secs} seconds waiting for the remote"
+    ));
     state.last_error_at = Some(now());
     let _ = write_state(ledger, &state);
 }

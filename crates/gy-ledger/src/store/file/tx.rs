@@ -203,6 +203,9 @@ impl Store for FileStore {
         let text = std::fs::read_to_string(self.dir.join("sync.state")).ok()?;
         serde_json::from_str(&text).ok()
     }
+    fn rejected(&self) -> Vec<String> {
+        super::super::remote::rebase::rejected_notices(&self.dir)
+    }
     /// Append the inverse of the last transaction as a new line (D-82). The
     /// log is never rewritten; the undo is one more transaction with the given
     /// why and source. A created node is deleted, an updated node returns to
@@ -212,6 +215,7 @@ impl Store for FileStore {
         let last = events
             .last()
             .ok_or_else(|| Error::invalid("there is nothing to undo"))?;
+        self.own_write(last)?;
         let kind = undone_kind(&last.why, last.seq);
         let mut before = BTreeMap::new();
         for event in &events[..events.len() - 1] {
