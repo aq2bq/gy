@@ -130,10 +130,10 @@ gy show n-3f9a
 The only configuration is a scope name and, if wanted, an output path for `publish`. Anything else is refused when the file is read.
 
 ```toml
-[scopes.myproject]
-
 # Optional. publish writes here when --out is not given.
 output = "docs/publication"
+
+[scopes.myproject]
 ```
 
 Reads cover every scope. A write needs a scope only when the file names more than one; pass `--scope <name>` to choose. The first write creates the ledger, and reads never do.
