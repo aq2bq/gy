@@ -37,6 +37,32 @@ test('ArrowLeft rewinds the head and the pages answer for it', async ({ page, re
   await expect(page.getByTestId('main').getByRole('link')).toHaveCount(open.length);
 });
 
+test('a stored instant reads as the same day in the reader\'s own place', async ({ browser, request }) => {
+  // The newest write's node: its created day and the history heading are the
+  // same write, so no midnight can fall between them.
+  const history = await (await request.get(`${gy.url}api/history`)).json();
+  const node = history.rows[0].node as string;
+  const day = /\d{4}\/\d{2}\/\d{2}/;
+
+  const inZone = async (timezoneId: string) => {
+    const context = await browser.newContext({ timezoneId });
+    const page = await context.newPage();
+    await page.goto(`${gy.url}#/n/${node}`);
+    const created = (await page.getByTestId('created').innerText()).match(day)![0];
+    await page.goto(`${gy.url}#/history`);
+    const heading = await page.getByTestId('hist-day').first().innerText();
+    await context.close();
+    return { created, heading };
+  };
+
+  // 26 hours apart, so the calendar day always differs.
+  const east = await inZone('Pacific/Kiritimati'); // UTC+14
+  const west = await inZone('Etc/GMT+12'); // UTC-12
+  expect(east.created).toBe(east.heading);
+  expect(west.created).toBe(west.heading);
+  expect(east.created).not.toBe(west.created);
+});
+
 test('dragging the head moves the point and now goes back', async ({ page, request }) => {
   const shell = await (await request.get(`${gy.url}api/shell`)).json();
   await page.goto(gy.url);

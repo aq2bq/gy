@@ -28,19 +28,6 @@
   /* The label a row shows: the first alias, else the id. */
   const label = row => row.alias || row.id;
   const status = row => t(`st.${row.kind}.${row.status}`);
-  const when = at =>
-    new Date(at * 1000).toLocaleTimeString(lang === 'ja' ? 'ja-JP' : 'en-GB', {
-      hour: '2-digit', minute: '2-digit',
-    });
-
-  /* Days between a row's `created` (a UTC date) and today, counted as UTC
-     dates; today or a future date reads as today (n-fa11). */
-  const age = row => {
-    const now = new Date();
-    const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-    const days = Math.floor((today - Date.parse(`${row.created}T00:00:00Z`)) / 86400000);
-    return days > 0 ? fill(t('unwaitedDays'), { n: days }) : t('today');
-  };
 
   const head = (cls, n, name, sub) =>
     `<div class="head"><span class="n">${n}</span><span class="l">${esc(name)}</span><span class="h">${esc(sub)}</span></div>`;
@@ -70,7 +57,7 @@
   function card(item) {
     const row = item.row;
     const options = item.options.map(option => `<li>${esc(option)}</li>`).join('');
-    const mark = row.unwaited ? ` <i class="unwaited">${esc(t('unwaited'))} · ${esc(age(row))}</i>` : '';
+    const mark = row.unwaited ? ` <i class="unwaited">${esc(t('unwaited'))} · ${esc(window.GyTime.age(row.created, t))}</i>` : '';
     return `<a class="wait" href="#/n/${row.id}"><div class="who">${esc(label(row))} · ${t('decider')} ${esc(item.decider)}${mark}</div><div class="t">${esc(row.title)}</div><ol class="opts">${options}</ol></a>`;
   }
 
@@ -125,7 +112,7 @@
       return rowHtml({ id: item.id, kind: 'Requirement', title: item.title, alias: null }, esc(t(`st.Requirement.${item.state}`)) + ref);
     }).join('');
     const last = data.resume.last;
-    const lastText = last ? `${when(last.at)} ${esc(last.actor)} · seq ${last.seq}` : t('none');
+    const lastText = last ? `${window.GyTime.time(last.at, lang)} ${esc(last.actor)} · seq ${last.seq}` : t('none');
     const kv = `<div class="kv"><span>${t('openQuestions')}</span><b>${data.resume.open_questions}</b><span>${t('warnings')}</span><b>${data.resume.warnings || t('none')}</b><span>${t('lastWrite')}</span><b>${lastText}</b></div>`;
     const body = data.resume.in_progress.length
       ? `<div class="rows">${rows}</div>`
@@ -174,7 +161,7 @@
   }
 
   function line(entry) {
-    return `<div class="when">${when(entry.at)} · seq ${entry.seq} · ${esc(entry.actor)}</div><div class="what">${what(entry)}</div><div class="src" title="${esc(entry.source)}">${esc(entry.source)}</div>`;
+    return `<div class="when">${window.GyTime.time(entry.at, lang)} · seq ${entry.seq} · ${esc(entry.actor)}</div><div class="what">${what(entry)}</div><div class="src" title="${esc(entry.source)}">${esc(entry.source)}</div>`;
   }
 
   /* The dot colour: the four actor colours in the order the writers appear. */
@@ -194,7 +181,7 @@
       .map((entry, index) => `<div class="pi ${actorCls(entry.actor)}${index === 0 ? ' new' : ''}" role="listitem">${line(entry)}</div>`)
       .join('');
     const sub = data.recent.length
-      ? fill(t('pulseSub'), { n: data.recent.length, t: when(data.recent[0].at) })
+      ? fill(t('pulseSub'), { n: data.recent.length, t: window.GyTime.time(data.recent[0].at, lang) })
       : t('histEmpty');
     return `<section class="pulse2"><h2>${t('pulse')}</h2><div class="sub">${sub}</div><div class="pl2" role="list" aria-label="${esc(t('pulse'))}">${rows}</div></section>`;
   }

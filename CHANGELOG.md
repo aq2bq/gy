@@ -26,6 +26,11 @@
   in an older snapshot alike, so nothing needs doing by hand. A value
   migrated from 0.4 with a `+00:00` offset is kept as it is and still
   reads as an instant.
+- **The page shows every stored instant in the reader's own time zone**
+  (n-648d): the history headings, a node's created date, a requirement's
+  steps, the list's created column (now `YYYY/MM/DD`) and the "nobody waits
+  on this" age all count the browser's own calendar day, through one date
+  component (`time.js`). No UTC date is shown anywhere.
 - **`question add` and `show` name the need or requirement an open
   question still lacks** (n-fa11, d-09b6): `missing:` gains
   `待つニーズ（waits-on）か生んだ要求（raised）` until some node points a

@@ -15,10 +15,10 @@
     let html = '';
     let head = '';
     for (const entry of data.rows) {
-      const today = window.GyWrites.day(entry.at);
+      const today = window.GyTime.date(entry.at);
       if (today !== head) {
         head = today;
-        html += `<div class="hist-day">${head}</div>`;
+        html += `<div class="hist-day" data-testid="hist-day">${head}</div>`;
       }
       html += window.GyWrites.row(entry, data.labels || {}, order, ui, state.lang);
     }

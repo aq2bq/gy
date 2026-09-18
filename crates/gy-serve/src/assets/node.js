@@ -62,7 +62,7 @@
       `<span class="al">${esc((node.aliases || [])[0] || node.id)}</span>`,
       copy(node.id),
       `<span>${tag(node.scope)}</span>`,
-      `<span>${fill(t('createdOn'), { d: node.created })}</span>`,
+      `<span data-testid="created">${fill(t('createdOn'), { d: window.GyTime.date(node.created) })}</span>`,
       word ? `<span>${esc(word)}</span>` : '',
     ];
     return `<div class="nh"><span class="k k-${node.kind}">${t(node.kind)}</span><h1>${esc(node.title)}</h1><div class="meta">${meta.join('')}</div></div>`;
@@ -102,7 +102,7 @@
     const reference = data.reference
       ? `<a href="${esc(data.reference)}" target="_blank" style="color:var(--requirement);text-decoration:underline;text-underline-offset:3px">${esc(data.reference)}</a>`
       : '—';
-    const step = (label, at) => `<div class="hi"><span class="when">${at ? when(at) : t('pendingOn')}</span><span class="who"></span><span class="src">${label}</span></div>`;
+    const step = (label, at) => `<div class="hi"><span class="when">${at ? window.GyTime.dateTime(at, lang) : t('pendingOn')}</span><span class="who"></span><span class="src">${label}</span></div>`;
     const heard = data.approval && data.approval.heard_by ? ` · ${t('heardBy')} ${esc(data.approval.heard_by)}` : '';
     const path =
       step(t('filedOn'), node.created) +
@@ -122,7 +122,7 @@
   function right() {
     const rows = node.history || [];
     const history = rows.length
-      ? rows.map(entry => `<div class="hi" role="listitem"><span class="when">${when(entry.at)} · ${entry.seq}</span><span class="who">${esc(entry.actor)}</span><span><div class="src">${esc(entry.source)}</div><div class="why">${esc(entry.why)}</div></span></div>`).join('')
+      ? rows.map(entry => `<div class="hi" role="listitem"><span class="when">${window.GyTime.dateTime(entry.at, lang)} · ${entry.seq}</span><span class="who">${esc(entry.actor)}</span><span><div class="src">${esc(entry.source)}</div><div class="why">${esc(entry.why)}</div></span></div>`).join('')
       : `<div class="empty">${t('migrated')}</div>`;
     return `<div class="card" style="margin-top:0"><h3>${t('connections')}</h3><div class="map">${map()}</div></div>` +
       card(fill(t('hist'), { n: rows.length }), `<div class="hist" role="list" aria-label="${esc(t('histTitle'))}">${history}</div>`);
@@ -164,15 +164,6 @@
       svg += `<text class="rel" x="${cx}" y="${height - 14}" text-anchor="middle">${t('noConn')}</text>`;
     }
     return `<svg viewBox="0 0 ${width} ${height}">${svg}</svg>`;
-  }
-
-  function when(at) {
-    if (!at) return '';
-    const date = String(at).includes('T') ? new Date(at) : new Date(at * 1000);
-    if (Number.isNaN(date.getTime())) return esc(at);
-    return date.toLocaleString(lang === 'ja' ? 'ja-JP' : 'en-GB', {
-      month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
-    });
   }
 
   window.GyNode = { render };

@@ -25,6 +25,7 @@ const HISTORY_JS: &str = include_str!("assets/history.js");
 const NODE_CSS: &str = include_str!("assets/node.css");
 const NODE_JS: &str = include_str!("assets/node.js");
 const TIME_CSS: &str = include_str!("assets/time.css");
+const TIME_JS: &str = include_str!("assets/time.js");
 const GRAPH_CSS: &str = include_str!("assets/graph.css");
 const GRAPH_DRAW_JS: &str = include_str!("assets/graph-draw.js");
 const GRAPH_JS: &str = include_str!("assets/graph.js");
@@ -34,7 +35,7 @@ const RAIL_CSS: &str = include_str!("assets/rail.css");
 const RAIL_JS: &str = include_str!("assets/rail.js");
 
 /// Every embedded file: its name and its text.
-pub const FILES: [(&str, &str); 33] = [
+pub const FILES: [(&str, &str); 34] = [
     ("index.html", INDEX),
     ("app.css", CSS),
     ("state.js", STATE_JS),
@@ -61,6 +62,7 @@ pub const FILES: [(&str, &str); 33] = [
     ("node.css", NODE_CSS),
     ("node.js", NODE_JS),
     ("time.css", TIME_CSS),
+    ("time.js", TIME_JS),
     ("graph.css", GRAPH_CSS),
     ("graph-draw.js", GRAPH_DRAW_JS),
     ("graph.js", GRAPH_JS),
