@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.8.1 - 2026-09-18
+
+### Fixed
+
+- **A write could vanish while another process was opening the ledger**
+  (n-6b71). Opening the ledger measured the log's length after parsing it
+  and cut anything past the last newline as a torn tail. Between the two
+  measurements another process could finish a whole line, which the
+  reader then deleted: the writer had already printed its success and
+  the next writer reused the sequence, so the loss left no trace in the
+  log. With `gy serve` open, which reopens the ledger after every write,
+  a write fired right after another was lost 9 times in 40. Readers now
+  leave the log alone; only a writer drops a torn tail, under the
+  exclusive lock, right before it appends, and a line is appended in one
+  write. Nothing in the API, the CLI, the store format, `gy.toml`, the
+  diagnostics or the exit codes changed, and no ledger needs migrating.
+  A write lost before this fix cannot be recovered; the only sign is an
+  id in an agent's output that `show` cannot find.
+
+### Updating
+
+```
+cargo install gy --locked    # gy 0.8.1
+```
+
 ## 0.8.0 - 2026-09-17
 
 ### Changed
