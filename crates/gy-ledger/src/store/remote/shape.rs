@@ -16,13 +16,24 @@ pub const GITIGNORE_FILE: &str = ".gitignore";
 pub const GITIGNORE: &str = "snapshot.json\nlock\n*.bak\n.*.tmp\nremote\n";
 
 /// The bytes of the ledger repository's `README.md`: minimal, so a reader
-/// knows not to touch it (ac-af33).
+/// knows not to touch it, plus the branch protection (ac-af33).
 pub const README: &str = "\
 # gy ledger
 
 This repository is written by gy. Do not edit, merge, open pull requests, or
 force push. To change the ledger, use gy.
+
+protect the branch in GitHub → Settings → Rules
+require linear history
+block force pushes (gy does not change settings)
 ";
+
+/// The one-time guidance the first sync prints and the README carries
+/// (ac-af33). The same lines in both places.
+pub const GUIDANCE: &str = "\
+protect the branch in GitHub → Settings → Rules
+require linear history
+block force pushes (gy does not change settings)";
 
 /// The one commit of the first sync: the actor, and the range of sequences it
 /// carries (ac-af33, C accepts both this and one sequence).

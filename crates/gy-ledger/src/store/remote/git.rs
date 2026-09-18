@@ -214,3 +214,44 @@ pub fn ls_tree(dir: &Path, revision: &str) -> Result<Vec<String>> {
 pub fn show(dir: &Path, revision: &str, path: &str) -> Option<String> {
     run_maybe(dir, &["show", &format!("{revision}:{path}")])
 }
+
+/// Whether `ancestor` is an ancestor of `descendant`.
+pub fn ancestor(dir: &Path, ancestor: &str, descendant: &str) -> bool {
+    run_maybe(dir, &["merge-base", "--is-ancestor", ancestor, descendant]).is_some()
+}
+
+/// The commits in `range`, oldest first.
+pub fn rev_list(dir: &Path, range: &str) -> Result<Vec<String>> {
+    run(dir, &["rev-list", "--reverse", range])
+        .map(|text| text.lines().map(str::to_string).collect())
+}
+
+/// A commit's message.
+pub fn message(dir: &Path, revision: &str) -> Result<String> {
+    run(dir, &["log", "-1", "--format=%B", revision])
+}
+
+/// A commit's author name.
+pub fn author(dir: &Path, revision: &str) -> Result<String> {
+    run(dir, &["log", "-1", "--format=%an", revision]).map(|text| text.trim().to_string())
+}
+
+/// The files a commit changed.
+pub fn files_changed(dir: &Path, revision: &str) -> Result<Vec<String>> {
+    run(
+        dir,
+        &["diff-tree", "--no-commit-id", "--name-only", "-r", revision],
+    )
+    .map(|text| text.lines().map(str::to_string).collect())
+}
+
+/// How many lines the diff from `from` to `to` deletes in `path`.
+pub fn deletions(dir: &Path, from: &str, to: &str, path: &str) -> Result<u64> {
+    let out = run(dir, &["diff", "--numstat", from, to, "--", path])?;
+    Ok(out
+        .lines()
+        .next()
+        .and_then(|line| line.split('\t').nth(1))
+        .and_then(|deleted| deleted.parse().ok())
+        .unwrap_or(0))
+}

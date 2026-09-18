@@ -242,10 +242,11 @@ fn sync_reports_pulled_pushed_and_up_to_date() {
     bare(&remote);
 
     let first = sync(&ledger, &url(&remote)).unwrap();
-    assert_eq!(
-        format!("{first}"),
-        format!("pushed: {seq} writes (seq 1 → {seq})\n")
-    );
+    let first_text = format!("{first}");
+    assert!(first_text.starts_with(&format!("pushed: {seq} writes (seq 1 → {seq})\n")));
+    assert!(first_text.contains("block force pushes"), "{first_text}");
+    assert!(first.guard.is_some());
+    // The guidance is only on the first push.
     let up = sync(&ledger, &url(&remote)).unwrap();
     assert_eq!(format!("{up}"), format!("up to date: seq {seq}\n"));
 

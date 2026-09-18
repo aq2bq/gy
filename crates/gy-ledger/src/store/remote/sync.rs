@@ -1,7 +1,7 @@
 //! `gy sync` (n-6f47, d-39f6, d-1e50): prepare the copy, fetch, pull, and
 //! push each local write as one commit.
 use super::super::{Error, Result, SNAPSHOT_FILE, file::FileStore, log};
-use super::{git, prepare};
+use super::{git, guard, prepare, shape};
 use fs2::FileExt;
 use serde::Serialize;
 use std::fmt;
@@ -28,6 +28,10 @@ pub struct Pulled {
 pub struct Sync {
     pub pulled: Option<Pulled>,
     pub pushed: Option<Range>,
+    /// The one-time branch protection, on the sync that pushed the first copy
+    /// (ac-af33). Absent means nothing to say.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub guard: Option<String>,
     #[serde(skip)]
     pub seq: u64,
 }
@@ -57,6 +61,9 @@ impl fmt::Display for Sync {
         }
         if self.pulled.is_none() && self.pushed.is_none() {
             writeln!(f, "up to date: seq {}", self.seq)?;
+        }
+        if let Some(guard) = &self.guard {
+            writeln!(f, "{guard}")?;
         }
         Ok(())
     }
@@ -94,38 +101,73 @@ pub fn sync(ledger: &Path, remote: &str) -> Result<Sync> {
 /// made (a push that failed) pushes them; one with uncommitted lines commits
 /// and pushes them one write each.
 fn reconcile(ledger: &Path, branch: &str, upstream: &str, report: &mut Sync) -> Result<()> {
+    let head =
+        git::rev(ledger, "HEAD").ok_or_else(|| Error::invalid("the copy has no commit yet"))?;
+    let Some(remote_sha) = git::rev(ledger, upstream) else {
+        return Err(Error::invalid(format!("the remote has no {branch} branch")));
+    };
     let committed = seq_at(ledger, "HEAD")?;
-    let remote_seq = seq_at(
-        ledger,
-        &git::rev(ledger, upstream)
-            .ok_or_else(|| Error::invalid(format!("the remote has no {branch} branch")))?,
-    )?;
-    let working = working_seq(ledger)?;
-    if remote_seq > committed && working > committed {
+    if remote_sha == head {
+        report.seq = committed;
+        if working_seq(ledger)? > committed {
+            push_writes(ledger, branch, committed, report)?;
+            report.seq = working_seq(ledger)?;
+        }
+    } else if git::ancestor(ledger, "HEAD", upstream) {
+        pull(ledger, branch, upstream, committed, report)?;
+    } else {
+        push(ledger, branch, upstream, committed, report)?;
+    }
+    Ok(())
+}
+
+/// Take in the remote's commits: they pass the guard, then replace the copy.
+fn pull(
+    ledger: &Path,
+    branch: &str,
+    upstream: &str,
+    committed: u64,
+    report: &mut Sync,
+) -> Result<()> {
+    // Shape first: a changed remote must read as a guard refusal, not as a
+    // divergence that tells the reader to delete a copy (n-f4cd).
+    guard::check(ledger, branch, upstream)?;
+    if working_seq(ledger)? > committed {
         return Err(diverged());
     }
-    if remote_seq > committed {
-        git::reset_hard(ledger, upstream)?;
-        rebuild_snapshot(ledger)?;
-        report.pulled = Some(Pulled {
-            from: committed,
-            to: remote_seq,
-            writers: writers(ledger, committed, remote_seq)?,
-        });
-        report.seq = remote_seq;
-    } else if committed > remote_seq {
+    git::reset_hard(ledger, upstream)?;
+    rebuild_snapshot(ledger)?;
+    let remote_seq = seq_at(ledger, upstream)?;
+    report.pulled = Some(Pulled {
+        from: committed,
+        to: remote_seq,
+        writers: writers(ledger, committed, remote_seq)?,
+    });
+    report.seq = remote_seq;
+    Ok(())
+}
+
+/// Send the copy's commits: the remote must be behind, then push (committing
+/// each uncommitted write first).
+fn push(
+    ledger: &Path,
+    branch: &str,
+    upstream: &str,
+    committed: u64,
+    report: &mut Sync,
+) -> Result<()> {
+    guard::check_push(ledger, branch, upstream)?;
+    let remote_seq = seq_at(ledger, upstream)?;
+    if committed > remote_seq {
         git::push_ff(ledger, branch)?;
         report.pushed = Some(Range {
             from: remote_seq + 1,
             to: committed,
         });
-        report.seq = committed;
-    } else if working > committed {
-        push_writes(ledger, branch, committed, report)?;
-        report.seq = working;
     } else {
-        report.seq = committed;
+        push_writes(ledger, branch, committed, report)?;
     }
+    report.seq = working_seq(ledger)?;
     Ok(())
 }
 
@@ -173,6 +215,7 @@ fn first_push(
     git::push(ledger, branch)?;
     git::fetch(ledger)?;
     report.pushed = Some(Range { from: 1, to: seq });
+    report.guard = Some(shape::GUIDANCE.to_string());
     Ok(())
 }
 

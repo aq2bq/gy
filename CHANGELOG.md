@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **Experimental: `gy sync` and a `remote` in `gy.toml`** (n-6f47, n-8a52,
+  n-f4cd; d-39f6, d-1e50). A ledger can name a ledger-only git repository as
+  its remote. The copy on each machine becomes a working tree of it: the
+  first `gy sync` uploads the whole log as one commit, a machine with no
+  copy clones it on its first gy command, every later write is pushed by
+  `gy sync` as one commit whose subject is the why and whose trailer is
+  `Gy-Seq`, and a remote that moved ahead fast-forwards the copy. Writes
+  still land locally at once; only `gy sync` talks to the remote for now.
+  A write to a synced copy records who wrote it from `git config
+  user.name` and `user.email` (`by`, `by_mail` on the event line) and is
+  refused without a name. A remote holding anything but a ledger, a
+  history changed outside gy (no `Gy-Seq` trailer, a rewritten past, a
+  file gy does not write, a rewritten log) and two copies that both moved
+  are refused with the way out; gy never force-pushes. Removing `remote`
+  from `gy.toml` makes the copy local again after one stderr notice.
+  A ledger without a remote is untouched; the only new command is `sync`
+  and the only new key is `remote` (put it before the first `[scopes.*]`
+  table).
+
 ## 0.9.0 - 2026-09-18
 
 ### Updating
