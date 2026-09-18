@@ -7,7 +7,7 @@ fn criterion(hash: &str) -> Node {
     Node::criterion(
         NodeId::from_hash(NodeKind::Criterion, hash).unwrap(),
         "a",
-        "2026-09-15",
+        "2026-09-15T00:00:00Z",
         "a criterion",
     )
     .unwrap()

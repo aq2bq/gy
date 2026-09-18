@@ -1,6 +1,6 @@
 //! need add: a need targeting existing criteria, optionally spawned by a
 //! decision. It writes both sides from the need's own links.
-use super::{Operation, Outcome, Repository, advice_for, today};
+use super::{Operation, Outcome, Repository, advice_for, now};
 use crate::model::{Link, Node, NodeId, NodeKind, Relation};
 use crate::store::{Error, Result, Store};
 
@@ -20,7 +20,7 @@ impl<S: Store> Operation<S> for NeedAdd {
         check_targets(repo, &self.targets)?;
         check_spawn(repo, &self.spawned_by)?;
         let id = repo.next_id(NodeKind::Need)?;
-        let mut node = Node::need(id.clone(), &self.scope, &today(), &self.title)?;
+        let mut node = Node::need(id.clone(), &self.scope, &now(), &self.title)?;
         for target in &self.targets {
             node.link(Link::new(id.clone(), Relation::Targets, target.clone())?);
         }

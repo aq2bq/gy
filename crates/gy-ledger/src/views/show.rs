@@ -3,8 +3,8 @@
 use super::derive::need_state;
 use super::open_or_closed;
 use crate::model::{Criterion, Edge, Node, NodeData, NodeKind};
-use crate::ops::advice;
 use crate::ops::repository::{Error, Repository, Result, Store};
+use crate::ops::{advice, local_time};
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt;
@@ -141,7 +141,7 @@ impl fmt::Display for Shown {
             writeln!(f, "scope: {scope}")?;
         }
         if let Some(created) = &self.created {
-            writeln!(f, "created: {created}")?;
+            writeln!(f, "created: {}", local_time(created))?;
         }
         if !self.aliases.is_empty() {
             writeln!(f, "aliases: {}", self.aliases.join(", "))?;

@@ -42,7 +42,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FormatVersion(pub u32);
 impl FormatVersion {
-    pub const CURRENT: Self = Self(2);
+    pub const CURRENT: Self = Self(3);
     pub fn supported(self) -> bool {
         self.0 <= Self::CURRENT.0
     }

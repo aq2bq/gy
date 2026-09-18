@@ -7,7 +7,7 @@ use gy_ledger::{
 };
 
 const SCOPE: &str = "a";
-const DATE: &str = "2026-09-15";
+const DATE: &str = "2026-09-15T00:00:00Z";
 
 fn approve_cmd(id: &NodeId) -> String {
     format!("req approve {id} --design … --heard-by … --evidence …")

@@ -5,7 +5,7 @@ use gy_ledger::{
 use gy_serve::layout::{Graph, layout};
 use std::collections::HashMap;
 
-const DATE: &str = "2026-09-15";
+const DATE: &str = "2026-09-15T00:00:00Z";
 
 fn id(hash: &str) -> NodeId {
     NodeId::from_hash(NodeKind::Need, hash).unwrap()

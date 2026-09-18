@@ -98,8 +98,8 @@ pub struct Node {
 impl Node {
     fn build(id: NodeId, scope: &str, created: &str, title: &str, data: NodeData) -> Result<Self> {
         required(scope.to_string(), "a node needs a scope")?;
-        if !valid_date(created) {
-            return Err(Error::invalid("created must be YYYY-MM-DD"));
+        if !valid_created(created) {
+            return Err(Error::invalid("created must be YYYY-MM-DDTHH:MM:SSZ"));
         }
         required(title.to_string(), "a node needs a nonempty title")?;
         Ok(Self {
@@ -276,16 +276,16 @@ fn required(value: String, message: &str) -> Result<String> {
     Ok(value)
 }
 
-/// A `created` date in `YYYY-MM-DD` form.
-fn valid_date(text: &str) -> bool {
-    let bytes = text.as_bytes();
-    text.len() == 10
-        && bytes[4] == b'-'
-        && bytes[7] == b'-'
-        && bytes
-            .iter()
+/// A `created` instant in `YYYY-MM-DDTHH:MM:SSZ` form (n-b6b6).
+fn valid_created(text: &str) -> bool {
+    let b = text.as_bytes();
+    let at = [b'-', b'-', b'T', b':', b':', b'Z'];
+    let on = [4, 7, 10, 13, 16, 19];
+    text.len() == 20
+        && at.iter().zip(on).all(|(mark, at)| b[at] == *mark)
+        && b.iter()
             .enumerate()
-            .all(|(i, b)| i == 4 || i == 7 || b.is_ascii_digit())
+            .all(|(i, c)| on.contains(&i) || c.is_ascii_digit())
 }
 
 /// Needs that carry a Targets edge to a criterion, derived rather than stored.

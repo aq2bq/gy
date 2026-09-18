@@ -37,29 +37,52 @@ pub fn write(dir: &Path, version: FormatVersion) -> Result<()> {
     Ok(())
 }
 
-/// Migrate the ledger in place. A version bump keeps a copy of the old form
-/// before writing the new version (D-77): format 1 to 2 copies `format` and
-/// `events.jsonl` to `*.1.bak` (n-ff2b).
+/// Migrate the ledger in place, one step at a time up to `to`. Every step
+/// keeps a copy of the file it changes before writing the new version (D-77):
+/// 1 to 2 copies `format` and `events.jsonl` to `*.1.bak` (n-ff2b); 2 to 3
+/// copies `format` to `*.2.bak` and drops the derived snapshot, which the next
+/// open rebuilds from the log (n-b6b6). A jump this build does not know is an
+/// error.
 pub fn migrate(dir: &Path, from: FormatVersion, to: FormatVersion) -> Result<()> {
     if from == to {
         return Ok(());
     }
-    if from.0 == 1 && to.0 == 2 {
-        backup(dir, FILE)?;
-        backup(dir, super::log::FILE)?;
-        return write(dir, to);
+    let next = FormatVersion(from.0 + 1);
+    match from.0 {
+        1 => {
+            backup(dir, FILE, 1)?;
+            backup(dir, super::log::FILE, 1)?;
+        }
+        2 => {
+            backup(dir, FILE, 2)?;
+            drop_snapshot(dir)?;
+        }
+        _ => {
+            return Err(Error::invalid(format!(
+                "cannot migrate format {} to {}",
+                from.0, to.0
+            )));
+        }
     }
-    Err(Error::invalid(format!(
-        "cannot migrate format {} to {}",
-        from.0, to.0
-    )))
+    write(dir, next)?;
+    migrate(dir, next, to)
 }
 
-/// Keep a copy of a file as `<name>.1.bak` before the version 1 to 2 migration.
-fn backup(dir: &Path, name: &str) -> Result<()> {
+/// Keep a copy of a file as `<name>.<from>.bak` before a version migration.
+fn backup(dir: &Path, name: &str, from: u32) -> Result<()> {
     let source = dir.join(name);
     if source.is_file() {
-        std::fs::copy(&source, dir.join(format!("{name}.1.bak")))?;
+        std::fs::copy(&source, dir.join(format!("{name}.{from}.bak")))?;
+    }
+    Ok(())
+}
+
+/// Drop the derived snapshot so the next open rebuilds it from the log, where
+/// every old `created` is normalized (n-b6b6).
+fn drop_snapshot(dir: &Path) -> Result<()> {
+    let path = dir.join(super::snapshot::FILE);
+    if path.is_file() {
+        std::fs::remove_file(path)?;
     }
     Ok(())
 }

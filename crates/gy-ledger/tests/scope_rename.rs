@@ -3,7 +3,7 @@ use gy_ledger::{
     ScopeRename, Store, format, log,
 };
 
-const DATE: &str = "2026-09-15";
+const DATE: &str = "2026-09-15T00:00:00Z";
 
 fn actor(_: &str) -> Option<String> {
     Some("piko".to_string())

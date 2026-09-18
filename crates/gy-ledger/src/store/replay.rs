@@ -12,6 +12,32 @@ struct Scoped {
     rest: serde_json::Map<String, Value>,
 }
 
+/// The node's `created` field, so replay can normalize an old date-only value
+/// without reading an attribute by string key (n-b6b6).
+#[derive(Serialize, Deserialize)]
+struct Dated {
+    created: String,
+    #[serde(flatten)]
+    rest: serde_json::Map<String, Value>,
+}
+
+/// A node value whose old `YYYY-MM-DD` created is raised to a UTC instant.
+/// Every event ever written keeps its own form, so this runs on every read,
+/// whatever the ledger's format version (n-b6b6).
+fn raised_created(value: &Value) -> Value {
+    let Ok(dated) = serde_json::from_value::<Dated>(value.clone()) else {
+        return value.clone();
+    };
+    if dated.created.len() != 10 {
+        return value.clone();
+    }
+    let raised = Dated {
+        created: format!("{}T00:00:00Z", dated.created),
+        rest: dated.rest,
+    };
+    serde_json::to_value(&raised).unwrap_or_else(|_| value.clone())
+}
+
 /// The scope a stored node carries, or `None` when it is not a node.
 pub(super) fn scope_of(value: &Value) -> Option<String> {
     serde_json::from_value::<Scoped>(value.clone())
@@ -45,7 +71,7 @@ pub fn apply(nodes: &mut BTreeMap<String, Value>, event: &log::Event) {
     for change in &event.changes {
         match change {
             log::Change::Created { node, value } | log::Change::Updated { node, value } => {
-                nodes.insert(node.clone(), value.clone());
+                nodes.insert(node.clone(), raised_created(value));
             }
             log::Change::Deleted { node, .. } => {
                 nodes.remove(node);

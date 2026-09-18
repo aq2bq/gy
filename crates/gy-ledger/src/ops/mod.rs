@@ -39,6 +39,7 @@ pub use undo::Undo;
 
 use crate::model::{Node, NodeId, NodeKind};
 use crate::store::{Error, Result, Store};
+use chrono::TimeZone;
 
 /// Load a node of the expected kind, or an error naming what is wrong.
 pub fn node_of<S: Store>(repo: &Repository<S>, id: &NodeId, kind: NodeKind) -> Result<Node> {
@@ -78,7 +79,44 @@ pub trait Operation<S: Store> {
     fn run(self, repo: &mut Repository<S>) -> Result<Outcome<Self::Output>>;
 }
 
-/// Today's date, `YYYY-MM-DD`.
+/// Today's date, `YYYY-MM-DD`. Kept for the fields that still record a day:
+/// `satisfied_at` and a requirement's own `at` (n-b6b6 keeps the node's
+/// `created` on `now`; the rest move in n-86cc).
 pub fn today() -> String {
     chrono::Utc::now().format("%Y-%m-%d").to_string()
+}
+
+/// The instant a new node was made: UTC, RFC 3339, seconds, `Z` (n-b6b6).
+pub fn now() -> String {
+    chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()
+}
+
+/// A stored `created` instant in the reader's own place, as `YYYY-MM-DD HH:MM`
+/// for the human views (n-b6b6). `publish` and `--json` keep the UTC value; a
+/// value that is not an RFC 3339 instant comes back unchanged.
+pub fn local_time(created: &str) -> String {
+    match chrono::DateTime::parse_from_rfc3339(created) {
+        Ok(at) => at
+            .with_timezone(&chrono::Local)
+            .format("%Y-%m-%d %H:%M")
+            .to_string(),
+        Err(_) => created.to_string(),
+    }
+}
+
+/// The epoch second of the start of a local day named `YYYY-MM-DD`, in the
+/// reader's own place, for `--since` (n-b6b6).
+pub fn local_day_start(text: &str) -> Result<u64> {
+    let shape = || {
+        Error::invalid(format!(
+            "unknown since {text}; expected a sequence or a date (YYYY-MM-DD)"
+        ))
+    };
+    let date = chrono::NaiveDate::parse_from_str(text, "%Y-%m-%d").map_err(|_| shape())?;
+    let midnight = date.and_hms_opt(0, 0, 0).ok_or_else(shape)?;
+    match chrono::Local.from_local_datetime(&midnight) {
+        chrono::LocalResult::Single(at) => Ok(at.timestamp().max(0) as u64),
+        chrono::LocalResult::Ambiguous(first, _) => Ok(first.timestamp().max(0) as u64),
+        chrono::LocalResult::None => Err(shape()),
+    }
 }

@@ -5,7 +5,7 @@ use gy_ledger::{
     RequirementState, bearer_count, free_attribute,
 };
 
-const DATE: &str = "2026-09-15";
+const DATE: &str = "2026-09-15T00:00:00Z";
 const SCOPE: &str = "a";
 
 fn id(kind: NodeKind, hash: &str) -> NodeId {
@@ -49,6 +49,20 @@ fn an_empty_title_scope_or_bad_date_is_rejected() {
     assert!(Node::need(id(NodeKind::Need, "0001"), SCOPE, DATE, "   ").is_err());
     assert!(Node::need(id(NodeKind::Need, "0001"), "  ", DATE, "a need").is_err());
     assert!(Node::need(id(NodeKind::Need, "0001"), SCOPE, "2026/09/15", "a need").is_err());
+}
+
+#[test]
+fn a_date_only_created_is_rejected() {
+    assert!(Node::need(id(NodeKind::Need, "0001"), SCOPE, "2026-09-15", "a need").is_err());
+    assert!(
+        Node::need(
+            id(NodeKind::Need, "0001"),
+            SCOPE,
+            "2026-09-15T00:00:00Z",
+            "a need"
+        )
+        .is_ok()
+    );
 }
 
 #[test]

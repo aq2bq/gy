@@ -78,7 +78,7 @@ fn a_question_without_a_waiting_need_reports_it() {
     let need = Node::need(
         NodeId::from_hash(NodeKind::Need, "0002").unwrap(),
         SCOPE,
-        "2026-09-15",
+        "2026-09-15T00:00:00Z",
         "a need",
     )
     .unwrap();

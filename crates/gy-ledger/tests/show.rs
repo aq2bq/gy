@@ -4,7 +4,7 @@ use gy_ledger::{
 };
 
 const SCOPE: &str = "a";
-const DATE: &str = "2026-09-15";
+const DATE: &str = "2026-09-15T00:00:00Z";
 
 fn repo() -> Repository<MemoryStore> {
     Repository::new(MemoryStore::with_actor(
@@ -193,7 +193,12 @@ fn full_shows_scope_created_aliases_and_both_edge_directions() {
 
     let text = render(&repo, &[requirement_id.to_string()], true);
     assert!(text.contains("scope: a"));
-    assert!(text.contains("created: 2026-09-15"));
+    let created = chrono::DateTime::parse_from_rfc3339(DATE)
+        .unwrap()
+        .with_timezone(&chrono::Local)
+        .format("%Y-%m-%d %H:%M")
+        .to_string();
+    assert!(text.contains(&format!("created: {created}")), "{text}");
     assert!(text.contains("aliases: old-9"));
     assert!(text.contains(&format!("targets {criterion_id}")));
     assert!(text.contains(&format!("files {need_id}")));

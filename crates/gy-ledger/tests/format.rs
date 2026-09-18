@@ -1,8 +1,9 @@
 use gy_ledger::{
     FileStore, FormatVersion, Node, NodeId, NodeKind, Repository, Store, format, location, log,
+    next,
 };
 
-const DATE: &str = "2026-09-15";
+const DATE: &str = "2026-09-15T00:00:00Z";
 
 fn actor(_: &str) -> Option<String> {
     Some("piko".to_string())
@@ -78,6 +79,69 @@ fn opening_a_version_one_ledger_keeps_a_copy_and_raises_the_format() {
     assert!(dir.join("format.1.bak").is_file());
     assert!(dir.join("events.jsonl.1.bak").is_file());
     assert_eq!(format::read(dir).unwrap(), FormatVersion::CURRENT);
+}
+
+#[test]
+fn opening_a_version_two_ledger_raises_created_and_rebuilds_the_snapshot() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    format::write(dir, FormatVersion(2)).unwrap();
+
+    // Two needs as version 2 wrote them: `created` is a bare date.
+    let dated = |hash: &str, day: &str| {
+        let node = node(hash, "a");
+        let mut value = serde_json::to_value(&node).unwrap();
+        value["created"] = serde_json::json!(day);
+        value
+    };
+    let first = dated("0001", "2026-09-15");
+    let second = dated("0002", "2026-09-15");
+    // A snapshot in the old form: opening must drop it and rebuild from the log.
+    let snapshot = serde_json::json!({
+        "seq": 1,
+        "nodes": {"n-0001": first.clone()},
+    });
+    std::fs::write(dir.join("snapshot.json"), snapshot.to_string()).unwrap();
+    log::append(
+        dir,
+        &event(
+            1,
+            "seed",
+            vec![
+                log::Change::Created {
+                    node: "n-0001".into(),
+                    value: first,
+                },
+                log::Change::Created {
+                    node: "n-0002".into(),
+                    value: second,
+                },
+            ],
+        ),
+    )
+    .unwrap();
+
+    let repository = Repository::new(FileStore::open_with(dir, actor).unwrap());
+    assert_eq!(repository.store().version(), FormatVersion::CURRENT);
+    assert!(dir.join("format.2.bak").is_file());
+    let id = NodeId::from_hash(NodeKind::Need, "0001").unwrap();
+    let one = repository.get(&id).unwrap().unwrap();
+    assert_eq!(one.created(), "2026-09-15T00:00:00Z");
+    // The snapshot was rebuilt from the log, so every node carries the raised day.
+    let rebuilt: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(dir.join("snapshot.json")).unwrap()).unwrap();
+    assert_eq!(
+        rebuilt["nodes"]["n-0002"]["created"],
+        "2026-09-15T00:00:00Z"
+    );
+
+    // next orders by created then id; the raised day keeps the id order.
+    let ready: Vec<String> = next(&repository, None)
+        .unwrap()
+        .into_iter()
+        .map(|row| row.id)
+        .collect();
+    assert_eq!(ready, ["n-0001", "n-0002"]);
 }
 
 #[test]

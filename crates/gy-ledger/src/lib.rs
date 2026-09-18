@@ -18,7 +18,7 @@ pub use model::{
 pub use ops::{
     CriterionAdd, CriterionSatisfy, Decide, Edit, NeedAdd, NeedClose, Operation, Outcome,
     QuestionAdd, QuestionClose, Repository, ReqAdd, ReqApprove, ReqCancel, ReqDone, ReqRevise,
-    ScopeRename, Undo, config, link,
+    ScopeRename, Undo, config, link, local_day_start, local_time,
 };
 pub use store::{
     Actor, Error, FileStore, FormatVersion, HistoryEntry, IdSource, MemoryStore, Result, Store,

@@ -1,5 +1,5 @@
 //! question add: a question with a decider and at least two options.
-use super::{Operation, Outcome, Repository, advice_for, today};
+use super::{Operation, Outcome, Repository, advice_for, now};
 use crate::model::{Node, NodeData, NodeId, NodeKind};
 use crate::store::{Error, Result, Store};
 
@@ -20,7 +20,7 @@ impl<S: Store> Operation<S> for QuestionAdd {
             return Err(Error::invalid("a question needs at least two options"));
         }
         let id = repo.next_id(NodeKind::Question)?;
-        let mut node = Node::question(id.clone(), &self.scope, &today(), &self.title)?;
+        let mut node = Node::question(id.clone(), &self.scope, &now(), &self.title)?;
         if let NodeData::Question(data) = node.data_mut() {
             data.decider = Some(self.decider);
             data.options = self.options;

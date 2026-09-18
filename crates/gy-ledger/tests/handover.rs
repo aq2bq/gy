@@ -4,7 +4,7 @@ use gy_ledger::{
 };
 
 const SCOPE: &str = "a";
-const DATE: &str = "2026-09-15";
+const DATE: &str = "2026-09-15T00:00:00Z";
 
 fn repo() -> Repository<MemoryStore> {
     Repository::new(MemoryStore::with_actor(

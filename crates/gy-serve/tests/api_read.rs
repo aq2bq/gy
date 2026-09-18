@@ -8,7 +8,7 @@ use gy_serve::graph_cache::GraphCache;
 use gy_serve::http::Request;
 use gy_serve::server::{Opened, Opener};
 
-const DATE: &str = "2026-09-15";
+const DATE: &str = "2026-09-15T00:00:00Z";
 
 fn id(kind: NodeKind, hash: &str) -> NodeId {
     NodeId::from_hash(kind, hash).unwrap()

@@ -1,6 +1,6 @@
 //! req add: a requirement filed against one or more needs, with optional
 //! decisions it relies on, criteria it targets, and one outward reference.
-use super::{Operation, Outcome, Repository, advice_for, node_of, today};
+use super::{Operation, Outcome, Repository, advice_for, node_of, now};
 use crate::model::{
     Link as ModelLink, Node, NodeData, NodeId, NodeKind, Ref, Relation, RequirementState,
 };
@@ -57,7 +57,7 @@ impl ReqAdd {
         let mut node = Node::requirement(
             id.clone(),
             &self.scope,
-            &today(),
+            &now(),
             &self.title,
             RequirementState::Filed,
         )?;

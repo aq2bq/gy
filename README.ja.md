@@ -82,7 +82,7 @@ gy はその終盤のためにあります。計画も日程も持ちません�
 | 操作 | 結果 |
 | --- | --- |
 | `show <ID\|ref>... [--full]` | ID・別名・ref でノードを表示し、足りないものも出す |
-| `list [--type] [--status] [--targets] [--grep] [--actor] [--since]` | ノードの一覧。`--actor` か `--since` を与えると書き込み単位。種別と状態の綴りは大小を問わず、`--since` は seq か日付（`YYYY-MM-DD`、UTC のその日の 0 時から） |
+| `list [--type] [--status] [--targets] [--grep] [--actor] [--since]` | ノードの一覧。`--actor` か `--since` を与えると書き込み単位。種別と状態の綴りは大小を問わず、`--since` は seq か日付（`YYYY-MM-DD`、あなたの場所のその日の 0 時から） |
 | `next` | 前提の片付いたニーズ |
 | `handover` | 進行中の要求と、再開に要る件数 |
 | `publish [--scope] [--since] [--out]` | 指定した時点と範囲の記録をディレクトリに書く: 1 ノード 1 ファイルとスコープの索引 |

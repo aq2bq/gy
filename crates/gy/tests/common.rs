@@ -7,7 +7,7 @@ use gy_ledger::{
 use std::path::PathBuf;
 use std::process::{Command, Output};
 
-pub const DATE: &str = "2026-09-15";
+pub const DATE: &str = "2026-09-15T00:00:00Z";
 
 pub fn node_id(kind: NodeKind, hash: &str) -> NodeId {
     NodeId::from_hash(kind, hash).unwrap()

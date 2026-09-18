@@ -89,10 +89,10 @@ fn requirement(
 fn ledger() -> Repository<MemoryStore> {
     let store = MemoryStore::with_actor(FormatVersion::CURRENT, Actor::new("piko").unwrap());
     let mut repo = Repository::new(store).with_scopes(vec!["a".to_string(), "b".to_string()]);
-    ask(&mut repo, "0001", "a", "2026-09-01", "master");
-    ask(&mut repo, "0002", "a", "2026-09-02", "マスター");
-    ask(&mut repo, "0003", "a", "2026-09-03", "lead");
-    let closed = ask(&mut repo, "0004", "b", "2026-09-04", "master");
+    ask(&mut repo, "0001", "a", "2026-09-01T00:00:00Z", "master");
+    ask(&mut repo, "0002", "a", "2026-09-02T00:00:00Z", "マスター");
+    ask(&mut repo, "0003", "a", "2026-09-03T00:00:00Z", "lead");
+    let closed = ask(&mut repo, "0004", "b", "2026-09-04T00:00:00Z", "master");
     QuestionClose {
         id: closed,
         by: Closure::Fact,
@@ -101,10 +101,10 @@ fn ledger() -> Repository<MemoryStore> {
     }
     .run(&mut repo)
     .unwrap();
-    need(&mut repo, "0005", "a", "2026-09-01");
-    need(&mut repo, "0006", "b", "2026-09-02");
-    let done = need(&mut repo, "0007", "b", "2026-09-03");
-    let by_hand = need(&mut repo, "0008", "a", "2026-09-04");
+    need(&mut repo, "0005", "a", "2026-09-01T00:00:00Z");
+    need(&mut repo, "0006", "b", "2026-09-02T00:00:00Z");
+    let done = need(&mut repo, "0007", "b", "2026-09-03T00:00:00Z");
+    let by_hand = need(&mut repo, "0008", "a", "2026-09-04T00:00:00Z");
     NeedClose {
         id: by_hand,
         by: ClosedBy::Fact,
@@ -112,9 +112,9 @@ fn ledger() -> Repository<MemoryStore> {
     }
     .run(&mut repo)
     .unwrap();
-    criterion(&mut repo, "0009", "a", "2026-09-01");
-    criterion(&mut repo, "0010", "b", "2026-09-02");
-    let met = criterion(&mut repo, "0011", "a", "2026-09-03");
+    criterion(&mut repo, "0009", "a", "2026-09-01T00:00:00Z");
+    criterion(&mut repo, "0010", "b", "2026-09-02T00:00:00Z");
+    let met = criterion(&mut repo, "0011", "a", "2026-09-03T00:00:00Z");
     CriterionSatisfy {
         id: met,
         evidence: "x".into(),
@@ -122,9 +122,9 @@ fn ledger() -> Repository<MemoryStore> {
     }
     .run(&mut repo)
     .unwrap();
-    requirement(&mut repo, "0012", "b", "2026-09-01");
-    let approved = requirement(&mut repo, "0013", "a", "2026-09-02");
-    let shipped = requirement(&mut repo, "0014", "b", "2026-09-03");
+    requirement(&mut repo, "0012", "b", "2026-09-01T00:00:00Z");
+    let approved = requirement(&mut repo, "0013", "a", "2026-09-02T00:00:00Z");
+    let shipped = requirement(&mut repo, "0014", "b", "2026-09-03T00:00:00Z");
     for requirement in [&approved, &shipped] {
         ReqApprove {
             id: requirement.clone(),
@@ -285,7 +285,7 @@ fn now_marks_questions_nobody_waits_on() {
     let view = now(&repo, None).unwrap();
     assert_eq!(view.open_questions.len(), 1);
     assert!(view.open_questions[0].unwaited);
-    assert_eq!(view.open_questions[0].created, "2026-09-03");
+    assert_eq!(view.open_questions[0].created, "2026-09-03T00:00:00Z");
     let rows = view
         .waiting
         .iter()

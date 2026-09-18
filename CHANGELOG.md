@@ -4,6 +4,19 @@
 
 ### Changed
 
+- **Incompatible: a node's `created` is an instant, not a day** (n-b6b6,
+  d-b1f8). It is stored as UTC, RFC 3339 with seconds (`2026-09-18T07:28:56Z`),
+  and a new node takes the moment of the write that made it. `show` and
+  `list` print it in your own time zone as `YYYY-MM-DD HH:MM`; `--json` and
+  `publish` keep the UTC value. `--since <date>` now starts at that day's
+  midnight in your own time zone, not UTC. The shared word for "when" in a
+  team is the write sequence, not a date. The ledger format moves from 2
+  to 3: the log is not rewritten, a reader raises an old `YYYY-MM-DD` to
+  `T00:00:00Z`, the snapshot is rebuilt, and `format.2.bak` keeps the old
+  version file. Nothing to do by hand; a build older than this one refuses
+  the ledger with "format 3 is newer than this build supports". The
+  `satisfied_at` of a criterion and a requirement's own dates stay days for
+  now (n-86cc).
 - **`question add` and `show` name the need or requirement an open
   question still lacks** (n-fa11, d-09b6): `missing:` gains
   `待つニーズ（waits-on）か生んだ要求（raised）` until some node points a

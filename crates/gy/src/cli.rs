@@ -42,7 +42,7 @@ pub enum Command {
         grep: Option<String>,
         #[arg(long, value_name = "NAME")]
         actor: Option<String>,
-        /// A write sequence, or a date (YYYY-MM-DD, UTC): that day's start onwards.
+        /// A write sequence, or a date (YYYY-MM-DD, in your own time zone): that day's start onwards.
         #[arg(long, value_name = "SEQ|DATE")]
         since: Option<String>,
     },

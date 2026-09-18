@@ -9,7 +9,7 @@ fn node(hash: &str, title: &str) -> Vec<u8> {
     let node = Node::need(
         NodeId::from_hash(NodeKind::Need, hash).unwrap(),
         "a",
-        "2026-09-15",
+        "2026-09-15T00:00:00Z",
         title,
     )
     .unwrap();

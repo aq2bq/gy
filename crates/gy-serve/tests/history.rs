@@ -7,7 +7,7 @@ use gy_ledger::{
 use gy_serve::api::route;
 use gy_serve::http::Request;
 
-const DATE: &str = "2026-09-15";
+const DATE: &str = "2026-09-15T00:00:00Z";
 
 fn id(kind: NodeKind, hash: &str) -> NodeId {
     NodeId::from_hash(kind, hash).unwrap()

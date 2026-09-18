@@ -3,8 +3,8 @@
 use super::derive::{NeedState, need_state};
 use super::open_or_closed;
 use crate::model::{Node, NodeData, NodeId, NodeKind, Relation, RequirementState};
-use crate::ops::advice;
 use crate::ops::repository::{Error, Repository, Result, Store};
+use crate::ops::{advice, local_time};
 use serde::Serialize;
 use std::fmt;
 
@@ -46,7 +46,7 @@ impl fmt::Display for Row {
             line.push(' ');
         }
         line.push_str(&self.title);
-        write!(f, "{line} ({} {})", self.scope, self.created)
+        write!(f, "{line} ({} {})", self.scope, local_time(&self.created))
     }
 }
 

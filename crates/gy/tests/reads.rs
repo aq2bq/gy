@@ -7,7 +7,7 @@ fn need(hash: &str, title: &str) -> Node {
     Node::need(
         NodeId::from_hash(NodeKind::Need, hash).unwrap(),
         "a",
-        "2026-09-15",
+        "2026-09-15T00:00:00Z",
         title,
     )
     .unwrap()
@@ -40,7 +40,7 @@ fn list_filters_by_type_and_status() {
     let criterion = Node::criterion(
         NodeId::from_hash(NodeKind::Criterion, "0002").unwrap(),
         "a",
-        "2026-09-15",
+        "2026-09-15T00:00:00Z",
         "a criterion",
     )
     .unwrap();

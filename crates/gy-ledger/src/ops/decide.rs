@@ -1,6 +1,6 @@
 //! decide: create a decision, close its questions, and record lineage edges
 //! with their marks, all in one transaction.
-use super::{Operation, Outcome, Repository, advice_for, marks, today};
+use super::{Operation, Outcome, Repository, advice_for, marks, now};
 use crate::model::{
     Closure, DecisionScope, Link as ModelLink, Node, NodeData, NodeId, NodeKind, Relation,
 };
@@ -52,7 +52,7 @@ impl Decide {
         let mut node = Node::decision(
             id.clone(),
             &self.scope,
-            &today(),
+            &now(),
             &self.title,
             self.decision_scope.clone(),
         )?;
