@@ -167,10 +167,12 @@ pub fn push_ff(dir: &Path, branch: &str) -> Result<()> {
     .any(|word| text.contains(word))
     {
         return Err(Error::invalid(format!(
-            "the remote refused the push (no write access?): {text}"
+            "the remote refused the push (no write access?): {text}\nask the repository owner for write access, or keep reading this copy without pushing"
         )));
     }
-    Err(Error::invalid(format!("git push origin {branch}: {text}")))
+    Err(Error::invalid(format!(
+        "git push origin {branch}: {text}\ncheck the remote URL and your credentials, then run gy sync again"
+    )))
 }
 
 /// Write `bytes` into the object database and return the blob's sha.

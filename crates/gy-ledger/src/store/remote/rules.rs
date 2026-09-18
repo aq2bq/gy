@@ -1,10 +1,35 @@
 //! Typed node/link reads and `rejected.jsonl` for the rebase (n-ecbf 2B).
-use super::super::{Error, Result, log, replay};
+use super::super::{Error, FormatVersion, Result, log, replay};
+use super::git;
 use super::rebase::Rejected;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::Path;
+
+/// An error with the way out on its second line (n-94bb 3B).
+pub(super) fn advice(error: Error, method: &str) -> Error {
+    Error::invalid(format!("{}\n{method}", error.message))
+}
+
+/// Refuse a remote whose ledger format is newer than this build reads
+/// (n-94bb 3B). A remote without a `format` file yet is fine.
+pub(super) fn check_remote_format(ledger: &Path, upstream: &str) -> Result<()> {
+    let Some(text) = git::show(ledger, upstream, super::super::format::FILE) else {
+        return Ok(());
+    };
+    let version: u32 = text
+        .trim()
+        .parse()
+        .map_err(|_| Error::invalid("the remote format file is not a version number"))?;
+    if version > FormatVersion::CURRENT.0 {
+        return Err(Error::invalid(format!(
+            "the remote ledger is format {version}; this build reads up to {}\nupdate gy (this build never raises the remote's format)",
+            FormatVersion::CURRENT.0
+        )));
+    }
+    Ok(())
+}
 #[derive(Deserialize)]
 struct NodeLinks {
     #[serde(default)]

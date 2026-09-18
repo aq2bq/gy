@@ -34,6 +34,9 @@ pub struct Sync {
     /// (ac-af33). Absent means nothing to say.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub guard: Option<String>,
+    /// True when an empty remote was filled from this copy (n-94bb 3B).
+    #[serde(skip)]
+    pub reuploaded: bool,
     #[serde(skip)]
     pub seq: u64,
 }
@@ -51,6 +54,9 @@ impl fmt::Display for Sync {
         if let Some(rejected) = self.rejected {
             writeln!(f, "rejected: {rejected} writes")?;
         }
+        if self.reuploaded {
+            writeln!(f, "re-uploaded from this copy")?;
+        }
         if self.is_up_to_date() {
             writeln!(f, "up to date: seq {}", self.seq)?;
         }
@@ -66,6 +72,7 @@ impl Sync {
             && self.pushed.is_none()
             && self.rebased.is_none()
             && self.rejected.is_none()
+            && !self.reuploaded
     }
 }
 

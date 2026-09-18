@@ -4,6 +4,7 @@ pub mod git;
 mod guard;
 mod prepare;
 pub mod rebase;
+mod recovery;
 pub mod report;
 mod rules;
 pub mod shape;

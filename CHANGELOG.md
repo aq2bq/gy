@@ -58,6 +58,14 @@
   carries a small mark in the live rail and the history, and the time band
   draws the unpushed range dotted. `/api/now` carries `resume.sync` and
   `resume.errors` on a synced copy only.
+- **`gy sync` says what went wrong and what to do** (n-94bb 3B): a copy
+  whose log holds a line that cannot be read is reported with the count,
+  the readable unpushed writes and the way to take the ledger again (a
+  torn last line is not damage; the next write drops it); an emptied
+  remote is re-uploaded from the copy; a remote whose format is newer than
+  this build is refused with both versions; and an unreachable remote, a
+  refused push and the other failures carry a second line with the way
+  out. gy never deletes a copy or a remote.
 
 ## 0.9.0 - 2026-09-18
 

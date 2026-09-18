@@ -48,6 +48,12 @@ pub(super) fn record_state(ledger: &Path, outcome: &Result<Sync>) {
     let _ = write_state(ledger, &state);
 }
 
+/// Whether this copy has synced before, so an empty remote now means it was
+/// emptied rather than never filled (n-94bb 3B).
+pub(super) fn synced_before(ledger: &Path) -> bool {
+    read_state(ledger).last_ok_seq.is_some()
+}
+
 fn read_state(ledger: &Path) -> SyncStatus {
     std::fs::read_to_string(ledger.join("sync.state"))
         .ok()

@@ -2,7 +2,7 @@
 //! push each local write as one commit.
 use super::super::{Error, Result, SNAPSHOT_FILE, file::FileStore, log};
 use super::report::{Pulled, Range, Sync};
-use super::{git, guard, prepare, rebase, shape, state};
+use super::{git, guard, prepare, rebase, recovery, rules, shape, state};
 use fs2::FileExt;
 use std::path::Path;
 
@@ -17,6 +17,11 @@ pub fn sync(ledger: &Path, remote: &str) -> Result<Sync> {
 
 fn sync_inner(ledger: &Path, remote: &str) -> Result<Sync> {
     std::fs::create_dir_all(ledger)?;
+    if git::is_repo(ledger) {
+        if let Some(message) = recovery::damaged(ledger)? {
+            return Err(Error::invalid(message));
+        }
+    }
     let cloned = if git::is_repo(ledger) {
         None
     } else {
@@ -32,10 +37,16 @@ fn sync_inner(ledger: &Path, remote: &str) -> Result<Sync> {
         report.seq = seq;
     }
     // Communication is outside the lock: a write is not blocked by a fetch.
-    git::fetch(ledger)?;
+    git::fetch(ledger).map_err(|error| {
+        rules::advice(
+            error,
+            "check the remote URL and your git credentials (git remote -v, then git fetch), and that this machine is online",
+        )
+    })?;
     let branch = git::head_branch(ledger)?;
     let upstream = format!("origin/{branch}");
-    first_push(ledger, remote, &branch, &upstream, &mut report)?;
+    rules::check_remote_format(ledger, &upstream)?;
+    first_push(ledger, remote, &branch, &mut report)?;
     reconcile(ledger, branch.as_str(), &upstream, &mut report)?;
     Ok(report)
 }
@@ -171,23 +182,19 @@ pub(super) fn push_writes(
 
 /// The first push owed when an empty remote has a committed copy; this also
 /// recovers a first sync whose push failed before landing.
-fn first_push(
-    ledger: &Path,
-    remote: &str,
-    branch: &str,
-    upstream: &str,
-    report: &mut Sync,
-) -> Result<()> {
-    if git::rev(ledger, upstream).is_some() {
+fn first_push(ledger: &Path, remote: &str, branch: &str, report: &mut Sync) -> Result<()> {
+    let heads = git::remote_refs(ledger, remote)?.1;
+    if heads.iter().any(|head| head == branch) {
         return Ok(());
     }
-    if !git::remote_refs(ledger, remote)?.1.is_empty() {
+    if !heads.is_empty() {
         return Err(Error::invalid(format!("the remote has no {branch} branch")));
     }
     let seq = seq_at(ledger, "HEAD")?;
     git::push(ledger, branch)?;
     git::fetch(ledger)?;
     report.pushed = Some(Range { from: 1, to: seq });
+    report.reuploaded = state::synced_before(ledger);
     report.guard = Some(shape::GUIDANCE.to_string());
     Ok(())
 }
