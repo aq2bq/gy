@@ -6,6 +6,7 @@ use crate::model::{
 };
 use crate::store::{Error, Result, Store};
 
+#[derive(Clone)]
 pub struct ReqAdd {
     pub scope: String,
     pub title: String,

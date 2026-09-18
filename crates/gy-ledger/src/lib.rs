@@ -18,11 +18,11 @@ pub use model::{
 pub use ops::{
     CriterionAdd, CriterionSatisfy, Decide, Edit, NeedAdd, NeedClose, Operation, Outcome,
     QuestionAdd, QuestionClose, Repository, ReqAdd, ReqApprove, ReqCancel, ReqDone, ReqRevise,
-    ScopeRename, Undo, config, link, local_day_start, local_time,
+    ScopeRename, Undo, config, link, local_day_start, local_time, retry,
 };
 pub use store::{
-    Actor, Error, FileStore, FormatVersion, HistoryEntry, IdSource, MemoryStore, Result, Store,
-    UndoneKind, file, format, location, log,
+    Actor, Error, ErrorKind, FileStore, FormatVersion, HistoryEntry, IdSource, MemoryStore, Result,
+    Store, UndoneKind, file, format, location, log,
 };
 pub use views::{
     EdgeLine, Filter, Handover, Listing, LogRow, NeedState, NextRow, NodeRow, Now, ProgressRow,

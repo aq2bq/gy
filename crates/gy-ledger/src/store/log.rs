@@ -42,7 +42,16 @@ pub struct Event {
     pub actor: String,
     pub why: String,
     pub source: String,
+    /// How many retries the writer made before this line landed (n-fe59). Zero,
+    /// the usual, leaves the key out; old readers ignore it.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub retries: u32,
     pub changes: Vec<Change>,
+}
+
+/// The serde guard for `retries`: zero is not written (n-fe59).
+fn is_zero(value: &u32) -> bool {
+    *value == 0
 }
 
 /// Read the complete events. An incomplete trailing line (a crash before the

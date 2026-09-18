@@ -4,6 +4,7 @@ use super::{Operation, Outcome, Repository, advice_for, node_of, now};
 use crate::model::{NodeData, NodeId, NodeKind, RequirementState, Revision};
 use crate::store::{Error, Result, Store};
 
+#[derive(Clone)]
 pub struct ReqRevise {
     pub id: NodeId,
     pub reason: String,

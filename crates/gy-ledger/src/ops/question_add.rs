@@ -3,6 +3,7 @@ use super::{Operation, Outcome, Repository, advice_for, now};
 use crate::model::{Node, NodeData, NodeId, NodeKind};
 use crate::store::{Error, Result, Store};
 
+#[derive(Clone)]
 pub struct QuestionAdd {
     pub scope: String,
     pub title: String,

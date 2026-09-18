@@ -35,6 +35,7 @@ pub struct FileStore {
     staged_history: Vec<HistoryEntry>,
     salt: u64,
     replayed: usize,
+    retries: u32,
 }
 impl FileStore {
     /// Open the ledger directory, reading the actor from `GY_ACTOR`.
@@ -68,6 +69,7 @@ impl FileStore {
             staged_history: Vec::new(),
             salt: 0,
             replayed,
+            retries: 0,
         })
     }
     /// How many log events the last open replayed: 0 when the snapshot covered
@@ -143,7 +145,7 @@ impl FileStore {
             log::truncate(&self.dir, complete)?;
         }
         if events.last().map_or(0, |event| event.seq) != self.seq {
-            return Err(Error::invalid(
+            return Err(Error::conflict(
                 "another writer advanced the ledger; reopen and retry",
             ));
         }
@@ -153,6 +155,7 @@ impl FileStore {
             actor: self.actor.name().to_string(),
             why,
             source,
+            retries: self.retries,
             changes: self.changes()?,
         };
         log::append(&self.dir, &event)?;
@@ -171,6 +174,9 @@ impl FileStore {
 impl Store for FileStore {
     fn version(&self) -> FormatVersion {
         self.version
+    }
+    fn set_retries(&mut self, retries: u32) {
+        self.retries = retries;
     }
     fn get(&self, node: &str) -> Option<Vec<u8>> {
         self.nodes

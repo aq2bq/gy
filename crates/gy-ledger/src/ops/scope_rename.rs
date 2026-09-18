@@ -3,6 +3,7 @@
 use super::{Operation, Outcome, Repository};
 use crate::store::{Error, Result, Store};
 
+#[derive(Clone)]
 pub struct ScopeRename {
     pub from: String,
     pub to: String,

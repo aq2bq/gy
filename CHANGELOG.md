@@ -31,6 +31,15 @@
   steps, the list's created column (now `YYYY/MM/DD`) and the "nobody waits
   on this" age all count the browser's own calendar day, through one date
   component (`time.js`). No UTC date is shown anywhere.
+- **A write that loses its race with another writer is tried again**
+  (n-fe59): where it used to fail with "another writer advanced the ledger;
+  reopen and retry", gy now reopens the ledger and runs the same intent
+  again, up to five times with a short pause, and the event line carries
+  `"retries": n` when it took more than one try (absent otherwise; the
+  format stays 3). A write whose intent no longer holds after the reopen
+  still fails on its own reason, and a write that loses five times fails
+  with "gave up after 5 retries". Two writers creating a ledger at the same
+  moment no longer clobber each other's temporary file.
 - **`question add` and `show` name the need or requirement an open
   question still lacks** (n-fa11, d-09b6): `missing:` gains
   `待つニーズ（waits-on）か生んだ要求（raised）` until some node points a

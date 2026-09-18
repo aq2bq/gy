@@ -3,6 +3,7 @@ use super::{Operation, Outcome, Repository, advice_for, node_of, now};
 use crate::model::{Completion, NodeData, NodeId, NodeKind, RequirementState};
 use crate::store::{Error, Result, Store};
 
+#[derive(Clone)]
 pub struct ReqDone {
     pub id: NodeId,
     pub evidence: String,

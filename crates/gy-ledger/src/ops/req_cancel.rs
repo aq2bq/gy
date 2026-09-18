@@ -4,6 +4,7 @@ use super::{Operation, Outcome, Repository, advice_for, node_of, now};
 use crate::model::{Cancellation, NodeData, NodeId, NodeKind, RequirementState};
 use crate::store::{Error, Result, Store};
 
+#[derive(Clone)]
 pub struct ReqCancel {
     pub id: NodeId,
     pub reason: String,

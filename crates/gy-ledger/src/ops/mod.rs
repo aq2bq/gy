@@ -87,6 +87,45 @@ pub fn now() -> String {
     chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()
 }
 
+/// How many times a write that lost its race is tried again (n-fe59).
+const RETRIES: u32 = 5;
+
+/// Run one operation, reopening the ledger and trying again while another
+/// writer keeps advancing it (n-fe59). A conflict retries; any other error
+/// returns at once, so a write that broke an invariant fails on its own reason.
+/// The repository the write finally used comes back with the outcome, so the
+/// caller can read what it just wrote.
+pub fn retry<S: Store, O: Operation<S> + Clone>(
+    mut open: impl FnMut() -> Result<Repository<S>>,
+    op: O,
+) -> Result<(Repository<S>, Outcome<O::Output>)> {
+    let mut attempt = 0;
+    loop {
+        let mut repository = open()?;
+        repository.set_retries(attempt);
+        match op.clone().run(&mut repository) {
+            Ok(outcome) => return Ok((repository, outcome)),
+            Err(error) if error.is_conflict() && attempt < RETRIES => {
+                attempt += 1;
+                std::thread::sleep(backoff(attempt));
+            }
+            Err(error) if error.is_conflict() => {
+                return Err(Error::conflict(
+                    "gave up after 5 retries; another writer keeps advancing the ledger",
+                ));
+            }
+            Err(error) => return Err(error),
+        }
+    }
+}
+
+/// A short, deterministic wait before the next try: 5 to 40 ms, from the
+/// process id and the attempt. No randomness is added (n-fe59).
+fn backoff(attempt: u32) -> std::time::Duration {
+    let millis = 5 + (std::process::id().wrapping_add(attempt) % 8) as u64 * 5;
+    std::time::Duration::from_millis(millis)
+}
+
 /// A stored `created` instant in the reader's own place, as `YYYY-MM-DD HH:MM`
 /// for the human views (n-b6b6). `publish` and `--json` keep the UTC value; a
 /// value that is not an RFC 3339 instant comes back unchanged.

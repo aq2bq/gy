@@ -4,6 +4,7 @@ use super::{Operation, Outcome, Repository, advice_for, now};
 use crate::model::{Link, Node, NodeId, NodeKind, Relation};
 use crate::store::{Error, Result, Store};
 
+#[derive(Clone)]
 pub struct NeedAdd {
     pub scope: String,
     pub title: String,

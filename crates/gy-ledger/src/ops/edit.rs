@@ -8,6 +8,7 @@ use super::{Operation, Outcome, Repository};
 use crate::model::{DecisionScope, Node, NodeData, NodeId};
 use crate::store::{Error, Result, Store};
 
+#[derive(Clone)]
 pub struct Edit {
     pub id: NodeId,
     pub reason: String,

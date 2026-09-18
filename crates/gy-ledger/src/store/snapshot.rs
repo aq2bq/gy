@@ -23,14 +23,16 @@ pub fn read(dir: &Path) -> Option<(u64, BTreeMap<String, Value>)> {
     Some((snapshot.seq, snapshot.nodes))
 }
 
-/// Write the snapshot atomically (a temporary file, then a rename).
+/// Write the snapshot atomically (a temporary file, then a rename). The
+/// temporary name carries the process id, so two writers opening a fresh
+/// ledger at once do not clobber each other's rename (n-fe59).
 pub fn write(dir: &Path, seq: u64, nodes: &BTreeMap<String, Value>) -> Result<()> {
     let snapshot = Snapshot {
         seq,
         nodes: nodes.clone(),
     };
     let text = serde_json::to_string(&snapshot).map_err(|e| Error::invalid(e.to_string()))?;
-    let temporary = dir.join(".snapshot.tmp");
+    let temporary = dir.join(format!(".snapshot.{}.tmp", std::process::id()));
     std::fs::write(&temporary, text)?;
     std::fs::rename(&temporary, dir.join(FILE))?;
     Ok(())

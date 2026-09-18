@@ -2,6 +2,7 @@
 use super::{Operation, Outcome, Repository};
 use crate::store::{Error, Result, Store, UNDO_WHY, UndoneKind};
 
+#[derive(Clone)]
 pub struct Undo {
     pub reason: String,
 }

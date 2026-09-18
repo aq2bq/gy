@@ -16,6 +16,7 @@ fn event(seq: u64, why: &str, changes: Vec<log::Change>) -> log::Event {
         actor: "piko".to_string(),
         why: why.to_string(),
         source: "test".to_string(),
+        retries: 0,
         changes,
     }
 }

@@ -10,6 +10,7 @@ pub struct Repository<S: Store> {
     why: String,
     source: String,
     scopes: Vec<String>,
+    retries: u32,
 }
 impl<S: Store> Repository<S> {
     pub fn new(store: S) -> Self {
@@ -18,6 +19,7 @@ impl<S: Store> Repository<S> {
             why: String::new(),
             source: String::new(),
             scopes: Vec::new(),
+            retries: 0,
         }
     }
     /// The scope names a move accepts, from gy.toml. An empty list accepts
@@ -33,6 +35,16 @@ impl<S: Store> Repository<S> {
     /// The store beneath this repository.
     pub fn store(&self) -> &S {
         &self.store
+    }
+    /// The retries the next write carries into its log line (n-fe59).
+    pub fn retries(&self) -> u32 {
+        self.retries
+    }
+    /// Set the retries the next write carries. The store learns it at once, so
+    /// an operation that commits outside `transaction` (undo) still carries it.
+    pub fn set_retries(&mut self, retries: u32) {
+        self.retries = retries;
+        self.store.set_retries(retries);
     }
     /// The store beneath this repository, for operations that own their own
     /// transaction such as undo.
@@ -146,6 +158,7 @@ impl<S: Store> Repository<S> {
     ) -> Result<T> {
         self.why = why.to_string();
         self.source = source.to_string();
+        self.store.set_retries(self.retries);
         self.store.begin();
         match f(self) {
             Ok(value) => match self.store.commit() {

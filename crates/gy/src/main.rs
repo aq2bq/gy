@@ -10,8 +10,8 @@ mod writes;
 use clap::Parser;
 use cli::{Cli, Command, CriterionAction, NeedAction, QuestionAction};
 use gy_ledger::{
-    CriterionAdd, CriterionSatisfy, NeedAdd, NeedClose, Operation, QuestionAdd, QuestionClose,
-    Result, handover, location, next, show,
+    CriterionAdd, CriterionSatisfy, NeedAdd, NeedClose, QuestionAdd, QuestionClose, Result,
+    handover, location, next, retry, show,
 };
 use output::{emit, emit_list, report};
 use std::path::Path;
@@ -68,27 +68,31 @@ fn run(cli: &Cli) -> Result<()> {
 }
 
 fn write_need(cli: &Cli, root: &Path, ledger: &Path, action: &NeedAction) -> Result<()> {
-    let mut repository = repo::open_write(ledger)?;
+    let repository = repo::open_write(ledger)?;
     let outcome = match action {
         NeedAction::Add {
             title,
             targets,
             spawned_by,
             body_file,
-        } => NeedAdd {
-            scope: write::scope(root, cli.scope.as_deref())?,
-            title: title.clone(),
-            targets: write::resolve_all(&repository, targets)?,
-            spawned_by: write::resolve_opt(&repository, spawned_by.as_deref())?,
-            body: write::body_file(body_file.as_deref())?,
+        } => {
+            let operation = NeedAdd {
+                scope: write::scope(root, cli.scope.as_deref())?,
+                title: title.clone(),
+                targets: write::resolve_all(&repository, targets)?,
+                spawned_by: write::resolve_opt(&repository, spawned_by.as_deref())?,
+                body: write::body_file(body_file.as_deref())?,
+            };
+            retry(|| repo::open_write(ledger), operation)?.1
         }
-        .run(&mut repository)?,
-        NeedAction::Close { id, by, evidence } => NeedClose {
-            id: repository.resolve(id)?,
-            by: write::closed_by(by)?,
-            evidence: evidence.clone(),
+        NeedAction::Close { id, by, evidence } => {
+            let operation = NeedClose {
+                id: repository.resolve(id)?,
+                by: write::closed_by(by)?,
+                evidence: evidence.clone(),
+            };
+            retry(|| repo::open_write(ledger), operation)?.1
         }
-        .run(&mut repository)?,
     };
     emit(
         cli.json,
@@ -97,33 +101,37 @@ fn write_need(cli: &Cli, root: &Path, ledger: &Path, action: &NeedAction) -> Res
 }
 
 fn write_question(cli: &Cli, root: &Path, ledger: &Path, action: &QuestionAction) -> Result<()> {
-    let mut repository = repo::open_write(ledger)?;
+    let repository = repo::open_write(ledger)?;
     let outcome = match action {
         QuestionAction::Add {
             title,
             decider,
             options,
             body_file,
-        } => QuestionAdd {
-            scope: write::scope(root, cli.scope.as_deref())?,
-            title: title.clone(),
-            decider: decider.clone(),
-            options: options.clone(),
-            body: write::body_file(body_file.as_deref())?,
+        } => {
+            let operation = QuestionAdd {
+                scope: write::scope(root, cli.scope.as_deref())?,
+                title: title.clone(),
+                decider: decider.clone(),
+                options: options.clone(),
+                body: write::body_file(body_file.as_deref())?,
+            };
+            retry(|| repo::open_write(ledger), operation)?.1
         }
-        .run(&mut repository)?,
         QuestionAction::Close {
             id,
             by,
             evidence,
             decision,
-        } => QuestionClose {
-            id: repository.resolve(id)?,
-            by: write::closure(by)?,
-            evidence: evidence.clone(),
-            decision: write::resolve_opt(&repository, decision.as_deref())?,
+        } => {
+            let operation = QuestionClose {
+                id: repository.resolve(id)?,
+                by: write::closure(by)?,
+                evidence: evidence.clone(),
+                decision: write::resolve_opt(&repository, decision.as_deref())?,
+            };
+            retry(|| repo::open_write(ledger), operation)?.1
         }
-        .run(&mut repository)?,
     };
     emit(
         cli.json,
@@ -132,24 +140,28 @@ fn write_question(cli: &Cli, root: &Path, ledger: &Path, action: &QuestionAction
 }
 
 fn write_criterion(cli: &Cli, root: &Path, ledger: &Path, action: &CriterionAction) -> Result<()> {
-    let mut repository = repo::open_write(ledger)?;
+    let repository = repo::open_write(ledger)?;
     let outcome = match action {
-        CriterionAction::Add { title, body_file } => CriterionAdd {
-            scope: write::scope(root, cli.scope.as_deref())?,
-            title: title.clone(),
-            body: write::body_file(body_file.as_deref())?,
+        CriterionAction::Add { title, body_file } => {
+            let operation = CriterionAdd {
+                scope: write::scope(root, cli.scope.as_deref())?,
+                title: title.clone(),
+                body: write::body_file(body_file.as_deref())?,
+            };
+            retry(|| repo::open_write(ledger), operation)?.1
         }
-        .run(&mut repository)?,
         CriterionAction::Satisfy {
             id,
             evidence,
             revoke,
-        } => CriterionSatisfy {
-            id: repository.resolve(id)?,
-            evidence: evidence.clone(),
-            revoke: *revoke,
+        } => {
+            let operation = CriterionSatisfy {
+                id: repository.resolve(id)?,
+                evidence: evidence.clone(),
+                revoke: *revoke,
+            };
+            retry(|| repo::open_write(ledger), operation)?.1
         }
-        .run(&mut repository)?,
     };
     emit(
         cli.json,

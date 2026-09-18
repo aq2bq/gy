@@ -4,6 +4,7 @@ use super::{Operation, Outcome, Repository, advice_for, now};
 use crate::model::{Node, NodeId, NodeKind};
 use crate::store::{Result, Store};
 
+#[derive(Clone)]
 pub struct CriterionAdd {
     pub scope: String,
     pub title: String,

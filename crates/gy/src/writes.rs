@@ -1,24 +1,26 @@
 //! decide, link, edit, and undo: the write commands whose arguments need more
-//! than a flat option list.
+//! than a flat option list. Every write goes through `retry`, so a lost race
+//! with another writer is tried again on the ledger as it then stands (n-fe59).
 use crate::cli::{Cli, DecideArgs, EditArgs, LinkArgs, ReqAction, ScopeAction, UndoArgs};
 use crate::output::emit;
 use crate::repo;
 use crate::write::{self, Written};
 use gy_ledger::link::Link as LinkOp;
 use gy_ledger::{
-    Decide, DecisionScope, Edit, Error, NodeId, Operation, Outcome, Ref, Relation, Repository,
+    Decide, DecisionScope, Edit, Error, FileStore, NodeId, Outcome, Ref, Relation, Repository,
     ReqAdd, ReqApprove, ReqCancel, ReqDone, ReqRevise, Result, ScopeRename, Store, Undo, config,
+    retry,
 };
 use std::path::Path;
 
 pub fn decide(cli: &Cli, root: &Path, ledger: &Path, args: &DecideArgs) -> Result<()> {
-    let mut repository = repo::open_write(ledger)?;
+    let repository = repo::open_write(ledger)?;
     let relates = match one_relation(args)? {
         Some((relation, text)) => vec![(relation, repository.resolve(text)?, args.mark.clone())],
         None if args.mark.is_some() => return Err(Error::invalid("--mark needs a relation")),
         None => Vec::new(),
     };
-    let outcome = Decide {
+    let operation = Decide {
         scope: write::scope(root, cli.scope.as_deref())?,
         title: args.title.clone(),
         decision_scope: DecisionScope::recorded(args.scope_note.clone())?,
@@ -26,8 +28,8 @@ pub fn decide(cli: &Cli, root: &Path, ledger: &Path, args: &DecideArgs) -> Resul
         source: args.source.clone(),
         closes: write::resolve_all(&repository, &args.closes)?,
         relates,
-    }
-    .run(&mut repository)?;
+    };
+    let (_, outcome) = retry(|| repo::open_write(ledger), operation)?;
     emit(cli.json, &Written::of(&outcome).created(true))
 }
 
@@ -53,50 +55,54 @@ fn one_relation(args: &DecideArgs) -> Result<Option<(Relation, &String)>> {
 }
 
 pub fn link(cli: &Cli, ledger: &Path, args: &LinkArgs) -> Result<()> {
-    let mut repository = repo::open_write(ledger)?;
-    let outcome = LinkOp {
+    let repository = repo::open_write(ledger)?;
+    let operation = LinkOp {
         from: repository.resolve(&args.from)?,
         relation: write::relation(&args.relation)?,
         to: repository.resolve(&args.to)?,
         mark: args.mark.clone(),
         remove: args.remove,
-    }
-    .run(&mut repository)?;
+    };
+    let (_, outcome) = retry(|| repo::open_write(ledger), operation)?;
     emit(cli.json, &Written::of(&outcome))
 }
 
 pub fn edit(cli: &Cli, root: &Path, ledger: &Path, args: &EditArgs) -> Result<()> {
-    let mut repository = repo::open_write(ledger)?.with_scopes(write::scope_names(root)?);
-    let outcome = Edit {
+    let scopes = write::scope_names(root)?;
+    let repository = repo::open_write(ledger)?.with_scopes(scopes.clone());
+    let operation = Edit {
         id: repository.resolve(&args.id)?,
         reason: args.reason.clone(),
         title: args.title.clone(),
         body: write::body_file(args.body_file.as_deref())?,
         set: write::pairs(&args.set)?,
         append: write::pairs(&args.append)?,
-    }
-    .run(&mut repository)?;
+    };
+    let open =
+        move || repo::open_write(ledger).map(|repository| repository.with_scopes(scopes.clone()));
+    let (_, outcome) = retry(open, operation)?;
     emit(cli.json, &Written::of(&outcome))
 }
 
 pub fn undo(cli: &Cli, ledger: &Path, args: &UndoArgs) -> Result<()> {
-    let mut repository = repo::open_write(ledger)?;
-    let outcome = Undo {
+    let operation = Undo {
         reason: args.reason.clone(),
-    }
-    .run(&mut repository)?;
+    };
+    let (_, outcome) = retry(|| repo::open_write(ledger), operation)?;
     emit(cli.json, &Written::of(&outcome))
 }
 
 pub fn scope(cli: &Cli, root: &Path, ledger: &Path, action: &ScopeAction) -> Result<()> {
-    let mut repository = repo::open_write(ledger)?.with_scopes(write::scope_names(root)?);
+    let scopes = write::scope_names(root)?;
+    let open =
+        move || repo::open_write(ledger).map(|repository| repository.with_scopes(scopes.clone()));
     let outcome = match action {
         ScopeAction::Rename { old, new } => {
-            let outcome = ScopeRename {
+            let operation = ScopeRename {
                 from: old.clone(),
                 to: new.clone(),
-            }
-            .run(&mut repository)?;
+            };
+            let (mut repository, outcome) = retry(open, operation)?;
             // The log is the source of truth; if gy.toml cannot follow, put it
             // back (n-24dd).
             if let Err(error) = config::rename_scope(root, old, new) {
@@ -112,8 +118,7 @@ pub fn scope(cli: &Cli, root: &Path, ledger: &Path, action: &ScopeAction) -> Res
 }
 
 pub fn req(cli: &Cli, root: &Path, ledger: &Path, action: &ReqAction) -> Result<()> {
-    let mut repository = repo::open_write(ledger)?;
-    let outcome = apply(&mut repository, root, cli, action)?;
+    let (repository, outcome) = run_req(cli, root, ledger, action)?;
     let reference = match &outcome.id {
         Some(id) => write::requirement_reference(&repository, id)?,
         None => None,
@@ -126,70 +131,103 @@ pub fn req(cli: &Cli, root: &Path, ledger: &Path, action: &ReqAction) -> Result<
     )
 }
 
-fn apply<S: Store>(
-    repository: &mut Repository<S>,
-    root: &Path,
-    cli: &Cli,
-    action: &ReqAction,
-) -> Result<Outcome<NodeId>> {
+type ReqRun = (Repository<FileStore>, Outcome<NodeId>);
+
+fn run_req(cli: &Cli, root: &Path, ledger: &Path, action: &ReqAction) -> Result<ReqRun> {
+    let repository = repo::open_write(ledger)?;
     match action {
-        ReqAction::Add {
-            title,
-            needs,
-            relies_on,
-            targets,
-            reference,
-            body_file,
-        } => ReqAdd {
-            scope: write::scope(root, cli.scope.as_deref())?,
-            title: title.clone(),
-            needs: write::resolve_all(repository, needs)?,
-            relies_on: write::resolve_all(repository, relies_on)?,
-            targets: write::resolve_all(repository, targets)?,
-            reference: reference.clone().map(Ref),
-            body: write::body_file(body_file.as_deref())?,
-        }
-        .run(repository),
-        _ => advance(repository, action),
+        ReqAction::Add { .. } => add(cli, root, ledger, &repository, action),
+        ReqAction::Approve { .. } => approve(ledger, &repository, action),
+        ReqAction::Revise { .. } => revise(ledger, &repository, action),
+        ReqAction::Done { .. } => done(ledger, &repository, action),
+        ReqAction::Cancel { .. } => cancel(ledger, &repository, action),
     }
 }
 
-fn advance<S: Store>(
-    repository: &mut Repository<S>,
+fn add(
+    cli: &Cli,
+    root: &Path,
+    ledger: &Path,
+    repository: &Repository<FileStore>,
     action: &ReqAction,
-) -> Result<Outcome<NodeId>> {
-    Ok(match action {
-        ReqAction::Approve {
-            id,
-            design,
-            heard_by,
-            evidence,
-        } => ReqApprove {
-            id: repository.resolve(id)?,
-            design: design.clone(),
-            heard_by: heard_by.clone(),
-            evidence: evidence.clone(),
-        }
-        .run(repository)?,
-        ReqAction::Revise { id, reason, source } => ReqRevise {
-            id: repository.resolve(id)?,
-            reason: reason.clone(),
-            source: source.clone(),
-        }
-        .run(repository)?,
-        ReqAction::Done { id, evidence } => ReqDone {
-            id: repository.resolve(id)?,
-            evidence: evidence.clone(),
-        }
-        .run(repository)?,
-        ReqAction::Cancel { id, reason, source } => ReqCancel {
-            id: repository.resolve(id)?,
-            reason: reason.clone(),
-            source: source.clone(),
-        }
-        .run(repository)?,
-        ReqAction::Add { .. } => {
-            return Err(Error::invalid("a requirement add is not a transition"));
-        }
-    })
+) -> Result<ReqRun> {
+    let ReqAction::Add {
+        title,
+        needs,
+        relies_on,
+        targets,
+        reference,
+        body_file,
+    } = action
+    else {
+        unreachable!("add is a requirement add")
+    };
+    let operation = ReqAdd {
+        scope: write::scope(root, cli.scope.as_deref())?,
+        title: title.clone(),
+        needs: write::resolve_all(repository, needs)?,
+        relies_on: write::resolve_all(repository, relies_on)?,
+        targets: write::resolve_all(repository, targets)?,
+        reference: reference.clone().map(Ref),
+        body: write::body_file(body_file.as_deref())?,
+    };
+    retry(|| repo::open_write(ledger), operation)
+}
+
+fn approve(
+    ledger: &Path,
+    repository: &Repository<FileStore>,
+    action: &ReqAction,
+) -> Result<ReqRun> {
+    let ReqAction::Approve {
+        id,
+        design,
+        heard_by,
+        evidence,
+    } = action
+    else {
+        unreachable!("approve is a requirement approve")
+    };
+    let operation = ReqApprove {
+        id: repository.resolve(id)?,
+        design: design.clone(),
+        heard_by: heard_by.clone(),
+        evidence: evidence.clone(),
+    };
+    retry(|| repo::open_write(ledger), operation)
+}
+
+fn revise(ledger: &Path, repository: &Repository<FileStore>, action: &ReqAction) -> Result<ReqRun> {
+    let ReqAction::Revise { id, reason, source } = action else {
+        unreachable!("revise is a requirement revise")
+    };
+    let operation = ReqRevise {
+        id: repository.resolve(id)?,
+        reason: reason.clone(),
+        source: source.clone(),
+    };
+    retry(|| repo::open_write(ledger), operation)
+}
+
+fn done(ledger: &Path, repository: &Repository<FileStore>, action: &ReqAction) -> Result<ReqRun> {
+    let ReqAction::Done { id, evidence } = action else {
+        unreachable!("done is a requirement done")
+    };
+    let operation = ReqDone {
+        id: repository.resolve(id)?,
+        evidence: evidence.clone(),
+    };
+    retry(|| repo::open_write(ledger), operation)
+}
+
+fn cancel(ledger: &Path, repository: &Repository<FileStore>, action: &ReqAction) -> Result<ReqRun> {
+    let ReqAction::Cancel { id, reason, source } = action else {
+        unreachable!("cancel is a requirement cancel")
+    };
+    let operation = ReqCancel {
+        id: repository.resolve(id)?,
+        reason: reason.clone(),
+        source: source.clone(),
+    };
+    retry(|| repo::open_write(ledger), operation)
 }

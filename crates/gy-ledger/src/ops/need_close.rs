@@ -4,6 +4,7 @@ use super::{Operation, Outcome, Repository, advice_for};
 use crate::model::{Closed, ClosedBy, NodeData, NodeId, NodeKind};
 use crate::store::{Error, Result, Store};
 
+#[derive(Clone)]
 pub struct NeedClose {
     pub id: NodeId,
     pub by: ClosedBy,

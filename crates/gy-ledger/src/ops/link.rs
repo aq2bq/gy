@@ -4,6 +4,7 @@ use super::{Operation, Outcome, Repository, marks};
 use crate::model::{Link as ModelLink, NodeId, Relation};
 use crate::store::{Error, Result, Store};
 
+#[derive(Clone)]
 pub struct Link {
     pub from: NodeId,
     pub relation: Relation,

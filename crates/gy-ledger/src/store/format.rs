@@ -28,10 +28,12 @@ pub fn read(dir: &Path) -> Result<FormatVersion> {
     Ok(version)
 }
 
-/// Write the version atomically (a temporary file, then a rename).
+/// Write the version atomically (a temporary file, then a rename). The
+/// temporary name carries the process id, so two writers creating a ledger at
+/// once do not clobber each other's rename (n-fe59).
 pub fn write(dir: &Path, version: FormatVersion) -> Result<()> {
     std::fs::create_dir_all(dir)?;
-    let temporary = dir.join(".format.tmp");
+    let temporary = dir.join(format!(".format.{}.tmp", std::process::id()));
     std::fs::write(&temporary, format!("{}\n", version.0))?;
     std::fs::rename(&temporary, dir.join(FILE))?;
     Ok(())

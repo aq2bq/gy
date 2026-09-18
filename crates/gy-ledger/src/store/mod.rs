@@ -14,16 +14,38 @@ pub use file::FileStore;
 pub use memory::MemoryStore;
 use std::env;
 
+/// The kind an error is: a broken invariant, or a lost race with another
+/// writer (n-fe59). The kind is what a retry reads; the message is for people.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ErrorKind {
+    Invalid,
+    Conflict,
+}
+
 /// An invalid value is rejected when it is built, not stored (D-75).
 #[derive(Debug, Clone)]
 pub struct Error {
     pub message: String,
+    pub kind: ErrorKind,
 }
 impl Error {
     pub fn invalid(message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
+            kind: ErrorKind::Invalid,
         }
+    }
+    /// A write lost its race: another writer advanced the ledger first
+    /// (n-fe59). The message stays the one the store printed before.
+    pub fn conflict(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            kind: ErrorKind::Conflict,
+        }
+    }
+    /// Whether this error is a lost race a retry could win.
+    pub fn is_conflict(&self) -> bool {
+        self.kind == ErrorKind::Conflict
     }
 }
 impl std::fmt::Display for Error {
@@ -119,6 +141,9 @@ pub trait IdSource {
 /// none (AC-45); history records why and from where (AC-46).
 pub trait Store: IdSource {
     fn version(&self) -> FormatVersion;
+    /// The retries the next appended event carries (n-fe59). A store that
+    /// cannot lose a race ignores it.
+    fn set_retries(&mut self, _retries: u32) {}
     /// The stored bytes for a node id, or `None`.
     fn get(&self, key: &str) -> Option<Vec<u8>>;
     /// Every stored node id.
