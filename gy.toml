@@ -8,3 +8,5 @@ output = "docs/publication"
 [scopes.need_lifecycle]
 [scopes.roadmap]
 [scopes.workflow_records]
+
+[scopes.team_sync]
