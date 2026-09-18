@@ -5,8 +5,10 @@ mod guard;
 mod prepare;
 pub mod report;
 pub mod shape;
+mod state;
 pub mod sync;
 
 pub use prepare::reconcile;
 pub use report::{Pulled, Range, Sync};
+pub use state::record_timeout;
 pub use sync::sync;

@@ -1,8 +1,8 @@
 //! `gy sync` (n-6f47, d-39f6, d-1e50): prepare the copy, fetch, pull, and
 //! push each local write as one commit.
-use super::super::{Error, Result, SNAPSHOT_FILE, SyncStatus, file::FileStore, log};
+use super::super::{Error, Result, SNAPSHOT_FILE, file::FileStore, log};
 use super::report::{Pulled, Range, Sync};
-use super::{git, guard, prepare, shape};
+use super::{git, guard, prepare, shape, state};
 use fs2::FileExt;
 use std::path::Path;
 
@@ -11,7 +11,7 @@ use std::path::Path;
 /// written either way.
 pub fn sync(ledger: &Path, remote: &str) -> Result<Sync> {
     let outcome = sync_inner(ledger, remote);
-    record_state(ledger, &outcome);
+    state::record_state(ledger, &outcome);
     outcome
 }
 
@@ -232,53 +232,6 @@ fn rebuild_snapshot(ledger: &Path) -> Result<()> {
     let _ = std::fs::remove_file(ledger.join(SNAPSHOT_FILE));
     FileStore::open_with(ledger, |_| Some("gy-read".to_string()))?;
     Ok(())
-}
-
-/// Write `sync.state` after every sync, front or background (n-ecbf). A
-/// success clears the last error; a failure keeps the last success and records
-/// the message. A state write never hides the sync's own error.
-fn record_state(ledger: &Path, outcome: &Result<Sync>) {
-    // A refused clone leaves no copy, so there is no state to keep.
-    if !git::is_repo(ledger) {
-        return;
-    }
-    let mut state = read_state(ledger);
-    match outcome {
-        Ok(report) => {
-            state.last_ok_at = Some(now());
-            state.last_ok_seq = Some(report.seq);
-            state.last_error = None;
-            state.last_error_at = None;
-        }
-        Err(error) => {
-            state.last_error = Some(error.message.clone());
-            state.last_error_at = Some(now());
-        }
-    }
-    let _ = write_state(ledger, &state);
-}
-
-fn read_state(ledger: &Path) -> SyncStatus {
-    std::fs::read_to_string(ledger.join("sync.state"))
-        .ok()
-        .and_then(|text| serde_json::from_str(&text).ok())
-        .unwrap_or_default()
-}
-
-/// Replace `sync.state` atomically, so a reader never sees half a file.
-fn write_state(ledger: &Path, state: &SyncStatus) -> Result<()> {
-    let text = serde_json::to_string(state).map_err(|error| Error::invalid(error.to_string()))?;
-    let temporary = ledger.join(format!(".sync.{}.tmp", std::process::id()));
-    std::fs::write(&temporary, text)?;
-    std::fs::rename(&temporary, ledger.join("sync.state"))?;
-    Ok(())
-}
-
-fn now() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0)
 }
 
 /// The ledger's lock, held from fetch until the sync ends so a write cannot

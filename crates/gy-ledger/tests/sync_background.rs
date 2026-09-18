@@ -184,6 +184,40 @@ fn sync_state_records_success_and_error() {
 }
 
 #[test]
+fn the_handover_line_shows_only_the_first_error_line() {
+    ident();
+    let temp = tempfile::tempdir().unwrap();
+    let (first, _second, _remote) = pair(temp.path());
+    std::fs::write(
+        first.join("sync.state"),
+        serde_json::json!({"last_error": "first line\nsecond line"}).to_string(),
+    )
+    .unwrap();
+
+    let report = handover(&Repository::new(store(&first)), None).unwrap();
+    let line = format!("{report}");
+    assert!(line.contains("last error: first line"), "{line}");
+    assert!(!line.contains("second line"), "{line}");
+    // The state file and --json keep the whole message.
+    let json = serde_json::to_value(&report).unwrap();
+    assert_eq!(json["sync"]["last_error"], "first line\nsecond line");
+}
+
+#[test]
+fn a_timeout_is_recorded() {
+    ident();
+    let temp = tempfile::tempdir().unwrap();
+    let (first, _second, _remote) = pair(temp.path());
+
+    gy_ledger::record_timeout(&first);
+    let state = store(&first).sync_state().unwrap();
+    assert!(
+        state.last_error.unwrap().contains("30 seconds"),
+        "the timeout is recorded"
+    );
+}
+
+#[test]
 fn handover_shows_pending_and_json_on_a_synced_copy() {
     ident();
     let temp = tempfile::tempdir().unwrap();

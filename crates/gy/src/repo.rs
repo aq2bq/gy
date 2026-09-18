@@ -2,6 +2,7 @@
 //! create a ledger; the first write does (N-63).
 use gy_ledger::{Actor, Error, FileStore, FormatVersion, Repository, Result, format};
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 
 /// A placeholder actor for reads. Only a write names the real `GY_ACTOR`.
 const READ_ACTOR: &str = "gy-read";
@@ -60,4 +61,55 @@ fn announce_migration(store: &FileStore) {
     eprintln!(
         "gy {version} migrated this ledger from format {from} to {to}; what changed for you: CHANGELOG {version} Updating (https://github.com/aq2bq/gy/blob/main/CHANGELOG.md)"
     );
+}
+
+/// Start a detached `gy sync` after a write to a shared copy, unless one is
+/// already running (n-ecbf). Its output goes to the copy's `sync.log`, so the
+/// write stays as fast as before.
+pub fn background_sync(root: &Path, ledger: &Path) -> Result<()> {
+    if !ledger.join("remote").is_file() {
+        return Ok(());
+    }
+    let pid_path = ledger.join("sync.pid");
+    if read_pid(&pid_path).is_some_and(process_alive) {
+        return Ok(());
+    }
+    let log = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(ledger.join("sync.log"))?;
+    let mut command = Command::new(std::env::current_exe()?);
+    command
+        .arg("-C")
+        .arg(root)
+        .arg("sync")
+        .env("GY_SYNC_BACKGROUND", "1")
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdin(Stdio::null())
+        .stdout(log.try_clone()?)
+        .stderr(log);
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        command.process_group(0);
+    }
+    let child = command.spawn()?;
+    std::fs::write(&pid_path, child.id().to_string())?;
+    Ok(())
+}
+
+fn read_pid(path: &Path) -> Option<u32> {
+    std::fs::read_to_string(path).ok()?.trim().parse().ok()
+}
+
+/// Best effort: `kill -0` says the pid is still alive (n-ecbf).
+fn process_alive(pid: u32) -> bool {
+    Command::new("kill")
+        .arg("-0")
+        .arg(pid.to_string())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
 }

@@ -37,12 +37,8 @@ fn tab_name(root: &Path) -> String {
 fn run(cli: &Cli) -> Result<()> {
     let root = repo::root(cli.directory.as_deref())?;
     let ledger = location::ledger_dir(&root);
-    if let Some(url) = reconcile(&ledger, config::read(&root)?.remote.as_deref())? {
-        eprintln!(
-            "stopped syncing with {url}; this copy is local from here on and other members' writes will not arrive"
-        );
-    }
-    match &cli.command {
+    reconcile_copy(&root, &ledger)?;
+    let outcome = match &cli.command {
         Command::Show { ids, full } => {
             let repository = repo::open(&ledger)?;
             emit_list(cli.json, &show(&repository, ids, *full)?)
@@ -70,7 +66,45 @@ fn run(cli: &Cli) -> Result<()> {
         Command::Link(args) => writes::link(cli, &ledger, args),
         Command::Edit(args) => writes::edit(cli, &root, &ledger, args),
         Command::Undo(args) => writes::undo(cli, &ledger, args),
+    };
+    // A write to a shared copy starts a detached sync; the write itself waits
+    // for nothing (n-ecbf).
+    after_write(cli, &root, &ledger, &outcome);
+    outcome
+}
+
+/// Reconcile the copy's marker with gy.toml, and tell the reader once when
+/// syncing stopped (n-8a52).
+fn reconcile_copy(root: &Path, ledger: &Path) -> Result<()> {
+    if let Some(url) = reconcile(ledger, config::read(root)?.remote.as_deref())? {
+        eprintln!(
+            "stopped syncing with {url}; this copy is local from here on and other members' writes will not arrive"
+        );
     }
+    Ok(())
+}
+
+/// A write to a shared copy starts a detached `gy sync` (n-ecbf).
+fn after_write(cli: &Cli, root: &Path, ledger: &Path, outcome: &Result<()>) {
+    if outcome.is_ok() && writes(&cli.command) {
+        let _ = repo::background_sync(root, ledger);
+    }
+}
+
+/// The commands that change the ledger and may owe the remote a push.
+fn writes(command: &Command) -> bool {
+    matches!(
+        command,
+        Command::Need { .. }
+            | Command::Question { .. }
+            | Command::Criterion { .. }
+            | Command::Req { .. }
+            | Command::Scope { .. }
+            | Command::Decide(_)
+            | Command::Link(_)
+            | Command::Edit(_)
+            | Command::Undo(_)
+    )
 }
 
 fn write_need(cli: &Cli, root: &Path, ledger: &Path, action: &NeedAction) -> Result<()> {

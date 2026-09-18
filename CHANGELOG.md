@@ -28,6 +28,15 @@
   untouched, and the next open is silent. The READMEs now say where the
   bundled skills go and that a release which changed them says so under
   Updating.
+- **A write to a synced copy is pushed in the background** (n-ecbf 2A):
+  after each successful write, gy starts a detached `gy sync` that pushes
+  the unpushed lines, logging to `sync.log` in the copy, never prompting,
+  giving up after 30 seconds and never running twice at once. `gy sync`
+  holds the ledger lock only while it changes the copy, so a write never
+  waits on the network. The copy keeps `sync.state`, and `handover` on a
+  synced copy prints `sync: N writes not pushed; remote last reached …`
+  with the last error's first line (the full text under `--json`). A copy
+  that cannot reach its remote keeps accepting reads and writes.
 
 ## 0.9.0 - 2026-09-18
 

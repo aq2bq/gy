@@ -22,7 +22,9 @@ impl fmt::Display for SyncRow {
             write!(f, "; remote last reached {} (seq {seq})", epoch_local(at))?;
         }
         if let Some(error) = &self.last_error {
-            write!(f, "; last error: {error}")?;
+            // The line is one line; the state file and --json keep the whole
+            // message (n-ecbf).
+            write!(f, "; last error: {}", error.lines().next().unwrap_or(error))?;
         }
         Ok(())
     }

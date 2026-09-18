@@ -9,6 +9,7 @@ use gy_ledger::{
 };
 use gy_serve::server::Opened;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 pub fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
     let Command::List {
@@ -44,10 +45,25 @@ pub fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
 /// d-39f6). It needs `remote` in gy.toml; a remote-less ledger is never
 /// touched, and reading it back is an error instead of a change.
 pub fn sync_command(cli: &Cli, root: &Path, ledger: &Path) -> Result<()> {
+    watchdog(ledger);
     let remote = config::read(root)?.remote.ok_or_else(|| {
         Error::invalid("gy.toml has no remote; gy sync needs one (add `remote = \"…\"`)")
     })?;
     emit(cli.json, &gy_ledger::sync(ledger, &remote)?)
+}
+
+/// A background sync gives up after 30 seconds and records why (n-ecbf). The
+/// parent has already detached, so the child limits itself.
+fn watchdog(ledger: &Path) {
+    if std::env::var("GY_SYNC_BACKGROUND").ok().as_deref() != Some("1") {
+        return;
+    }
+    let ledger = ledger.to_path_buf();
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_secs(30));
+        gy_ledger::record_timeout(&ledger);
+        std::process::exit(1);
+    });
 }
 
 /// Serve the ledger over HTTP on localhost until stopped (n-a493). The CLI
