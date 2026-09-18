@@ -78,10 +78,24 @@ pub fn handover(cli: &Cli, root: &Path, ledger: &Path) -> Result<()> {
     )
 }
 
-/// Serve the ledger over HTTP on localhost until stopped (n-a493). The CLI
-/// only wires it: gy-serve owns the server, and no write path exists. A read
-/// may name a sequence, which opens the ledger as it stood then (n-10e1).
-pub fn serve(ledger: &Path, name: String) -> Result<()> {
+/// Serve the ledger over HTTP on localhost until stopped (n-a493). A shared
+/// copy also syncs every ten seconds while it runs (n-94bb). A read may name a
+/// sequence, which opens the ledger as it stood then (n-10e1).
+pub fn serve(root: &Path, ledger: &Path, name: String) -> Result<()> {
+    let remote = config::read(root)?.remote;
+    if ledger.join("remote").is_file() {
+        let (root, ledger) = (root.to_path_buf(), ledger.to_path_buf());
+        std::thread::spawn(move || {
+            loop {
+                match repo::sync_tick(&root, &ledger) {
+                    repo::Tick::Out(line) => eprintln!("{} sync: {line}", clock()),
+                    repo::Tick::Failed(error) => eprintln!("{} sync failed: {error}", clock()),
+                    repo::Tick::Silent | repo::Tick::Skipped => {}
+                }
+                std::thread::sleep(Duration::from_secs(10));
+            }
+        });
+    }
     let watched = ledger.to_path_buf();
     let ledger = ledger.to_path_buf();
     gy_serve::server::serve(
@@ -103,6 +117,21 @@ pub fn serve(ledger: &Path, name: String) -> Result<()> {
         }),
         watched,
         name,
+        remote,
+    )
+}
+
+/// The wall clock for serve's log lines, `HH:MM:SS` (n-94bb).
+fn clock() -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_secs())
+        .unwrap_or(0);
+    format!(
+        "{:02}:{:02}:{:02}",
+        (secs / 3600) % 24,
+        (secs / 60) % 60,
+        secs % 60
     )
 }
 

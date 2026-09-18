@@ -34,9 +34,16 @@ pub type Opener = Box<dyn Fn(Option<u64>) -> Result<Opened> + Send + Sync>;
 /// Serve until stopped, printing the one line the master needs to open. The
 /// watch follows `ledger`'s log so a request can wait for the next write. The
 /// name is the ledger directory's, for the tab's title (n-07f0).
-pub fn serve(open: Opener, ledger: PathBuf, name: String) -> Result<()> {
+pub fn serve(open: Opener, ledger: PathBuf, name: String, remote: Option<String>) -> Result<()> {
     let (listener, port) = bind()?;
     let url = format!("http://127.0.0.1:{port}/");
+    // One line for the terminal: where it listens, what it reads, and whether
+    // it syncs (n-94bb).
+    eprintln!(
+        "listening on {url}  ledger {}  remote {}",
+        ledger.display(),
+        remote.as_deref().unwrap_or("none")
+    );
     println!("gy serve  {url}");
     if std::io::stdout().is_terminal() {
         open_browser(&url);

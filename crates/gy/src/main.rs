@@ -53,7 +53,7 @@ fn run(cli: &Cli) -> Result<()> {
         Command::Publish { since, out } => {
             reads::write_publish(cli, &root, &ledger, *since, out.as_deref())
         }
-        Command::Serve => reads::serve(&ledger, tab_name(&root)),
+        Command::Serve => reads::serve(&root, &ledger, tab_name(&root)),
         Command::Sync => reads::sync_command(cli, &root, &ledger),
         Command::Need { action } => write_need(cli, &root, &ledger, action),
         Command::Question { action } => write_question(cli, &root, &ledger, action),

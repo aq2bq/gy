@@ -143,6 +143,96 @@ pub fn refresh(root: &Path, ledger: &Path) -> Result<()> {
     }
 }
 
+/// What one `gy serve` sync tick did (n-94bb).
+pub enum Tick {
+    /// A sync ran and moved the copy; the first line to log.
+    Out(String),
+    /// A sync ran but failed; the last error's first line.
+    Failed(String),
+    /// A sync ran with nothing to say (`up to date`).
+    Silent,
+    /// Another sync holds the copy; this tick does nothing.
+    Skipped,
+}
+
+/// One sync for `gy serve`: a child `gy sync` with a ten second cap, its
+/// stdout read for the first line (n-94bb). A background sync already running
+/// skips the tick.
+pub fn sync_tick(root: &Path, ledger: &Path) -> Tick {
+    if read_pid(&ledger.join("sync.pid")).is_some_and(process_alive) {
+        return Tick::Skipped;
+    }
+    let Some(mut child) = spawn_sync(root) else {
+        return Tick::Failed("could not start gy sync".to_string());
+    };
+    let _ = std::fs::write(ledger.join("sync.pid"), child.id().to_string());
+    if !wait_capped(&mut child, ledger) {
+        return Tick::Failed(last_error(ledger));
+    }
+    let Ok(output) = child.wait_with_output() else {
+        return Tick::Failed(last_error(ledger));
+    };
+    if !output.status.success() {
+        return Tick::Failed(last_error(ledger));
+    }
+    let first = String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .next()
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    if first.starts_with("up to date") {
+        Tick::Silent
+    } else {
+        Tick::Out(first)
+    }
+}
+
+/// The child `gy sync` serve waits for, with its output on a pipe.
+fn spawn_sync(root: &Path) -> Option<std::process::Child> {
+    let mut command = Command::new(std::env::current_exe().ok()?);
+    command
+        .arg("-C")
+        .arg(root)
+        .arg("sync")
+        .env("GY_SYNC_BACKGROUND", "1")
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        command.process_group(0);
+    }
+    command.spawn().ok()
+}
+
+/// Wait for the child, killing it and recording a give-up at ten seconds.
+fn wait_capped(child: &mut std::process::Child, ledger: &Path) -> bool {
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while child.try_wait().ok().flatten().is_none() {
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            gy_ledger::record_timeout_after(ledger, 10);
+            return false;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    true
+}
+
+/// The first line of the copy's `sync.state` last error, when there is one.
+fn last_error(ledger: &Path) -> String {
+    std::fs::read_to_string(ledger.join("sync.state"))
+        .ok()
+        .and_then(|text| serde_json::from_str::<gy_ledger::SyncStatus>(&text).ok())
+        .and_then(|state| state.last_error)
+        .map(|error| error.lines().next().unwrap_or_default().to_string())
+        .unwrap_or_else(|| "sync failed".to_string())
+}
+
 fn read_pid(path: &Path) -> Option<u32> {
     std::fs::read_to_string(path).ok()?.trim().parse().ok()
 }
