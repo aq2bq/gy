@@ -40,6 +40,16 @@ pub fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
     emit(cli.json, &list(&repository, &filter)?)
 }
 
+/// `gy sync`: the explicit step that prepares the copy and pulls (n-6f47,
+/// d-39f6). It needs `remote` in gy.toml; a remote-less ledger is never
+/// touched, and reading it back is an error instead of a change.
+pub fn sync_command(cli: &Cli, root: &Path, ledger: &Path) -> Result<()> {
+    let remote = config::read(root)?.remote.ok_or_else(|| {
+        Error::invalid("gy.toml has no remote; gy sync needs one (add `remote = \"…\"`)")
+    })?;
+    emit(cli.json, &gy_ledger::sync(ledger, &remote)?)
+}
+
 /// Serve the ledger over HTTP on localhost until stopped (n-a493). The CLI
 /// only wires it: gy-serve owns the server, and no write path exists. A read
 /// may name a sequence, which opens the ledger as it stood then (n-10e1).

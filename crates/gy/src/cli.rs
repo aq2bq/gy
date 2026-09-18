@@ -61,6 +61,8 @@ pub enum Command {
     },
     /// Read the ledger in a browser, on 127.0.0.1 until stopped.
     Serve,
+    /// Sync this copy with the remote named in gy.toml.
+    Sync,
     /// File or close a need.
     Need {
         #[command(subcommand)]

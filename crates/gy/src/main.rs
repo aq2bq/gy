@@ -55,6 +55,7 @@ fn run(cli: &Cli) -> Result<()> {
             reads::write_publish(cli, &root, &ledger, *since, out.as_deref())
         }
         Command::Serve => reads::serve(&ledger, tab_name(&root)),
+        Command::Sync => reads::sync_command(cli, &root, &ledger),
         Command::Need { action } => write_need(cli, &root, &ledger, action),
         Command::Question { action } => write_question(cli, &root, &ledger, action),
         Command::Criterion { action } => write_criterion(cli, &root, &ledger, action),

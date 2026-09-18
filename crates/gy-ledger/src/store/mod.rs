@@ -7,11 +7,13 @@ pub mod id;
 pub mod location;
 pub mod log;
 mod memory;
+pub mod remote;
 mod replay;
 mod snapshot;
 
 pub use file::FileStore;
 pub use memory::MemoryStore;
+pub use snapshot::FILE as SNAPSHOT_FILE;
 use std::env;
 
 /// The kind an error is: a broken invariant, or a lost race with another

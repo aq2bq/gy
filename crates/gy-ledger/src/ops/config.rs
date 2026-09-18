@@ -13,6 +13,10 @@ pub struct Config {
     pub scopes: BTreeMap<String, Scope>,
     #[serde(default)]
     pub output: Option<String>,
+    /// The git URL of the ledger's remote, when the ledger is a team copy
+    /// (n-6f47, d-39f6). Absent leaves the ledger local, exactly as before.
+    #[serde(default)]
+    pub remote: Option<String>,
 }
 
 /// A scope's settings. Empty for now; a table so later items have a home.
