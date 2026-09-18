@@ -1,6 +1,7 @@
 //! The `git` child process, in one place (n-6f47, d-39f6). Nothing above knows
 //! git exists; it never prompts, and a missing git is its own error.
 use super::super::{Error, Result};
+use super::origin;
 use std::path::Path;
 use std::process::{Command, Output};
 
@@ -24,6 +25,11 @@ fn run_maybe(dir: &Path, args: &[&str]) -> Option<String> {
     run(dir, args).ok()
 }
 
+/// The configured `origin` URL, or `None` when the copy has no origin.
+pub(super) fn origin(dir: &Path) -> Option<String> {
+    run_maybe(dir, &["remote", "get-url", "origin"]).map(|url| url.trim().to_string())
+}
+
 /// Spawn the child process. This is the only place git is executed.
 fn spawn(dir: &Path, args: &[&str]) -> Result<Output> {
     Command::new("git")
@@ -40,9 +46,21 @@ fn spawn(dir: &Path, args: &[&str]) -> Result<Output> {
         })
 }
 
-/// Whether `dir` is already a git work tree (a prepared copy).
+/// Whether `dir` is its own git work tree (a prepared copy), not a directory
+/// inside another work tree. The judgment is `rev-parse --show-toplevel`
+/// naming `dir`; a parent's toplevel does not count (ac-ad40). Every plumbing
+/// path below is relative to `dir`, which this equality makes the tree's root.
 pub fn is_repo(dir: &Path) -> bool {
-    run_maybe(dir, &["rev-parse", "--git-dir"]).is_some()
+    let Some(toplevel) = run_maybe(dir, &["rev-parse", "--show-toplevel"]) else {
+        return false;
+    };
+    match (
+        std::fs::canonicalize(dir),
+        std::fs::canonicalize(toplevel.trim()),
+    ) {
+        (Ok(dir), Ok(top)) => dir == top,
+        _ => false,
+    }
 }
 
 /// Create an empty work tree on `branch`.
@@ -63,6 +81,7 @@ pub fn add_remote(dir: &Path, url: &str) -> Result<()> {
 
 /// Fetch the remote's branches.
 pub fn fetch(dir: &Path) -> Result<()> {
+    origin::ensure(dir)?;
     run(dir, &["fetch", "-q", "origin"]).map(|_| ())
 }
 
@@ -120,33 +139,39 @@ pub fn rev(dir: &Path, revision: &str) -> Option<String> {
 
 /// Move the work tree and index to `revision` (the fast-forward).
 pub fn reset_hard(dir: &Path, revision: &str) -> Result<()> {
+    origin::ensure(dir)?;
     run(dir, &["reset", "-q", "--hard", revision]).map(|_| ())
 }
 
 /// Move HEAD to `revision` and keep the work tree, so a failed push can leave
 /// the commits out while the writes stay (n-ecbf 2B).
 pub fn reset_mixed(dir: &Path, revision: &str) -> Result<()> {
+    origin::ensure(dir)?;
     run(dir, &["reset", "-q", revision]).map(|_| ())
 }
 
 /// Stage every change under the work tree.
 pub fn add_all(dir: &Path) -> Result<()> {
+    origin::ensure(dir)?;
     run(dir, &["add", "-A"]).map(|_| ())
 }
 
 /// Commit the index with `message`.
 pub fn commit(dir: &Path, message: &str) -> Result<()> {
+    origin::ensure(dir)?;
     run(dir, &["commit", "-q", "-m", message]).map(|_| ())
 }
 
 /// Push the current `branch` to origin and set its upstream.
 pub fn push(dir: &Path, branch: &str) -> Result<()> {
+    origin::ensure(dir)?;
     run(dir, &["push", "-q", "-u", "origin", branch]).map(|_| ())
 }
 
 /// Push `branch` to origin (the upstream is already set). A refusal names the
 /// likely cause: a missing write permission.
 pub fn push_ff(dir: &Path, branch: &str) -> Result<()> {
+    origin::ensure(dir)?;
     let output = spawn(dir, &["push", "origin", branch])?;
     if output.status.success() {
         return Ok(());
@@ -178,6 +203,7 @@ pub fn push_ff(dir: &Path, branch: &str) -> Result<()> {
 /// Write `bytes` into the object database and return the blob's sha.
 pub fn hash_object(dir: &Path, bytes: &[u8]) -> Result<String> {
     use std::io::Write;
+    origin::ensure(dir)?;
     let mut child = Command::new("git")
         .args(["hash-object", "-w", "--stdin"])
         .current_dir(dir)
@@ -205,6 +231,7 @@ pub fn hash_object(dir: &Path, bytes: &[u8]) -> Result<String> {
 /// Point the index's `path` at an already-written blob, so one commit can hold
 /// exactly the lines written so far.
 pub fn update_index(dir: &Path, path: &str, sha: &str) -> Result<()> {
+    origin::ensure(dir)?;
     run(
         dir,
         &["update-index", "--add", "--cacheinfo", "100644", sha, path],

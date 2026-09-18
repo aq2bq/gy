@@ -2,6 +2,7 @@
 //! only place that knows the remote exists; model, ops, and views do not.
 pub mod git;
 mod guard;
+mod origin;
 mod prepare;
 pub mod rebase;
 mod recovery;

@@ -74,6 +74,12 @@
   chips, and `list --actor <x>` matches either the human or the actor.
   `--json` rows carry `who` next to the unchanged `actor`. A ledger
   without a remote reads exactly as before.
+- **A copy inside another repository's work tree is never mistaken for
+  that repository** (n-6d6c): a copy is a git repository only when the
+  ledger directory is its own top level; inside another work tree (a home
+  directory kept in a dotfiles repository, say) gy makes a nested
+  repository of its own. Before any commit or push the copy's `origin`
+  must equal the recorded remote, else gy refuses to touch the directory.
 
 ## 0.9.0 - 2026-09-18
 
