@@ -108,3 +108,19 @@ pub fn append(dir: &Path, event: &Event) -> Result<()> {
     file.sync_all()?;
     Ok(())
 }
+
+/// Replace the whole log with `text`, atomically (n-ecbf 2B): the rebase
+/// rewrites the provisional tail under the lock.
+pub fn replace(dir: &Path, text: &str) -> Result<()> {
+    let temporary = dir.join(format!(".events.{}.tmp", std::process::id()));
+    std::fs::write(&temporary, text)?;
+    std::fs::rename(&temporary, dir.join(FILE))?;
+    Ok(())
+}
+
+/// Serialize one event as the log writes it: JSON and a newline.
+pub fn line(event: &Event) -> Result<String> {
+    let mut text = serde_json::to_string(event).map_err(|e| Error::invalid(e.to_string()))?;
+    text.push('\n');
+    Ok(text)
+}

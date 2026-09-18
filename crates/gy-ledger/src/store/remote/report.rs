@@ -23,7 +23,13 @@ pub struct Pulled {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct Sync {
     pub pulled: Option<Pulled>,
+    /// The writes put back on top of the remote's new lines (n-ecbf 2B).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rebased: Option<Range>,
     pub pushed: Option<Range>,
+    /// How many writes were refused and left in `rejected.jsonl`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rejected: Option<usize>,
     /// The one-time branch protection, on the sync that pushed the first copy
     /// (ac-af33). Absent means nothing to say.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -34,28 +40,18 @@ pub struct Sync {
 impl fmt::Display for Sync {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(pulled) = &self.pulled {
-            write!(
-                f,
-                "pulled: seq {} → {} ({} writes",
-                pulled.from,
-                pulled.to,
-                pulled.to - pulled.from
-            )?;
-            if !pulled.writers.is_empty() {
-                write!(f, " by {}", pulled.writers.join(", "))?;
-            }
-            writeln!(f, ")")?;
+            pulled_line(f, pulled)?;
         }
         if let Some(pushed) = &self.pushed {
-            writeln!(
-                f,
-                "pushed: {} writes (seq {} → {})",
-                pushed.to - pushed.from + 1,
-                pushed.from,
-                pushed.to
-            )?;
+            range_line(f, "pushed", pushed)?;
         }
-        if self.pulled.is_none() && self.pushed.is_none() {
+        if let Some(rebased) = &self.rebased {
+            range_line(f, "rebased", rebased)?;
+        }
+        if let Some(rejected) = self.rejected {
+            writeln!(f, "rejected: {rejected} writes")?;
+        }
+        if self.is_up_to_date() {
             writeln!(f, "up to date: seq {}", self.seq)?;
         }
         if let Some(guard) = &self.guard {
@@ -63,4 +59,38 @@ impl fmt::Display for Sync {
         }
         Ok(())
     }
+}
+impl Sync {
+    fn is_up_to_date(&self) -> bool {
+        self.pulled.is_none()
+            && self.pushed.is_none()
+            && self.rebased.is_none()
+            && self.rejected.is_none()
+    }
+}
+
+/// `pulled: seq a → b (n writes by x, y)`.
+fn pulled_line(f: &mut fmt::Formatter<'_>, pulled: &Pulled) -> fmt::Result {
+    write!(
+        f,
+        "pulled: seq {} → {} ({} writes",
+        pulled.from,
+        pulled.to,
+        pulled.to - pulled.from
+    )?;
+    if !pulled.writers.is_empty() {
+        write!(f, " by {}", pulled.writers.join(", "))?;
+    }
+    writeln!(f, ")")
+}
+
+/// `pushed` / `rebased`: `label: n writes (seq a → b)`.
+fn range_line(f: &mut fmt::Formatter<'_>, label: &str, range: &Range) -> fmt::Result {
+    writeln!(
+        f,
+        "{label}: {} writes (seq {} → {})",
+        range.to - range.from + 1,
+        range.from,
+        range.to
+    )
 }

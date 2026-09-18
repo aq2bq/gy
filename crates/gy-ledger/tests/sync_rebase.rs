@@ -1,0 +1,201 @@
+use gy_ledger::{
+    FileStore, FormatVersion, Link, Node, NodeId, NodeKind, Relation, Repository, format, log, sync,
+};
+use std::path::{Path, PathBuf};
+use std::process::Command;
+fn ident() {
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| unsafe {
+        for (key, value) in [
+            ("GIT_AUTHOR_NAME", "piko"),
+            ("GIT_AUTHOR_EMAIL", "piko@example.com"),
+            ("GIT_COMMITTER_NAME", "piko"),
+            ("GIT_COMMITTER_EMAIL", "piko@example.com"),
+        ] {
+            std::env::set_var(key, value);
+        }
+    });
+}
+fn git(cwd: &Path, args: &[&str]) -> String {
+    let out = Command::new("git")
+        .args(args)
+        .current_dir(cwd)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .output()
+        .expect("git runs");
+    assert!(
+        out.status.success(),
+        "git {args:?}: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    String::from_utf8_lossy(&out.stdout).into_owned()
+}
+fn url(dir: &Path) -> String {
+    format!("file://{}", dir.display())
+}
+fn bare(dir: &Path) {
+    std::fs::create_dir_all(dir).unwrap();
+    git(dir, &["init", "-q", "--bare"]);
+}
+fn id(kind: NodeKind, hash: &str) -> NodeId {
+    NodeId::from_hash(kind, hash).unwrap()
+}
+fn criterion(hash: &str) -> Node {
+    Node::criterion(
+        id(NodeKind::Criterion, hash),
+        "a",
+        "2026-09-15T00:00:00Z",
+        "an ac",
+    )
+    .unwrap()
+}
+fn event(seq: u64, changes: Vec<log::Change>) -> log::Event {
+    log::Event {
+        seq,
+        at: 0,
+        actor: "piko".to_string(),
+        why: "test".to_string(),
+        source: "test".to_string(),
+        retries: 0,
+        by: None,
+        by_mail: None,
+        changes,
+    }
+}
+fn created(node: &Node) -> log::Change {
+    log::Change::Created {
+        node: node.id().to_string(),
+        value: serde_json::to_value(node).unwrap(),
+    }
+}
+fn ledger(dir: &Path, events: &[log::Event]) {
+    std::fs::create_dir_all(dir).unwrap();
+    format::write(dir, FormatVersion::CURRENT).unwrap();
+    for event in events {
+        log::append(dir, event).unwrap();
+    }
+}
+fn last_seq(dir: &Path) -> u64 {
+    log::read(dir).unwrap().0.last().unwrap().seq
+}
+fn peer_commit(dir: &Path, seq: u64, changes: Vec<log::Change>) {
+    log::append(dir, &event(seq, changes)).unwrap();
+    git(dir, &["add", log::FILE]);
+    git(
+        dir,
+        &[
+            "commit",
+            "-q",
+            "-m",
+            &format!("peer\n\nactor: piko\nGy-Seq: {seq}"),
+        ],
+    );
+    git(dir, &["push", "-q", "origin", "HEAD:main"]);
+}
+fn pair(temp: &Path) -> (PathBuf, PathBuf, PathBuf) {
+    let one = temp.join("one");
+    let remote = temp.join("remote.git");
+    ledger(&one, &[event(1, vec![created(&criterion("0001"))])]);
+    bare(&remote);
+    sync(&one, &url(&remote)).unwrap();
+    let two = temp.join("two");
+    sync(&two, &url(&remote)).unwrap();
+    (one, two, remote)
+}
+#[test]
+fn different_writes_both_land_and_are_renumbered() {
+    ident();
+    let temp = tempfile::tempdir().unwrap();
+    let (one, two, remote) = pair(temp.path());
+    peer_commit(&one, 2, vec![created(&criterion("0002"))]);
+    log::append(&two, &event(2, vec![created(&criterion("0003"))])).unwrap();
+    let report = sync(&two, &url(&remote)).unwrap();
+    assert_eq!(report.pulled.as_ref().unwrap().to, 2);
+    assert_eq!(report.rebased, Some(gy_ledger::Range { from: 3, to: 3 }));
+    assert!(report.rejected.is_none());
+    assert_eq!(last_seq(&two), 3);
+    assert_eq!(git(&remote, &["rev-list", "--count", "main"]).trim(), "3");
+    let store = FileStore::open_with(&two, |_| Some("piko".into())).unwrap();
+    let repository = Repository::new(store);
+    assert!(
+        repository
+            .get(&id(NodeKind::Criterion, "0002"))
+            .unwrap()
+            .is_some()
+    );
+    assert!(
+        repository
+            .get(&id(NodeKind::Criterion, "0003"))
+            .unwrap()
+            .is_some()
+    );
+}
+#[test]
+fn a_write_on_a_node_the_remote_changed_is_refused() {
+    ident();
+    let temp = tempfile::tempdir().unwrap();
+    let (one, two, remote) = pair(temp.path());
+    let mut changed = criterion("0001");
+    changed.set_body("the remote's version");
+    peer_commit(
+        &one,
+        2,
+        vec![log::Change::Updated {
+            node: changed.id().to_string(),
+            value: serde_json::to_value(changed).unwrap(),
+        }],
+    );
+    log::append(
+        &two,
+        &event(
+            2,
+            vec![log::Change::Updated {
+                node: "ac-0001".into(),
+                value: serde_json::to_value(criterion("0001")).unwrap(),
+            }],
+        ),
+    )
+    .unwrap();
+    let report = sync(&two, &url(&remote)).unwrap();
+    assert_eq!(report.rejected, Some(1));
+    assert_eq!(git(&remote, &["rev-list", "--count", "main"]).trim(), "2");
+    let rejected = std::fs::read_to_string(two.join("rejected.jsonl")).unwrap();
+    assert!(
+        rejected.contains("the remote changed ac-0001"),
+        "{rejected}"
+    );
+}
+#[test]
+fn an_edge_to_a_deleted_node_is_refused() {
+    ident();
+    let temp = tempfile::tempdir().unwrap();
+    let (one, two, remote) = pair(temp.path());
+    peer_commit(
+        &one,
+        2,
+        vec![log::Change::Deleted {
+            node: "ac-0001".into(),
+            value: serde_json::to_value(criterion("0001")).unwrap(),
+        }],
+    );
+    let mut need = Node::need(
+        id(NodeKind::Need, "0002"),
+        "a",
+        "2026-09-15T00:00:00Z",
+        "a need",
+    )
+    .unwrap();
+    need.link(
+        Link::new(
+            need.id().clone(),
+            Relation::Targets,
+            id(NodeKind::Criterion, "0001"),
+        )
+        .unwrap(),
+    );
+    log::append(&two, &event(2, vec![created(&need)])).unwrap();
+    let report = sync(&two, &url(&remote)).unwrap();
+    assert_eq!(report.rejected, Some(1));
+    let rejected = std::fs::read_to_string(two.join("rejected.jsonl")).unwrap();
+    assert!(rejected.contains("points at ac-0001"), "{rejected}");
+}

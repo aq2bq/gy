@@ -3,7 +3,9 @@
 pub mod git;
 mod guard;
 mod prepare;
+pub mod rebase;
 pub mod report;
+mod rules;
 pub mod shape;
 mod state;
 pub mod sync;

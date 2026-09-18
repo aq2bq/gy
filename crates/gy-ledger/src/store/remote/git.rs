@@ -123,6 +123,12 @@ pub fn reset_hard(dir: &Path, revision: &str) -> Result<()> {
     run(dir, &["reset", "-q", "--hard", revision]).map(|_| ())
 }
 
+/// Move HEAD to `revision` and keep the work tree, so a failed push can leave
+/// the commits out while the writes stay (n-ecbf 2B).
+pub fn reset_mixed(dir: &Path, revision: &str) -> Result<()> {
+    run(dir, &["reset", "-q", revision]).map(|_| ())
+}
+
 /// Stage every change under the work tree.
 pub fn add_all(dir: &Path) -> Result<()> {
     run(dir, &["add", "-A"]).map(|_| ())

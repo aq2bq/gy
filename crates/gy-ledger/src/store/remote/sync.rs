@@ -2,7 +2,7 @@
 //! push each local write as one commit.
 use super::super::{Error, Result, SNAPSHOT_FILE, file::FileStore, log};
 use super::report::{Pulled, Range, Sync};
-use super::{git, guard, prepare, shape, state};
+use super::{git, guard, prepare, rebase, shape, state};
 use fs2::FileExt;
 use std::path::Path;
 
@@ -85,7 +85,11 @@ fn pull(
     // divergence that tells the reader to delete a copy (n-f4cd).
     guard::check(ledger, branch, upstream)?;
     if working_seq(ledger)? > committed {
-        return Err(diverged());
+        // The copy has its own uncommitted writes and the remote moved: put
+        // them back on top of the remote's lines (n-ecbf 2B).
+        return locked(ledger, || {
+            rebase::rebase(ledger, branch, upstream, committed, report)
+        });
     }
     locked(ledger, || {
         git::reset_hard(ledger, upstream)?;
@@ -127,8 +131,16 @@ fn push(
     Ok(())
 }
 
-/// Commit each uncommitted write as its own commit and push the branch.
-fn push_writes(ledger: &Path, branch: &str, committed: u64, report: &mut Sync) -> Result<()> {
+/// Commit each uncommitted write as its own commit and push the branch. A
+/// failed push rolls the commits back, so HEAD stays behind upstream and the
+/// next sync tries again (n-ecbf 2B).
+pub(super) fn push_writes(
+    ledger: &Path,
+    branch: &str,
+    committed: u64,
+    report: &mut Sync,
+) -> Result<()> {
+    let before = git::rev(ledger, "HEAD");
     let base = git::show(ledger, "HEAD", log::FILE).unwrap_or_default();
     let text = std::fs::read_to_string(ledger.join(log::FILE))?;
     let appended = text
@@ -144,7 +156,12 @@ fn push_writes(ledger: &Path, branch: &str, committed: u64, report: &mut Sync) -
         git::update_index(ledger, log::FILE, &sha)?;
         git::commit(ledger, &write_message(&event))?;
     }
-    git::push_ff(ledger, branch)?;
+    if let Err(error) = git::push_ff(ledger, branch) {
+        if let Some(before) = before {
+            git::reset_mixed(ledger, &before)?;
+        }
+        return Err(error);
+    }
     report.pushed = Some(Range {
         from: committed + 1,
         to: working_seq(ledger)?,
@@ -190,7 +207,7 @@ fn write_message(event: &log::Event) -> String {
 }
 
 /// The distinct actors of the writes in `(from, to]`, in first-seen order.
-fn writers(ledger: &Path, from: u64, to: u64) -> Result<Vec<String>> {
+pub(super) fn writers(ledger: &Path, from: u64, to: u64) -> Result<Vec<String>> {
     let mut out = Vec::new();
     for event in log::read(ledger)?.0 {
         if event.seq > from && event.seq <= to && !out.contains(&event.actor) {
@@ -228,7 +245,7 @@ pub(super) fn seq_at(dir: &Path, revision: &str) -> Result<u64> {
 
 /// Drop the derived snapshot and rebuild it from the fetched log, under the
 /// same lock (n-6f47).
-fn rebuild_snapshot(ledger: &Path) -> Result<()> {
+pub(super) fn rebuild_snapshot(ledger: &Path) -> Result<()> {
     let _ = std::fs::remove_file(ledger.join(SNAPSHOT_FILE));
     FileStore::open_with(ledger, |_| Some("gy-read".to_string()))?;
     Ok(())
