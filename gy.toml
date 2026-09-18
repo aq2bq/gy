@@ -1,3 +1,4 @@
+remote = "https://github.com/aq2bq/gy-gy.git"
 output = "docs/publication"
 
 [scopes.agent_footprint]
