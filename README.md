@@ -174,6 +174,19 @@ From a checkout, run `cargo install --path crates/gy --locked`. The binary is `g
 
 Coming from 0.4, move the ledger once; [docs/migration-0.5.md](docs/migration-0.5.md) has the command and what cannot be carried over.
 
+## Where the skills go
+
+The agent skills (`gy-ledger`, `gy-question`, `gy-decide`) ship inside the crate under `skills/`, but `cargo install` does not place them. Copy them to where your agent reads skills (for example `~/.agents/skills`).
+
+```sh
+# from a checkout
+cp -R crates/gy/skills/gy-* ~/.agents/skills/
+# from the registry copy (match the version)
+cp -R ~/.cargo/registry/src/*/gy-0.9.0/skills/gy-* ~/.agents/skills/
+```
+
+A release that changed the skills says so under Updating in the changelog; copy them again when you move to that release. When the ledger format moves up, gy prints one line to stderr right after the migration, pointing at the changelog's Updating section.
+
 ## Development
 
 ```sh

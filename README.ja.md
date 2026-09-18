@@ -174,6 +174,19 @@ cargo install gy --locked
 
 0.4 から来る場合は台帳を一度だけ移します。手順と写せないものは [docs/migration-0.5.md](docs/migration-0.5.md) にあります。
 
+## スキルの置き方
+
+エージェント用のスキル（`gy-ledger`、`gy-question`、`gy-decide`）は crate の `skills/` に同梱されていますが、`cargo install` は置いてくれません。エージェントがスキルを読む場所（例: `~/.agents/skills`）へ写します。
+
+```sh
+# チェックアウトから
+cp -R crates/gy/skills/gy-* ~/.agents/skills/
+# レジストリの写しから（版を合わせる）
+cp -R ~/.cargo/registry/src/*/gy-0.9.0/skills/gy-* ~/.agents/skills/
+```
+
+スキルが変わった版は CHANGELOG の Updating にそう書いてあります。その版に上げたら写し直してください。台帳の形式の版が上がったときは、gy が移行の直後に標準エラーへ 1 行で知らせ、CHANGELOG の Updating を指します。
+
 ## 開発
 
 ```sh

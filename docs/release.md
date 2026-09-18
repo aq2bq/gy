@@ -11,7 +11,7 @@
 ## 準備する（取り消せる）
 
 1. 英語の `CHANGELOG.md` と、移行の案内（`docs/migration-0.5.md`）を書く。利用者に残る手作業は、CHANGELOG と README の両方に書く。同じコマンドを再実行して安全かどうかも明記する。
-   あわせて、`docs/architecture.md`・README 日英・`crates/gy/CHEATSHEET.md`・同梱スキル（`crates/gy/skills/*/SKILL.md`）を CHANGELOG の各項と突き合わせ、出力や契約の変更が文書とスキルに写っていることを確かめる。スキルは crate に同梱されるので、公開の前に直す（0.9.0 で漏れた。d-f7b6）。
+   あわせて、`docs/architecture.md`・README 日英・`crates/gy/CHEATSHEET.md`・同梱スキル（`crates/gy/skills/*/SKILL.md`）を CHANGELOG の各項と突き合わせ、出力や契約の変更が文書とスキルに写っていることを確かめる。スキルは crate に同梱されるので、公開の前に直す（0.9.0 で漏れた。d-f7b6）。スキルを変えた版は、CHANGELOG の Updating に「スキルが変わったので写し直す」と README の「スキルの置き方」の節への参照を書く（n-f8a2）。
 2. 移行の案内にあるコード例を、下流のクレートから実行して確かめる。読める例とコンパイルが通る例は別である。`#[non_exhaustive]` の型は、定義したクレートの外では構造体リテラルと `..Default::default()` を受け付けない。下流は `Default::default()` を作って公開フィールドへ代入する。
 3. `cargo fmt --all -- --check`、`cargo clippy --workspace --all-targets --locked -- -D warnings`、`cargo test --workspace --locked` を実行する。
 4. `cargo publish --workspace --dry-run --locked` を実行する。`gy-ledger`、`gy-serve`、`gy` を依存の向きの順に package して検証する。`gy-serve` は `include_str!` で埋め込む `src/assets/` の全ファイルが package に入ることを `cargo package --list -p gy-serve` で確かめる（0.6.1 から）。`--allow-dirty` はコミット前の確認にだけ使い、公開はきれいな検証済みのコミットから行う。
