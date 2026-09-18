@@ -1,7 +1,8 @@
 //! gy sync A1 (n-6f47, ac-fd1b): the first sync, clone, and fast-forward on
 //! local `file://` remotes. No network.
 use gy_ledger::{
-    CriterionAdd, FileStore, FormatVersion, NeedAdd, Operation, Repository, format, log, sync,
+    CriterionAdd, FileStore, FormatVersion, NeedAdd, Operation, Pulled, Range, Repository, format,
+    log, sync,
 };
 use std::path::Path;
 use std::process::Command;
@@ -82,7 +83,10 @@ fn first_sync_moves_the_ledger_to_an_empty_remote() {
     let seq = seed(&ledger);
     bare(&remote);
 
-    assert_eq!(sync(&ledger, &url(&remote)).unwrap().pushed, Some((1, seq)));
+    assert_eq!(
+        sync(&ledger, &url(&remote)).unwrap().pushed,
+        Some(Range { from: 1, to: seq })
+    );
     let files = git(&remote, &["ls-tree", "-r", "--name-only", "main"]);
     let mut names: Vec<&str> = files.split_whitespace().collect();
     names.sort();
@@ -98,7 +102,16 @@ fn first_sync_moves_the_ledger_to_an_empty_remote() {
     let again = sync(&ledger, &url(&remote)).unwrap();
     assert_eq!((again.pushed, again.pulled), (None, None));
     let second = temp.path().join("second");
-    assert_eq!(sync(&second, &url(&remote)).unwrap().pushed, None);
+    let clone = sync(&second, &url(&remote)).unwrap();
+    assert_eq!(clone.pushed, None);
+    assert_eq!(
+        clone.pulled,
+        Some(Pulled {
+            from: 0,
+            to: seq,
+            writers: vec!["piko".into()]
+        })
+    );
     assert_eq!(last_seq(&second), seq);
 }
 
@@ -131,7 +144,14 @@ fn sync_fast_forwards_a_copy_with_no_write_of_its_own() {
     git(&second, &["push", "-q", "origin", "HEAD:main"]);
 
     let report = sync(&first, &url(&remote)).unwrap();
-    assert_eq!(report.pulled, Some((seq, next)));
+    assert_eq!(
+        report.pulled,
+        Some(Pulled {
+            from: seq,
+            to: next,
+            writers: vec!["piko".into()]
+        })
+    );
     assert_eq!(last_seq(&first), next);
     let snapshot = std::fs::read_to_string(first.join("snapshot.json")).unwrap();
     assert!(snapshot.contains(&format!("\"seq\":{next}")), "{snapshot}");
@@ -167,6 +187,108 @@ fn sync_refuses_a_remote_that_is_not_a_ledger() {
     let error = sync(&own, &url(&remote)).unwrap_err();
     assert!(
         error.message.contains("not a gy ledger"),
+        "{}",
+        error.message
+    );
+}
+
+#[test]
+fn sync_pushes_each_write_as_its_own_commit() {
+    ident();
+    let temp = tempfile::tempdir().unwrap();
+    let (ledger, remote) = (temp.path().join("ledger"), temp.path().join("remote.git"));
+    seed(&ledger);
+    bare(&remote);
+    sync(&ledger, &url(&remote)).unwrap();
+    let count = |remote: &Path| {
+        git(remote, &["rev-list", "--count", "main"])
+            .trim()
+            .to_string()
+    };
+
+    // A write stays local until gy sync.
+    let mut repo = Repository::new(FileStore::open_with(&ledger, |_| Some("piko".into())).unwrap());
+    CriterionAdd {
+        scope: "a".into(),
+        title: "another".into(),
+        body: None,
+    }
+    .run(&mut repo)
+    .unwrap();
+    let next = last_seq(&ledger);
+    assert_eq!(count(&remote), "1");
+
+    let report = sync(&ledger, &url(&remote)).unwrap();
+    assert_eq!(
+        report.pushed,
+        Some(Range {
+            from: next,
+            to: next
+        })
+    );
+    assert_eq!(count(&remote), "2");
+    let message = git(&remote, &["log", "-1", "--format=%B", "main"]);
+    assert!(message.contains("criterion add"), "{message}");
+    assert!(message.contains("actor: piko"), "{message}");
+    assert!(message.contains(&format!("Gy-Seq: {next}")), "{message}");
+}
+
+#[test]
+fn sync_reports_pulled_pushed_and_up_to_date() {
+    ident();
+    let temp = tempfile::tempdir().unwrap();
+    let (ledger, remote) = (temp.path().join("ledger"), temp.path().join("remote.git"));
+    let seq = seed(&ledger);
+    bare(&remote);
+
+    let first = sync(&ledger, &url(&remote)).unwrap();
+    assert_eq!(
+        format!("{first}"),
+        format!("pushed: {seq} writes (seq 1 → {seq})\n")
+    );
+    let up = sync(&ledger, &url(&remote)).unwrap();
+    assert_eq!(format!("{up}"), format!("up to date: seq {seq}\n"));
+
+    let second = temp.path().join("second");
+    let clone = sync(&second, &url(&remote)).unwrap();
+    assert_eq!(
+        format!("{clone}"),
+        format!("pulled: seq 0 → {seq} ({seq} writes by piko)\n")
+    );
+    let json = serde_json::to_value(&clone).unwrap();
+    assert_eq!(json["pulled"]["from"], 0);
+    assert_eq!(json["pulled"]["to"], seq);
+    assert_eq!(json["pushed"], serde_json::Value::Null);
+}
+
+#[test]
+fn sync_says_a_refused_push_is_a_permission_problem() {
+    ident();
+    let temp = tempfile::tempdir().unwrap();
+    let (ledger, remote) = (temp.path().join("ledger"), temp.path().join("remote.git"));
+    seed(&ledger);
+    bare(&remote);
+    sync(&ledger, &url(&remote)).unwrap();
+
+    let objects = remote.join("objects");
+    let original = std::fs::metadata(&objects).unwrap().permissions();
+    let mut readonly = original.clone();
+    readonly.set_readonly(true);
+    std::fs::set_permissions(&objects, readonly).unwrap();
+
+    let mut repo = Repository::new(FileStore::open_with(&ledger, |_| Some("piko".into())).unwrap());
+    CriterionAdd {
+        scope: "a".into(),
+        title: "another".into(),
+        body: None,
+    }
+    .run(&mut repo)
+    .unwrap();
+    let error = sync(&ledger, &url(&remote)).unwrap_err();
+
+    std::fs::set_permissions(&objects, original).unwrap();
+    assert!(
+        error.message.contains("refused the push"),
         "{}",
         error.message
     );

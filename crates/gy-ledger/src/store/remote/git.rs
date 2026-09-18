@@ -33,7 +33,7 @@ fn spawn(dir: &Path, args: &[&str]) -> Result<Output> {
         .output()
         .map_err(|error| {
             if error.kind() == std::io::ErrorKind::NotFound {
-                Error::invalid("git is not installed; gy sync needs it")
+                Error::invalid("git is required for a remote")
             } else {
                 Error::invalid(format!("git: {error}"))
             }
@@ -117,6 +117,72 @@ pub fn commit(dir: &Path, message: &str) -> Result<()> {
 /// Push the current `branch` to origin and set its upstream.
 pub fn push(dir: &Path, branch: &str) -> Result<()> {
     run(dir, &["push", "-q", "-u", "origin", branch]).map(|_| ())
+}
+
+/// Push `branch` to origin (the upstream is already set). A refusal names the
+/// likely cause: a missing write permission.
+pub fn push_ff(dir: &Path, branch: &str) -> Result<()> {
+    let output = spawn(dir, &["push", "origin", branch])?;
+    if output.status.success() {
+        return Ok(());
+    }
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let text = stderr.trim();
+    if [
+        "Permission",
+        "permission",
+        "denied",
+        "403",
+        "Authentication",
+        "not authorized",
+        "unpack failed",
+        "unable to create",
+    ]
+    .iter()
+    .any(|word| text.contains(word))
+    {
+        return Err(Error::invalid(format!(
+            "the remote refused the push (no write access?): {text}"
+        )));
+    }
+    Err(Error::invalid(format!("git push origin {branch}: {text}")))
+}
+
+/// Write `bytes` into the object database and return the blob's sha.
+pub fn hash_object(dir: &Path, bytes: &[u8]) -> Result<String> {
+    use std::io::Write;
+    let mut child = Command::new("git")
+        .args(["hash-object", "-w", "--stdin"])
+        .current_dir(dir)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|error| Error::invalid(format!("git: {error}")))?;
+    child
+        .stdin
+        .take()
+        .ok_or_else(|| Error::invalid("git: no stdin"))?
+        .write_all(bytes)?;
+    let output = child.wait_with_output()?;
+    if !output.status.success() {
+        return Err(Error::invalid(format!(
+            "git hash-object: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        )));
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+/// Point the index's `path` at an already-written blob, so one commit can hold
+/// exactly the lines written so far.
+pub fn update_index(dir: &Path, path: &str, sha: &str) -> Result<()> {
+    run(
+        dir,
+        &["update-index", "--add", "--cacheinfo", "100644", sha, path],
+    )
+    .map(|_| ())
 }
 
 /// The tracked files at `revision`.
