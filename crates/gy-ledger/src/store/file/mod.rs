@@ -33,6 +33,7 @@ pub struct FileStore {
     replayed: usize,
     retries: u32,
     remote: Option<String>,
+    migrated: Option<(u32, u32)>,
 }
 impl FileStore {
     /// Open the ledger directory, reading the actor from `GY_ACTOR`.
@@ -43,6 +44,11 @@ impl FileStore {
     /// is read here and never talked to (n-8a52).
     pub fn open_with(dir: &Path, lookup: impl Fn(&str) -> Option<String>) -> Result<Self> {
         let mut version = format::read(dir)?;
+        let migrated = if version < FormatVersion::CURRENT {
+            Some((version.0, FormatVersion::CURRENT.0))
+        } else {
+            None
+        };
         if version < FormatVersion::CURRENT {
             format::migrate(dir, version, FormatVersion::CURRENT)?;
             version = FormatVersion::CURRENT;
@@ -69,11 +75,18 @@ impl FileStore {
             replayed,
             retries: 0,
             remote: read_remote(dir),
+            migrated,
         })
     }
     /// The remote this copy syncs with, when it carries the marker (n-8a52).
     pub fn remote(&self) -> Option<&str> {
         self.remote.as_deref()
+    }
+    /// The format versions this open migrated, `(from, to)`, when it did
+    /// (n-f8a2). The caller decides how to tell the reader; the store does not
+    /// print.
+    pub fn migrated(&self) -> Option<(u32, u32)> {
+        self.migrated
     }
     /// How many log events the last open replayed: 0 when the snapshot covered
     /// the whole log.

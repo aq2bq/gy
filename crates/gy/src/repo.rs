@@ -33,6 +33,7 @@ pub fn open(ledger: &Path) -> Result<Repository<FileStore>> {
         return Err(Error::invalid(format!("no ledger at {}", ledger.display())));
     }
     let store = FileStore::open_with(ledger, |_| Some(READ_ACTOR.to_string()))?;
+    announce_migration(&store);
     Ok(Repository::new(store))
 }
 
@@ -44,5 +45,19 @@ pub fn open_write(ledger: &Path) -> Result<Repository<FileStore>> {
         std::fs::create_dir_all(ledger)?;
         format::write(ledger, FormatVersion::CURRENT)?;
     }
-    Ok(Repository::new(FileStore::open(ledger)?))
+    let store = FileStore::open(ledger)?;
+    announce_migration(&store);
+    Ok(Repository::new(store))
+}
+
+/// Tell the reader, on stderr, when this open ran a format migration (n-f8a2).
+/// Standard output, including `--json`, is never touched.
+fn announce_migration(store: &FileStore) {
+    let Some((from, to)) = store.migrated() else {
+        return;
+    };
+    let version = env!("CARGO_PKG_VERSION");
+    eprintln!(
+        "gy {version} migrated this ledger from format {from} to {to}; what changed for you: CHANGELOG {version} Updating (https://github.com/aq2bq/gy/blob/main/CHANGELOG.md)"
+    );
 }

@@ -22,6 +22,12 @@
   A ledger without a remote is untouched; the only new command is `sync`
   and the only new key is `remote` (put it before the first `[scopes.*]`
   table).
+- **gy says when it migrated a ledger** (n-f8a2): the first open that
+  moves the format up prints one line to stderr, naming the build, the
+  versions and the changelog's Updating section. stdout and `--json` are
+  untouched, and the next open is silent. The READMEs now say where the
+  bundled skills go and that a release which changed them says so under
+  Updating.
 
 ## 0.9.0 - 2026-09-18
 
