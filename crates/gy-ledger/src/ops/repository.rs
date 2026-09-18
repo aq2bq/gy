@@ -3,7 +3,7 @@
 use crate::model::{Edge, Node, NodeData, NodeId, NodeKind};
 // Re-exported so a view can use `Repository` without reaching into the store
 // layer (D-76): the trait bound and its result are part of this API.
-pub use crate::store::{Error, Result, Store};
+pub use crate::store::{Error, Result, Store, SyncStatus};
 
 pub struct Repository<S: Store> {
     store: S,

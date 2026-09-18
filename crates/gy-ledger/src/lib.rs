@@ -23,10 +23,10 @@ pub use ops::{
 pub use store::remote::{Pulled, Range, Sync, reconcile, sync};
 pub use store::{
     Actor, Error, ErrorKind, FileStore, FormatVersion, HistoryEntry, IdSource, MemoryStore, Result,
-    Store, UndoneKind, file, format, location, log,
+    Store, SyncStatus, UndoneKind, file, format, location, log,
 };
 pub use views::{
     EdgeLine, Filter, Handover, Listing, LogRow, NeedState, NextRow, NodeRow, Now, ProgressRow,
-    Publication, Ready, RequirementLine, Resume, Row, Shown, Waiting, Warning, handover, list,
-    next, now, publish, requirement_in_progress, show,
+    Publication, Ready, RequirementLine, Resume, Row, Shown, SyncRow, Waiting, Warning, handover,
+    list, next, now, publish, requirement_in_progress, show,
 };

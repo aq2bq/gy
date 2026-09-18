@@ -1,85 +1,27 @@
 //! `gy sync` (n-6f47, d-39f6, d-1e50): prepare the copy, fetch, pull, and
 //! push each local write as one commit.
-use super::super::{Error, Result, SNAPSHOT_FILE, file::FileStore, log};
+use super::super::{Error, Result, SNAPSHOT_FILE, SyncStatus, file::FileStore, log};
+use super::report::{Pulled, Range, Sync};
 use super::{git, guard, prepare, shape};
 use fs2::FileExt;
-use serde::Serialize;
-use std::fmt;
 use std::path::Path;
 
-/// A span of write sequences.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct Range {
-    pub from: u64,
-    pub to: u64,
-}
-
-/// The writes pulled, and the distinct actors they carry.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct Pulled {
-    pub from: u64,
-    pub to: u64,
-    pub writers: Vec<String>,
-}
-
-/// What one sync did. `seq` is the copy's sequence afterwards; it is not in
-/// the JSON, whose absent sides are null.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
-pub struct Sync {
-    pub pulled: Option<Pulled>,
-    pub pushed: Option<Range>,
-    /// The one-time branch protection, on the sync that pushed the first copy
-    /// (ac-af33). Absent means nothing to say.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub guard: Option<String>,
-    #[serde(skip)]
-    pub seq: u64,
-}
-impl fmt::Display for Sync {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(pulled) = &self.pulled {
-            write!(
-                f,
-                "pulled: seq {} → {} ({} writes",
-                pulled.from,
-                pulled.to,
-                pulled.to - pulled.from
-            )?;
-            if !pulled.writers.is_empty() {
-                write!(f, " by {}", pulled.writers.join(", "))?;
-            }
-            writeln!(f, ")")?;
-        }
-        if let Some(pushed) = &self.pushed {
-            writeln!(
-                f,
-                "pushed: {} writes (seq {} → {})",
-                pushed.to - pushed.from + 1,
-                pushed.from,
-                pushed.to
-            )?;
-        }
-        if self.pulled.is_none() && self.pushed.is_none() {
-            writeln!(f, "up to date: seq {}", self.seq)?;
-        }
-        if let Some(guard) = &self.guard {
-            writeln!(f, "{guard}")?;
-        }
-        Ok(())
-    }
-}
-
-/// Sync the ledger's copy with `remote`: clone or initialize it when missing,
-/// fetch, fast-forward or push. The lock is held from fetch until the last
-/// commit and push finish.
+/// Sync the ledger's copy with `remote`: prepare the copy, fetch, then change
+/// it under the lock only when a change is due (n-ecbf). The state file is
+/// written either way.
 pub fn sync(ledger: &Path, remote: &str) -> Result<Sync> {
+    let outcome = sync_inner(ledger, remote);
+    record_state(ledger, &outcome);
+    outcome
+}
+
+fn sync_inner(ledger: &Path, remote: &str) -> Result<Sync> {
     std::fs::create_dir_all(ledger)?;
     let cloned = if git::is_repo(ledger) {
         None
     } else {
         prepare::prepare(ledger, remote)?
     };
-    let _lock = Lock::take(ledger)?;
     let mut report = Sync::default();
     if let Some(seq) = cloned {
         report.pulled = Some(Pulled {
@@ -89,12 +31,20 @@ pub fn sync(ledger: &Path, remote: &str) -> Result<Sync> {
         });
         report.seq = seq;
     }
+    // Communication is outside the lock: a write is not blocked by a fetch.
     git::fetch(ledger)?;
     let branch = git::head_branch(ledger)?;
     let upstream = format!("origin/{branch}");
     first_push(ledger, remote, &branch, &upstream, &mut report)?;
     reconcile(ledger, branch.as_str(), &upstream, &mut report)?;
     Ok(report)
+}
+
+/// Take the copy's exclusive lock only around a change, so a fetch or a push
+/// does not hold it (n-ecbf).
+fn locked(ledger: &Path, f: impl FnOnce() -> Result<()>) -> Result<()> {
+    let _lock = Lock::take(ledger)?;
+    f()
 }
 
 /// Pull or push, or refuse a divergence. A copy with local commits already
@@ -110,7 +60,9 @@ fn reconcile(ledger: &Path, branch: &str, upstream: &str, report: &mut Sync) -> 
     if remote_sha == head {
         report.seq = committed;
         if working_seq(ledger)? > committed {
-            push_writes(ledger, branch, committed, report)?;
+            locked(ledger, || {
+                push_writes(ledger, branch, seq_at(ledger, "HEAD")?, report)
+            })?;
             report.seq = working_seq(ledger)?;
         }
     } else if git::ancestor(ledger, "HEAD", upstream) {
@@ -135,8 +87,10 @@ fn pull(
     if working_seq(ledger)? > committed {
         return Err(diverged());
     }
-    git::reset_hard(ledger, upstream)?;
-    rebuild_snapshot(ledger)?;
+    locked(ledger, || {
+        git::reset_hard(ledger, upstream)?;
+        rebuild_snapshot(ledger)
+    })?;
     let remote_seq = seq_at(ledger, upstream)?;
     report.pulled = Some(Pulled {
         from: committed,
@@ -165,7 +119,9 @@ fn push(
             to: committed,
         });
     } else {
-        push_writes(ledger, branch, committed, report)?;
+        locked(ledger, || {
+            push_writes(ledger, branch, seq_at(ledger, "HEAD")?, report)
+        })?;
     }
     report.seq = working_seq(ledger)?;
     Ok(())
@@ -276,6 +232,53 @@ fn rebuild_snapshot(ledger: &Path) -> Result<()> {
     let _ = std::fs::remove_file(ledger.join(SNAPSHOT_FILE));
     FileStore::open_with(ledger, |_| Some("gy-read".to_string()))?;
     Ok(())
+}
+
+/// Write `sync.state` after every sync, front or background (n-ecbf). A
+/// success clears the last error; a failure keeps the last success and records
+/// the message. A state write never hides the sync's own error.
+fn record_state(ledger: &Path, outcome: &Result<Sync>) {
+    // A refused clone leaves no copy, so there is no state to keep.
+    if !git::is_repo(ledger) {
+        return;
+    }
+    let mut state = read_state(ledger);
+    match outcome {
+        Ok(report) => {
+            state.last_ok_at = Some(now());
+            state.last_ok_seq = Some(report.seq);
+            state.last_error = None;
+            state.last_error_at = None;
+        }
+        Err(error) => {
+            state.last_error = Some(error.message.clone());
+            state.last_error_at = Some(now());
+        }
+    }
+    let _ = write_state(ledger, &state);
+}
+
+fn read_state(ledger: &Path) -> SyncStatus {
+    std::fs::read_to_string(ledger.join("sync.state"))
+        .ok()
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or_default()
+}
+
+/// Replace `sync.state` atomically, so a reader never sees half a file.
+fn write_state(ledger: &Path, state: &SyncStatus) -> Result<()> {
+    let text = serde_json::to_string(state).map_err(|error| Error::invalid(error.to_string()))?;
+    let temporary = ledger.join(format!(".sync.{}.tmp", std::process::id()));
+    std::fs::write(&temporary, text)?;
+    std::fs::rename(&temporary, ledger.join("sync.state"))?;
+    Ok(())
+}
+
+fn now() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
 /// The ledger's lock, held from fetch until the sync ends so a write cannot

@@ -8,6 +8,7 @@ mod next;
 mod now;
 mod publish;
 mod show;
+mod sync_row;
 
 pub use derive::{NeedState, requirement_in_progress};
 pub use handover::{Handover, ProgressRow, Warning, handover};
@@ -16,6 +17,7 @@ pub use next::{NextRow, RequirementLine, next};
 pub use now::{NodeRow, Now, Ready, Resume, Waiting, now};
 pub use publish::{Publication, publish};
 pub use show::{EdgeLine, Shown, show};
+pub use sync_row::SyncRow;
 
 /// How a need, question, or requirement reads its open/closed state.
 fn open_or_closed(closed: bool) -> &'static str {

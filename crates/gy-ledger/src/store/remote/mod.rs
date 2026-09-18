@@ -3,8 +3,10 @@
 pub mod git;
 mod guard;
 mod prepare;
+pub mod report;
 pub mod shape;
 pub mod sync;
 
 pub use prepare::reconcile;
-pub use sync::{Pulled, Range, Sync, sync};
+pub use report::{Pulled, Range, Sync};
+pub use sync::sync;

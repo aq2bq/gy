@@ -2,7 +2,8 @@
 //! commit or roll back, undo, and mint ids (D-82).
 use super::super::id::{id_seed, unique_hash};
 use super::super::{
-    Error, HistoryEntry, IdSource, Result, Store, UndoneKind, log, replay, snapshot, undone_kind,
+    Error, HistoryEntry, IdSource, Result, Store, SyncStatus, UndoneKind, log, replay, snapshot,
+    undone_kind,
 };
 use super::FileStore;
 use fs2::FileExt;
@@ -188,6 +189,20 @@ impl Store for FileStore {
     fn history(&self) -> &[HistoryEntry] {
         &self.history
     }
+    /// The working log's writes that are not in the copy's HEAD (n-ecbf).
+    fn pending(&self) -> u64 {
+        if self.remote.is_none() {
+            return 0;
+        }
+        self.seq
+            .saturating_sub(committed_seq(&self.dir).unwrap_or(0))
+    }
+    /// The `sync.state` this copy wrote, when it is a synced copy (n-ecbf).
+    fn sync_state(&self) -> Option<SyncStatus> {
+        self.remote.as_ref()?;
+        let text = std::fs::read_to_string(self.dir.join("sync.state")).ok()?;
+        serde_json::from_str(&text).ok()
+    }
     /// Append the inverse of the last transaction as a new line (D-82). The
     /// log is never rewritten; the undo is one more transaction with the given
     /// why and source. A created node is deleted, an updated node returns to
@@ -244,6 +259,15 @@ fn now() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0)
+}
+
+/// The last sequence in `events.jsonl` at HEAD (0 when absent).
+fn committed_seq(dir: &Path) -> Option<u64> {
+    let text = super::super::remote::git::show(dir, "HEAD", log::FILE)?;
+    text.lines()
+        .filter_map(|line| serde_json::from_str::<log::Event>(line).ok())
+        .next_back()
+        .map(|event| event.seq)
 }
 
 /// Take the ledger's exclusive lock (D-82).

@@ -2,6 +2,7 @@
 //! requirements with their ref and who waits, the counts that route the next
 //! step, integrity errors, and warnings as counts only (proposal-v3 14).
 use super::derive::{edges, find, ready, reference, requirement_in_progress};
+use super::sync_row::{SyncRow, sync_row};
 use crate::model::{Node, NodeData, NodeKind, Relation};
 use crate::ops::advice;
 use crate::ops::repository::{Repository, Result, Store};
@@ -56,6 +57,9 @@ impl fmt::Display for Warning {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Handover {
     pub errors: Vec<String>,
+    /// The synced copy's state, when one is due (n-ecbf).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sync: Option<SyncRow>,
     pub in_progress: Vec<ProgressRow>,
     pub open_questions: usize,
     pub ready_needs: usize,
@@ -68,6 +72,9 @@ impl fmt::Display for Handover {
             for error in &self.errors {
                 writeln!(f, "  {error}")?;
             }
+        }
+        if let Some(sync) = &self.sync {
+            writeln!(f, "{sync}")?;
         }
         for row in &self.in_progress {
             write!(f, "{row}")?;
@@ -98,6 +105,7 @@ pub fn handover<S: Store>(repo: &Repository<S>, scope: Option<&str>) -> Result<H
         .count();
     Ok(Handover {
         errors: integrity(&all),
+        sync: sync_row(repo),
         in_progress: in_progress.iter().map(|node| progress(node)).collect(),
         open_questions,
         ready_needs,

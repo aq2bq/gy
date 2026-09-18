@@ -13,8 +13,23 @@ mod snapshot;
 
 pub use file::FileStore;
 pub use memory::MemoryStore;
+use serde::{Deserialize, Serialize};
 pub use snapshot::FILE as SNAPSHOT_FILE;
 use std::env;
+
+/// The copy's last sync, kept in `sync.state` (n-ecbf, d-1e50). The store
+/// hands it out; the reader decides what to show.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SyncStatus {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_ok_at: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_ok_seq: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_error: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_error_at: Option<u64>,
+}
 
 /// The kind an error is: a broken invariant, or a lost race with another
 /// writer (n-fe59). The kind is what a retry reads; the message is for people.
@@ -174,6 +189,16 @@ pub trait Store: IdSource {
         }
     }
     fn history(&self) -> &[HistoryEntry];
+    /// The writes in the working log that are not in the copy's last commit
+    /// (n-ecbf). Zero for a local ledger or a store without a repository.
+    fn pending(&self) -> u64 {
+        0
+    }
+    /// The copy's last sync, when it has a synced copy and a `sync.state`
+    /// (n-ecbf). `None` for a local ledger.
+    fn sync_state(&self) -> Option<SyncStatus> {
+        None
+    }
     /// Invert the last transaction as a new transaction with this why and
     /// source (D-82). Nothing to invert is an error, and whether it inverted a
     /// write or an undo is returned (n-162c).
