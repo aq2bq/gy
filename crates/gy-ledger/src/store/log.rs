@@ -46,6 +46,12 @@ pub struct Event {
     /// the usual, leaves the key out; old readers ignore it.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub retries: u32,
+    /// The human who wrote, on a copy that syncs (n-8a52). A local ledger
+    /// leaves both out; old readers ignore them.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub by: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub by_mail: Option<String>,
     pub changes: Vec<Change>,
 }
 

@@ -144,7 +144,7 @@ fn push_writes(ledger: &Path, branch: &str, committed: u64, report: &mut Sync) -
         cumulative.push('\n');
         let sha = git::hash_object(ledger, cumulative.as_bytes())?;
         git::update_index(ledger, log::FILE, &sha)?;
-        git::commit(ledger, &write_message(&event.why, &event.actor, event.seq))?;
+        git::commit(ledger, &write_message(&event))?;
     }
     git::push_ff(ledger, branch)?;
     report.pushed = Some(Range {
@@ -176,9 +176,18 @@ fn first_push(
     Ok(())
 }
 
-/// The commit message of one write: its why, the actor, and the sequence.
-fn write_message(why: &str, actor: &str, seq: u64) -> String {
-    format!("{why}\n\nactor: {actor}\nGy-Seq: {seq}\n")
+/// The commit message of one write: its why, the actor, the human when the
+/// copy records one, and the sequence.
+fn write_message(event: &log::Event) -> String {
+    let mut message = format!("{}\n\nactor: {}\n", event.why, event.actor);
+    if let Some(by) = &event.by {
+        message.push_str(&format!("by: {by}\n"));
+        if let Some(mail) = &event.by_mail {
+            message.push_str(&format!("by_mail: {mail}\n"));
+        }
+    }
+    message.push_str(&format!("Gy-Seq: {}\n", event.seq));
+    message
 }
 
 /// The distinct actors of the writes in `(from, to]`, in first-seen order.

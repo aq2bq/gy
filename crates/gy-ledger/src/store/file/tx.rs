@@ -1,82 +1,17 @@
-//! The file-backed store: an append-only JSONL event log with an exclusive
-//! lock, sequence-based conflict detection, and replay on open (D-82).
-use super::{
-    Actor, Error, FormatVersion, HistoryEntry, IdSource, Result, Store, UndoneKind, format, log,
-    replay, snapshot, undone_kind,
+//! The file store's transactions: stage, append one log line under the lock,
+//! commit or roll back, undo, and mint ids (D-82).
+use super::super::id::{id_seed, unique_hash};
+use super::super::{
+    Error, HistoryEntry, IdSource, Result, Store, UndoneKind, log, replay, snapshot, undone_kind,
 };
+use super::FileStore;
 use fs2::FileExt;
 use serde_json::Value;
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    path::{Path, PathBuf},
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::collections::{BTreeMap, BTreeSet};
+use std::path::Path;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-pub use super::as_of::open_at;
-use super::id::id_seed;
-pub use super::id::unique_hash;
-
-#[derive(Debug)]
-struct Staged {
-    node: String,
-    value: Vec<u8>,
-}
-
-/// The file-backed store. Opening replays the log; `commit` appends one line.
-pub struct FileStore {
-    dir: PathBuf,
-    version: FormatVersion,
-    actor: Actor,
-    seq: u64,
-    nodes: BTreeMap<String, Value>,
-    staged: Vec<Staged>,
-    staged_rename: Option<(String, String, usize)>,
-    history: Vec<HistoryEntry>,
-    staged_history: Vec<HistoryEntry>,
-    salt: u64,
-    replayed: usize,
-    retries: u32,
-}
 impl FileStore {
-    /// Open the ledger directory, reading the actor from `GY_ACTOR`.
-    pub fn open(dir: &Path) -> Result<Self> {
-        Self::open_with(dir, |key| std::env::var(key).ok())
-    }
-    /// The same open with an injected actor lookup.
-    pub fn open_with(dir: &Path, lookup: impl Fn(&str) -> Option<String>) -> Result<Self> {
-        let mut version = format::read(dir)?;
-        if version < FormatVersion::CURRENT {
-            format::migrate(dir, version, FormatVersion::CURRENT)?;
-            version = FormatVersion::CURRENT;
-        }
-        let actor = Actor::from_lookup(lookup)?;
-        let (events, _) = log::read(dir)?;
-        let history = replay::history(&events)?;
-        let seq = events.last().map_or(0, |event| event.seq);
-        let (nodes, replayed, rewrote) = replay::load_nodes(dir, &events);
-        if rewrote {
-            snapshot::write(dir, seq, &nodes)?;
-        }
-        Ok(Self {
-            dir: dir.to_path_buf(),
-            version,
-            actor,
-            seq,
-            nodes,
-            staged: Vec::new(),
-            staged_rename: None,
-            history,
-            staged_history: Vec::new(),
-            salt: 0,
-            replayed,
-            retries: 0,
-        })
-    }
-    /// How many log events the last open replayed: 0 when the snapshot covered
-    /// the whole log.
-    pub fn replayed(&self) -> usize {
-        self.replayed
-    }
     /// Turn the staged nodes into log changes, deriving the change kind from
     /// the current nodes: a new id is created, a known id is updated, and an
     /// empty value is a deletion.
@@ -99,6 +34,19 @@ impl FileStore {
         }
         Ok(changes)
     }
+    /// The transaction's changes: the node changes and, if staged, the scope
+    /// rename, in that order.
+    fn changes(&self) -> Result<Vec<log::Change>> {
+        let mut changes = self.build_changes()?;
+        if let Some((from, to, nodes)) = &self.staged_rename {
+            changes.push(log::Change::ScopeRenamed {
+                from: from.clone(),
+                to: to.clone(),
+                nodes: *nodes,
+            });
+        }
+        Ok(changes)
+    }
     /// Commit on `Ok`, roll back on `Err`, so a half-finished change writes nothing.
     pub fn transaction<T>(&mut self, f: impl FnOnce(&mut Self) -> Result<T>) -> Result<T> {
         self.begin();
@@ -116,29 +64,12 @@ impl FileStore {
             }
         }
     }
-    /// The transaction's changes: the node changes and, if staged, the scope
-    /// rename, in that order.
-    fn changes(&self) -> Result<Vec<log::Change>> {
-        let mut changes = self.build_changes()?;
-        if let Some((from, to, nodes)) = &self.staged_rename {
-            changes.push(log::Change::ScopeRenamed {
-                from: from.clone(),
-                to: to.clone(),
-                nodes: *nodes,
-            });
-        }
-        Ok(changes)
-    }
     /// Append the open transaction under the lock, then update the state. The
     /// writer drops an incomplete trailing line here, under the same lock, so
     /// that a reader never rewrites the log (n-6b71).
     fn append(&mut self, why: String, source: String) -> Result<()> {
-        let lock = std::fs::OpenOptions::new()
-            .create(true)
-            .truncate(false)
-            .write(true)
-            .open(self.dir.join("lock"))?;
-        lock.lock_exclusive()?;
+        let (by, by_mail) = self.human()?;
+        let _lock = lock(&self.dir)?;
         let (events, complete) = log::read(&self.dir)?;
         let len = std::fs::metadata(self.dir.join(log::FILE)).map_or(0, |meta| meta.len());
         if len > complete {
@@ -156,6 +87,8 @@ impl FileStore {
             why,
             source,
             retries: self.retries,
+            by,
+            by_mail,
             changes: self.changes()?,
         };
         log::append(&self.dir, &event)?;
@@ -170,9 +103,23 @@ impl FileStore {
         snapshot::write(&self.dir, self.seq, &self.nodes)?;
         Ok(())
     }
+    /// The human a shared copy records: git's configured name and email, read
+    /// once per write. A copy with the marker but no name is refused (n-8a52).
+    fn human(&self) -> Result<(Option<String>, Option<String>)> {
+        if self.remote.is_none() {
+            return Ok((None, None));
+        }
+        let (name, mail) = super::super::remote::git::user(&self.dir)?;
+        if name.is_none() {
+            return Err(Error::invalid(
+                "git config user.name is not set; a shared ledger records who wrote",
+            ));
+        }
+        Ok((name, mail))
+    }
 }
 impl Store for FileStore {
-    fn version(&self) -> FormatVersion {
+    fn version(&self) -> super::super::FormatVersion {
         self.version
     }
     fn set_retries(&mut self, retries: u32) {
@@ -192,7 +139,7 @@ impl Store for FileStore {
         self.staged_history.clear();
     }
     fn stage(&mut self, key: impl Into<String>, value: impl Into<Vec<u8>>) {
-        self.staged.push(Staged {
+        self.staged.push(super::Staged {
             node: key.into(),
             value: value.into(),
         });
@@ -276,7 +223,7 @@ impl Store for FileStore {
                 }
                 log::Change::ScopeRenamed { from, to, .. } => {
                     let nodes = self.rename_scope(to, from)?;
-                    self.record("", &super::rename_line(to, from, nodes), why, source);
+                    self.record("", &super::super::rename_line(to, from, nodes), why, source);
                 }
             }
         }
@@ -297,4 +244,15 @@ fn now() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0)
+}
+
+/// Take the ledger's exclusive lock (D-82).
+fn lock(dir: &Path) -> Result<std::fs::File> {
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(dir.join("lock"))?;
+    file.lock_exclusive()?;
+    Ok(file)
 }

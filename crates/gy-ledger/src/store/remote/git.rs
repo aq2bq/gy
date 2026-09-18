@@ -87,6 +87,25 @@ pub fn remote_refs(dir: &Path, url: &str) -> Result<(Option<String>, Vec<String>
     Ok((head, heads))
 }
 
+/// The configured human: git's `user.name` and `user.email`, in one call. An
+/// unset pair is `(None, None)`; a missing git is an error.
+pub fn user(dir: &Path) -> Result<(Option<String>, Option<String>)> {
+    let output = spawn(dir, &["config", "--get-regexp", r"^user\.(name|email)$"])?;
+    if !output.status.success() {
+        return Ok((None, None));
+    }
+    let mut name = None;
+    let mut mail = None;
+    for line in String::from_utf8_lossy(&output.stdout).lines() {
+        match line.split_once(' ') {
+            Some(("user.name", value)) => name = Some(value.to_string()),
+            Some(("user.email", value)) => mail = Some(value.to_string()),
+            _ => {}
+        }
+    }
+    Ok((name, mail))
+}
+
 /// The current branch name.
 pub fn head_branch(dir: &Path) -> Result<String> {
     run(dir, &["symbolic-ref", "--short", "HEAD"]).map(|text| text.trim().to_string())

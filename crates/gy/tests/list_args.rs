@@ -32,6 +32,8 @@ fn since_uses_the_local_day_start() {
         why: "need add".into(),
         source: "test".into(),
         retries: 0,
+        by: None,
+        by_mail: None,
         changes: vec![gy_ledger::log::Change::Created {
             node: "n-0001".into(),
             value: serde_json::to_value(&node).unwrap(),

@@ -17,6 +17,8 @@ fn event(seq: u64, why: &str, changes: Vec<log::Change>) -> log::Event {
         why: why.to_string(),
         source: "test".to_string(),
         retries: 0,
+        by: None,
+        by_mail: None,
         changes,
     }
 }
@@ -210,7 +212,6 @@ fn a_version_three_ledger_raises_every_old_instant_on_read() {
         ),
     )
     .unwrap();
-
     // The snapshot path normalizes every instant it reads.
     let repository = Repository::new(FileStore::open_with(dir, actor).unwrap());
     raised_instants(&repository);
