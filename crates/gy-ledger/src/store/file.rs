@@ -49,11 +49,7 @@ impl FileStore {
             version = FormatVersion::CURRENT;
         }
         let actor = Actor::from_lookup(lookup)?;
-        let (events, complete) = log::read(dir)?;
-        let len = std::fs::metadata(dir.join(log::FILE)).map_or(0, |meta| meta.len());
-        if len > complete {
-            log::truncate(dir, complete)?;
-        }
+        let (events, _) = log::read(dir)?;
         let history = replay::history(&events)?;
         let seq = events.last().map_or(0, |event| event.seq);
         let (nodes, replayed, rewrote) = replay::load_nodes(dir, &events);
@@ -131,7 +127,9 @@ impl FileStore {
         }
         Ok(changes)
     }
-    /// Append the open transaction under the lock, then update the state.
+    /// Append the open transaction under the lock, then update the state. The
+    /// writer drops an incomplete trailing line here, under the same lock, so
+    /// that a reader never rewrites the log (n-6b71).
     fn append(&mut self, why: String, source: String) -> Result<()> {
         let lock = std::fs::OpenOptions::new()
             .create(true)
@@ -139,7 +137,11 @@ impl FileStore {
             .write(true)
             .open(self.dir.join("lock"))?;
         lock.lock_exclusive()?;
-        let (events, _) = log::read(&self.dir)?;
+        let (events, complete) = log::read(&self.dir)?;
+        let len = std::fs::metadata(self.dir.join(log::FILE)).map_or(0, |meta| meta.len());
+        if len > complete {
+            log::truncate(&self.dir, complete)?;
+        }
         if events.last().map_or(0, |event| event.seq) != self.seq {
             return Err(Error::invalid(
                 "another writer advanced the ledger; reopen and retry",

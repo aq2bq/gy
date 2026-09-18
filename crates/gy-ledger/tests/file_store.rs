@@ -59,20 +59,43 @@ fn a_failed_transaction_writes_nothing() {
 }
 
 #[test]
-fn a_truncated_tail_is_discarded() {
+fn a_reader_in_the_same_directory_does_not_lose_a_write() {
     let temp = tempfile::tempdir().unwrap();
-    commit(&mut opened(temp.path()), "n-0001", "why").unwrap();
-    let mut file = std::fs::OpenOptions::new()
-        .append(true)
-        .open(temp.path().join(log::FILE))
-        .unwrap();
-    file.write_all(b"{\"seq\":2,\"at\":1").unwrap();
-    drop(file);
+    let mut writer = opened(temp.path());
+    let _reader = FileStore::open_with(temp.path(), actor).unwrap();
+    commit(&mut writer, "n-0001", "why").unwrap();
     let reopened = FileStore::open_with(temp.path(), actor).unwrap();
     assert!(reopened.get("n-0001").is_some());
     assert_eq!(log::read(temp.path()).unwrap().0.len(), 1);
-    let text = std::fs::read_to_string(temp.path().join(log::FILE)).unwrap();
-    assert!(text.ends_with('\n') && !text.contains("\"seq\":2"));
+}
+
+#[test]
+fn a_truncated_tail_is_discarded_by_the_next_writer() {
+    let temp = tempfile::tempdir().unwrap();
+    commit(&mut opened(temp.path()), "n-0001", "why").unwrap();
+    let path = temp.path().join(log::FILE);
+    let mut file = std::fs::OpenOptions::new()
+        .append(true)
+        .open(&path)
+        .unwrap();
+    file.write_all(b"{\"seq\":2,\"at\":1").unwrap();
+    drop(file);
+    let len = std::fs::metadata(&path).unwrap().len();
+
+    let reopened = FileStore::open_with(temp.path(), actor).unwrap();
+    assert!(reopened.get("n-0001").is_some());
+    assert_eq!(log::read(temp.path()).unwrap().0.len(), 1);
+    assert_eq!(std::fs::metadata(&path).unwrap().len(), len);
+
+    commit(
+        &mut FileStore::open_with(temp.path(), actor).unwrap(),
+        "n-0001",
+        "why",
+    )
+    .unwrap();
+    let text = std::fs::read_to_string(&path).unwrap();
+    assert!(text.ends_with('\n'));
+    assert_eq!(log::read(temp.path()).unwrap().0.len(), 2);
 }
 
 #[test]

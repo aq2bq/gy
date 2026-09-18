@@ -87,9 +87,9 @@ pub fn append(dir: &Path, event: &Event) -> Result<()> {
         .create(true)
         .append(true)
         .open(dir.join(FILE))?;
-    let line = serde_json::to_string(event).map_err(|e| Error::invalid(e.to_string()))?;
-    file.write_all(line.as_bytes())?;
-    file.write_all(b"\n")?;
+    let mut line = serde_json::to_vec(event).map_err(|e| Error::invalid(e.to_string()))?;
+    line.push(b'\n');
+    file.write_all(&line)?;
     file.sync_all()?;
     Ok(())
 }
