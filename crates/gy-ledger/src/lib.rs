@@ -20,7 +20,7 @@ pub use ops::{
     QuestionAdd, QuestionClose, Repository, ReqAdd, ReqApprove, ReqCancel, ReqDone, ReqRevise,
     ScopeRename, Undo, config, link, local_day_start, local_time, retry,
 };
-pub use store::remote::{Pulled, Range, Sync, sync};
+pub use store::remote::{Pulled, Range, Sync, reconcile, sync};
 pub use store::{
     Actor, Error, ErrorKind, FileStore, FormatVersion, HistoryEntry, IdSource, MemoryStore, Result,
     Store, UndoneKind, file, format, location, log,

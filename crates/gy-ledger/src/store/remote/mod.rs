@@ -5,4 +5,5 @@ mod prepare;
 pub mod shape;
 pub mod sync;
 
+pub use prepare::reconcile;
 pub use sync::{Pulled, Range, Sync, sync};

@@ -24,6 +24,45 @@ pub(super) fn prepare(ledger: &Path, remote: &str) -> Result<Option<u64>> {
     Ok(Some(seq_at(ledger, "HEAD")?))
 }
 
+/// Reconcile the copy's `remote` marker with `gy.toml` before a command runs
+/// (n-8a52, ac-fd1b): refuse a different remote, remove the marker and return
+/// its URL once when gy.toml no longer names one, and clone when the copy is
+/// missing and the remote has a ledger. Nothing is returned when they agree.
+pub fn reconcile(ledger: &Path, remote: Option<&str>) -> Result<Option<String>> {
+    let marker = std::fs::read_to_string(ledger.join("remote"))
+        .ok()
+        .map(|url| url.trim().to_string())
+        .filter(|url| !url.is_empty());
+    match (marker, remote) {
+        (Some(marked), Some(remote)) if marked != remote => Err(Error::invalid(format!(
+            "gy.toml names a different remote than this copy ({marked}); remove the copy to start over"
+        ))),
+        (Some(marked), None) => {
+            std::fs::remove_file(ledger.join("remote"))?;
+            Ok(Some(marked))
+        }
+        (Some(_), Some(_)) => Ok(None),
+        (None, Some(remote)) => {
+            acquire(ledger, remote)?;
+            Ok(None)
+        }
+        (None, None) => Ok(None),
+    }
+}
+
+/// Clone the remote's ledger when this machine has no copy yet. A local
+/// ledger, or an empty remote, is left to `gy sync` and to open (n-8a52).
+fn acquire(ledger: &Path, remote: &str) -> Result<()> {
+    if git::is_repo(ledger) || ledger.join(log::FILE).is_file() {
+        return Ok(());
+    }
+    std::fs::create_dir_all(ledger)?;
+    let Some(branch) = one_branch(ledger, remote)? else {
+        return Ok(());
+    };
+    clone(ledger, remote, &branch)
+}
+
 /// The remote's one ledger branch, or `None` when it has no branch yet. Two
 /// or more branches is not a ledger.
 fn one_branch(dir: &Path, url: &str) -> Result<Option<String>> {

@@ -10,8 +10,8 @@ mod writes;
 use clap::Parser;
 use cli::{Cli, Command, CriterionAction, NeedAction, QuestionAction};
 use gy_ledger::{
-    CriterionAdd, CriterionSatisfy, NeedAdd, NeedClose, QuestionAdd, QuestionClose, Result,
-    handover, location, next, retry, show,
+    CriterionAdd, CriterionSatisfy, NeedAdd, NeedClose, QuestionAdd, QuestionClose, Result, config,
+    handover, location, next, reconcile, retry, show,
 };
 use output::{emit, emit_list, report};
 use std::path::Path;
@@ -37,6 +37,11 @@ fn tab_name(root: &Path) -> String {
 fn run(cli: &Cli) -> Result<()> {
     let root = repo::root(cli.directory.as_deref())?;
     let ledger = location::ledger_dir(&root);
+    if let Some(url) = reconcile(&ledger, config::read(&root)?.remote.as_deref())? {
+        eprintln!(
+            "stopped syncing with {url}; this copy is local from here on and other members' writes will not arrive"
+        );
+    }
     match &cli.command {
         Command::Show { ids, full } => {
             let repository = repo::open(&ledger)?;

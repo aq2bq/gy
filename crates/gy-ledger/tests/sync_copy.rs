@@ -1,6 +1,8 @@
 //! A shared copy records who wrote (n-8a52, ac-11b2): git's configured human
 //! lands in the event line and the commit message. Local test config only.
-use gy_ledger::{CriterionAdd, FileStore, FormatVersion, Operation, Repository, format, log, sync};
+use gy_ledger::{
+    CriterionAdd, FileStore, FormatVersion, Operation, Repository, format, log, reconcile, sync,
+};
 use std::path::Path;
 use std::process::Command;
 
@@ -131,4 +133,75 @@ fn sync_names_the_human_in_each_commit() {
     let message = git(&remote, &["log", "-1", "--format=%B", "main"]);
     assert!(message.contains("by: piko"), "{message}");
     assert!(message.contains("by_mail: piko@example.com"), "{message}");
+}
+
+/// A local ledger with one write, ready to be the remote's source.
+fn seeded(dir: &Path) {
+    std::fs::create_dir_all(dir).unwrap();
+    format::write(dir, FormatVersion::CURRENT).unwrap();
+    write(dir).unwrap();
+}
+
+#[test]
+fn reconcile_removes_the_marker_once_when_the_remote_is_gone() {
+    hermetic();
+    let temp = tempfile::tempdir().unwrap();
+    let dir = copy(temp.path(), Some("file:///example/ledger.git"));
+    assert_eq!(
+        reconcile(&dir, None).unwrap().as_deref(),
+        Some("file:///example/ledger.git")
+    );
+    assert!(!dir.join("remote").exists());
+    assert_eq!(reconcile(&dir, None).unwrap(), None);
+}
+
+#[test]
+fn reconcile_refuses_a_different_remote() {
+    hermetic();
+    let temp = tempfile::tempdir().unwrap();
+    let dir = copy(temp.path(), Some("file:///one/ledger.git"));
+    let error = reconcile(&dir, Some("file:///two/ledger.git")).unwrap_err();
+    assert!(
+        error.message.contains("different remote"),
+        "{}",
+        error.message
+    );
+}
+
+#[test]
+fn reconcile_clones_when_the_copy_is_missing() {
+    hermetic();
+    let temp = tempfile::tempdir().unwrap();
+    let (source, remote) = (temp.path().join("source"), temp.path().join("remote.git"));
+    seeded(&source);
+    bare(&remote);
+    sync(&source, &url(&remote)).unwrap();
+
+    let target = temp.path().join("fresh");
+    assert_eq!(reconcile(&target, Some(&url(&remote))).unwrap(), None);
+    assert_eq!(log::read(&target).unwrap().0.len(), 1);
+    assert!(target.join("remote").exists());
+}
+
+#[test]
+fn reconcile_clones_from_a_read_only_remote() {
+    hermetic();
+    let temp = tempfile::tempdir().unwrap();
+    let (source, remote) = (temp.path().join("source"), temp.path().join("remote.git"));
+    seeded(&source);
+    bare(&remote);
+    sync(&source, &url(&remote)).unwrap();
+
+    let objects = remote.join("objects");
+    let original = std::fs::metadata(&objects).unwrap().permissions();
+    let mut readonly = original.clone();
+    readonly.set_readonly(true);
+    std::fs::set_permissions(&objects, readonly).unwrap();
+
+    let target = temp.path().join("fresh");
+    let cloned = reconcile(&target, Some(&url(&remote)));
+
+    std::fs::set_permissions(&objects, original).unwrap();
+    cloned.unwrap();
+    assert_eq!(log::read(&target).unwrap().0.len(), 1);
 }
