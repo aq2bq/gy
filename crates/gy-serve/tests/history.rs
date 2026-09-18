@@ -113,3 +113,20 @@ fn limit_caps_rows_and_keeps_the_total() {
         assert_eq!(rows["rows"].as_array().unwrap().len(), total);
     }
 }
+
+/// A local ledger (no `by`) reads every writer as its actor, and the filter
+/// takes the actor (n-d36d).
+#[test]
+fn the_rows_name_the_writer_and_the_filter_takes_the_actor() {
+    let repo = ledger();
+    let rows = answer(&repo, Some("since=0"))["rows"]
+        .as_array()
+        .unwrap()
+        .clone();
+    assert!(
+        rows.iter().all(|row| row["who"] == row["actor"]),
+        "{rows:?}"
+    );
+    assert_eq!(answer(&repo, Some("actor=piko"))["total"], 4);
+    assert_eq!(answer(&repo, Some("actor=nobody"))["total"], 0);
+}

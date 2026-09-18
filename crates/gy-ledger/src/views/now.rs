@@ -1,7 +1,6 @@
 //! now: what the master is waiting on, what is in progress, and what is still
-//! open (d-995c, n-688a). The one place this judgement lives, so the CLI, MCP,
-//! and serve give the same answer.
-use super::derive::{need_state, question_open, reference};
+//! open (d-995c, n-688a). The CLI, MCP, and serve give the same answer.
+use super::derive::{need_state, question_open, reference, writer};
 use super::handover::{Handover, ProgressRow, handover};
 use super::list::LogRow;
 use super::next::ready_rows;
@@ -144,7 +143,6 @@ fn resume<S: Store>(
     }
 }
 
-/// The ready needs, with the counts `next` gives them (d-3e8f).
 fn ready(all: &[Node], scope: Option<&str>) -> Vec<Ready> {
     ready_rows(all, scope)
         .into_iter()
@@ -252,8 +250,7 @@ fn state_name(node: &Node, all: &[Node]) -> String {
     }
 }
 
-/// The last writes, newest first, fourteen of them. With a scope, only writes
-/// to that scope's nodes (a scope rename names no node, so it is left out).
+/// The last writes, newest first, fourteen, in scope (n-3e8f).
 fn recent<S: Store>(repo: &Repository<S>, scope: Option<&str>, all: &[Node]) -> Vec<LogRow> {
     repo.store()
         .history()
@@ -261,19 +258,22 @@ fn recent<S: Store>(repo: &Repository<S>, scope: Option<&str>, all: &[Node]) -> 
         .rev()
         .filter(|entry| scope.is_none_or(|scope| scope_of(all, &entry.node) == Some(scope)))
         .take(RECENT)
-        .map(|entry| LogRow {
-            seq: entry.seq,
-            at: entry.at,
-            actor: entry.actor.name().to_string(),
-            node: entry.node.clone(),
-            what: entry.what.clone(),
-            why: entry.why.clone(),
-            source: entry.source.clone(),
+        .map(|entry| {
+            let actor = entry.actor.name().to_string();
+            LogRow {
+                seq: entry.seq,
+                at: entry.at,
+                who: writer(entry.by.as_deref(), &actor),
+                actor,
+                node: entry.node.clone(),
+                what: entry.what.clone(),
+                why: entry.why.clone(),
+                source: entry.source.clone(),
+            }
         })
         .collect()
 }
 
-/// The last write, with the same scope rule as `recent` (d-3e8f).
 fn last_row<S: Store>(repo: &Repository<S>, scope: Option<&str>, all: &[Node]) -> Option<LogRow> {
     recent(repo, scope, all).into_iter().next()
 }

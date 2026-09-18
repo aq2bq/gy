@@ -73,7 +73,8 @@ fn seq_param(req: &Request) -> std::result::Result<u64, Response> {
     }
 }
 
-/// Every writer's name, in name order, from the whole history (n-4a08).
+/// Every writer as a reader sees them, in name order, from the whole
+/// history (n-4a08, n-d36d).
 fn writers<S: Store>(repo: &Repository<S>) -> Result<Vec<String>> {
     let rows = match list(
         repo,
@@ -85,7 +86,7 @@ fn writers<S: Store>(repo: &Repository<S>) -> Result<Vec<String>> {
         Listing::History(rows) => rows,
         Listing::Nodes(_) => Vec::new(),
     };
-    let mut actors: Vec<String> = rows.into_iter().map(|row| row.actor).collect();
+    let mut actors: Vec<String> = rows.into_iter().map(|row| row.who).collect();
     actors.sort();
     actors.dedup();
     Ok(actors)

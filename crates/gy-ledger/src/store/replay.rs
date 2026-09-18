@@ -191,6 +191,7 @@ pub fn history(events: &[log::Event]) -> Result<Vec<HistoryEntry>> {
                 seq: event.seq,
                 at: event.at,
                 actor: Actor::new(event.actor.clone())?,
+                by: event.by.clone(),
                 node,
                 what,
                 why: event.why.clone(),

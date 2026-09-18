@@ -1,13 +1,13 @@
 //! handover: what a session needs to resume in one command (AC-43). In-progress
 //! requirements with their ref and who waits, the counts that route the next
 //! step, integrity errors, and warnings as counts only (proposal-v3 14).
-use super::derive::{edges, find, ready, reference, requirement_in_progress};
+use super::derive::{edges, find, ready, reference, requirement_in_progress, writer};
 use super::sync_row::{SyncRow, sync_row};
 use crate::model::{Node, NodeData, NodeKind, Relation};
 use crate::ops::advice;
 use crate::ops::repository::{Repository, Result, Store};
 use serde::Serialize;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 /// An in-progress requirement: id, ref, state, title, and who waits on it.
@@ -22,6 +22,10 @@ pub struct ProgressRow {
     pub next_evidence: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub responsible: Option<String>,
+    /// The writer of the requirement's last write, as a reader sees them
+    /// (n-d36d).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub who: Option<String>,
 }
 impl fmt::Display for ProgressRow {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -35,6 +39,9 @@ impl fmt::Display for ProgressRow {
         }
         if let Some(responsible) = &self.responsible {
             writeln!(f, "  responsible: {responsible}")?;
+        }
+        if let Some(who) = &self.who {
+            writeln!(f, "  who: {who}")?;
         }
         Ok(())
     }
@@ -103,10 +110,14 @@ pub fn handover<S: Store>(repo: &Repository<S>, scope: Option<&str>) -> Result<H
         .iter()
         .filter(|node| in_scope(node, scope) && node.kind() == NodeKind::Need && ready(node, &all))
         .count();
+    let who = last_writers(repo);
     Ok(Handover {
         errors: errors_with_rejected(&all, repo),
         sync: sync_row(repo),
-        in_progress: in_progress.iter().map(|node| progress(node)).collect(),
+        in_progress: in_progress
+            .iter()
+            .map(|node| progress(node, who.get(&node.id().to_string()).cloned()))
+            .collect(),
         open_questions,
         ready_needs,
         warnings: warnings(&all, scope, &in_progress),
@@ -121,7 +132,21 @@ fn errors_with_rejected<S: Store>(all: &[Node], repo: &Repository<S>) -> Vec<Str
     errors
 }
 
-fn progress(node: &Node) -> ProgressRow {
+/// Who wrote each node last, as a reader sees them (n-d36d). A scope rename
+/// names no node, so it is left out.
+fn last_writers<S: Store>(repo: &Repository<S>) -> BTreeMap<String, String> {
+    let mut who = BTreeMap::new();
+    for entry in repo.store().history() {
+        if entry.node.is_empty() {
+            continue;
+        }
+        let actor = entry.actor.name();
+        who.insert(entry.node.clone(), writer(entry.by.as_deref(), actor));
+    }
+    who
+}
+
+fn progress(node: &Node, who: Option<String>) -> ProgressRow {
     ProgressRow {
         id: node.id().to_string(),
         reference: reference(node),
@@ -132,6 +157,7 @@ fn progress(node: &Node) -> ProgressRow {
         title: node.title().to_string(),
         next_evidence: node.free("next_evidence").cloned(),
         responsible: node.free("responsible").cloned(),
+        who,
     }
 }
 

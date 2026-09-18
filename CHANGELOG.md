@@ -66,6 +66,14 @@
   this build is refused with both versions; and an unreachable remote, a
   refused push and the other failures carry a second line with the way
   out. gy never deletes a copy or a remote.
+- **A writer is shown as the human first** (n-d36d): on a synced copy,
+  `list --actor`/`--since` rows, `handover`'s in-progress rows, and the
+  page's live rail, history and recent writes name a writer as
+  `<git user.name> / <GY_ACTOR>` (`pememo / lead`); two humans under the
+  same actor name are two writers, with their own colours and filter
+  chips, and `list --actor <x>` matches either the human or the actor.
+  `--json` rows carry `who` next to the unchanged `actor`. A ledger
+  without a remote reads exactly as before.
 
 ## 0.9.0 - 2026-09-18
 

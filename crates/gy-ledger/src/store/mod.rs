@@ -141,6 +141,8 @@ pub struct HistoryEntry {
     pub seq: u64,
     pub at: u64,
     pub actor: Actor,
+    /// The human who wrote, on a copy that records one (n-8a52, n-d36d).
+    pub by: Option<String>,
     pub node: String,
     pub what: String,
     pub why: String,

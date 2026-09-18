@@ -1,6 +1,6 @@
 //! list: node rows, or the write units when asked (proposal-v3 2). A node's
 //! status comes from the model, so the view never compares status strings.
-use super::derive::{NeedState, need_state};
+use super::derive::{NeedState, need_state, writer};
 use super::open_or_closed;
 use crate::model::{Node, NodeData, NodeId, NodeKind, Relation, RequirementState};
 use crate::ops::repository::{Error, Repository, Result, Store};
@@ -57,6 +57,9 @@ pub struct LogRow {
     pub seq: u64,
     pub at: u64,
     pub actor: String,
+    /// The writer as a reader sees them: `<by> / <actor>` or the actor
+    /// (n-d36d).
+    pub who: String,
     pub node: String,
     pub what: String,
     pub why: String,
@@ -67,7 +70,7 @@ impl fmt::Display for LogRow {
         write!(
             f,
             "{} {} {} {} {} {} {}",
-            self.seq, self.at, self.actor, self.node, self.what, self.why, self.source
+            self.seq, self.at, self.who, self.node, self.what, self.why, self.source
         )
     }
 }
@@ -115,17 +118,17 @@ fn history<S: Store>(repo: &Repository<S>, filter: &Filter) -> Vec<LogRow> {
         if filter.since.is_some_and(|since| entry.seq <= since) {
             continue;
         }
-        if filter
-            .actor
-            .as_ref()
-            .is_some_and(|actor| entry.actor.name() != actor)
-        {
+        if filter.actor.as_deref().is_some_and(|wanted| {
+            entry.actor.name() != wanted && entry.by.as_deref() != Some(wanted)
+        }) {
             continue;
         }
+        let actor = entry.actor.name().to_string();
         rows.push(LogRow {
             seq: entry.seq,
             at: entry.at,
-            actor: entry.actor.name().to_string(),
+            who: writer(entry.by.as_deref(), &actor),
+            actor,
             node: entry.node.clone(),
             what: entry.what.clone(),
             why: entry.why.clone(),

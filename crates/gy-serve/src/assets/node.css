@@ -34,6 +34,6 @@
 .hi:last-child{border-bottom:1px solid var(--line-soft)}
 .list .hist > div:not(:last-child) > .hi{border-bottom:0}
 .hi .when{font-family:var(--mono);font-size:11px;color:var(--paper-3);white-space:nowrap}
-.hi .who{font-family:var(--mono);font-size:11px;color:var(--actor-lead)}
+.hi .who{font-family:var(--mono);font-size:11px;color:var(--actor-lead);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hi .src{color:var(--paper-2)} .hi .why{color:var(--paper-3);font-size:12px}
 @media (max-width:900px){.node{grid-template-columns:1fr}}

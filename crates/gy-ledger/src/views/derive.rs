@@ -17,6 +17,15 @@ impl NeedState {
 }
 
 /// A requirement is in progress while it is filed or approved.
+/// How a write's writer reads: the human before the agent, when the copy
+/// records one (n-d36d).
+pub fn writer(by: Option<&str>, actor: &str) -> String {
+    match by {
+        Some(by) => format!("{by} / {actor}"),
+        None => actor.to_string(),
+    }
+}
+
 pub fn requirement_in_progress(requirement: &Node) -> bool {
     matches!(
         requirement_state(requirement),

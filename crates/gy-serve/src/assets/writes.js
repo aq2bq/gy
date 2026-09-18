@@ -57,9 +57,10 @@
     const push = sync && sync.last_ok_seq != null && entry.seq > sync.last_ok_seq
       ? `<i class="pushmark" role="img" aria-label="${esc(ui.t('notPushed'))}" title="${esc(ui.t('notPushed'))}">↑</i>`
       : '';
+    const who = entry.who || entry.actor;
     const body =
       `<span class="when">${window.GyTime.time(entry.at, lang)} · ${entry.seq}${push}</span>` +
-      `<span class="who ${whoCls(entry.actor, order)}">${esc(entry.actor)}</span>` +
+      `<span class="who ${whoCls(who, order)}">${esc(who)}</span>` +
       `<span class="nd"><div class="what">${what(entry, labels, ui, lang)}</div><div class="src" title="${esc(entry.source)}">${esc(entry.source)}</div><div class="why">${esc(entry.why)}</div></span>`;
     return entry.node
       ? `<div role="listitem"><a class="hi" href="#/n/${entry.node}">${body}</a></div>`

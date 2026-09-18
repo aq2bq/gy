@@ -171,7 +171,7 @@
 
   /* Who did what to which node, in this language. */
   function what(entry) {
-    const actor = esc(entry.actor);
+    const actor = esc(entry.who || entry.actor);
     const doing = esc(verb(entry));
     const node = entry.node ? `<a href="#/n/${entry.node}">${esc(entry.node)}</a>` : '';
     if (!node) return `${actor} ${doing}`;
@@ -179,7 +179,7 @@
   }
 
   function line(entry) {
-    return `<div class="when">${window.GyTime.time(entry.at, lang)} · seq ${entry.seq} · ${esc(entry.actor)}</div><div class="what">${what(entry)}</div><div class="src" title="${esc(entry.source)}">${esc(entry.source)}</div>`;
+    return `<div class="when">${window.GyTime.time(entry.at, lang)} · seq ${entry.seq} · ${esc(entry.who || entry.actor)}</div><div class="what">${what(entry)}</div><div class="src" title="${esc(entry.source)}">${esc(entry.source)}</div>`;
   }
 
   /* The dot colour: the four actor colours in the order the writers appear. */
@@ -196,7 +196,7 @@
      line the empty rail and history use says it instead (n-3e6b). */
   function pulse() {
     const rows = data.recent
-      .map((entry, index) => `<div class="pi ${actorCls(entry.actor)}${index === 0 ? ' new' : ''}" role="listitem">${line(entry)}</div>`)
+      .map((entry, index) => `<div class="pi ${actorCls(entry.who || entry.actor)}${index === 0 ? ' new' : ''}" role="listitem">${line(entry)}</div>`)
       .join('');
     const sub = data.recent.length
       ? fill(t('pulseSub'), { n: data.recent.length, t: window.GyTime.time(data.recent[0].at, lang) })

@@ -167,6 +167,7 @@ impl Store for MemoryStore {
             seq: 0,
             at: now(),
             actor: self.actor.clone(),
+            by: None,
             node: node.into(),
             what: what.into(),
             why: why.into(),

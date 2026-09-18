@@ -96,6 +96,7 @@ impl FileStore {
         self.seq += 1;
         for entry in &mut self.staged_history {
             entry.seq = self.seq;
+            entry.by = event.by.clone();
         }
         replay::apply(&mut self.nodes, &event);
         self.history.append(&mut self.staged_history);
@@ -180,6 +181,7 @@ impl Store for FileStore {
             seq: 0,
             at: now(),
             actor: self.actor.clone(),
+            by: None,
             node: node.into(),
             what: what.into(),
             why: why.into(),
