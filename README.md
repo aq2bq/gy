@@ -86,6 +86,7 @@ Reads (6):
 | `next` | The needs whose prerequisites are settled |
 | `handover` | In-progress requirements and the counts a session needs to resume |
 | `publish [--scope] [--since] [--out]` | Write the record at a point and range into a directory: one file per node and a scope index |
+| `sync` | Sync with the remote (experimental): fetch a missing copy, push unpushed writes one commit each, take in a remote that moved ahead and re-seat your writes; on failure, say why and what to do |
 | `serve` | Read the ledger in a browser, on 127.0.0.1 (GET only, no write path), until stopped. It opens the browser when started from a terminal |
 
 Writes (16):
@@ -132,11 +133,25 @@ The only configuration is a scope name and, if wanted, an output path for `publi
 ```toml
 # Optional. publish writes here when --out is not given.
 output = "docs/publication"
+# Optional (experimental): the ledger-only git repository. See "Working as a team".
+remote = "https://github.com/you/yourproject-ledger.git"
 
 [scopes.myproject]
 ```
 
 Reads cover every scope. A write needs a scope only when the file names more than one; pass `--scope <name>` to choose. The first write creates the ledger, and reads never do.
+
+## Working as a team (experimental)
+
+Name a ledger-only git repository (an empty private repo) as `remote` in `gy.toml` and run `gy sync` once: the ledger you have goes up as it is, and from then on your copy is a copy and the remote is the canonical ledger. Other members clone the project repository and run gy; the first command fetches their copy. Nothing else changes, and the only new command is `gy sync`.
+
+- **A write still lands locally at once**; pushing happens in the background (a detached `gy sync` right after each write, and every ten seconds while `gy serve` runs). `gy sync` syncs explicitly. While the remote is unreachable, reads and writes keep working, and what piled up is pushed when it is back.
+- **If the remote moved ahead**, your unpushed writes are re-seated after it. Only a write to a node the other side changed first is rejected, and only you are told: on stderr at your next gy command and in `handover`. Whether to redo it is your call.
+- **A writer is recorded as human / agent.** The human is read from `git config user.name` and `user.email` at every write, and a write without a name is refused. `list` and the page show `pememo / lead`; the same agent name under two humans is two writers.
+- **The remote is written by gy alone**: one write is one commit, and a history changed outside gy is refused with the way back. On GitHub, protect the branch with a ruleset that requires linear history and blocks force pushes (gy changes no settings). A repository holding anything but a ledger is refused.
+- Remove the `remote` line and the copy is local again (the next command says so once). Reconnecting after both sides moved is refused: there is no merge.
+
+A ledger holds the exchanges behind decisions. Putting it on a remote means that record is on GitHub.
 
 ## Who writes
 
@@ -182,7 +197,7 @@ The agent skills (`gy-ledger`, `gy-question`, `gy-decide`) ship inside the crate
 # from a checkout
 cp -R crates/gy/skills/gy-* ~/.agents/skills/
 # from the registry copy (match the version)
-cp -R ~/.cargo/registry/src/*/gy-0.9.0/skills/gy-* ~/.agents/skills/
+cp -R ~/.cargo/registry/src/*/gy-1.0.0/skills/gy-* ~/.agents/skills/
 ```
 
 A release that changed the skills says so under Updating in the changelog; copy them again when you move to that release. When the ledger format moves up, gy prints one line to stderr right after the migration, pointing at the changelog's Updating section.

@@ -86,6 +86,7 @@ gy はその終盤のためにあります。計画も日程も持ちません�
 | `next` | 前提の片付いたニーズ |
 | `handover` | 進行中の要求と、再開に要る件数 |
 | `publish [--scope] [--since] [--out]` | 指定した時点と範囲の記録をディレクトリに書く: 1 ノード 1 ファイルとスコープの索引 |
+| `sync` | remote と同期する（experimental）。複製が無ければ取り、未 push の書きを 1 行 1 commit で push し、remote が先なら取り込んで載せ直す。異常時は原因と手段を出す |
 | `serve` | 台帳をブラウザで読む。127.0.0.1 で（GET だけ、書く経路は無い）、止めるまで。端末から起動したときはブラウザを開く |
 
 書き (16):
@@ -127,16 +128,30 @@ gy show n-3f9a
 
 ## gy.toml
 
-設定するのはスコープ名と、必要なら `publish` の出力先だけです。それ以外のキーがあると、読み込みの時点で拒まれます。
+設定するのはスコープ名と、必要なら `publish` の出力先、チームで使うなら台帳専用の git remote だけです。それ以外のキーがあると、読み込みの時点で拒まれます。表の外のキーは最初の `[scopes.*]` より前に書きます。
 
 ```toml
 # 任意。--out を付けないときの publish の出力先。
 output = "docs/publication"
+# 任意（experimental）。台帳専用の git repo。チームで使う節を参照。
+remote = "https://github.com/you/yourproject-ledger.git"
 
 [scopes.myproject]
 ```
 
 読みはすべてのスコープを対象にします。書き込みでスコープが要るのは、ファイルが 2 つ以上のスコープを挙げているときだけです。`--scope <名>` で選びます。最初の書き込みが台帳を作り、読みが作ることはありません。
+
+## チームで使う（experimental）
+
+`gy.toml` に台帳専用の git repo（空の private repo）を `remote` として書き、`gy sync` を一度打つと、手元の台帳がそのまま remote に上がり、以後は手元が複製、remote が正本になります。他のメンバーはプロジェクトの repo を clone して gy を打つだけで、最初のコマンドが複製を取ってきます。使い方は今までと同じで、足すコマンドは `gy sync` だけです。
+
+- **書きは今までどおり手元に即座に載り**、push は背景で行われます（書きの直後に切り離した `gy sync` が走る。`gy serve` を起動している間は 10 秒ごと）。`gy sync` で明示にも同期できます。remote に届かない間も読み書きは通り、戻れば溜まった分がまとめて push されます。
+- **remote が先に進んでいたら**、自分の未 push の書きはその後ろに載せ直されます。同じノードを相手が先に変えていた書きだけが拒まれ、次の gy コマンドの標準エラーと `handover` で本人にだけ知らされます（やり直すかどうかはあなたが決める）。
+- **書き手は人間 / エージェント**で記録されます。人間の名前は `git config user.name` と `user.email` から書くたびに読み、無ければ書きを拒みます。`list` と画面では `pememo / lead` の形で出て、同じエージェント名でも人間が違えば別の書き手です。
+- **remote は gy だけが書く場所**です。1 書き = 1 commit で、履歴が gy 以外に変えられていれば同期が拒んで戻し方を示します。GitHub では branch の ruleset で linear history を必須にし force push を禁じてください（gy は設定を変えません）。台帳以外の内容がある repo は拒みます。
+- `remote` の行を消せば手元だけの台帳に戻ります（次のコマンドが 1 回だけ知らせます）。戻した後にまた繋ぐと、両方が進んでいれば拒まれます。合流は持ちません。
+
+台帳には判断に至るやり取りが入ります。remote に置くということは、その記録が GitHub にある、ということです。
 
 ## 書き手
 
@@ -182,7 +197,7 @@ cargo install gy --locked
 # チェックアウトから
 cp -R crates/gy/skills/gy-* ~/.agents/skills/
 # レジストリの写しから（版を合わせる）
-cp -R ~/.cargo/registry/src/*/gy-0.9.0/skills/gy-* ~/.agents/skills/
+cp -R ~/.cargo/registry/src/*/gy-1.0.0/skills/gy-* ~/.agents/skills/
 ```
 
 スキルが変わった版は CHANGELOG の Updating にそう書いてあります。その版に上げたら写し直してください。台帳の形式の版が上がったときは、gy が移行の直後に標準エラーへ 1 行で知らせ、CHANGELOG の Updating を指します。
