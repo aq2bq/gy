@@ -1,6 +1,44 @@
 # Changelog
 
-## Unreleased
+## 1.0.0 - 2026-09-18
+
+### Updating
+
+Nothing changes for a ledger without a remote. Every subcommand, option,
+output shape and `gy.toml` key of 0.9.0 is the same; the only new command
+is `sync` and the only new key is `remote`. The ledger format stays 3.
+
+```
+cargo install gy --locked    # gy 1.0.0
+```
+
+For an agent driving gy on a ledger that a team shares (a `remote` in
+`gy.toml`), this is what to expect:
+
+- **Write as before.** A write lands in your copy at once and is pushed
+  in the background. You do not run `gy sync` after writing; run it when
+  you want the remote's writes now, or when `handover` says something is
+  not pushed.
+- **Read `handover` first.** On a shared ledger it fetches the remote
+  first and may start with `sync: N writes not pushed; remote last
+  reached …`. Two things can appear that did not before: a
+  `notice: your write seq N (…) did not land: …` line on stderr of any
+  command, and the same line under `handover`'s errors. It means the
+  remote changed a node your write touched first; read the node again and
+  redo the write if it still applies. The notice goes away when you next
+  write to that node.
+- **Name yourself.** A write on a shared ledger needs `git config
+  user.name` (and `user.email`); without a name it is refused. Writers are
+  shown as `<user.name> / <GY_ACTOR>`, and `list --actor` matches either.
+- **`undo` is your own.** Undoing another writer's last write is refused.
+- **Name a point in time by `seq` or an id**, not by a date; dates print
+  in each reader's own time zone.
+
+To start sharing a ledger: create an empty private repository for the
+ledger alone, put `remote = "<its URL>"` before the first `[scopes.*]`
+table in `gy.toml`, and run `gy sync` once. The bundled skills changed
+with this release (`gy-ledger` gained a section on shared ledgers): copy
+them again as the README says.
 
 ### Added
 
