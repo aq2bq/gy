@@ -24,8 +24,10 @@ test('the three eyes match /api/now', async ({ page, request }) => {
     String(answer.ready.length),
     String(answer.resume.in_progress.length),
   ];
+  // The column's own number, not any number the column happens to show: the
+  // resume column also prints the open-question count (n-8f60).
   for (let index = 0; index < counts.length; index++) {
-    await expect(eyes(page).nth(index).getByText(counts[index], { exact: true })).toBeVisible();
+    await expect(eyes(page).nth(index).getByTestId('count')).toHaveText(counts[index]);
     await expect(page.getByTestId('eyes').getByRole('link').nth(index)).toContainText(counts[index]);
   }
 

@@ -30,7 +30,7 @@
   const status = row => t(`st.${row.kind}.${row.status}`);
 
   const head = (cls, n, name, sub) =>
-    `<div class="head"><span class="n">${n}</span><span class="l">${esc(name)}</span><span class="h">${esc(sub)}</span></div>`;
+    `<div class="head"><span class="n" data-testid="count">${n}</span><span class="l">${esc(name)}</span><span class="h">${esc(sub)}</span></div>`;
 
   const rowHtml = (row, st) =>
     `<a class="row" href="#/n/${row.id}"><span class="dot dot-${row.kind}"></span><span class="id">${esc(label(row))}</span><span class="t" title="${esc(row.title)}">${esc(row.title)}</span><span class="st">${st}</span></a>`;

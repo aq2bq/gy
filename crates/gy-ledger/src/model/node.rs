@@ -279,7 +279,7 @@ fn required(value: String, message: &str) -> Result<String> {
 /// A stored instant in `YYYY-MM-DDTHH:MM:SSZ` form, `created` or any `at` (n-86cc).
 pub(crate) fn valid_created(text: &str) -> bool {
     let b = text.as_bytes();
-    let at = [b'-', b'-', b'T', b':', b':', b'Z'];
+    let at = *b"--T::Z";
     let on = [4, 7, 10, 13, 16, 19];
     text.len() == 20
         && at.iter().zip(on).all(|(mark, at)| b[at] == *mark)

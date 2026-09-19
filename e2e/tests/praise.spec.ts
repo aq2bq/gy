@@ -4,8 +4,9 @@ import { start, type Ledger } from '../fixtures/ledger';
 let gy: Ledger;
 
 test.beforeAll(async () => {
-  // No master question and no filed requirement, so waiting is empty. Two needs
-  // wait on an open question, so none is ready while both are in progress.
+  // Nothing waits on a person and no requirement is filed, so waiting is empty:
+  // the one open question has a decider that writes this ledger itself (d-b02d).
+  // Two needs wait on it, so none is ready while both are in progress.
   gy = await start({
     build: (gy) => {
       const id = (args: string[]) => JSON.parse(gy(args)).id as string;
@@ -13,7 +14,7 @@ test.beforeAll(async () => {
       const criterion = id([...a, 'criterion', 'add', 'measures one']);
       const one = id([...a, 'need', 'add', 'the blocked need', '--targets', criterion]);
       const two = id([...a, 'need', 'add', 'the other blocked need', '--targets', criterion]);
-      const question = id([...a, 'question', 'add', 'a question for the lead', '--decider', 'lead', '--options', 'one', '--options', 'two']);
+      const question = id([...a, 'question', 'add', 'a question for a writer', '--decider', 'e2e', '--options', 'one', '--options', 'two']);
       gy([...a, 'link', one, 'waits-on', question]);
       gy([...a, 'link', two, 'waits-on', question]);
     },

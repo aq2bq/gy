@@ -18,16 +18,33 @@ export type Ledger = {
   stop: () => Promise<void>;
 };
 
-const run = (dir: string, data: string, args: string[], json = true) =>
-  execFileSync(GY, ['-C', dir, ...args, ...(json ? ['--json'] : [])], {
-    env: { ...process.env, GY_ACTOR: 'e2e', XDG_DATA_HOME: data },
-    encoding: 'utf8',
-  });
+/** One CLI call. A refusal arrives on stdout as JSON, which execFileSync drops
+ *  from its message, so put both streams in the error: a CI log with only
+ *  "Command failed" cannot be read (n-8f60). */
+const run = (dir: string, data: string, args: string[], json = true) => {
+  const all = ['-C', dir, ...args, ...(json ? ['--json'] : [])];
+  try {
+    return execFileSync(GY, all, {
+      env: { ...process.env, GY_ACTOR: 'e2e', XDG_DATA_HOME: data },
+      encoding: 'utf8',
+    });
+  } catch (failure) {
+    throw said(failure, all);
+  }
+};
+
+/** The thrown error, with what the command printed. */
+export function said(failure: unknown, args: string[]): Error {
+  const { stdout, stderr } = failure as { stdout?: string; stderr?: string };
+  const printed = [stdout, stderr].filter((text) => text?.trim()).join('\n').trim();
+  return new Error(`gy ${args.join(' ')}\n${printed || String(failure)}`);
+}
 
 /** A ledger built inside the test: two scopes, the kinds the pages need, and
  *  a server on its own port (the brief's fixture: 3 needs with one closed,
  *  3 questions, 2 decisions with one closing a question, 4 criteria with one
- *  satisfied, 1 filed requirement). */
+ *  satisfied, 1 filed requirement and 1 approved, which is what the satisfied
+ *  criterion needs to be covered by). */
 export async function start(
   options: { large?: boolean; build?: (gy: (args: string[]) => string) => void } = {},
 ): Promise<Ledger> {
@@ -69,9 +86,13 @@ function build(gy: (args: string[]) => string) {
   const two = id([...a, 'criterion', 'add', 'measures two']);
   const three = id([...b, 'criterion', 'add', 'measures three']);
   const four = id([...a, 'criterion', 'add', 'measures four']);
-  gy([...a, 'criterion', 'satisfy', one, '--evidence', 'measured']);
   const first = id([...a, 'need', 'add', 'the first need', '--targets', one]);
   id([...a, 'need', 'add', 'the second need', '--targets', two]);
+  // A criterion is recorded met only under an approved requirement that targets
+  // it, so the cover comes first and the ledger keeps one of each state.
+  const cover = id([...a, 'req', 'add', 'the approved requirement', '--need', first, '--targets', one]);
+  gy([...a, 'req', 'approve', cover, '--design', 'the design', '--heard-by', 'e2e', '--evidence', 'read it']);
+  gy([...a, 'criterion', 'satisfy', one, '--evidence', 'measured']);
   const closed = id([...b, 'need', 'add', 'the closed need', '--targets', three]);
   gy([...b, 'need', 'close', closed, '--by', 'fact', '--evidence', 'not needed']);
   id([...a, 'question', 'add', 'the master question', '--decider', 'master', '--options', 'one', '--options', 'two']);
