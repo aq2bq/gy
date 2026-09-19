@@ -1,99 +1,99 @@
-# 新しい gy の設計
+# The design of the new gy
 
-この文書は、新しい gy（0.5）の設計契約をまとめる。利用の契約は [README](README.ja.md)、0.4 からの移行は [migration-0.5](migration-0.5.md)、公開の手順は [release](release.md) にある。
+This document states the design contract of the new gy (0.5). The contract of use is in the [README](../README.md), the migration from 0.4 is in [migration-0.5](migration-0.5.md), and the release procedure is in [release](release.md).
 
-## 4 つの層と依存の向き
+## Four layers and the direction of dependency
 
-クレート `gy-ledger` は 4 つの層に分かれる。`store`（永続・トランザクション・ID の採番・履歴・形式の版）→ `model`（5 種のノードと不変条件）→ `ops`（操作 = 意図）→ `views`（show / list / next / handover / publish の投影）。依存はこの向きだけに流れる。`views` は `store` を直接読まず、`ops` は `views` を呼ばない。CLI（`gy`）は `views` と `ops` を呼ぶだけである。
+The crate `gy-ledger` is divided into four layers. `store` (persistence, transactions, ID allocation, history, the format version) → `model` (the five kinds of node and the invariants) → `ops` (operations = intents) → `views` (the projections show / list / next / handover / publish). Dependencies flow in this direction only. `views` does not read `store` directly, and `ops` does not call `views`. The CLI (`gy`) only calls `views` and `ops`.
 
-層ごとの責務は次のとおり。`store` は他の層を使わない。`model` は `store` だけを使う。`ops` は `store` と `model` を使う。`views` は `model` と `ops` を使う。同じ層の内側では `super::` で参照する。
+The responsibilities of each layer are as follows. `store` uses no other layer. `model` uses only `store`. `ops` uses `store` and `model`. `views` uses `model` and `ops`. Inside one layer, references go through `super::`.
 
-## 常に妥当
+## Always valid
 
-不正な状態は、後から検査する工程ではなく、書き込みの時点で拒む。台帳に載るノードはすべて、その時点の不変条件を満たしている。
+An invalid state is refused at the moment of the write, not by a pass that checks later. Every node in the ledger satisfies the invariants of that moment.
 
-ノードを組み立てるときに拒むもの: スコープが空、題名が空、`created` が UTC の瞬間（`YYYY-MM-DDTHH:MM:SSZ`）でない、決定の成立範囲が空（移行だけが付ける未記録の印を除く）、関係が許さないノードの組、`narrows` と `supersedes` の mark が古い決定の本文か成立範囲に見つからない、同じ辺の二重登録、閉じた論点の再閉じ、`closes` を `link` で張ること、存在しないノードへの辺。
+What is refused when a node is built: an empty scope, an empty title, a `created` that is not a UTC instant (`YYYY-MM-DDTHH:MM:SSZ`), a decision with an empty scope note (except the unrecorded marker that only the migration attaches), a pair of nodes the relation does not allow, a `narrows` or `supersedes` mark that is not found in the body or the scope note of the older decision, a second registration of the same edge, closing a closed question again, making a `closes` edge with `link`, and an edge to a node that does not exist.
 
-書き込みはすべて 1 トランザクションである。1 つの意図が 1 つのコマンドに対応し、途中で失敗すれば何も書かない。変更の履歴も同じトランザクションに載せ、確定とともに残し、失敗すれば捨てる。
+Every write is one transaction. One intent corresponds to one command, and if it fails partway, nothing is written. The history of the change rides in the same transaction: it stays when the transaction commits and is discarded when it fails.
 
-日付はすべて瞬間である。ノードの `created`、受け入れ条件の `satisfied_at`、要求の記録の `at` は UTC の瞬間として保存し、CLI と serve は見る人の場所（`TZ`、ブラウザ）の日付と時刻で表示する。`--json` と publish は保存の値のまま出す。`--since <日付>` は見る人の場所のその日の 0 時からである。チームで「いつ」を指す共有語は日付ではなく `seq` と ID である（d-b1f8）。
+Every date is an instant. A node's `created`, an acceptance criterion's `satisfied_at` and the `at` of a requirement's record are stored as UTC instants, and the CLI and serve show them as the date and time of the viewer's place (`TZ`, the browser). `--json` and publish emit the stored value as it is. `--since <date>` starts at 0:00 of that day in the viewer's place. The shared word a team uses to point at "when" is not a date but `seq` and the ID (d-b1f8).
 
-## イベントログとスナップショットと形式の版
+## The event log, the snapshot and the format version
 
-正本は `events.jsonl` という追記専用のログで、1 トランザクションが 1 行に対応する。行は `seq`・`at`・`actor`・`why`・`source`・`changes` を持ち、競合で再試行した書きは `retries` を任意の項として持ち、`changes` の各項が 1 ノードの変更（`node`・`change`・`value`）を表す。`change` は `created`・`updated`・`deleted`・`scope-renamed` のいずれかである。`scope-renamed` は 1 行で複数ノードのスコープ名を変え、`node` は空、`value` は `{from, to, nodes}` である。
+The canonical store is an append-only log named `events.jsonl`, and one transaction corresponds to one line. A line has `seq`, `at`, `actor`, `why`, `source` and `changes`; a write that was retried after a conflict has `retries` as an optional field; and each item of `changes` describes the change to one node (`node`, `change`, `value`). `change` is one of `created`, `updated`, `deleted` and `scope-renamed`. `scope-renamed` changes the scope name of several nodes in one line; its `node` is empty and its `value` is `{from, to, nodes}`.
 
-原子性は 1 行と改行を 1 回で書く追記と `fsync` で得る。途中で切れた末尾は、書き手が排他ロックを取った後、追記の直前に捨てる。読み手はログを変えない（n-6b71）。同時に書く書き手の競合は、排他ロックと `seq` の比較で検出し、負けた書き手は台帳を開き直して同じ意図を最大 5 回まで再実行する。意図が成り立たなくなっていればその不変条件の理由で落ち、5 回負ければ諦める（n-fe59）。履歴はログそのもので、`undo` は直前のトランザクションを逆にたどる行を新しく追記する。
+Atomicity comes from an append that writes one line and its newline in a single write, and from `fsync`. A tail that was cut off partway is dropped by a writer, after it takes the exclusive lock and just before it appends. A reader does not change the log (n-6b71). A conflict between writers writing at the same time is detected by the exclusive lock and a comparison of `seq`, and the writer that lost reopens the ledger and runs the same intent again, up to 5 times. If the intent no longer holds, it fails with the reason of that invariant, and after losing 5 times it gives up (n-fe59). The history is the log itself, and `undo` appends a new line that walks the last transaction backwards.
 
-`snapshot.json` は派生で、現在のノードと `seq` を持つ。開くのを速くするだけで、消してもログだけから同じ結果に戻る。`format` ファイルは形式の版を持ち、台帳は生まれた時からこの版を持つ。このビルドが対応しない版を開くとエラーになる。版を上げる移行はログを書き換えず、1 段ずつ進み、変える前のファイルを `<名前>.<版>.bak` に残す。版 3（0.9.0）では読み手が日付だけの値を `T00:00:00Z` の瞬間として読み、snapshot を作り直す。
+`snapshot.json` is derived and holds the current nodes and `seq`. It only makes opening faster; if it is deleted, the log alone gives the same result. The `format` file holds the format version, and a ledger has this version from the moment it is born. Opening a version this build does not support is an error. A migration that raises the version does not rewrite the log, advances one step at a time, and leaves the file as it was before the change at `<name>.<version>.bak`. In version 3 (0.9.0) the reader reads a date-only value as the instant `T00:00:00Z` and rebuilds the snapshot.
 
-正本の置き場所は `$XDG_DATA_HOME/gy/<リポジトリのルートのハッシュ>/` である。リポジトリに置くのは `gy.toml` だけである。
+The canonical store is located at `$XDG_DATA_HOME/gy/<hash of the repository root>/`. The only thing placed in the repository is `gy.toml`.
 
-## ID の生成と衝突
+## ID generation and collisions
 
-ID は種類の接頭辞と短いハッシュで作る。中央の採番器を持たないので、複数のエージェントが同時に書いてもよい。種には接頭辞・ナノ秒の時刻・プロセス ID・ノード数・ソルトを混ぜ、桁ごとに別の種をハッシュする。衝突したら 4 桁から 6 桁、8 桁へと広げる。同じ 32 ビットの下位を切り出すだけでは、短い桁で衝突が残るためである。
+An ID is made of a prefix for the kind and a short hash. There is no central allocator, so several agents may write at the same time. The seed mixes the prefix, the time in nanoseconds, the process ID, the number of nodes and a salt, and a different seed is hashed for each width. On a collision the ID widens from 4 digits to 6 and then to 8. This is because merely cutting out the low bits of the same 32 bits leaves collisions at the short widths.
 
-0.4 の ID は別名として保つ。`show` は完全な ID・0 埋めの ID・別名・要求の外への参照を、完全一致か末尾一致で解決する。要求の参照（`ref`）は不透明な値で、gy はその先を読まない。
+The IDs of 0.4 are kept as aliases. `show` resolves a full ID, a zero-padded ID, an alias and a requirement's outward reference, by exact match or by suffix match. A requirement's reference (`ref`) is an opaque value, and gy does not read what it points at.
 
-## 辺は from 側だけに置く
+## Edges are placed on the from side only
 
-ノードは自分が始点の辺だけを持つ。逆向きは保存せず、`Repository::incoming` が全ノードを走査して組み立てる。同じ辺を 2 か所に書かない。
+A node holds only the edges that start from itself. The reverse direction is not stored; `Repository::incoming` assembles it by scanning all nodes. The same edge is not written in two places.
 
-関係は 12 値の閉じた集合で、逆名は導出する。許されるノード種の組は 1 つの表にまとめ、表に無い辺は組み立ての時点で拒む。`mark` は `narrows` と `supersedes` の forward 側だけが持ち、逆向きを組み立てるときも引き継ぐ。
+The relations are a closed set of 12 values, and the reverse names are derived. The allowed pairs of node kinds are gathered in one table, and an edge that is not in the table is refused at the time it is built. Only the forward side of `narrows` and `supersedes` holds a `mark`, and it is carried over when the reverse direction is assembled.
 
-## 導出する値
+## Derived values
 
-保存せず、毎回グラフから計算する値がある。
+Some values are not stored and are computed from the graph every time.
 
-- ニーズの状態: 閉じていれば `closed`、`filed-as` の要求がすべて `done` なら `done`、それ以外は `open`。
-- 着手できるか（`next` の条件）: `open` で、`depends-on` のニーズが `closed` か `done` で、`waits-on` の先（論点は閉じており、要求は `done` か `cancelled`）が片付いている。
-- `bearer_count`: その受け入れ条件を `targets` に持つニーズの数。
-- 進行中の要求: `filed` か `approved` の要求。
+- The state of a need: `closed` if it is closed, `done` if all of its `filed-as` requirements are `done`, and `open` otherwise.
+- Whether it can be started (the condition of `next`): it is `open`, its `depends-on` needs are `closed` or `done`, and what it `waits-on` is settled (a question is closed; a requirement is `done` or `cancelled`).
+- `bearer_count`: the number of needs that have that acceptance criterion in their `targets`.
+- Requirements in progress: requirements that are `filed` or `approved`.
 
-## handover と next の判定
+## What handover and next judge
 
-`handover` は、エラー（存在しないノードへの辺、`filed-as` の先が要求でない辺）、進行中の要求（`ref`・状態・`next_evidence`・`responsible`）、開いている論点の数、着手できるニーズの数、警告の件数を出す。警告にするのは、置き換えられた決定に依拠する進行中の要求、成立範囲が未記録の決定に依拠する進行中の要求、本文が空の受け入れ条件、誰も待っていない（`waits-on` も `raised` も無い）開いた論点、担うニーズが全部閉じて未達の受け入れ条件である（件数だけ。d-09b6、d-f7b6）。注意が要る状態を、人が読める順に並べる。
+`handover` reports the errors (an edge to a node that does not exist, a `filed-as` edge whose target is not a requirement), the requirements in progress (`ref`, state, `next_evidence`, `responsible`), the number of open questions, the number of needs that can be started, and the number of warnings. The warnings are: a requirement in progress that relies on a superseded decision, a requirement in progress that relies on a decision whose scope note is unrecorded, an acceptance criterion with an empty body, an open question that nobody waits on (neither `waits-on` nor `raised`), and an unmet acceptance criterion whose bearing needs are all closed (counts only; d-09b6, d-f7b6). It lists the states that need attention in an order a person can read.
 
-`next` は着手できるニーズを `created` と ID の順に並べる。優先度は持たない。どのニーズから進めるかはエージェントが選び、マスターに差し出す。
+`next` lists the needs that can be started in the order of `created` and ID. It holds no priority. The agent chooses which need to advance and offers it to the person.
 
-## publish は記録の公開物
+## publish is a publication of the record
 
-`publish` は、指定した時点と範囲の記録と診断を、出力先ディレクトリの下のスコープごとのディレクトリに出す（d-7c64）。1 ノード 1 ファイルと、スコープの索引 1 ファイルである。出力先は git の管理の外に置き（gy 自身のリポジトリでは `.gitignore` で除外する）、後から判断と経緯を振り返る。台帳の中身は開発の内部情報であり、ツールとしての gy の公開物ではない。使うのはエージェントで、マスターが読む読み物ではない（d-edb0）。
+`publish` writes the record and the diagnostics of a given point and range into a directory per scope under the output directory (d-7c64): one file per node, and one index file for the scope. The output directory is kept outside git's control (in gy's own repository it is excluded by `.gitignore`), and the decisions and how they came about are reviewed later. The content of a ledger is internal development information and is not a publication of gy as a tool. It is used by agents and is not reading matter for the person (d-edb0).
 
-- ノードのファイル: `<scope>/<種類>/<ID>-<題>.md`。別名と ref 付きの ID、題名、scope、created、状態、成立範囲、本文、両向きの辺（相手の ID・別名・題名・mark）、閉じ方と根拠、要求の記録、自由属性。決定は系譜の関係を先頭に置く。
-- 索引: `<scope>/README.md`。生成日時・seq・scope・since・書き手・正本、読み方、種類ごとの一覧（リンクと状態）、履歴、診断。
-- 出力先は `--out` か `gy.toml` の `output`（ディレクトリ）。対象スコープのディレクトリだけを消して作り直し、他には触らない。
-- 順序は種類 → created → ID。同じ台帳で 2 回出すと同じファイル群（索引の生成日時を除く）。
+- A node file: `<scope>/<kind>/<ID>-<title>.md`. The ID with its aliases and ref, the title, scope, created, the state, the scope note, the body, the edges in both directions (the other side's ID, alias, title and mark), the closure and the evidence, the requirement's records, and the free attributes. A decision puts its lineage relations first.
+- The index: `<scope>/README.md`. The generated time, seq, scope, since, the writer and the canonical store; how to read; a list per kind (links and states); the history; the diagnostics.
+- The output directory is `--out` or `output` in `gy.toml` (a directory). Only the directory of the target scope is deleted and rebuilt; nothing else is touched.
+- The order is kind → created → ID. Publishing twice from the same ledger gives the same set of files (except the generated time in the index).
 
-## チーム同期は git remote を権威とする（experimental）
+## Team sync takes the git remote as the authority (experimental)
 
-`gy.toml` の `remote` が台帳専用の git repo を名指すと、その repo の default branch が正本になり、各機の台帳ディレクトリはその複製になる（d-39f6）。権威とは「競合の後にどれが正しいか裁く係」ではなく「競合の前に順番を決める 1 か所」で、これにより seq の直線と書き込み時の一回の検証（常に妥当）を保つ。合流は持たず、分岐も持たない。
+When `remote` in `gy.toml` names a git repo dedicated to the ledger, the default branch of that repo becomes the canonical store, and the ledger directory on each machine becomes a copy of it (d-39f6). The authority is not "the one who judges which is right after a conflict" but "the one place that decides the order before a conflict", and this keeps the straight line of seq and the single validation at write time (always valid). There is no merge, and there is no branch.
 
-- 複製は台帳ディレクトリ自身を top level とする git の作業ツリーで、`events.jsonl`・`format`・`README.md`・`.gitignore` だけを追跡する。台帳ディレクトリが別の作業ツリーの中にあっても入れ子の repo を作り、commit と push の前に origin が記録した remote と一致することを確かめる。一致しなければ触らない（n-6d6c）。
-- 書きは今までどおり複製へ即座に載る（d-1e50）。push は背景の切り離した `gy sync` が行い、`gy serve` の起動中は 10 秒ごと、明示の `gy sync` でも行う。通信の間は台帳のロックを持たず、複製を変える区間だけ排他で取る。1 書き = 1 commit で、件名は why、本文は actor と人間、trailer は `Gy-Seq`。最初の上げだけ 1 commit で `Gy-Seq: 1-<seq>`。
-- remote が先に進んでいて手元に未 push の行があれば、remote の行を取り込み、未 push の各行を後ろに載せ直す。拒むのは、触ったノードが remote 側で変わった・消えた行、辺の先が無い行、ID が衝突する行、拒まれた行に依存する行だけで、載せた行は seq を振り直す（未 push の seq は暫定、ノードの ID は不変）。拒まれた行は複製の `rejected.jsonl` に残り、本人の次のコマンドの標準エラーと `handover` の errors に出て、同じ書き手が触ったノードに次に書くまで消えない。`handover` は remote を取ってから出し（5 秒で諦める）、`undo` は自分の書きだけ。
-- 取り込みの前に remote の履歴の形を確かめる: HEAD の子孫であること、各 commit が `Gy-Seq` を連番で持つこと、触るのが gy の 4 ファイルだけであること、`events.jsonl` が追記だけであること。外れていれば sha と作者と理由と、`--force-with-lease` で戻す具体的なコマンドを出す。gy は force push を行わない。台帳以外の内容がある remote は拒む。
-- 印のある複製への書きは `git config user.name` と `user.email` を書くたびに読み、行の任意の項 `by`・`by_mail` に載せる（無ければ拒む）。読みは人間を先に `<by> / <actor>` と出し、同じ actor 名でも人間が違えば別の書き手である。
-- 複製は `sync.state`（最終同期、最後のエラー）を持ち、`handover` と画面が未 push の件数と最終同期を出す。届かない間も読み書きは通り、戻れば溜まった行がまとめて push される。壊れた複製・空にされた remote・新しい形式の版・改変は、それぞれ原因と手段を 2 行で出し、gy は複製も remote も自分からは消さない。
-- `remote` の無い台帳は一切変わらない。`remote` を消せば複製は手元だけの台帳に戻り（次のコマンドが 1 回知らせる）、再び繋ぐときに両方が進んでいれば拒む。
+- A copy is a git working tree whose top level is the ledger directory itself, and it tracks only `events.jsonl`, `format`, `README.md` and `.gitignore`. Even when the ledger directory is inside another working tree, it makes a nested repo, and before a commit and a push it checks that origin matches the recorded remote. If it does not match, it touches nothing (n-6d6c).
+- A write lands in the copy at once, as before (d-1e50). The push is done by a detached `gy sync` in the background, every 10 seconds while `gy serve` is running, and also by an explicit `gy sync`. It does not hold the ledger's lock during communication and takes it exclusively only for the span that changes the copy. 1 write = 1 commit: the subject is the why, the body is the actor and the human, and the trailer is `Gy-Seq`. Only the first upload is 1 commit with `Gy-Seq: 1-<seq>`.
+- When the remote is ahead and there are unpushed lines locally, the remote's lines are taken in and each unpushed line is rebased after them. The only lines refused are a line whose touched node changed or disappeared on the remote side, a line whose edge has no target, a line whose ID collides, and a line that depends on a refused line; a rebased line gets a new seq (an unpushed seq is provisional; a node's ID does not change). A refused line stays in the copy's `rejected.jsonl`, appears on the standard error of that writer's next command and in the errors of `handover`, and does not go away until the same writer next writes to a node it touched. `handover` fetches the remote before it reports (it gives up after 5 seconds), and `undo` covers only one's own writes.
+- Before taking in, the shape of the remote's history is checked: that it is a descendant of HEAD, that each commit has a `Gy-Seq` in sequence, that only gy's 4 files are touched, and that `events.jsonl` is only appended to. If it deviates, gy prints the sha, the author, the reason, and the concrete command that restores it with `--force-with-lease`. gy does not force push. A remote with content other than a ledger is refused.
+- A write to a synced copy reads `git config user.name` and `user.email` on every write and puts them in the line's optional fields `by` and `by_mail` (without them it is refused). Reads show the human first, as `<by> / <actor>`, and the same actor name under a different human is a different writer.
+- A copy has `sync.state` (the last sync, the last error), and `handover` and the screen show the number of unpushed writes and the last sync. Reads and writes go through while the remote is unreachable, and when it comes back the accumulated lines are pushed together. A broken copy, an emptied remote, a newer format version and tampering each print the cause and the remedy in 2 lines, and gy never deletes a copy or a remote on its own.
+- A ledger without `remote` does not change at all. Removing `remote` turns the copy back into a local-only ledger (the next command says so once), and reconnecting is refused if both sides have advanced.
 
-根拠: d-39f6 d-1e50 d-f7b6 n-6f47 n-8a52 n-f4cd n-ecbf n-94bb n-d36d n-6d6c
+Basis: d-39f6 d-1e50 d-f7b6 n-6f47 n-8a52 n-f4cd n-ecbf n-94bb n-d36d n-6d6c
 
-## gy serve は台帳を読む目
+## gy serve is the eye that reads the ledger
 
-gy serve は、正本の今を映す読み取り専用のローカルサーバである。第一に 6 つの問いに答え、第二に映えを持つ。publish が指定した時点と範囲の記録を凍らせて出すのに対し、serve はいつでも正本の今を映す。人間は gy を操作しないので、serve に書く経路は無く、見るだけである。
+gy serve is a read-only local server that shows the canonical store as it is now. First it answers the six questions, and second it looks good. Where publish freezes and emits the record of a given point and range, serve always shows the canonical store as it is now. A human does not operate gy, so serve has no write path; it is for looking only.
 
-HTTP の層は標準ライブラリだけで自作し、server.rs の 1 ファイルに閉じる。GET だけを受け、要求行とヘッダだけを読んで本文は読まない。Content-Length を付けて Connection: close で返し、127.0.0.1 だけに束縛する。接続ごとに 1 スレッド、読み取りは 5 秒で切り、ヘッダは合計 64 KB まで、GET 以外は 405 とする。handler は枠組みに依存しない Request と Response の構造体で書き、テストはソケット無しで handler を直接呼ぶ。移る先はその時点で事実上の標準とし（今なら bun + hono）、移る基準を 4 つ置く。どれか一つで検討を起こす: このビルドが workspace の rust-version で組めなくなる、RustSec に勧告が出て修正版が無い、同期の 1 接続 1 スレッドでは満たせない要求（同時に見る人が 10 を超える、HTTP/2 や TLS が要る、双方向の通信が要る）がニーズとして立つ、1 ファイルが 300 行を超えないと要件を満たせない。
+The HTTP layer is written by hand on the standard library alone and is contained in the single file server.rs. It accepts only GET, reads only the request line and the headers, and does not read a body. It replies with Content-Length and Connection: close, and binds only to 127.0.0.1. There is 1 thread per connection, a read is cut off after 5 seconds, the headers are at most 64 KB in total, and anything other than GET gets 405. The handlers are written against Request and Response structs that depend on no framework, and the tests call the handlers directly without a socket. The place to move to is whatever is the de facto standard at that time (today, bun + hono), and there are 4 criteria for moving. Any one of them starts the review: this build can no longer be built with the workspace's rust-version; RustSec issues an advisory and there is no fixed version; a requirement that a synchronous 1 thread per connection cannot meet (more than 10 people viewing at once, a need for HTTP/2 or TLS, a need for two-way communication) is raised as a need; the requirements cannot be met unless 1 file exceeds 300 lines.
 
-serve は状態も関係も判断しない。判断は gy-ledger の view（now・list・show）が持つ。now が「今マスター待ちは何か」「まだ決まっていない論点は何か」を導き、list と show が一覧と一件を導く。serve の API は同じ Repository と Request を受けて、その結果を JSON にするだけである。CLI と serve は同じ判断を使う。
+serve judges neither states nor relations. The judgement belongs to the views of gy-ledger (now, list, show). now derives "what is waiting on the person now" and "which questions are not yet decided", and list and show derive a list and one item. The API of serve only takes the same Repository and Request and turns the result into JSON. The CLI and serve use the same judgement.
 
-すべての読みの API は at=<seq> を取れる。指定した時点は、ログをその seq まで再生した MemoryStore で表す。今の正本の代わりにその時点の台帳を開き、同じ view を通すので、今と過去を同じ読み方で見られる。
+Every read API can take at=<seq>. The given point is represented by a MemoryStore that has replayed the log up to that seq. The ledger of that point is opened in place of the present canonical store and passed through the same views, so the present and the past are seen with the same way of reading.
 
-serve は正本のログファイルを見張り、0.5 秒ごとに書き込みを確かめる。/api/wait?after=<seq> は次の書き込みまで長く待つ応答を返す。画面は再読み込みなしで脈・一覧・時を戻す帯を追随させ、時点を戻している最中は動かない。
+serve watches the log file of the canonical store and checks for writes every 0.5 seconds. /api/wait?after=<seq> returns a response that waits long, until the next write. The screen makes the pulse, the lists and the time band follow without reloading, and they do not move while the point in time is rewound.
 
-グラフはフラクタルに拡大する一枚の絵である。配置はサーバが seq とスコープごとに決定的に計算して持ち、ブラウザには座標と辺だけを送る。尺度の段で描く項目が増える: 俯瞰では各スコープの泡と点、寄ると辺、次に ID、さらに寄ると題名。画面の外の点と辺は描かず、題名と本文は寄ったときに取りに行く。
+The graph is a single picture that zooms fractally. The server computes and holds the layout deterministically per seq and scope, and sends the browser only coordinates and edges. The items drawn increase with the step of the scale: from above, the bubble and the dots of each scope; closer, the edges; then the IDs; closer still, the titles. Dots and edges outside the screen are not drawn, and titles and bodies are fetched when zoomed in.
 
-画面の言語は英語を既定とし、ブラウザの Accept-Language と画面内の切り替えで日本語にする。CLI のオプションは持たない。翻訳の対象は UI の文言と関係の名前だけで、ノードの題名・本文・成立範囲は書かれた言語のまま出す。
+The language of the screen is English by default, and becomes Japanese through the browser's Accept-Language and a switch in the screen. There is no CLI option. Only the UI text and the names of the relations are translated; a node's title, body and scope note are shown in the language they were written in.
 
-画面の E2E は Playwright で持ち、chromium だけを CI の ubuntu-latest で回す。各場面は API の JSON を取得して DOM の数・文言・遷移と突き合わせ、キー操作を守る。画像は artifact に残すだけで比較しない。cargo test には入れない。
+The E2E of the screen is kept in Playwright, and only chromium runs, on ubuntu-latest in CI. Each scene fetches the API's JSON and checks it against the DOM's counts, text and transitions, and guards the key operations. Images are only kept as artifacts and are not compared. It is not part of cargo test.
 
-根拠: d-25c4 d-799e d-e6c4 d-685d d-995c d-9751 d-b93b d-9c5f d-244b
+Basis: d-25c4 d-799e d-e6c4 d-685d d-995c d-9751 d-b93b d-9c5f d-244b

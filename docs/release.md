@@ -1,33 +1,33 @@
-# 公開の手順
+# The release procedure
 
-この文書は、gy の版の決め方、準備、公開の手順を定める。誰が何を判断するかは `AGENTS.md` にあり、ここには手順と確認項目を書く。
+This document defines how gy's version is decided, how a release is prepared, and how it is published. Who judges what is in `AGENTS.md`; this document holds the procedure and the items to check.
 
-## 版を決める
+## Decide the version
 
-作業ツリーと直前の公開版を、Rust の公開 API、CLI の表面、保存の形式、`gy.toml`、診断と終了コード、履歴の解釈のそれぞれで比べる。`0.y.z` では互換な変更が `z`、非互換な変更が `y` を動かす。`1.0.0` 以降は semver に従う。テストの量や差分の大きさでは決めない。非互換の変更は 1 つの版にまとめる。
+Compare the working tree with the last published version on each of: the public Rust API, the surface of the CLI, the storage format, `gy.toml`, the diagnostics and exit codes, and the interpretation of the history. In `0.y.z` a compatible change moves `z` and an incompatible change moves `y`. From `1.0.0` on, follow semver. Do not decide by the amount of tests or the size of the diff. Put incompatible changes together in one version.
 
-開発中のビルドは、公開まで直前の版番号を保つ。公開のときに、`gy-ledger`・`gy-serve`・`gy` の版と、CLI が依存するクレートの指定と `Cargo.lock` を 1 つのコミットで揃える。このコミットは機能のコミットと分ける。コミットメッセージは英語で、変更の理由を書く。
+A build under development keeps the last version number until the release. At release time, align the versions of `gy-ledger`, `gy-serve` and `gy`, the version requirements of the crates the CLI depends on, and `Cargo.lock` in one commit. Keep this commit separate from feature commits. The commit message is in English and states the reason for the change.
 
-## 準備する（取り消せる）
+## Prepare (reversible)
 
-1. 英語の `CHANGELOG.md` と、移行の案内（`docs/migration-0.5.md`）を書く。利用者に残る手作業は、CHANGELOG と README の両方に書く。同じコマンドを再実行して安全かどうかも明記する。
-   あわせて、`docs/architecture.md`・README 日英・`crates/gy/skills/gy-loop/CHEATSHEET.md`・同梱スキル（`crates/gy/skills/*/SKILL.md`）を CHANGELOG の各項と突き合わせ、出力や契約の変更が文書とスキルに写っていることを確かめる。スキルは crate に同梱されるので、公開の前に直す（0.9.0 で漏れた。d-f7b6）。スキルを変えた版は、CHANGELOG の Updating に「スキルが変わったので写し直す」と README の「スキルの置き方」の節への参照を書く（n-f8a2）。
-2. 移行の案内にあるコード例を、下流のクレートから実行して確かめる。読める例とコンパイルが通る例は別である。`#[non_exhaustive]` の型は、定義したクレートの外では構造体リテラルと `..Default::default()` を受け付けない。下流は `Default::default()` を作って公開フィールドへ代入する。
-3. `cargo fmt --all -- --check`、`cargo clippy --workspace --all-targets --locked -- -D warnings`、`cargo test --workspace --locked` を実行する。
-4. `cargo publish --workspace --dry-run --locked` を実行する。`gy-ledger`、`gy-serve`、`gy` を依存の向きの順に package して検証する。`gy-serve` は `include_str!` で埋め込む `src/assets/` の全ファイルが package に入ることを `cargo package --list -p gy-serve` で確かめる（0.6.1 から）。`--allow-dirty` はコミット前の確認にだけ使い、公開はきれいな検証済みのコミットから行う。
+1. Write the English `CHANGELOG.md` and the migration guide (`docs/migration-0.5.md`). Manual work left to the user is written in both the CHANGELOG and the README. Also state whether it is safe to run the same command again.
+   At the same time, check `docs/architecture.md`, the README in English and Japanese, `crates/gy/skills/gy-loop/CHEATSHEET.md` and the bundled skills (`crates/gy/skills/*/SKILL.md`) against each entry of the CHANGELOG, and confirm that changes to output and contracts are reflected in the documents and the skills. The skills are bundled in the crate, so fix them before the release (this was missed in 0.9.0; d-f7b6). For a version that changes the skills, write in the CHANGELOG's Updating section that "the skills changed, so copy them again", with a reference to the README's section on where to put the skills (n-f8a2).
+2. Run the code examples in the migration guide from a downstream crate and confirm them. An example that reads well and an example that compiles are different things. A `#[non_exhaustive]` type does not accept a struct literal or `..Default::default()` outside the crate that defines it. Downstream creates `Default::default()` and assigns to the public fields.
+3. Run `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings` and `cargo test --workspace --locked`.
+4. Run `cargo publish --workspace --dry-run --locked`. It packages and verifies `gy-ledger`, `gy-serve` and `gy` in the order of dependency. For `gy-serve`, confirm with `cargo package --list -p gy-serve` that every file under `src/assets/` embedded with `include_str!` is in the package (since 0.6.1). Use `--allow-dirty` only for checks before the commit, and publish from a clean, verified commit.
 
-> 同じ版番号で dry-run を繰り返すと、前回の検証で組んだ gy-ledger の成果物（`target/` と `~/.cargo/registry/src/*/gy-ledger-<版>`）が再利用され、`gy` の検証が古い API で失敗することがある。その場合は `cargo clean` と当該ディレクトリの削除の後に dry-run をやり直す（2026-09-15 の 0.5.0 の準備で確認）。
+> When the dry-run is repeated with the same version number, the gy-ledger artifacts built in the previous verification (`target/` and `~/.cargo/registry/src/*/gy-ledger-<version>`) are reused, and the verification of `gy` can fail against an old API. In that case, run `cargo clean`, delete that directory, and do the dry-run again (confirmed on 2026-09-15 while preparing 0.5.0).
 
-5. クレートごとに `cargo package --list` を実行し、埋め込んだファイルが package に含まれることを確かめる。欠けたファイルは手元のビルドを通り、公開したクレートでだけ壊れる。
-6. 版を揃えたコミットを行う。
+5. Run `cargo package --list` for each crate and confirm that the embedded files are included in the package. A missing file passes the local build and breaks only in the published crate.
+6. Make the commit that aligns the versions.
 
-## 公開する（取り消せない）
+## Publish (irreversible)
 
-crates.io への公開は取り消せない。`yank` は新しい依存がその版を選ぶのを止めるだけで、番号は消費されたまま残る。取り消せる準備が終わり、公開の指示が出てから行う。
+Publishing to crates.io cannot be undone. `yank` only stops new dependencies from choosing that version; the number stays consumed. Publish after the reversible preparation is finished and the instruction to publish has been given.
 
-1. `cargo publish -p gy-ledger --locked`、次に `cargo publish -p gy-serve --locked`、最後に `cargo publish -p gy --locked`（0.6.1 から `gy-serve` が間に入る。`gy` は `gy-serve` に、`gy-serve` は `gy-ledger` に依存する）。
-2. 公開のコミットと、対応する `vX.Y.Z` のタグを push する。
-3. レジストリから入れて、バイナリを一度動かす: `cargo install gy --locked && gy --version`。
-4. 公開した版と更新のコマンドを利用者へ伝える。`--locked` は同梱の依存の版を再現する。
+1. `cargo publish -p gy-ledger --locked`, then `cargo publish -p gy-serve --locked`, and last `cargo publish -p gy --locked` (since 0.6.1 `gy-serve` comes in between: `gy` depends on `gy-serve`, and `gy-serve` depends on `gy-ledger`).
+2. Push the release commit and the matching `vX.Y.Z` tag.
+3. Install from the registry and run the binary once: `cargo install gy --locked && gy --version`.
+4. Tell the users the published version and the command to update. `--locked` reproduces the versions of the bundled dependencies.
 
-公開済みの版は不変の成果物である。修正は次の適切な版で届ける。
+A published version is an immutable artifact. A fix is delivered in the next appropriate version.

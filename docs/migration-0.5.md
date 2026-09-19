@@ -1,71 +1,71 @@
-# 0.4 から 0.5 へ台帳を移す
+# Moving a ledger from 0.4 to 0.5
 
-gy 0.5 は保存の形式と操作の集合を変える非互換の版である。既存の 0.4 の台帳は、同梱の `gy-migrate` で 0.5 の正本へ一度だけ移す。この文書は、何が変わるか、どう移すか、写せないものをまとめる。
+gy 0.5 is an incompatible version that changes the storage format and the set of operations. An existing 0.4 ledger is moved once to the 0.5 canonical store with the bundled `gy-migrate`. This document covers what changes, how to move, and what cannot be carried over.
 
-`gy-migrate` は 0.6.1 までのリポジトリにあり、タグ v0.6.1 で取り出せる。
+`gy-migrate` is in the repository up to 0.6.1 and can be taken from the tag v0.6.1.
 
-## 何が変わるか
+## What changes
 
-| 0.4 | 0.5 | 利用者がすること |
+| 0.4 | 0.5 | What the user does |
 | --- | --- | --- |
-| 台帳はリポジトリ内のファイル群で、独自の git と worktree で管理する | 正本はリポジトリの外（`$XDG_DATA_HOME/gy/<ハッシュ>/`）の追記専用ログ。リポジトリに置くのは `gy.toml` だけ | 台帳用の git と worktree が不要になる |
-| ID は `N-18`・`D-164` や Issue 番号 | ID は `n-3f9a`・`d-a1b2` のような接頭辞 + 短いハッシュを gy が振る | 旧 ID は別名として残り、`show` で引ける。文書の旧 ID は書き換えなくてよい |
-| 要求の ID が Issue 番号。親 Issue を設定に持つ | 要求は gy の ID を持ち、外への参照は `ref` 1 つ | `req add ... --ref <URL>`。同じ URL の未完了があれば拒まれる |
-| 要求の状態が多く、遷移ごとの記録を設定で組む | 状態は起票済み → 確定 → 完了 と中止の 4 つ。確定後に gy が持つのは改訂・完了・中止の記録だけ | 実装・監査・PR の記録は外の追跡先へ置く。gy へ写さない |
-| `gy.toml` に多数の設定を書く | `[scopes.<名前>]` と出力先だけ。他のキーは読み込み時に拒まれる | 消えた設定は何もしなくてよい |
-| 書き手は 1 人に限る運用 | 各エージェントが `GY_ACTOR` を名乗って自分で書く | 各ペインで `export GY_ACTOR=<名前>` |
-| 後から整合を検査する工程がある | 不正は書き込み時に拒まれ、注意が要る状態は `handover` が件数で出す | 後から検査する習慣が要らない |
-| 担い手数やニーズの状態を手で更新する | グラフから導出する（保存しない） | 手更新をやめる |
-| 人が読む出力は別の投影で作る | 記録は `publish` がスコープごとのディレクトリに出す（1 ノード 1 ファイル + 索引） | 読む口が `publish` に変わる |
+| The ledger is a set of files inside the repository, managed with its own git and worktree | The canonical store is an append-only log outside the repository (`$XDG_DATA_HOME/gy/<hash>/`). The only thing placed in the repository is `gy.toml` | The git and worktree for the ledger are no longer needed |
+| IDs are `N-18`, `D-164` or Issue numbers | gy assigns IDs of a prefix + a short hash, such as `n-3f9a` and `d-a1b2` | Old IDs remain as aliases and can be looked up with `show`. Old IDs in documents need not be rewritten |
+| A requirement's ID is the Issue number. The parent Issue is held in the configuration | A requirement has a gy ID, and its outward reference is one `ref` | `req add ... --ref <URL>`. It is refused if an unfinished requirement with the same URL exists |
+| Requirements have many states, and the record for each transition is set up in the configuration | The states are four: filed → approved → done, and cancelled. After approval gy holds only the records of revision, completion and cancellation | Put the records of implementation, audit and PRs in the external tracker. Do not copy them into gy |
+| `gy.toml` holds many settings | Only `[scopes.<name>]` and the output directory. Other keys are refused at load time | Nothing needs to be done about the settings that went away |
+| Operated with the writer limited to one | Each agent names itself with `GY_ACTOR` and writes for itself | `export GY_ACTOR=<name>` in each pane |
+| There is a pass that checks consistency later | An invalid write is refused at write time, and `handover` reports the states that need attention as counts | The habit of checking later is not needed |
+| The number of bearers and the state of a need are updated by hand | Derived from the graph (not stored) | Stop updating by hand |
+| Output for people to read is made by a separate projection | `publish` writes the record into a directory per scope (one file per node + an index) | The way to read changes to `publish` |
 
-## 操作の対応
+## How the operations correspond
 
-| 意図 | 0.4 | 0.5 |
+| Intent | 0.4 | 0.5 |
 | --- | --- | --- |
-| ニーズを作る | ニーズを追加し、担い手の数を手で更新 | `need add "<題>" --targets <AC>...` |
-| ニーズを閉じる | 方法が無かった | `need close <ID> --by fact\|external --evidence <文>` |
-| 論点を作る・閉じる | 論点を追加し、3 通りのいずれかで閉じる | 同じ。決定で閉じるときは `--decision <D>` で辺も張る |
-| 論点がニーズに属する | 論点の `belongs-to: [N-x]` | そのニーズから論点への `waits-on` の辺（`link <N> waits-on <Q>`） |
-| その他の属性 | 各ノードの属性 | 自由属性として写す（配列は要素を改行で連結、object は JSON 文字列） |
-| 決定を採番する | ADR を書いて取り込む | `decide "<題>" --scope-note <成立範囲> [--body-file <path>] [--closes <Q>] [--relate <関係> <D> --mark <文>]` |
-| 要求を起票する | 要求を追加し、ニーズを関連付け、属性を手で更新 | `req add "<題>" --need <N>... [--relies-on <D>]... [--targets <AC>]... [--ref <URL>]` |
-| 確定・改訂・完了・中止 | 遷移コマンドと申告オプション | `req approve` / `req revise` / `req done` / `req cancel` |
-| 受け入れ条件 | 追加と充足 | 同じ。`--revoke` で充足を取り消す |
-| 辺 | 両側に同じ辺を記録 | `link <from> <関係> <to> [--mark <文>] [--remove]`。from 側だけに保存し、逆向きは導出する |
-| 本文・属性を直す | 属性を設定する | `edit <ID> --reason <文> [--title] [--body-file] [--set k=v] [--append k=v]`。状態と辺は変えられない |
-| 取り消す | git で戻す | `undo --reason <文>` |
-| 読む | 一覧・検索・表示・引き継ぎ・整合検査 | `show` / `list` / `next` / `handover` / `publish` |
+| Create a need | Add a need and update the number of bearers by hand | `need add "<title>" --targets <AC>...` |
+| Close a need | There was no way | `need close <ID> --by fact\|external --evidence <text>` |
+| Create and close a question | Add a question and close it in one of 3 ways | The same. When closing with a decision, `--decision <D>` also makes the edge |
+| A question belongs to a need | The question's `belongs-to: [N-x]` | A `waits-on` edge from that need to the question (`link <N> waits-on <Q>`) |
+| Other attributes | Attributes of each node | Carried over as free attributes (an array joins its elements with newlines, an object becomes a JSON string) |
+| Number a decision | Write an ADR and import it | `decide "<title>" --scope-note <scope note> [--body-file <path>] [--closes <Q>] [--relate <relation> <D> --mark <text>]` |
+| File a requirement | Add a requirement, associate the needs, and update the attributes by hand | `req add "<title>" --need <N>... [--relies-on <D>]... [--targets <AC>]... [--ref <URL>]` |
+| Approve, revise, complete, cancel | Transition commands and declaration options | `req approve` / `req revise` / `req done` / `req cancel` |
+| Acceptance criteria | Add and satisfy | The same. `--revoke` takes back a satisfaction |
+| Edges | Record the same edge on both sides | `link <from> <relation> <to> [--mark <text>] [--remove]`. Stored on the from side only; the reverse direction is derived |
+| Fix the body or attributes | Set an attribute | `edit <ID> --reason <text> [--title] [--body-file] [--set k=v] [--append k=v]`. States and edges cannot be changed |
+| Undo | Revert with git | `undo --reason <text>` |
+| Read | List, search, show, handover, consistency check | `show` / `list` / `next` / `handover` / `publish` |
 
-## 移行の手順
+## The migration procedure
 
-移行は一度きりで、新しい正本がまだ無いときに実行する。
+The migration is done once, and is run while the new canonical store does not exist yet.
 
 ```sh
-export GY_ACTOR=<名前>
-gy-migrate <0.4 の台帳ディレクトリ> \
-  --root <リポジトリのルート> \
-  --ref-base <Issue URL の接頭辞> \
-  --publication <凍結先>
+export GY_ACTOR=<name>
+gy-migrate <0.4 ledger directory> \
+  --root <repository root> \
+  --ref-base <Issue URL prefix> \
+  --publication <freeze destination>
 ```
 
-- `<0.4 の台帳ディレクトリ>` は、0.4 の `gy.toml` とスコープのディレクトリを持つ場所である。
-- `--root` は新しい `gy.toml` を置くリポジトリのルートである。
-- `--ref-base` は、要求の旧 `#N` から `ref`（`<接頭辞>N`）を作る。省略すると ref は付かない。
-- `--publication` は凍結した記録と `migration-report.md` を書く場所で、省略すると `<root>/.gy-migration/` になる。
-- `--dry-run` は何も書かず、見つけたものだけを報告する。
-- 書き込みは 1 トランザクションで行う。新しい正本が既にあるときは拒む。
+- `<0.4 ledger directory>` is the place that holds the 0.4 `gy.toml` and the scope directories.
+- `--root` is the repository root where the new `gy.toml` is placed.
+- `--ref-base` makes a `ref` (`<prefix>N`) from a requirement's old `#N`. If it is omitted, no ref is attached.
+- `--publication` is where the frozen records and `migration-report.md` are written; if it is omitted, it is `<root>/.gy-migration/`.
+- `--dry-run` writes nothing and only reports what it found.
+- The write is done in one transaction. It is refused when the new canonical store already exists.
 
-移行は次のものを出す。
+The migration reports the following.
 
-- 移行前後のノード種ごとの件数、付けた別名の数、成立範囲が未記録の決定の数、`waits-on` にした辺の数、全体の辺の数。
-- 4 つの状態に写せなかった要求の状態と、各要求の状態の対応。
-- 凍結した記録の数と、その置き場所。
-- `<root>/gy.toml` に `[scopes.<名前>]` を書く。既に `gy.toml` があるときは上書きせず、台帳が使うスコープを名乗っていなければエラーにする。
+- The counts per node kind before and after the migration, the number of aliases attached, the number of decisions whose scope note is unrecorded, the number of edges turned into `waits-on`, and the total number of edges.
+- The requirement states that could not be mapped to the four states, and the mapping of each requirement's state.
+- The number of frozen records and where they are placed.
+- It writes `[scopes.<name>]` into `<root>/gy.toml`. When a `gy.toml` already exists it is not overwritten, and it is an error if that file does not declare the scopes the ledger uses.
 
-移行のあと、`gy handover` で進行中の要求が `ref` 付きで出ることを確かめる。`gy show '#6027'` や `gy show N-18` のように、旧 ID でも引ける。
+After the migration, confirm with `gy handover` that the requirements in progress appear with their `ref`. They can also be looked up by the old ID, as in `gy show '#6027'` or `gy show N-18`.
 
-## 写せないもの
+## What cannot be carried over
 
-- ニーズが待っていた先が要求である場合、それは `waits-on` の辺にしない（辺の先は論点に限る）。必要なら `edit` で自由属性として残す。
-- 成立範囲が空の決定は、未記録の印を付けて移す。`show` と `handover` に件数として出る。埋めるかどうかは台帳ごとに判断する。
-- 決定の番号は gy が振る。ADR ファイルの番号を合わせるかどうかは、そのプロジェクトの運用に任せる。
+- When what a need was waiting on is a requirement, it is not made into a `waits-on` edge (the target of the edge is limited to questions). If needed, keep it as a free attribute with `edit`.
+- A decision with an empty scope note is moved with the unrecorded marker attached. It appears as a count in `show` and `handover`. Whether to fill it in is judged per ledger.
+- gy assigns the numbers of decisions. Whether to match the numbers of the ADR files is left to how that project is run.

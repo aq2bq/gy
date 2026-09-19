@@ -1,7 +1,7 @@
-# gy serve の画面の E2E
+# E2E of the gy serve screen
 
-Chromium だけで、`gy serve` が配る画面と API の JSON を突き合わせる（d-244b）。
-台帳はテストが一時ディレクトリに CLI で作る。`cargo test` には入らない。
+With Chromium only, it checks the screen that `gy serve` serves against the API's JSON (d-244b).
+The tests build the ledger in a temporary directory with the CLI. It is not part of `cargo test`.
 
 ```sh
 cargo build --release -p gy

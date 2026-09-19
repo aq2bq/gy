@@ -120,7 +120,7 @@ A node's `created`, a criterion's `satisfied_at` and a requirement's recorded da
 
 ## Resuming a session
 
-A new session starts with three commands. `handover` shows the in-progress requirements with their references, the number of open questions, the number of ready needs, and the errors and warning counts. `next` lists the needs whose prerequisites are settled, and the agent presents one of them to the master. `show` reads one node in full.
+A new session starts with three commands. `handover` shows the in-progress requirements with their references, the number of open questions, the number of ready needs, and the errors and warning counts. `next` lists the needs whose prerequisites are settled, and the agent presents one of them to the person it works for. `show` reads one node in full.
 
 ```sh
 gy handover
@@ -191,7 +191,7 @@ An existing ledger keeps its old IDs as aliases, so `show D-164` and `show '#602
 
 ## publish
 
-`publish` writes the record at a point and range into a directory to commit: one file per node under `<out>/<scope>/<kind>/`, and a scope index at `<out>/<scope>/README.md`. It is a development artifact: later, an agent reads it to review what was decided and why, and diffs one publication against the next. It is not a reading for the master, and gy adds no human-facing output format.
+`publish` writes the record at a point and range into a directory to commit: one file per node under `<out>/<scope>/<kind>/`, and a scope index at `<out>/<scope>/README.md`. It is a development artifact: later, an agent reads it to review what was decided and why, and diffs one publication against the next. It is not reading matter for the person the agents work for, and gy adds no human-facing output format.
 
 A node file holds the id with its old aliases and reference, the title, scope, creation date, state, applicability conditions, the body, both edge directions with the other side's id, alias, title, and mark, the closure and evidence, the requirement records, and the free attributes. Every reference carries the target's title, so each file stands on its own. A decision file puts its lineage relations first.
 
