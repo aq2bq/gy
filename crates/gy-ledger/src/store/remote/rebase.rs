@@ -1,27 +1,12 @@
 //! Rebase uncommitted writes onto the remote's new lines (n-ecbf 2B, ac-08cc).
 use super::super::{Result, log, replay};
+use super::rejected::{Rejected, RejectedBy, write_rejected};
 use super::report::{Pulled, Range, Sync};
-use super::rules::{key, landed, now, parse, targets, touched, write_rejected};
+use super::rules::{key, landed, now, parse, targets, touched};
 use super::{git, sync::push_writes, sync::rebuild_snapshot, sync::writers};
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Rejected {
-    pub at: u64,
-    pub event: log::Event,
-    pub reason: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub by: Option<RejectedBy>,
-}
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RejectedBy {
-    pub seq: u64,
-    pub actor: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub by: Option<String>,
-}
 type Cause = (u64, String, Option<String>);
 pub(super) fn rebase(
     ledger: &Path,
@@ -216,69 +201,4 @@ fn judge(
         }
     }
     None
-}
-pub fn rejected_notices(ledger: &Path) -> Vec<String> {
-    read_rejected(ledger)
-        .iter()
-        .map(|rejected| {
-            format!(
-                "notice: your write seq {} ({}) did not land: {}; redo it against the current ledger if it still applies",
-                rejected.event.seq, rejected.event.why, rejected.reason
-            )
-        })
-        .collect()
-}
-pub fn clear_rejected(ledger: &Path, event: &log::Event) -> Result<()> {
-    let Ok(text) = std::fs::read_to_string(ledger.join("rejected.jsonl")) else {
-        return Ok(());
-    };
-    let mine = named_nodes(event);
-    let mut kept = Vec::new();
-    let mut removed = false;
-    for line in text.lines() {
-        match serde_json::from_str::<Rejected>(line) {
-            Ok(rejected)
-                if rejected.event.actor == event.actor
-                    && rejected.event.by == event.by
-                    && named_nodes(&rejected.event)
-                        .iter()
-                        .any(|node| mine.contains(node)) =>
-            {
-                removed = true;
-            }
-            _ => kept.push(line),
-        }
-    }
-    if !removed {
-        return Ok(());
-    }
-    let mut out = kept.join("\n");
-    if !out.is_empty() {
-        out.push('\n');
-    }
-    let temporary = ledger.join(format!(".rejected.{}.tmp", std::process::id()));
-    std::fs::write(&temporary, out)?;
-    std::fs::rename(&temporary, ledger.join("rejected.jsonl"))?;
-    Ok(())
-}
-fn read_rejected(ledger: &Path) -> Vec<Rejected> {
-    std::fs::read_to_string(ledger.join("rejected.jsonl"))
-        .map(|text| {
-            text.lines()
-                .filter_map(|line| serde_json::from_str(line).ok())
-                .collect()
-        })
-        .unwrap_or_default()
-}
-fn named_nodes(event: &log::Event) -> BTreeSet<String> {
-    event
-        .changes
-        .iter()
-        .filter_map(|change| match change {
-            log::Change::Created { node, .. }
-            | log::Change::Updated { node, .. }
-            | log::Change::Deleted { node, .. } => Some(node.clone()),
-            log::Change::ScopeRenamed { .. } => None,
-        })
-        .collect()
 }

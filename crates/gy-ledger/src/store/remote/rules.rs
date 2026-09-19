@@ -1,7 +1,6 @@
 //! Typed node/link reads and `rejected.jsonl` for the rebase (n-ecbf 2B).
 use super::super::{Error, FormatVersion, Result, log, replay};
 use super::git;
-use super::rebase::Rejected;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
@@ -89,20 +88,6 @@ pub(super) fn parse(text: &str) -> Result<Vec<log::Event>> {
                 .map_err(|_| Error::invalid("a committed event is not an event"))
         })
         .collect()
-}
-pub(super) fn write_rejected(ledger: &Path, rejects: &[Rejected]) -> Result<()> {
-    use std::io::Write;
-    let mut file = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(ledger.join("rejected.jsonl"))?;
-    for rejected in rejects {
-        let mut text =
-            serde_json::to_string(rejected).map_err(|e| Error::invalid(e.to_string()))?;
-        text.push('\n');
-        file.write_all(text.as_bytes())?;
-    }
-    Ok(())
 }
 /// The identity of a write across a rebase: everything but the sequence, which
 /// a rebase may change (n-6b44).

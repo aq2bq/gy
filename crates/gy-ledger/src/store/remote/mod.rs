@@ -7,6 +7,7 @@ mod origin;
 mod prepare;
 pub mod rebase;
 mod recovery;
+mod rejected;
 pub mod report;
 mod rounds;
 mod rules;
@@ -17,7 +18,7 @@ pub mod sync;
 
 pub use join::{Join, check as join_check, notice as join_notice, run as join_run};
 pub use prepare::reconcile;
-pub use rebase::{clear_rejected, rejected_notices};
+pub use rejected::{clear_rejected, rejected_notices};
 pub use report::{Pulled, Range, Sync};
 pub use rounds::Rounds;
 pub use share::{Share, check as share_check, upload as share_upload};

@@ -11,6 +11,7 @@ pub use super::as_of::open_at;
 pub use super::id::unique_hash;
 
 mod tx;
+mod undo;
 
 #[derive(Debug)]
 struct Staged {
