@@ -54,7 +54,7 @@ Edges are stored on the node they start from; the reverse direction is derived, 
 | requirement → question | `raised` | `raised-by` |
 | need → question, requirement | `waits-on` | `awaited-by` |
 
-A decision is stored with its applicability conditions, so a later reader can tell where it does and does not hold. `narrows` and `supersedes` also name the passage of the older decision that loses effect; the mark is checked against that decision's text when the edge is written.
+A decision is stored with its scope note (where it holds), so a later reader can tell where it does and does not hold. `narrows` and `supersedes` also name the passage of the older decision that loses effect; the mark is checked against that decision's text when the edge is written.
 
 ## How a requirement moves
 
@@ -193,7 +193,7 @@ An existing ledger keeps its old IDs as aliases, so `show D-164` and `show '#602
 
 `publish` writes the record at a point and range into a directory to commit: one file per node under `<out>/<scope>/<kind>/`, and a scope index at `<out>/<scope>/README.md`. It is a development artifact: later, an agent reads it to review what was decided and why, and diffs one publication against the next. It is not reading matter for the person the agents work for, and gy adds no human-facing output format.
 
-A node file holds the id with its old aliases and reference, the title, scope, creation date, state, applicability conditions, the body, both edge directions with the other side's id, alias, title, and mark, the closure and evidence, the requirement records, and the free attributes. Every reference carries the target's title, so each file stands on its own. A decision file puts its lineage relations first.
+A node file holds the id with its old aliases and reference, the title, scope, creation date, state, scope note (where it holds), the body, both edge directions with the other side's id, alias, title, and mark, the closure and evidence, the requirement records, and the free attributes. Every reference carries the target's title, so each file stands on its own. A decision file puts its lineage relations first.
 
 The index holds the generated time, the log sequence, the scope and range, the writer, and the canonical location; a short "how to read" section; a per-kind list with a link and state for each node; the write history; and the diagnostics.
 
