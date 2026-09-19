@@ -43,8 +43,9 @@ pub fn write(dir: &Path, version: FormatVersion) -> Result<()> {
 /// keeps a copy of the file it changes before writing the new version (D-77):
 /// 1 to 2 copies `format` and `events.jsonl` to `*.1.bak` (n-ff2b); 2 to 3
 /// copies `format` to `*.2.bak` and drops the derived snapshot, which the next
-/// open rebuilds from the log (n-b6b6). A jump this build does not know is an
-/// error.
+/// open rebuilds from the log (n-b6b6); 3 to 4 copies `format` to `*.3.bak`
+/// and leaves the log and the snapshot alone, because the data shape does not
+/// change (n-96f8). A jump this build does not know is an error.
 pub fn migrate(dir: &Path, from: FormatVersion, to: FormatVersion) -> Result<()> {
     if from == to {
         return Ok(());
@@ -58,6 +59,9 @@ pub fn migrate(dir: &Path, from: FormatVersion, to: FormatVersion) -> Result<()>
         2 => {
             backup(dir, FILE, 2)?;
             drop_snapshot(dir)?;
+        }
+        3 => {
+            backup(dir, FILE, 3)?;
         }
         _ => {
             return Err(Error::invalid(format!(

@@ -1,7 +1,7 @@
 //! `gy sync` (n-6f47, d-39f6, d-1e50): prepare the copy, fetch, pull, and
 //! push each local write as one commit.
 use super::super::{Error, Gate, Result, SNAPSHOT_FILE, file::FileStore, log};
-use super::push::{first_push, push, push_writes};
+use super::push::{first_push, push, push_writes, raise_format, raise_target};
 use super::report::{Pulled, Sync};
 use super::{git, guard, prepare, rebase, recovery, rules, state};
 use fs2::FileExt;
@@ -52,10 +52,11 @@ fn sync_inner(ledger: &Path, remote: &str, gate: &dyn Gate) -> Result<Sync> {
     })?;
     let branch = git::head_branch(ledger)?;
     let upstream = format!("origin/{branch}");
-    rules::check_remote_format(ledger, &upstream)?;
+    let remote_format = rules::check_remote_format(ledger, &upstream)?;
+    let raise = raise_target(rules::local_format(ledger), remote_format);
     state::set_step(ledger, "push");
     first_push(ledger, remote, &branch, &mut report)?;
-    reconcile(ledger, branch.as_str(), &upstream, &mut report, gate)?;
+    reconcile(ledger, branch.as_str(), &upstream, &mut report, gate, raise)?;
     Ok(report)
 }
 
@@ -75,6 +76,7 @@ fn reconcile(
     upstream: &str,
     report: &mut Sync,
     gate: &dyn Gate,
+    raise: Option<u32>,
 ) -> Result<()> {
     state::set_step(ledger, "push");
     let head =
@@ -87,14 +89,16 @@ fn reconcile(
         report.seq = committed;
         if working_seq(ledger)? > committed {
             locked(ledger, || {
-                push_writes(ledger, branch, seq_at(ledger, "HEAD")?, report)
+                push_writes(ledger, branch, seq_at(ledger, "HEAD")?, report, raise)
             })?;
             report.seq = working_seq(ledger)?;
+        } else if let Some(target) = raise {
+            locked(ledger, || raise_format(ledger, branch, target))?;
         }
     } else if git::ancestor(ledger, "HEAD", upstream) {
-        pull(ledger, branch, upstream, committed, report, gate)?;
+        pull(ledger, branch, upstream, committed, report, gate, raise)?;
     } else {
-        push(ledger, branch, upstream, committed, report)?;
+        push(ledger, branch, upstream, committed, report, raise)?;
     }
     Ok(())
 }
@@ -107,6 +111,7 @@ fn pull(
     committed: u64,
     report: &mut Sync,
     gate: &dyn Gate,
+    raise: Option<u32>,
 ) -> Result<()> {
     // Shape first: a changed remote must read as a guard refusal, not as a
     // divergence that tells the reader to delete a copy (n-f4cd).
@@ -116,13 +121,19 @@ fn pull(
         // them back on top of the remote's lines (n-ecbf 2B).
         state::set_step(ledger, "rebase");
         return locked(ledger, || {
-            rebase::rebase(ledger, branch, upstream, committed, report, gate)
+            rebase::rebase(ledger, branch, upstream, committed, report, gate, raise)
         });
     }
     state::set_step(ledger, "fetch");
     locked(ledger, || {
         git::reset_hard(ledger, upstream)?;
-        rebuild_snapshot(ledger)
+        rebuild_snapshot(ledger)?;
+        // The reset put the remote's older format in the work tree; write this
+        // copy's back and raise the remote after taking it in (n-96f8).
+        match raise {
+            Some(target) => raise_format(ledger, branch, target),
+            None => Ok(()),
+        }
     })?;
     let remote_seq = seq_at(ledger, upstream)?;
     report.pulled = Some(Pulled {

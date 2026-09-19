@@ -4,9 +4,27 @@
 
 ### Updating
 
-Nothing changes for a ledger without a remote. Every subcommand, option,
-output shape and `gy.toml` key of 0.9.0 is the same; the new commands are
-`share`, `join` and `sync`, and the only new key is `remote`. The ledger format stays 3.
+This release changes how work is recorded, so read this before you upgrade.
+
+- **An achievement needs an approved requirement.** `criterion satisfy` is
+  refused unless an approved or done requirement `targets` the criterion,
+  and an approved requirement (and the criteria it targets) cannot be
+  edited until `req revise`. What a ledger already holds stays valid; the
+  rule judges new writes. A need that has no requirement yet gets one when
+  you come to satisfy its criteria: gy says which command to type.
+- **The ledger format moves from 3 to 4**, automatically and without
+  touching the log (`format.3.bak` is kept). An older gy cannot open a
+  format-4 ledger, by design: it does not know the rule.
+- **On a shared ledger, the first upgraded copy raises the remote's format
+  at its next sync.** From then on an older gy stops at sync with
+  `the remote ledger is format 4 … update gy`; its unpushed writes stay in
+  its copy and land, judged by the rule, once it is upgraded. Upgrade a
+  team together.
+- **What gy prints is in English**, including the phrases under `missing:`
+  and `next:`. An agent that matched the Japanese phrases must match the
+  English ones.
+- The subcommands and options are those of 0.9.0 plus `share`, `join` and
+  `sync`; the only new `gy.toml` key is `remote`.
 
 ```
 cargo install gy --locked    # gy 1.0.0
@@ -221,6 +239,19 @@ brings the new one along.
   satisfying and revoking pass as before, and filed, done and cancelled
   requirements are untouched. Undo and a shared ledger's rebase are judged
   by the same rule.
+- **The ledger format is 4, and a shared ledger keeps the switch**
+  (n-96f8, d-bace). An older gy does not know the requirement rule, so
+  format 3 would let it write around it. Opening a format-3 ledger copies
+  `format` to `format.3.bak` and writes 4; the log and the snapshot are
+  untouched. On a shared ledger nothing used to raise the remote's
+  `format`, so a pull would have reset the copy to 3 and older builds
+  could keep pushing: the copy that is ahead now adds one commit that
+  changes `format` alone (trailer `Gy-Format`, no `Gy-Seq`), before its
+  writes, or right after taking in a remote that is ahead. The check on
+  incoming commits admits exactly that shape and refuses one that lowers
+  the format, touches another file, or carries both trailers. gy's own
+  ledger and a second real ledger migrated on copies with byte-identical
+  logs and publications.
 
 ### Fixed
 

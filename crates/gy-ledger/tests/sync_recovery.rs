@@ -161,14 +161,14 @@ fn a_remote_with_a_newer_format_is_refused() {
     sync(&two, &url(&remote)).unwrap();
 
     // The peer raises the remote's format past what this build reads.
-    std::fs::write(one.join(format::FILE), "4\n").unwrap();
+    std::fs::write(one.join(format::FILE), "5\n").unwrap();
     git(&one, &["add", format::FILE]);
     git(&one, &["commit", "-q", "-m", "bump the format"]);
     git(&one, &["push", "-q", "origin", "HEAD:main"]);
 
     let error = sync(&two, &url(&remote)).unwrap_err();
     assert!(
-        error.message.contains("the remote ledger is format 4"),
+        error.message.contains("the remote ledger is format 5"),
         "{}",
         error.message
     );

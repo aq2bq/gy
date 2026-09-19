@@ -12,7 +12,7 @@ fn an_open_that_migrates_reports_it_once() {
     format::write(temp.path(), FormatVersion(2)).unwrap();
 
     let first = FileStore::open_with(temp.path(), |_| Some("piko".into())).unwrap();
-    assert_eq!(first.migrated(), Some((2, 3)));
+    assert_eq!(first.migrated(), Some((2, 4)));
     assert_eq!(format::read(temp.path()).unwrap(), FormatVersion::CURRENT);
 
     let second = FileStore::open_with(temp.path(), |_| Some("piko".into())).unwrap();
@@ -23,13 +23,13 @@ fn an_open_that_migrates_reports_it_once() {
 fn the_cli_announces_a_migration_on_stderr_once() {
     let fx = fixture();
     fx.seed(&[common::need("0001", "a need")]);
-    // The ledger is marked as format 2; the next open migrates it to 3.
+    // The ledger is marked as format 2; the next open migrates it to 4.
     std::fs::write(fx.ledger().join("format"), "2\n").unwrap();
 
     let first = fx.run(&["show", "n-0001"]);
     assert!(first.status.success(), "{}", stderr(&first));
     assert!(
-        stderr(&first).contains("migrated this ledger from format 2 to 3"),
+        stderr(&first).contains("migrated this ledger from format 2 to 4"),
         "{}",
         stderr(&first)
     );

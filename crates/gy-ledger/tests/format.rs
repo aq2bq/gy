@@ -148,7 +148,7 @@ fn opening_a_version_two_ledger_raises_created_and_rebuilds_the_snapshot() {
 }
 
 #[test]
-fn a_version_three_ledger_raises_every_old_instant_on_read() {
+fn every_old_instant_is_raised_on_read_with_and_without_a_snapshot() {
     let temp = tempfile::tempdir().unwrap();
     let dir = temp.path();
     format::write(dir, FormatVersion::CURRENT).unwrap();
@@ -188,7 +188,7 @@ fn a_version_three_ledger_raises_every_old_instant_on_read() {
     let criterion_value = serde_json::to_value(&criterion).unwrap();
     let requirement_value = serde_json::to_value(&requirement).unwrap();
 
-    // A version 3 snapshot still holding the old, date-only instants.
+    // A snapshot still holding the old, date-only instants.
     let snapshot = serde_json::json!({
         "seq": 1,
         "nodes": {"ac-0001": criterion_value.clone(), "r-0002": requirement_value.clone()},

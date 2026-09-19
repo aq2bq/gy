@@ -12,10 +12,12 @@ pub(super) fn advice(error: Error, method: &str) -> Error {
 }
 
 /// Refuse a remote whose ledger format is newer than this build reads
-/// (n-94bb 3B). A remote without a `format` file yet is fine.
-pub(super) fn check_remote_format(ledger: &Path, upstream: &str) -> Result<()> {
+/// (n-94bb 3B). A remote without a `format` file yet is fine. The version is
+/// returned so the sync can raise an older remote without reading it again
+/// (n-96f8).
+pub(super) fn check_remote_format(ledger: &Path, upstream: &str) -> Result<Option<u32>> {
     let Some(text) = git::show(ledger, upstream, super::super::format::FILE) else {
-        return Ok(());
+        return Ok(None);
     };
     let version: u32 = text
         .trim()
@@ -23,11 +25,19 @@ pub(super) fn check_remote_format(ledger: &Path, upstream: &str) -> Result<()> {
         .map_err(|_| Error::invalid("the remote format file is not a version number"))?;
     if version > FormatVersion::CURRENT.0 {
         return Err(Error::invalid(format!(
-            "the remote ledger is format {version}; this build reads up to {}\nupdate gy (this build never raises the remote's format)",
+            "the remote ledger is format {version}; this build reads up to {}\nupdate gy",
             FormatVersion::CURRENT.0
         )));
     }
-    Ok(())
+    Ok(Some(version))
+}
+
+/// This copy's own format, read from its `format` file (n-96f8). A missing or
+/// unreadable file is `None`, and then the sync never raises a remote.
+pub(super) fn local_format(ledger: &Path) -> Option<u32> {
+    super::super::format::read(ledger)
+        .ok()
+        .map(|version| version.0)
 }
 #[derive(Deserialize)]
 struct NodeLinks {

@@ -3,7 +3,12 @@ use super::super::{Gate, Result, log, replay};
 use super::rejected::{Rejected, RejectedBy, write_rejected};
 use super::report::{Pulled, Range, Sync};
 use super::rules::{key, landed, now, parse, targets, touched};
-use super::{git, push::push_writes, sync::rebuild_snapshot, sync::writers};
+use super::{
+    git,
+    push::{push_writes, raise_format},
+    sync::rebuild_snapshot,
+    sync::writers,
+};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -15,6 +20,7 @@ pub(super) fn rebase(
     committed: u64,
     report: &mut Sync,
     gate: &dyn Gate,
+    raise: Option<u32>,
 ) -> Result<()> {
     let (remote_text, remote, pending) = inputs(ledger, upstream, committed)?;
     let on_remote = landed(&remote, committed, &pending);
@@ -31,19 +37,36 @@ pub(super) fn rebase(
         to: remote_seq,
         writers: writers(ledger, committed, remote_seq)?,
     });
-    if !accepted.is_empty() {
-        report.rebased = Some(Range {
-            from: remote_seq + 1,
-            to: remote_seq + accepted.len() as u64,
-        });
-        push_writes(ledger, branch, remote_seq, report)?;
-    }
+    push_placed(ledger, branch, remote_seq, &accepted, report, raise)?;
     if !rejects.is_empty() {
         write_rejected(ledger, &rejects)?;
         report.rejected = Some(rejects.len());
     }
     report.seq = log::read(ledger)?.0.last().map_or(0, |event| event.seq);
     Ok(())
+}
+/// Push the accepted candidates, or, when none were placed, raise the remote's
+/// format alone (n-96f8). The reset above put the remote's older format in the
+/// work tree, so a raise writes this copy's back before the pushed lines.
+fn push_placed(
+    ledger: &Path,
+    branch: &str,
+    remote_seq: u64,
+    accepted: &[log::Event],
+    report: &mut Sync,
+    raise: Option<u32>,
+) -> Result<()> {
+    if accepted.is_empty() {
+        return match raise {
+            Some(target) => raise_format(ledger, branch, target),
+            None => Ok(()),
+        };
+    }
+    report.rebased = Some(Range {
+        from: remote_seq + 1,
+        to: remote_seq + accepted.len() as u64,
+    });
+    push_writes(ledger, branch, remote_seq, report, raise)
 }
 /// Write the remote's log plus the accepted candidates back to the copy
 /// (n-557f).
