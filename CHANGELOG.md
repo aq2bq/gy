@@ -211,6 +211,16 @@ brings the new one along.
   unchanged, and the bundled gy-loop skill asks the person once. The rule
   looks only at what a write changes, so what a ledger already holds stays
   valid. `gy share` judges its first upload with the same rule.
+- **What was approved stays what was approved** (n-a3f2). While a
+  requirement is approved, its title, its body and its `targets` and
+  `relies-on` edges cannot be edited or re-linked, and neither can the
+  title or body of a criterion it targets: `req revise` sends it back to
+  filed first, as D-70 always meant. Before, a requirement approved for one
+  criterion could quietly take on another and let it be satisfied. State
+  moves (done, cancelled, revise), free attributes, a scope move,
+  satisfying and revoking pass as before, and filed, done and cancelled
+  requirements are untouched. Undo and a shared ledger's rebase are judged
+  by the same rule.
 
 ### Fixed
 
