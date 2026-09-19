@@ -1,6 +1,6 @@
-//! now: what the master is waiting on, what is in progress, and what is still
-//! open (d-995c, n-688a). The CLI, MCP, and serve give the same answer.
-use super::derive::{need_state, question_open, reference, writer};
+//! now: what a person is waiting on, what is in progress, and what is still
+//! open (d-995c, d-b02d, n-688a). The CLI, MCP, and serve give the same answer.
+use super::derive::{need_state, question_open, reference, writer, writers};
 use super::handover::{Handover, ProgressRow, handover};
 use super::list::LogRow;
 use super::next::ready_rows;
@@ -10,6 +10,7 @@ use crate::model::{Node, NodeData, NodeKind, RequirementState};
 use crate::ops::advice;
 use crate::ops::repository::{Repository, Result, Store};
 use serde::Serialize;
+use std::collections::BTreeSet;
 
 /// How many recent writes the view carries (d-995c).
 const RECENT: usize = 14;
@@ -30,8 +31,8 @@ pub struct NodeRow {
     pub unwaited: bool,
 }
 
-/// One thing the master waits on: an open question whose decider names the
-/// master, or a filed requirement waiting for the design approval (d-995c).
+/// One thing a person waits on: an open question whose decider never wrote the
+/// ledger, or a filed requirement waiting for the design approval (d-995c, d-b02d).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "waiting", rename_all = "kebab-case")]
 pub enum Waiting {
@@ -92,6 +93,7 @@ pub struct Now {
 pub fn now<S: Store>(repo: &Repository<S>, scope: Option<&str>) -> Result<Now> {
     let all = repo.all()?;
     let visible: Vec<&Node> = all.iter().filter(|node| in_scope(node, scope)).collect();
+    let writers = writers(repo);
     let mut in_progress: Vec<&Node> = visible
         .iter()
         .copied()
@@ -101,7 +103,7 @@ pub fn now<S: Store>(repo: &Repository<S>, scope: Option<&str>) -> Result<Now> {
     let mut open_questions: Vec<&Node> = visible
         .iter()
         .copied()
-        .filter(|node| question_open(node) && !names_master(node))
+        .filter(|node| question_open(node) && !waits_on_a_person(node, &writers))
         .collect();
     open_questions.sort_by(oldest_first);
     let mut unmet: Vec<&Node> = visible
@@ -116,7 +118,7 @@ pub fn now<S: Store>(repo: &Repository<S>, scope: Option<&str>) -> Result<Now> {
         seq: last.map_or(0, |entry| entry.seq),
         at: last.map_or(0, |entry| entry.at),
         scope: scope.map(ToString::to_string),
-        waiting: waiting(&visible, &all),
+        waiting: waiting(&visible, &all, &writers),
         ready: ready(&all, scope),
         resume: resume(repo, scope, &all, session),
         in_progress: rows(&in_progress, &all),
@@ -157,13 +159,13 @@ fn ready(all: &[Node], scope: Option<&str>) -> Vec<Ready> {
         .collect()
 }
 
-/// The master's queue: the questions that name the master, then the filed
-/// requirements, each in created order (d-995c).
-fn waiting(visible: &[&Node], all: &[Node]) -> Vec<Waiting> {
+/// A person's queue: the open questions whose decider has never written, then
+/// the filed requirements, each in created order (d-995c, d-b02d).
+fn waiting(visible: &[&Node], all: &[Node], writers: &BTreeSet<String>) -> Vec<Waiting> {
     let mut questions: Vec<&Node> = visible
         .iter()
         .copied()
-        .filter(|node| names_master(node))
+        .filter(|node| waits_on_a_person(node, writers))
         .collect();
     questions.sort_by(oldest_first);
     let mut requirements: Vec<&Node> = visible
@@ -183,15 +185,13 @@ fn waiting(visible: &[&Node], all: &[Node]) -> Vec<Waiting> {
         .collect()
 }
 
-/// Whether an open question names the master as its decider.
-fn names_master(node: &Node) -> bool {
+/// Whether an open question waits on a person: a decider that is set, and that
+/// never wrote the ledger (d-b02d).
+fn waits_on_a_person(node: &Node, writers: &BTreeSet<String>) -> bool {
     matches!(node.data(), NodeData::Question(data)
-        if question_open(node) && data.decider.as_deref().is_some_and(names_the_master))
-}
-
-/// The two habits of both ledgers: `master` in any case, and `マスター`.
-fn names_the_master(decider: &str) -> bool {
-    decider.to_lowercase().contains("master") || decider.contains("マスター")
+        if question_open(node)
+            && data.decider.as_deref().map(str::trim)
+                .is_some_and(|decider| !decider.is_empty() && !writers.contains(decider)))
 }
 
 /// A requirement that is filed waits for the design approval (D-67).

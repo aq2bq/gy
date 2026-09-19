@@ -1,4 +1,4 @@
-//! gy serve: the local reading surface for the master (n-a493, d-25c4). The
+//! gy serve: the local reading surface for a person (n-a493, d-25c4). The
 //! HTTP layer is the standard library's, in `server` alone (d-e6c4); routes
 //! see `http`.
 pub mod api;

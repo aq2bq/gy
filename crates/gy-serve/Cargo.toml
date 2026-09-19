@@ -1,6 +1,6 @@
 [package]
 name = "gy-serve"
-description = "gy serve — the local reading surface for the master (n-a493)"
+description = "gy serve — the local reading surface for the person the agents work for (n-a493)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

@@ -1,6 +1,6 @@
 /* The now page (d-3e8f): the three eyes, the sky, and the two-column pulse.
    The author colours come from the prototype. */
-:root{--actor-lead:#5fd3c7; --actor-piko:#e9a63a; --actor-master:#f28ba0; --actor-deck:#b79cff}
+:root{--actor-teal:#5fd3c7; --actor-amber:#e9a63a; --actor-rose:#f28ba0; --actor-violet:#b79cff}
 /* The helpers the list and node pages still draw with. */
 .row{display:grid;grid-template-columns:20px 74px minmax(0,1fr) auto;gap:12px;align-items:baseline;padding:9px 0;border-top:1px solid var(--line-soft)}
 .row:last-child{border-bottom:1px solid var(--line-soft)}
@@ -55,10 +55,10 @@
 .pulse2 .sub{font-family:var(--mono);font-size:11px;color:var(--paper-3);letter-spacing:.08em;margin-bottom:10px}
 .pl2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 40px}
 .pi{position:relative;padding:6px 0 10px 16px;font-size:13px;border-top:1px solid var(--line-soft)}
-.pi::before{content:"";position:absolute;left:0;top:13px;width:7px;height:7px;border-radius:50%;background:var(--actor-lead)}
-.pi.a-1::before{background:var(--actor-piko)}
-.pi.a-2::before{background:var(--actor-master)}
-.pi.a-3::before{background:var(--actor-deck)}
+.pi::before{content:"";position:absolute;left:0;top:13px;width:7px;height:7px;border-radius:50%;background:var(--actor-teal)}
+.pi.a-1::before{background:var(--actor-amber)}
+.pi.a-2::before{background:var(--actor-rose)}
+.pi.a-3::before{background:var(--actor-violet)}
 .pi.new::before{box-shadow:0 0 0 4px rgba(95,211,199,.18)}
 .pi .when{font-family:var(--mono);font-size:11px;color:var(--paper-3)}
 .pi .what{color:var(--paper)}

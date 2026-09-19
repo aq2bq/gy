@@ -87,7 +87,7 @@ fn requirement(
 /// Four questions, four needs, three criteria, and three requirements in two
 /// scopes, as 21 writes.
 fn ledger() -> Repository<MemoryStore> {
-    let store = MemoryStore::with_actor(FormatVersion::CURRENT, Actor::new("piko").unwrap());
+    let store = MemoryStore::with_actor(FormatVersion::CURRENT, Actor::new("lead").unwrap());
     let mut repo = Repository::new(store).with_scopes(vec!["a".to_string(), "b".to_string()]);
     ask(&mut repo, "0001", "a", "2026-09-01T00:00:00Z", "master");
     ask(&mut repo, "0002", "a", "2026-09-02T00:00:00Z", "マスター");

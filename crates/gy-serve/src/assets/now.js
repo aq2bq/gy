@@ -61,7 +61,7 @@
     return `<a class="wait" href="#/n/${row.id}"><div class="who">${esc(label(row))} · ${t('decider')} ${esc(item.decider)}${mark}</div><div class="t">${esc(row.title)}</div><ol class="opts">${options}</ol></a>`;
   }
 
-  /* The first eye: the questions that name the master, then the filed
+  /* The first eye: the questions that wait on a person, then the filed
      requirements. An empty column is good news, so it says so in one line. */
   function waitColumn() {
     const qs = questions();

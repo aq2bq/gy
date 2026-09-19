@@ -31,7 +31,7 @@ pub enum Opened {
 /// write (n-a493), at the asked sequence when one is given (n-10e1).
 pub type Opener = Box<dyn Fn(Option<u64>) -> Result<Opened> + Send + Sync>;
 
-/// Serve until stopped, printing the one line the master needs to open. The
+/// Serve until stopped, printing the one line a person needs to open. The
 /// watch follows `ledger`'s log so a request can wait for the next write. The
 /// name is the ledger directory's, for the tab's title (n-07f0).
 pub fn serve(open: Opener, ledger: PathBuf, name: String, remote: Option<String>) -> Result<()> {

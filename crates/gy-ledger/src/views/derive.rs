@@ -1,6 +1,8 @@
 //! Deriving a need's state and readiness from the graph (D-28, D-75). Nothing
 //! is stored; the answer is recomputed from the edges each time.
 use crate::model::{Node, NodeData, NodeId, Relation, RequirementState};
+use crate::ops::repository::{Repository, Store};
+use std::collections::BTreeSet;
 
 /// A need's derived state (D-28): open, closed by hand, or done because every
 /// requirement it was filed as is done.
@@ -26,6 +28,16 @@ pub fn writer(by: Option<&str>, actor: &str) -> String {
     }
 }
 
+/// Every name the log was written under, once for the view; `by`, the git name,
+/// is not a writer (d-b02d).
+pub(super) fn writers<S: Store>(repo: &Repository<S>) -> BTreeSet<String> {
+    repo.store()
+        .history()
+        .iter()
+        .map(|entry| entry.actor.name().to_string())
+        .collect()
+}
+
 pub fn requirement_in_progress(requirement: &Node) -> bool {
     matches!(
         requirement_state(requirement),
@@ -33,8 +45,8 @@ pub fn requirement_in_progress(requirement: &Node) -> bool {
     )
 }
 
-/// Whether a question is still open; only an open question can wait on the
-/// master (d-995c, n-688a). handover reads the same thing for itself.
+/// Whether a question is still open; only an open question can wait on a person
+/// (d-995c, n-688a). handover reads the same thing for itself.
 pub(super) fn question_open(node: &Node) -> bool {
     matches!(node.data(), NodeData::Question(data) if data.closure.is_none())
 }

@@ -183,6 +183,17 @@ brings the new one along.
   that matched on the Japanese phrases must match on the English ones; the
   field names (`missing`, `next`) and `--json` keys are the same. The web
   UI still follows the browser's language.
+- **What waits on a person no longer depends on a title** (n-208f,
+  d-b02d). The now view (the web UI's "waiting" and the counts beside it)
+  took an open question as waiting on a person only when its decider
+  contained `master` or `マスター`, the title of gy's first user. It now
+  takes a decider that has never written to the ledger as a person: people
+  do not operate gy, so the name that never writes is the person. A decider
+  that is one of the ledger's writers (an agent) stays among the other open
+  questions. The git name a shared copy records (`by`) is not a writer.
+  Both existing ledgers give byte-identical now views before and after;
+  a ledger whose questions name their decider by any other name now shows
+  them as waiting. No public name or JSON key changed.
 
 ### Fixed
 

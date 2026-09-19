@@ -1,6 +1,6 @@
 //! publish: the record written as one file per node under a scope directory,
 //! with a scope index (d-7c64, d-edb0). It is a development artifact to review
-//! later, not a reading for the master.
+//! later, not a reading for a person.
 mod diagnostics;
 mod history;
 mod index;
