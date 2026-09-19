@@ -108,6 +108,7 @@ pub enum Command {
 #[derive(Subcommand)]
 pub enum NeedAction {
     /// File a need against existing criteria.
+    #[command(override_usage = "gy need add [OPTIONS] --targets <AC> [--targets <AC>]... <TITLE>")]
     Add {
         title: String,
         #[arg(long, value_name = "AC", required = true)]
@@ -180,6 +181,7 @@ pub struct DecideArgs {
     pub scope_note: String,
     #[arg(long = "body-file", value_name = "PATH")]
     pub body_file: Option<String>,
+    /// Repeat for each: `--closes A --closes B`.
     #[arg(long, value_name = "Q")]
     pub closes: Vec<String>,
     /// One lineage relation and its decision: <relation> <D>, at most once.
@@ -211,8 +213,10 @@ pub struct EditArgs {
     pub title: Option<String>,
     #[arg(long = "body-file", value_name = "PATH")]
     pub body_file: Option<String>,
+    /// Repeat for each: `--set A=B --set C=D`.
     #[arg(long, value_name = "KEY=VALUE")]
     pub set: Vec<String>,
+    /// Repeat for each: `--append A=B --append C=D`.
     #[arg(long, value_name = "KEY=VALUE")]
     pub append: Vec<String>,
 }
@@ -232,12 +236,15 @@ pub enum ScopeAction {
 #[derive(Subcommand)]
 pub enum ReqAction {
     /// File a requirement against needs, decisions, and criteria.
+    #[command(override_usage = "gy req add [OPTIONS] --need <N> [--need <N>]... <TITLE>")]
     Add {
         title: String,
         #[arg(long = "need", value_name = "N", required = true)]
         needs: Vec<String>,
+        /// Repeat for each: `--relies-on A --relies-on B`.
         #[arg(long = "relies-on", value_name = "D")]
         relies_on: Vec<String>,
+        /// Repeat for each: `--targets A --targets B`.
         #[arg(long, value_name = "AC")]
         targets: Vec<String>,
         #[arg(long = "ref", value_name = "REF")]

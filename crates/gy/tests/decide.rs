@@ -34,6 +34,18 @@ fn decide_creates_closes_and_links_one_relation() {
 }
 
 #[test]
+fn decide_help_shows_the_repeated_closes_form() {
+    let fx = fixture();
+    let help = fx.run(&["decide", "--help"]);
+    assert!(help.status.success(), "{}", stderr(&help));
+    assert!(
+        stdout(&help).contains("--closes A --closes B"),
+        "{}",
+        stdout(&help)
+    );
+}
+
+#[test]
 fn decide_errors_and_json() {
     let fx = fixture();
     fx.seed(&[decision("0003", "an old decision")]);

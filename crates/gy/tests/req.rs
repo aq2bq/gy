@@ -112,6 +112,25 @@ fn req_revise_and_cancel() {
 }
 
 #[test]
+fn req_add_usage_and_help_show_the_repeated_form() {
+    let fx = fixture();
+    seed(&fx);
+    let out = fx.run(&["req", "add", "t", "--need", "n-0003", "n-0003"]);
+    assert_eq!(out.status.code(), Some(2));
+    assert!(
+        stderr(&out).contains("--need <N> [--need <N>]..."),
+        "{}",
+        stderr(&out)
+    );
+
+    let help = fx.run(&["req", "add", "--help"]);
+    assert!(help.status.success(), "{}", stderr(&help));
+    let text = stdout(&help);
+    assert!(text.contains("--relies-on A --relies-on B"), "{text}");
+    assert!(text.contains("--targets A --targets B"), "{text}");
+}
+
+#[test]
 fn req_errors_and_json() {
     let fx = fixture();
     seed(&fx);

@@ -44,6 +44,18 @@ fn need_add_then_close() {
 }
 
 #[test]
+fn need_add_usage_shows_the_repeated_form() {
+    let fx = fixture();
+    let out = fx.run(&["need", "add", "t", "--targets", "ac-0001", "ac-0002"]);
+    assert_eq!(out.status.code(), Some(2));
+    assert!(
+        stderr(&out).contains("--targets <AC> [--targets <AC>]..."),
+        "{}",
+        stderr(&out)
+    );
+}
+
+#[test]
 fn need_errors_and_json() {
     let fx = fixture();
     fx.seed(&[criterion("0001")]);

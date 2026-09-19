@@ -147,6 +147,10 @@ them again as the README says.
   - `question add`: the usage line, in `--help` and after a rejected
     `--options A B`, reads `--options <A> --options <B>`; the flag is
     repeated once per option, as before.
+  - every flag that repeats (`need add --targets`, `req add --need`,
+    `--relies-on`, `--targets`, `decide --closes`, `edit --set`,
+    `--append`) says so in `--help`, and the two required ones show the
+    repeated form in the usage line a rejected call prints.
   - `next:` leads with `edit <id> --body-file … --reason …` whenever
     `missing:` names a body, for every kind of node (before, only a need
     showed it, and it showed it even when the need had a body). A need

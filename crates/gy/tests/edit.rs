@@ -48,6 +48,16 @@ fn edit_moves_a_node_to_a_declared_scope() {
 }
 
 #[test]
+fn edit_help_shows_the_repeated_attribute_forms() {
+    let fx = fixture();
+    let help = fx.run(&["edit", "--help"]);
+    assert!(help.status.success(), "{}", stderr(&help));
+    let text = stdout(&help);
+    assert!(text.contains("--set A=B --set C=D"), "{text}");
+    assert!(text.contains("--append A=B --append C=D"), "{text}");
+}
+
+#[test]
 fn edit_errors() {
     let fx = fixture();
     fx.seed(&[need("0002", "a need")]);
