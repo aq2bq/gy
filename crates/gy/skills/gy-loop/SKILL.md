@@ -1,6 +1,6 @@
 ---
 name: gy-loop
-description: Use first whenever you start work, resume work, or decide what to do next in a project that has a gy.toml. How to work with gy at the centre.
+description: "Use first whenever you start work, resume work, or decide what to do next in a project that has a gy.toml. How to work with gy at the centre."
 ---
 
 # The gy loop

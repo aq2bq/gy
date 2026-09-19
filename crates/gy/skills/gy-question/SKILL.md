@@ -1,6 +1,6 @@
 ---
 name: gy-question
-description: Use when you open or close a question in gy: choosing the decider, the options, and the way it closes.
+description: "Use when you open or close a question in gy: choosing the decider, the options, and the way it closes."
 ---
 
 # Questions

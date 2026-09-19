@@ -1,6 +1,6 @@
 ---
 name: gy-ledger
-description: Use when you operate nodes and edges in a gy ledger: how needs, requirements and acceptance criteria connect and close, and how a ledger shared with a team behaves. How to work is in gy-loop.
+description: "Use when you operate nodes and edges in a gy ledger: how needs, requirements and acceptance criteria connect and close, and how a ledger shared with a team behaves. How to work is in gy-loop."
 ---
 
 # The gy ledger

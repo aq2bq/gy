@@ -1,6 +1,6 @@
 ---
 name: gy-decide
-description: Use when you record a decision in gy: how to write where it holds, a mark, and what it closes.
+description: "Use when you record a decision in gy: how to write where it holds, a mark, and what it closes."
 ---
 
 # Recording a decision
