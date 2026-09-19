@@ -42,10 +42,14 @@ ledger and says so in one line on stderr.
   With `gy-loop` in place the agent asks you two short questions once — who
   approves requirements, and what to do with an unclear need — and records
   your answers as decisions.
-- **`share`, `join` and `sync` talk to the network.** `gy share` uploads the
-  whole ledger to the repository you name. An agent's runtime may treat
-  that as sending data out and refuse it until its owner allows it: give
-  the permission before you ask an agent to share a ledger.
+- **Starting to share is the owner's step.** `gy share` uploads the whole
+  ledger to the repository you name. An agent's runtime may treat that as
+  sending data out and refuse it, and the agent cannot grant itself the
+  permission (nor should it). Run `gy share <URL>` yourself, once — it sits
+  beside the other things only you can do, creating the repository and
+  protecting its branch — or allow `gy share` and `gy sync` in the agent's
+  settings yourself. After that the agent writes as before and the pushes
+  happen in the background.
 - The subcommands and options are those of 0.9.0 plus `share`, `join` and
   `sync`; the only new `gy.toml` key is `remote`.
 

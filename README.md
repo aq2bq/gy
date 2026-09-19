@@ -157,7 +157,7 @@ gy share https://github.com/you/yourproject-ledger.git
 
 It checks the remote (empty or ledger-only, and that you can push), writes `remote` into `gy.toml`, uploads the ledger you have as it is, and prints how to protect the branch (require linear history, block force pushes; gy changes no settings) and the invitation to send a member. Commit `gy.toml` with the project.
 
-`gy share` uploads the whole ledger to that repository. If an agent runs it, the agent's runtime may treat the upload as sending data out and refuse it until its owner allows it; give that permission first.
+This step is yours, not your agent's. `gy share` uploads the whole ledger to that repository; an agent's runtime may treat the upload as sending data out and refuse it, and an agent cannot grant itself the permission. Run `gy share` yourself, once, as you create the repository and protect its branch yourself, or allow `gy share` and `gy sync` in the agent's settings yourself. After that the agent writes as before and the pushes happen in the background.
 
 **Join (the one invited).** Get write access to the ledger repository, clone the project, and run:
 
