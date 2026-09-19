@@ -38,8 +38,12 @@ To start sharing a ledger, create an empty private repository for the
 ledger alone and run `gy share <its URL>`; a member gets write access to
 that repository and runs `gy join` in a checkout of the project. Both
 commands say what is missing and what to do next. The bundled skills changed
-with this release (`gy-ledger` gained a section on shared ledgers): copy
-them again as the README says.
+with this release: `gy-loop` is new and is the entry point (one turn of
+work around the ledger: restore, pick one, advance, stop, satisfy), the
+cheat sheet moved next to it (`skills/gy-loop/CHEATSHEET.md`), and
+`gy-ledger` keeps the meaning of nodes and edges and gained a section on
+shared ledgers. Copy them again as the README says; `cp -R …/skills/gy-*`
+brings the new one along.
 
 ### Added
 
@@ -156,6 +160,13 @@ them again as the README says.
     showed it, and it showed it even when the need had a body). A need
     that has a body no longer lists the edit; its other hints are the same.
   No subcommand, option or exit code changed.
+- **The bundled skills say how to work, not only how to type** (n-d053,
+  d-8b39, d-f540). `gy-loop` is the single entry point. It says nothing
+  about how many agents you run or how they talk to each other. A question
+  matches the level it is asked at: about the need while the need is
+  unclear (what it is for, what matters most), about the requirement once
+  one is filed; the choice among solutions is the writer's to decide and
+  record, not the master's to pick from a menu.
 
 ## 0.9.0 - 2026-09-18
 

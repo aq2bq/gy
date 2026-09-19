@@ -211,7 +211,7 @@ cargo install gy --locked
 
 ## スキルの置き方
 
-エージェント用のスキル（`gy-ledger`、`gy-question`、`gy-decide`）は crate の `skills/` に同梱されていますが、`cargo install` は置いてくれません。エージェントがスキルを読む場所（例: `~/.agents/skills`）へ写します。
+エージェント用のスキル（入口の `gy-loop` と早見表、`gy-ledger`、`gy-question`、`gy-decide`）は crate の `skills/` に同梱されていますが、`cargo install` は置いてくれません。エージェントがスキルを読む場所（例: `~/.agents/skills`）へ写します。
 
 ```sh
 # チェックアウトから

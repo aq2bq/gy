@@ -211,7 +211,7 @@ Coming from 0.4, move the ledger once; [docs/migration-0.5.md](docs/migration-0.
 
 ## Where the skills go
 
-The agent skills (`gy-ledger`, `gy-question`, `gy-decide`) ship inside the crate under `skills/`, but `cargo install` does not place them. Copy them to where your agent reads skills (for example `~/.agents/skills`).
+The agent skills (`gy-loop`, the entry point, with the cheat sheet beside it; `gy-ledger`, `gy-question`, `gy-decide`) ship inside the crate under `skills/`, but `cargo install` does not place them. Copy them to where your agent reads skills (for example `~/.agents/skills`).
 
 ```sh
 # from a checkout

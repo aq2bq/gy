@@ -9,7 +9,7 @@ use std::process::Command;
 /// documents: gy's global flags, and clap's own help and version.
 const COMMON: [&str; 6] = ["--json", "-C", "--scope", "-h", "--help", "--version"];
 
-const CHEATSHEET: &str = "CHEATSHEET.md";
+const CHEATSHEET: &str = "skills/gy-loop/CHEATSHEET.md";
 const README: &str = "../../README.md";
 const README_JA: &str = "../../README.ja.md";
 
