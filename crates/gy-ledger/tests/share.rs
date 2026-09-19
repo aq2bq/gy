@@ -1,11 +1,12 @@
 //! `gy share`'s remote check and first upload (n-57c5, ac-efd7). Local
 //! `file://` remotes only; no network.
 use gy_ledger::{
-    CriterionAdd, FileStore, FormatVersion, Operation, Repository, Share, config, format,
+    CriterionAdd, FileStore, FormatVersion, Operation, Repository, Rules, Share, config, format,
     share_check, share_upload,
 };
 use std::path::Path;
 use std::process::Command;
+use std::sync::Arc;
 
 fn git(cwd: &Path, args: &[&str]) -> String {
     let out = Command::new("git")
@@ -108,7 +109,7 @@ fn upload_pushes_the_first_copy() {
     bare(&remote);
     let checked = share_check(&ledger, &url(&remote)).unwrap();
 
-    let uploaded = share_upload(&ledger, &url(&remote), &checked.branch).unwrap();
+    let uploaded = share_upload(&ledger, &url(&remote), &checked.branch, Arc::new(Rules)).unwrap();
     assert!(
         uploaded[0].starts_with("uploaded: seq 1"),
         "{}",
@@ -123,7 +124,13 @@ fn upload_failure_keeps_the_remote_and_names_the_way_out() {
     let temp = tempfile::tempdir().unwrap();
     let ledger = temp.path().join("ledger");
     seed(&ledger);
-    let error = share_upload(&ledger, "file:///nonexistent/ledger.git", "main").unwrap_err();
+    let error = share_upload(
+        &ledger,
+        "file:///nonexistent/ledger.git",
+        "main",
+        Arc::new(Rules),
+    )
+    .unwrap_err();
     let wanted = "the remote stays in gy.toml; fix the access and run gy sync";
     assert!(error.message.contains(wanted), "{}", error.message);
 }
@@ -132,7 +139,13 @@ fn upload_failure_keeps_the_remote_and_names_the_way_out() {
 fn upload_without_a_ledger_only_says_so() {
     let temp = tempfile::tempdir().unwrap();
     let ledger = temp.path().join("ledger");
-    let uploaded = share_upload(&ledger, "file:///nonexistent/ledger.git", "main").unwrap();
+    let uploaded = share_upload(
+        &ledger,
+        "file:///nonexistent/ledger.git",
+        "main",
+        Arc::new(Rules),
+    )
+    .unwrap();
     assert!(uploaded[0].contains("no ledger yet"), "{}", uploaded[0]);
     assert!(!ledger.exists(), "no copy is made");
 }

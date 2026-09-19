@@ -156,6 +156,23 @@ fn a_criterion_shows_satisfaction_and_a_question_shows_closure() {
         data.options = vec!["a".into(), "b".into()];
     }
     let question_id = question.id().clone();
+    let mut request = Node::requirement(
+        id(NodeKind::Requirement, "0007"),
+        SCOPE,
+        DATE,
+        "a requirement",
+        RequirementState::Approved,
+    )
+    .unwrap();
+    request.link(
+        Link::new(
+            request.id().clone(),
+            Relation::Targets,
+            criterion_id.clone(),
+        )
+        .unwrap(),
+    );
+    seed(&mut repo, &[request]);
     seed(&mut repo, &[criterion, question]);
 
     let text = render(

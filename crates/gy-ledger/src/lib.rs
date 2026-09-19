@@ -15,6 +15,10 @@ pub use model::{
     Decision, DecisionScope, Edge, FreeAttributes, Link, Need, Node, NodeData, NodeId, NodeKind,
     Question, Ref, Relation, Requirement, RequirementState, Revision, bearer_count, free_attribute,
 };
+/// This build's rule as a gate, for a caller that owns the order such as
+/// `gy share` (n-f921). Not part of the public reading surface.
+#[doc(hidden)]
+pub use ops::Rules;
 pub use ops::{
     CriterionAdd, CriterionSatisfy, Decide, Edit, NeedAdd, NeedClose, Operation, Outcome,
     QuestionAdd, QuestionClose, Repository, ReqAdd, ReqApprove, ReqCancel, ReqDone, ReqRevise,

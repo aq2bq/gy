@@ -25,6 +25,7 @@ pub use criterion_add::CriterionAdd;
 pub use criterion_satisfy::CriterionSatisfy;
 pub use decide::Decide;
 pub use edit::Edit;
+pub use judge::Rules;
 pub use judge::sync;
 pub use need_add::NeedAdd;
 pub use need_close::NeedClose;

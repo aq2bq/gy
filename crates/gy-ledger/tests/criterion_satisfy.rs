@@ -1,6 +1,6 @@
 use gy_ledger::{
     Actor, CriterionSatisfy, FormatVersion, Link, MemoryStore, Node, NodeData, NodeId, NodeKind,
-    Operation, Relation, Repository, Store,
+    Operation, Relation, Repository, RequirementState, Store,
 };
 
 const SCOPE: &str = "a";
@@ -43,6 +43,23 @@ fn seed(repo: &mut Repository<MemoryStore>, nodes: &[Node]) {
     .unwrap();
 }
 
+/// An approved requirement that targets `criteria`: the coverage I1 needs
+/// (n-f921), seeded before the satisfy.
+fn covering(criteria: &[&Node]) -> Node {
+    let mut node = Node::requirement(
+        NodeId::from_hash(NodeKind::Requirement, "0009").unwrap(),
+        SCOPE,
+        DATE,
+        "a requirement",
+        RequirementState::Approved,
+    )
+    .unwrap();
+    for criterion in criteria {
+        node.link(Link::new(node.id().clone(), Relation::Targets, criterion.id().clone()).unwrap());
+    }
+    node
+}
+
 fn satisfy(id: &NodeId, evidence: &str, revoke: bool) -> CriterionSatisfy {
     CriterionSatisfy {
         id: id.clone(),
@@ -55,8 +72,8 @@ fn satisfy(id: &NodeId, evidence: &str, revoke: bool) -> CriterionSatisfy {
 fn criterion_satisfy_records_evidence_and_the_date() {
     let mut repo = repo();
     let criterion = criterion("0001");
-    repo.transaction("seed", "test", |repo| repo.put(&criterion))
-        .unwrap();
+    let request = covering(&[&criterion]);
+    seed(&mut repo, &[criterion.clone(), request]);
     let outcome = satisfy(criterion.id(), "verified in production", false)
         .run(&mut repo)
         .unwrap();
@@ -80,8 +97,8 @@ fn criterion_satisfy_records_evidence_and_the_date() {
 fn satisfying_twice_is_rejected() {
     let mut repo = repo();
     let criterion = criterion("0001");
-    repo.transaction("seed", "test", |repo| repo.put(&criterion))
-        .unwrap();
+    let request = covering(&[&criterion]);
+    seed(&mut repo, &[criterion.clone(), request]);
     satisfy(criterion.id(), "first", false)
         .run(&mut repo)
         .unwrap();
@@ -96,8 +113,8 @@ fn satisfying_twice_is_rejected() {
 fn revoke_clears_satisfied_and_keeps_evidence() {
     let mut repo = repo();
     let criterion = criterion("0001");
-    repo.transaction("seed", "test", |repo| repo.put(&criterion))
-        .unwrap();
+    let request = covering(&[&criterion]);
+    seed(&mut repo, &[criterion.clone(), request]);
     satisfy(criterion.id(), "was true", false)
         .run(&mut repo)
         .unwrap();
@@ -145,13 +162,17 @@ fn criterion_satisfy_points_at_the_other_criterion() {
     let second_id = second.id().clone();
     need.link(Link::new(need_id.clone(), Relation::Targets, first_id.clone()).unwrap());
     need.link(Link::new(need_id, Relation::Targets, second_id.clone()).unwrap());
-    seed(&mut repo, &[need, first, second]);
+    let request = covering(&[&first, &second]);
+    seed(&mut repo, &[need, first, second, request]);
 
     let satisfied = satisfy(&first_id, "verified", false)
         .run(&mut repo)
         .unwrap();
     assert!(satisfied.missing.is_empty());
-    assert_eq!(satisfied.next, [format!("criterion satisfy {second_id}")]);
+    assert_eq!(
+        satisfied.next,
+        [format!("criterion satisfy {second_id} --evidence …")]
+    );
 
     let last = satisfy(&second_id, "verified", false)
         .run(&mut repo)

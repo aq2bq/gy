@@ -158,15 +158,12 @@ fn add_operations_report_what_their_new_node_lacks() {
     }
     .run(&mut repo)
     .unwrap();
-    assert_eq!(criterion.missing, ["a body (how to measure)"]);
+    let coverage = "an approved requirement (targets)";
+    assert_eq!(criterion.missing, ["a body (how to measure)", coverage]);
     let criterion_id = criterion.id.clone().unwrap();
-    assert_eq!(
-        criterion.next,
-        [
-            format!("edit {criterion_id} --body-file … --reason …"),
-            format!("criterion satisfy {criterion_id} --evidence …")
-        ]
-    );
+    let edit = format!("edit {criterion_id} --body-file … --reason …");
+    let add = format!("req add \"<title>\" --need <N> --targets {criterion_id}");
+    assert_eq!(criterion.next, [edit, add]);
 
     let requirement = req_add(&need_id).run(&mut repo).unwrap();
     assert_eq!(

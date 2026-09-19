@@ -1,6 +1,6 @@
 //! `gy sync` (n-6f47, d-39f6, d-1e50): prepare the copy, fetch, pull, and
 //! push each local write as one commit.
-use super::super::{Error, Gate, Open, Result, SNAPSHOT_FILE, file::FileStore, log};
+use super::super::{Error, Gate, Result, SNAPSHOT_FILE, file::FileStore, log};
 use super::push::{first_push, push, push_writes};
 use super::report::{Pulled, Sync};
 use super::{git, guard, prepare, rebase, recovery, rules, state};
@@ -18,13 +18,6 @@ pub fn sync_with(ledger: &Path, remote: &str, gate: Arc<dyn Gate>) -> Result<Syn
     state::clear_step(ledger);
     state::record_state(ledger, &outcome);
     outcome
-}
-
-/// The same sync under the open gate, for the store's own callers (n-6a8d).
-/// The rule reaches the rebase through `sync_with`, which `gy_ledger::sync`
-/// uses (n-557f).
-pub fn sync(ledger: &Path, remote: &str) -> Result<Sync> {
-    sync_with(ledger, remote, Arc::new(Open))
 }
 
 fn sync_inner(ledger: &Path, remote: &str, gate: &dyn Gate) -> Result<Sync> {

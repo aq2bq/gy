@@ -1,8 +1,10 @@
 use gy_ledger::{
-    FileStore, FormatVersion, Link, Node, NodeId, NodeKind, Relation, Repository, format, log, sync,
+    CriterionSatisfy, FileStore, FormatVersion, Link, Node, NodeId, NodeKind, Operation, Relation,
+    Repository, RequirementState, Rules, format, log, share_upload, sync,
 };
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::Arc;
 fn ident() {
     static ONCE: std::sync::Once = std::sync::Once::new();
     ONCE.call_once(|| unsafe {
@@ -198,4 +200,83 @@ fn an_edge_to_a_deleted_node_is_refused() {
     assert_eq!(report.rejected, Some(1));
     let rejected = std::fs::read_to_string(two.join("rejected.jsonl")).unwrap();
     assert!(rejected.contains("points at ac-0001"), "{rejected}");
+}
+
+/// Two copies whose approved requirement covering ac-0001 the peer sends back
+/// to filed; the local copy records a satisfy that no longer has coverage
+/// (n-f921).
+fn revised_away(temp: &Path) -> (PathBuf, PathBuf) {
+    let one = temp.join("one");
+    let remote = temp.join("remote.git");
+    let ac = criterion("0001");
+    let need = Node::need(
+        id(NodeKind::Need, "0002"),
+        "a",
+        "2026-09-15T00:00:00Z",
+        "a need",
+    )
+    .unwrap();
+    let mut approved = Node::requirement(
+        id(NodeKind::Requirement, "0003"),
+        "a",
+        "2026-09-15T00:00:00Z",
+        "a requirement",
+        RequirementState::Approved,
+    )
+    .unwrap();
+    approved.link(Link::new(approved.id().clone(), Relation::Targets, ac.id().clone()).unwrap());
+    ledger(
+        &one,
+        &[event(
+            1,
+            vec![created(&need), created(&ac), created(&approved)],
+        )],
+    );
+    bare(&remote);
+    sync(&one, &url(&remote)).unwrap();
+    let two = temp.join("two");
+    sync(&two, &url(&remote)).unwrap();
+
+    // The peer sends the same requirement back to filed and pushes it...
+    approved.advance(RequirementState::Filed).unwrap();
+    peer_commit(
+        &one,
+        2,
+        vec![log::Change::Updated {
+            node: approved.id().to_string(),
+            value: serde_json::to_value(&approved).unwrap(),
+        }],
+    );
+
+    // ...while the local copy records the satisfy it still saw covered.
+    let mut repo = Repository::new(FileStore::open_with(&two, |_| Some("piko".into())).unwrap());
+    CriterionSatisfy {
+        id: id(NodeKind::Criterion, "0001"),
+        evidence: "x".into(),
+        revoke: false,
+    }
+    .run(&mut repo)
+    .unwrap();
+    (two, remote)
+}
+
+#[test]
+fn a_satisfy_the_peer_revised_away_is_refused_on_rebase() {
+    ident();
+    let temp = tempfile::tempdir().unwrap();
+    let (two, remote) = revised_away(temp.path());
+    let report = sync(&two, &url(&remote)).unwrap();
+    assert_eq!(report.rejected, Some(1));
+    let rejected = std::fs::read_to_string(two.join("rejected.jsonl")).unwrap();
+    assert!(rejected.contains("ac-0001"), "{rejected}");
+}
+
+#[test]
+fn share_judges_its_first_upload_with_the_rule() {
+    ident();
+    let temp = tempfile::tempdir().unwrap();
+    let (two, remote) = revised_away(temp.path());
+    share_upload(&two, &url(&remote), "main", Arc::new(Rules)).unwrap();
+    let rejected = std::fs::read_to_string(two.join("rejected.jsonl")).unwrap();
+    assert!(rejected.contains("ac-0001"), "{rejected}");
 }

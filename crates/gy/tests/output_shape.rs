@@ -169,13 +169,20 @@ fn a_non_creating_write_keeps_the_bare_id() {
         "two",
     ]));
     creating(&fx.run(&["decide", "a decision", "--scope-note", "a call"]));
-    let req = creating(&fx.run(&["req", "add", "a requirement", "--need", &need]));
+    let req = creating(&fx.run(&[
+        "req",
+        "add",
+        "a requirement",
+        "--need",
+        &need,
+        "--targets",
+        &criterion,
+    ]));
     let other = creating(&fx.run(&["req", "add", "another requirement", "--need", &need]));
     let second = creating(&fx.run(&["criterion", "add", "another criterion"]));
 
     bare(&fx.run(&["link", &need, "targets", &second]));
     bare(&fx.run(&["edit", &criterion, "--reason", "why", "--title", "renamed"]));
-    bare(&fx.run(&["criterion", "satisfy", &criterion, "--evidence", "e"]));
     bare(&fx.run(&[
         "question",
         "close",
@@ -196,6 +203,7 @@ fn a_non_creating_write_keeps_the_bare_id() {
         "--evidence",
         "e",
     ]));
+    bare(&fx.run(&["criterion", "satisfy", &criterion, "--evidence", "e"]));
     bare(&fx.run(&["req", "revise", &req, "--reason", "r", "--source", "s"]));
     bare(&fx.run(&[
         "req",

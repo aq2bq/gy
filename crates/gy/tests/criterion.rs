@@ -29,11 +29,14 @@ fn criterion_add_satisfy_and_revoke() {
     let id = id_of(&out);
     assert!(
         stdout(&out).contains(&format!(
-            "next: edit {id} --body-file … --reason …, criterion satisfy {id} --evidence …"
+            "next: edit {id} --body-file … --reason …, req add \"<title>\" --need <N> --targets {id}"
         )),
         "{}",
         stdout(&out)
     );
+
+    // An approved requirement that targets it is what admits the satisfy (n-f921).
+    common::cover(&fx, &id);
 
     let out = fx.run(&["criterion", "satisfy", &id, "--evidence", "verified"]);
     assert!(out.status.success(), "{}", stderr(&out));

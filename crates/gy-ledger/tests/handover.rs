@@ -264,8 +264,10 @@ fn handover_stops_counting_a_satisfied_criterion() {
     targets(&mut need, &ac);
     close_need(&mut need);
     satisfy(&mut ac);
+    let mut request = requirement("0003", SCOPE, RequirementState::Approved);
+    targets(&mut request, &ac);
+    seed(&mut repo, &[request]);
     seed(&mut repo, &[ac, need]);
-
     let report = handover(&repo, None).unwrap();
     assert_eq!(warning_count(&report, ORPHANED), 0, "{:?}", report.warnings);
 }

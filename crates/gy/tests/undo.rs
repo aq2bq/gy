@@ -7,6 +7,10 @@ fn undo_restores_the_previous_value() {
     let fx = fixture();
     let out = fx.run(&["criterion", "add", "a criterion"]);
     let id = id_of(&out);
+    // An approved requirement that targets it admits the satisfy and its redo
+    // (n-f921).
+    common::cover(&fx, &id);
+
     let out = fx.run(&["criterion", "satisfy", &id, "--evidence", "verified"]);
     assert!(out.status.success(), "{}", stderr(&out));
     assert!(stdout(&fx.run(&["show", &id])).contains("satisfied: true"));

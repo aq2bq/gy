@@ -8,10 +8,11 @@ use crate::write::{self, Written};
 use gy_ledger::link::Link as LinkOp;
 use gy_ledger::{
     Decide, DecisionScope, Edit, Error, FileStore, NodeId, Outcome, Ref, Relation, Repository,
-    ReqAdd, ReqApprove, ReqCancel, ReqDone, ReqRevise, Result, ScopeRename, Share, Store, Undo,
-    config, join_check, join_run, retry, share_check, share_upload,
+    ReqAdd, ReqApprove, ReqCancel, ReqDone, ReqRevise, Result, Rules, ScopeRename, Share, Store,
+    Undo, config, join_check, join_run, retry, share_check, share_upload,
 };
 use std::path::Path;
+use std::sync::Arc;
 
 /// `gy join`: check everything, then take the copy and say who writes
 /// (n-57c5, ac-545c). The gy.toml remote is required; the automatic clone is
@@ -45,7 +46,7 @@ pub fn share(cli: &Cli, root: &Path, ledger: &Path, url: &str) -> Result<()> {
     }
     let checked = share_check(root, url)?;
     config::write_remote(root, url)?;
-    let uploaded = share_upload(ledger, url, &checked.branch)?;
+    let uploaded = share_upload(ledger, url, &checked.branch, Arc::new(Rules))?;
     emit(cli.json, &Share::shared(url, checked.line, uploaded))
 }
 

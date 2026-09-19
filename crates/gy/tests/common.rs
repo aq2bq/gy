@@ -73,6 +73,34 @@ pub fn id_of(output: &Output) -> String {
     id.split_whitespace().next().unwrap_or_default().to_string()
 }
 
+/// Write a need and an approved requirement that target `criterion`, so the
+/// criterion's satisfy is admitted (n-f921). Returns the requirement's id.
+pub fn cover(fx: &Fixture, criterion: &str) -> String {
+    let need = id_of(&fx.run(&["need", "add", "a need", "--targets", criterion]));
+    let request = id_of(&fx.run(&[
+        "req",
+        "add",
+        "a requirement",
+        "--need",
+        &need,
+        "--targets",
+        criterion,
+    ]));
+    let approved = fx.run(&[
+        "req",
+        "approve",
+        &request,
+        "--design",
+        "d",
+        "--heard-by",
+        "master",
+        "--evidence",
+        "e",
+    ]);
+    assert!(approved.status.success(), "{}", stderr(&approved));
+    request
+}
+
 impl Fixture {
     pub fn ledger(&self) -> PathBuf {
         location::dir_in(&self.data, &self.root)

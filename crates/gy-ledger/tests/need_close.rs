@@ -1,6 +1,6 @@
 use gy_ledger::{
     Actor, ClosedBy, FormatVersion, Link, MemoryStore, NeedClose, Node, NodeData, NodeId, NodeKind,
-    Operation, Relation, Repository, Store,
+    Operation, Relation, Repository, RequirementState, Store,
 };
 
 const SCOPE: &str = "a";
@@ -60,6 +60,21 @@ fn satisfied(hash: &str) -> Node {
     if let NodeData::Criterion(data) = node.data_mut() {
         data.satisfied = true;
     }
+    node
+}
+
+/// An approved requirement that targets `criterion`, seeded before the
+/// satisfied criterion so I1 admits it (n-f921).
+fn covering(criterion: &Node) -> Node {
+    let mut node = Node::requirement(
+        NodeId::from_hash(NodeKind::Requirement, "0009").unwrap(),
+        SCOPE,
+        DATE,
+        "a requirement",
+        RequirementState::Approved,
+    )
+    .unwrap();
+    target(&mut node, criterion);
     node
 }
 
@@ -138,7 +153,7 @@ fn closed_need_reports_an_unmet_criterion_no_open_need_bears() {
     assert_eq!(outcome.missing, [format!("unmet criterion {ac_id}")]);
     assert_eq!(
         outcome.next,
-        [format!("criterion satisfy {ac_id} --evidence …")]
+        [format!("req add \"<title>\" --need <N> --targets {ac_id}")]
     );
 }
 
@@ -164,9 +179,11 @@ fn closed_need_omits_a_criterion_an_open_need_still_bears() {
 fn closed_need_omits_a_satisfied_criterion() {
     let mut repo = repo();
     let ac = satisfied("0001");
+    let request = covering(&ac);
     let mut node = need("0002");
     target(&mut node, &ac);
     let id = node.id().clone();
+    seed(&mut repo, &[request]);
     seed(&mut repo, &[ac, node]);
 
     let outcome = close(&id, ClosedBy::Fact, "resolved")

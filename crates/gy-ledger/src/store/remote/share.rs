@@ -2,12 +2,13 @@
 //! The gy.toml write and the order of the three live in the CLI; this module
 //! knows git and the words. Nothing here changes a remote: the push check is a
 //! dry run in a throwaway repository.
-use super::super::{Error, Result, log};
-use super::sync::sync;
+use super::super::{Error, Gate, Result, log};
+use super::sync::sync_with;
 use super::{git, shape};
 use serde::Serialize;
 use std::fmt;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// The remote after the checks passed: the `checked:` line to print and the
@@ -89,15 +90,17 @@ pub fn check(root: &Path, url: &str) -> Result<Checked> {
 }
 
 /// Upload the local ledger as the first copy (ac-efd7 d). A machine with no
-/// ledger yet keeps only the gy.toml write; the first write will start it.
-pub fn upload(ledger: &Path, url: &str, branch: &str) -> Result<Vec<String>> {
+/// ledger yet keeps only the gy.toml write; the first write will start it. The
+/// gate is the caller's, so the first upload is judged by this build's rule
+/// (n-f921): the store owns the order, the ops layer owns the rule.
+pub fn upload(ledger: &Path, url: &str, branch: &str, gate: Arc<dyn Gate>) -> Result<Vec<String>> {
     if !ledger.join(log::FILE).is_file() {
         return Ok(vec![
             "uploaded: no ledger yet; the first write will start it, then gy sync uploads it"
                 .to_string(),
         ]);
     }
-    let report = sync(ledger, url).map_err(|error| {
+    let report = sync_with(ledger, url, gate).map_err(|error| {
         Error::invalid(format!(
             "the upload failed: {}\nthe remote stays in gy.toml; fix the access and run gy sync",
             error.message

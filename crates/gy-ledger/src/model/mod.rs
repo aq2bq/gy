@@ -19,4 +19,4 @@ pub use state::{
     Approval, Cancellation, Closed, ClosedBy, Closure, Completion, RequirementState, Revision,
 };
 
-pub use rule::{Before, Change, admit};
+pub use rule::{Before, Change, admit, covered, filed_target};

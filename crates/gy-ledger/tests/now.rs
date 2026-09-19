@@ -1,8 +1,8 @@
 use gy_ledger::link::Link;
 use gy_ledger::{
-    Actor, ClosedBy, Closure, CriterionSatisfy, FormatVersion, MemoryStore, NeedClose, Node,
-    NodeData, NodeId, NodeKind, Operation, QuestionClose, Relation, Repository, ReqApprove,
-    ReqDone, RequirementState, handover, next, now,
+    Actor, ClosedBy, Closure, CriterionSatisfy, FormatVersion, Link as ModelLink, MemoryStore,
+    NeedClose, Node, NodeData, NodeId, NodeKind, Operation, QuestionClose, Relation, Repository,
+    ReqApprove, ReqDone, RequirementState, Waiting, handover, next, now,
 };
 
 fn id(kind: NodeKind, hash: &str) -> NodeId {
@@ -78,9 +78,14 @@ fn requirement(
     hash: &str,
     scope: &str,
     created: &str,
+    targets: &[&NodeId],
 ) -> NodeId {
     let id = id(NodeKind::Requirement, hash);
-    put(repo, &node(NodeKind::Requirement, hash, scope, created));
+    let mut node = node(NodeKind::Requirement, hash, scope, created);
+    for criterion in targets {
+        node.link(ModelLink::new(id.clone(), Relation::Targets, (*criterion).clone()).unwrap());
+    }
+    put(repo, &node);
     id
 }
 
@@ -115,16 +120,9 @@ fn ledger() -> Repository<MemoryStore> {
     criterion(&mut repo, "0009", "a", "2026-09-01T00:00:00Z");
     criterion(&mut repo, "0010", "b", "2026-09-02T00:00:00Z");
     let met = criterion(&mut repo, "0011", "a", "2026-09-03T00:00:00Z");
-    CriterionSatisfy {
-        id: met,
-        evidence: "x".into(),
-        revoke: false,
-    }
-    .run(&mut repo)
-    .unwrap();
-    requirement(&mut repo, "0012", "b", "2026-09-01T00:00:00Z");
-    let approved = requirement(&mut repo, "0013", "a", "2026-09-02T00:00:00Z");
-    let shipped = requirement(&mut repo, "0014", "b", "2026-09-03T00:00:00Z");
+    requirement(&mut repo, "0012", "b", "2026-09-01T00:00:00Z", &[]);
+    let approved = requirement(&mut repo, "0013", "a", "2026-09-02T00:00:00Z", &[&met]);
+    let shipped = requirement(&mut repo, "0014", "b", "2026-09-03T00:00:00Z", &[]);
     for requirement in [&approved, &shipped] {
         ReqApprove {
             id: requirement.clone(),
@@ -135,6 +133,13 @@ fn ledger() -> Repository<MemoryStore> {
         .run(&mut repo)
         .unwrap();
     }
+    CriterionSatisfy {
+        id: met,
+        evidence: "x".into(),
+        revoke: false,
+    }
+    .run(&mut repo)
+    .unwrap();
     ReqDone {
         id: shipped.clone(),
         evidence: "x".into(),
@@ -172,7 +177,7 @@ fn now_reads_the_whole_ledger() {
         .waiting
         .iter()
         .map(|item| match item {
-            gy_ledger::Waiting::Question {
+            Waiting::Question {
                 row,
                 decider,
                 options,
@@ -180,7 +185,7 @@ fn now_reads_the_whole_ledger() {
                 assert_eq!(options.len(), 2);
                 format!("{} {decider}", row.id)
             }
-            gy_ledger::Waiting::Requirement { row, .. } => row.id.clone(),
+            Waiting::Requirement { row, .. } => row.id.clone(),
         })
         .collect();
     assert_eq!(
@@ -213,27 +218,19 @@ fn now_filters_by_scope() {
     let b = now(&repo, Some("b")).unwrap();
     assert_eq!(b.scope.as_deref(), Some("b"));
     assert_eq!(b.waiting.len(), 1);
-    assert!(matches!(
-        b.waiting[0],
-        gy_ledger::Waiting::Requirement { .. }
-    ));
+    assert!(matches!(b.waiting[0], Waiting::Requirement { .. }));
     assert_eq!(ids(&b.in_progress), [n("0006")]);
     assert!(b.open_questions.is_empty());
     assert_eq!(ids(&b.unmet), [c("0010")]);
 
     // Only writes to scope b: every recent entry names one of its nodes.
-    let in_b = [
-        q("0004"),
-        n("0006"),
-        n("0007"),
-        c("0010"),
-        r("0012"),
-        r("0014"),
-    ];
+    let in_b = ["q-0004", "n-0006", "n-0007", "ac-0010", "r-0012", "r-0014"];
     assert_eq!(b.recent.len(), 10);
     assert!(b.recent.len() < all.recent.len());
     assert!(
-        b.recent.iter().all(|entry| in_b.contains(&entry.node)),
+        b.recent
+            .iter()
+            .all(|entry| in_b.contains(&entry.node.as_str())),
         "a recent entry is outside scope b"
     );
 }
@@ -290,8 +287,8 @@ fn now_marks_questions_nobody_waits_on() {
         .waiting
         .iter()
         .filter_map(|item| match item {
-            gy_ledger::Waiting::Question { row, .. } => Some(row.unwaited),
-            gy_ledger::Waiting::Requirement { .. } => None,
+            Waiting::Question { row, .. } => Some(row.unwaited),
+            Waiting::Requirement { .. } => None,
         })
         .collect::<Vec<_>>();
     assert_eq!(rows, [true, true]);

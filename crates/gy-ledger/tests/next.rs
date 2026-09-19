@@ -85,6 +85,16 @@ fn next_skips_closed_and_done_needs_and_counts_targets() {
         )
         .unwrap(),
     );
+    let mut request = requirement("0006", RequirementState::Approved);
+    request.link(
+        Link::new(
+            request.id().clone(),
+            Relation::Targets,
+            criterion_id.clone(),
+        )
+        .unwrap(),
+    );
+    seed(&mut repo, &[request]);
     seed(
         &mut repo,
         &[criterion, open, closed, done_requirement, done],

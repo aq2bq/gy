@@ -2,7 +2,8 @@
 //! derivation from the typed model, shared by every write's outcome and by
 //! show, so the two cannot drift.
 use crate::model::{
-    Criterion, Node, NodeData, NodeId, NodeKind, Relation, Requirement, RequirementState,
+    Criterion, Node, NodeData, NodeId, NodeKind, Relation, Requirement, RequirementState, covered,
+    filed_target,
 };
 
 /// The gaps a node still has, as short phrases. A node that is already closed,
@@ -19,7 +20,7 @@ pub fn missing(node: &Node, all: &[Node]) -> Vec<String> {
         NodeData::Question(data) if data.closure.is_none() => question_missing(node, all),
         NodeData::Decision(_) => decision_missing(node, all),
         NodeData::Requirement(data) if pre_approval(data) => requirement_missing(node),
-        NodeData::Criterion(data) if !data.satisfied => body_gap(node).into_iter().collect(),
+        NodeData::Criterion(data) if !data.satisfied => criterion_missing(node, all),
         _ => Vec::new(),
     }
 }
@@ -76,7 +77,7 @@ fn closed_need_missing(node: &Node, all: &[Node]) -> Vec<String> {
 fn closed_need_next(node: &Node, all: &[Node]) -> Vec<String> {
     orphaned_criteria(node, all)
         .into_iter()
-        .map(|criterion| format!("criterion satisfy {} --evidence …", criterion.id()))
+        .flat_map(|criterion| satisfy_step(criterion, all))
         .collect()
 }
 
@@ -194,22 +195,60 @@ fn requirement_next(id: &NodeId, data: &Requirement) -> Vec<String> {
 
 fn criterion_next(node: &Node, data: &Criterion, all: &[Node]) -> Vec<String> {
     if !data.satisfied {
-        return vec![format!("criterion satisfy {} --evidence …", node.id())];
+        return satisfy_step(node, all);
     }
-    match open_sibling(node.id(), all) {
-        Some(sibling) => vec![format!("criterion satisfy {sibling}")],
-        None => Vec::new(),
+    open_sibling(node.id(), all).map_or_else(Vec::new, |sibling| satisfy_step(sibling, all))
+}
+
+/// A criterion's gaps: its body, and the coverage the satisfy needs (n-f921).
+fn criterion_missing(node: &Node, all: &[Node]) -> Vec<String> {
+    let mut out: Vec<String> = body_gap(node).into_iter().collect();
+    if !covered(all, node.id()) {
+        out.push("an approved requirement (targets)".to_string());
     }
+    out
+}
+
+/// The command that would satisfy `criterion`: the satisfy itself when an
+/// approved or done requirement covers it, otherwise the requirement step that
+/// must come first (n-f921).
+fn satisfy_step(criterion: &Node, all: &[Node]) -> Vec<String> {
+    if covered(all, criterion.id()) {
+        return vec![format!("criterion satisfy {} --evidence …", criterion.id())];
+    }
+    if let Some(request) = filed_target(all, criterion.id()) {
+        return vec![format!(
+            "req approve {} --design … --heard-by … --evidence …",
+            request.id()
+        )];
+    }
+    vec![format!(
+        "req add \"<title>\" --need {} --targets {}",
+        bearing_need(criterion.id(), all),
+        criterion.id()
+    )]
+}
+
+/// The need a requirement for `criterion` would file against: an open one that
+/// targets it, or the hole `<N>` when none does (a closed need takes no new
+/// requirement, n-f921).
+fn bearing_need(criterion: &NodeId, all: &[Node]) -> String {
+    all.iter()
+        .filter(|node| node.kind() == NodeKind::Need && !closed_need(node))
+        .find(|need| linked(need, Relation::Targets).contains(criterion))
+        .map_or_else(|| "<N>".to_string(), |need| need.id().to_string())
 }
 
 /// Another unsatisfied criterion on a need that also targets `criterion`.
-fn open_sibling(criterion: &NodeId, all: &[Node]) -> Option<NodeId> {
+fn open_sibling<'a>(criterion: &NodeId, all: &'a [Node]) -> Option<&'a Node> {
     all.iter()
         .filter(|need| need.kind() == NodeKind::Need)
         .find_map(|need| {
             linked(need, Relation::Targets)
                 .into_iter()
-                .find(|id| id != criterion && find(all, id).is_some_and(unsatisfied))
+                .filter(|id| id != criterion)
+                .find_map(|id| find(all, &id))
+                .filter(|node| unsatisfied(node))
         })
 }
 

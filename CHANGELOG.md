@@ -194,6 +194,23 @@ brings the new one along.
   Both existing ledgers give byte-identical now views before and after;
   a ledger whose questions name their decider by any other name now shows
   them as waiting. No public name or JSON key changed.
+- **An achievement needs an approved requirement** (n-f921, d-b0d0,
+  d-5dfe). `criterion satisfy` is refused unless a requirement that is
+  approved or done points at the criterion with `targets`. gy cannot see
+  work that happens outside the ledger, but it can refuse to record its
+  result: what was built before anyone approved what would change does not
+  count as met. The refusal says the next step (`req add "<title>" --need
+  <N> --targets <AC>`, or `req approve <R> …` when a filed requirement
+  already targets it). `--revoke` is never refused. The same rule judges an
+  undo that would bring a satisfaction back and a rebase on a shared
+  ledger: if the other side revised the requirement first, your unpushed
+  satisfy is refused with the reason and shows under `did not land`.
+  `missing:` on an unmet, uncovered criterion says `an approved requirement
+  (targets)`, and `next:` offers `req add`, `req approve` or `criterion
+  satisfy` to match. Who approves is not gy's business: `req approve` is
+  unchanged, and the bundled gy-loop skill asks the person once. The rule
+  looks only at what a write changes, so what a ledger already holds stays
+  valid. `gy share` judges its first upload with the same rule.
 
 ### Fixed
 

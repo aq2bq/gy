@@ -1,6 +1,6 @@
 use gy_ledger::{
-    Actor, ClosedBy, CriterionSatisfy, DecisionScope, FormatVersion, MemoryStore, NeedClose, Node,
-    NodeId, NodeKind, Operation, QuestionAdd, Repository, ReqAdd,
+    Actor, ClosedBy, CriterionSatisfy, DecisionScope, FormatVersion, Link, MemoryStore, NeedClose,
+    Node, NodeId, NodeKind, Operation, QuestionAdd, Relation, Repository, ReqAdd, RequirementState,
 };
 use gy_serve::api::route;
 use gy_serve::http::Request;
@@ -18,6 +18,22 @@ fn ledger() -> Repository<MemoryStore> {
     let store = MemoryStore::with_actor(FormatVersion::CURRENT, Actor::new("piko").unwrap());
     let mut repo = Repository::new(store).with_scopes(vec!["a".into(), "b".into()]);
     let note = DecisionScope::recorded("s").unwrap();
+    let mut request = Node::requirement(
+        id(NodeKind::Requirement, "0007"),
+        "a",
+        DATE,
+        "a requirement",
+        RequirementState::Done,
+    )
+    .unwrap();
+    request.link(
+        Link::new(
+            request.id().clone(),
+            Relation::Targets,
+            id(NodeKind::Criterion, "0005"),
+        )
+        .unwrap(),
+    );
     let nodes = [
         Node::need(id(NodeKind::Need, "0001"), "a", DATE, "a need").unwrap(),
         Node::need(id(NodeKind::Need, "0002"), "b", DATE, "a need").unwrap(),
@@ -32,6 +48,7 @@ fn ledger() -> Repository<MemoryStore> {
         .unwrap(),
         Node::criterion(id(NodeKind::Criterion, "0005"), "b", DATE, "met").unwrap(),
         Node::criterion(id(NodeKind::Criterion, "0006"), "a", DATE, "unmet").unwrap(),
+        request,
     ];
     repo.transaction("seed", "test", |repo| {
         for node in &nodes {
@@ -78,13 +95,13 @@ fn shell_counts_every_kind_and_scope() {
             {"kind": "Need", "open": 1, "total": 2},
             {"kind": "Question", "open": 1, "total": 1},
             {"kind": "Decision", "open": 0, "total": 1},
-            {"kind": "Requirement", "open": 0, "total": 0},
+            {"kind": "Requirement", "open": 0, "total": 1},
             {"kind": "Criterion", "open": 1, "total": 2},
         ])
     );
     assert_eq!(
         json["scopes"],
-        json!([{"name": "a", "count": 4}, {"name": "b", "count": 2}])
+        json!([{"name": "a", "count": 5}, {"name": "b", "count": 2}])
     );
 }
 

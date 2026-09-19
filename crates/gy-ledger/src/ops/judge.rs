@@ -27,8 +27,7 @@ pub fn sync(ledger: &Path, remote: &str) -> Result<crate::store::remote::Sync> {
 }
 
 /// The previous state as the model reads it. Only what the rule asks for is
-/// turned into a node, so an empty rule decodes nothing (n-557f).
-#[allow(dead_code)] // the empty rule reads nothing; the next need calls these
+/// turned into a node, so a commit decodes nothing it does not judge (n-557f).
 struct Nodes<'a> {
     nodes: &'a BTreeMap<String, Value>,
 }
