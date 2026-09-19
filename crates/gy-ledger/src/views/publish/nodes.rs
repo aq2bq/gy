@@ -73,21 +73,21 @@ fn text(shown: &Shown, targets: &BTreeMap<String, &Node>) -> String {
         let _ = writeln!(out, "- {line}");
     }
     out.push('\n');
-    section(&mut out, "関係", &bullets(&relations(shown, targets)));
+    section(&mut out, "Relations", &bullets(&relations(shown, targets)));
     if let NodeData::Decision(data) = &shown.data {
         let scope = if data.scope.is_unrecorded() {
-            "（未記録）"
+            "(not recorded)"
         } else {
             data.scope.text()
         };
-        section(&mut out, "成立範囲", scope);
+        section(&mut out, "Where it holds", scope);
     }
-    section(&mut out, "本文", shown.body.trim_end());
+    section(&mut out, "Body", shown.body.trim_end());
     if let Some((label, lines)) = records(shown) {
         let lines: Vec<String> = lines.iter().map(|line| format!("- {line}")).collect();
         section(&mut out, label, &bullets(&lines));
     }
-    section(&mut out, "自由属性", &bullets(&attributes(shown)));
+    section(&mut out, "Free attributes", &bullets(&attributes(shown)));
     out
 }
 
@@ -100,7 +100,7 @@ fn summary(shown: &Shown) -> String {
 }
 
 fn metadata(shown: &Shown) -> Vec<String> {
-    let mut out = vec![format!("種類: {}", shown.kind.name())];
+    let mut out = vec![format!("Kind: {}", shown.kind.name())];
     if let Some(scope) = &shown.scope {
         out.push(format!("scope: {scope}"));
     }
@@ -109,13 +109,13 @@ fn metadata(shown: &Shown) -> Vec<String> {
     }
     if let Some(state) = state(shown) {
         let reference = match (&shown.data, &shown.reference) {
-            (NodeData::Requirement(_), Some(reference)) => format!("（ref: {reference}）"),
+            (NodeData::Requirement(_), Some(reference)) => format!("(ref: {reference})"),
             _ => String::new(),
         };
-        out.push(format!("状態: {state}{reference}"));
+        out.push(format!("State: {state}{reference}"));
     }
     if !shown.aliases.is_empty() {
-        out.push(format!("別名: {}", shown.aliases.join(", ")));
+        out.push(format!("Aliases: {}", shown.aliases.join(", ")));
     }
     out
 }
@@ -156,7 +156,7 @@ fn relations(shown: &Shown, targets: &BTreeMap<String, &Node>) -> Vec<String> {
         .collect();
     edges.sort_by(|a, b| (&a.0.name, &a.0.to).cmp(&(&b.0.name, &b.0.to)));
     if edges.is_empty() {
-        vec!["- 無し".to_string()]
+        vec!["- none".to_string()]
     } else {
         edges.into_iter().map(|(_, line)| line).collect()
     }
@@ -164,7 +164,7 @@ fn relations(shown: &Shown, targets: &BTreeMap<String, &Node>) -> Vec<String> {
 
 fn attributes(shown: &Shown) -> Vec<String> {
     if shown.attributes.is_empty() {
-        return vec!["- 無し".to_string()];
+        return vec!["- none".to_string()];
     }
     shown
         .attributes
@@ -178,14 +178,14 @@ fn records(shown: &Shown) -> Option<(&'static str, Vec<String>)> {
     match &shown.data {
         NodeData::Requirement(data) => {
             let lines = requirement_records(data);
-            (!lines.is_empty()).then_some(("記録", lines))
+            (!lines.is_empty()).then_some(("Record", lines))
         }
-        NodeData::Criterion(data) => Some(("充足", vec![satisfaction(data)])),
-        NodeData::Question(data) => Some(("閉じ方", vec![closure(data)])),
+        NodeData::Criterion(data) => Some(("Satisfaction", vec![satisfaction(data)])),
+        NodeData::Question(data) => Some(("Closure", vec![closure(data)])),
         NodeData::Need(data) => data
             .closed
             .as_ref()
-            .map(|closed| ("閉じ方", vec![closed_line(closed)])),
+            .map(|closed| ("Closure", vec![closed_line(closed)])),
         NodeData::Decision(_) => None,
     }
 }
@@ -194,25 +194,25 @@ fn requirement_records(data: &Requirement) -> Vec<String> {
     let mut out = Vec::new();
     if let Some(approval) = &data.approval {
         out.push(format!(
-            "承認: design={}, heard_by={}, evidence={}, at={}",
+            "Approval: design={}, heard_by={}, evidence={}, at={}",
             approval.design, approval.heard_by, approval.evidence, approval.at
         ));
     }
     for revision in &data.revisions {
         out.push(format!(
-            "改訂: {}（出典: {}、{}）",
+            "Revision: {} (source: {}, {})",
             revision.reason, revision.source, revision.at
         ));
     }
     if let Some(completion) = &data.completion {
         out.push(format!(
-            "完了: {}（{}）",
+            "Completion: {} ({})",
             completion.evidence, completion.at
         ));
     }
     if let Some(cancellation) = &data.cancellation {
         out.push(format!(
-            "中止: {}（出典: {}、{}）",
+            "Cancellation: {} (source: {}, {})",
             cancellation.reason, cancellation.source, cancellation.at
         ));
     }
@@ -225,7 +225,7 @@ fn satisfaction(data: &Criterion) -> String {
     }
     let mut line = "satisfied".to_string();
     if let Some(evidence) = &data.evidence {
-        line.push_str(&format!("（{evidence}）"));
+        line.push_str(&format!(" ({evidence})"));
     }
     if let Some(at) = &data.satisfied_at {
         line.push_str(&format!(" {at}"));
@@ -236,19 +236,19 @@ fn satisfaction(data: &Criterion) -> String {
 fn closure(data: &Question) -> String {
     let evidence = data.evidence.clone().unwrap_or_default();
     match data.closure {
-        Some(Closure::Fact) => format!("事実で閉じた（{evidence}）"),
-        Some(Closure::Decision) => format!("決定で閉じた（{evidence}）"),
-        Some(Closure::NonDecision) => format!("決定を伴わず閉じた（{evidence}）"),
-        None => "開いている".to_string(),
+        Some(Closure::Fact) => format!("closed as fact ({evidence})"),
+        Some(Closure::Decision) => format!("closed by a decision ({evidence})"),
+        Some(Closure::NonDecision) => format!("closed without a decision ({evidence})"),
+        None => "open".to_string(),
     }
 }
 
 fn closed_line(closed: &Closed) -> String {
     let by = match closed.by {
-        ClosedBy::Fact => "事実",
-        ClosedBy::External => "外部",
+        ClosedBy::Fact => "fact",
+        ClosedBy::External => "external",
     };
-    format!("{by}で閉じた（{}）", closed.evidence)
+    format!("closed as {by} ({})", closed.evidence)
 }
 
 fn other(edge: &EdgeLine, targets: &BTreeMap<String, &Node>) -> String {
@@ -261,7 +261,7 @@ fn other(edge: &EdgeLine, targets: &BTreeMap<String, &Node>) -> String {
 fn mark(edge: &EdgeLine) -> String {
     edge.mark
         .as_deref()
-        .map(|mark| format!("（mark: {mark}）"))
+        .map(|mark| format!(" (mark: {mark})"))
         .unwrap_or_default()
 }
 

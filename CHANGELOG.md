@@ -170,6 +170,19 @@ brings the new one along.
   one is filed; the choice among solutions is the writer's to decide and
   record, not the person's to pick from a menu. Who approves a requirement
   is the user's policy (d-5dfe): the skill asks once and records the answer.
+- **What gy prints is in English** (n-00d3, d-e999). The phrases under
+  `missing:` and the holes in `next:` (`a body (how to measure)`,
+  `a filed-as requirement`, `<title>`, `<older D>` …), undo's notes, `show`'s
+  `missing:` line, and everything `publish` writes around your content —
+  the index's "How to read", the section names of a node file (`Relations`,
+  `Where it holds`, `Body`, `Free attributes` …), the history table's
+  header, the diagnostics' preface — were Japanese and are now English,
+  with ASCII parentheses. What you wrote (titles, bodies, scope notes, free
+  attributes) is untouched: a publication of gy's own ledger before and
+  after differs in no title and in none of 714 content sections. An agent
+  that matched on the Japanese phrases must match on the English ones; the
+  field names (`missing`, `next`) and `--json` keys are the same. The web
+  UI still follows the browser's language.
 
 ### Fixed
 

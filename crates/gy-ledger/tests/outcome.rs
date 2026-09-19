@@ -113,17 +113,17 @@ fn add_operations_report_what_their_new_node_lacks() {
     }
     .run(&mut repo)
     .unwrap();
-    assert_eq!(added.missing, ["本文", "filed-as の要求"]);
+    assert_eq!(added.missing, ["a body", "a filed-as requirement"]);
     let added_id = added.id.clone().unwrap();
     assert_eq!(
         added.next,
         [
             format!("edit {added_id} --body-file … --reason …"),
-            format!("req add \"<題>\" --need {added_id} …")
+            format!("req add \"<title>\" --need {added_id} …")
         ]
     );
     let text = show(&repo, &[added_id.to_string()], false).unwrap()[0].to_string();
-    assert!(text.contains("無いもの: 本文, filed-as の要求"), "{text}");
+    assert!(text.contains("missing: a body"), "{text}");
 
     let asked = QuestionAdd {
         scope: SCOPE.into(),
@@ -134,8 +134,12 @@ fn add_operations_report_what_their_new_node_lacks() {
     }
     .run(&mut repo)
     .unwrap();
-    const NO_WAITER: &str = "待つニーズ（waits-on）か生んだ要求（raised）";
-    assert_eq!(asked.missing, ["本文（選択肢の根拠）", NO_WAITER]);
+    const NO_WAITER: &str =
+        "a need that waits on it (waits-on) or a requirement that raised it (raised)";
+    assert_eq!(
+        asked.missing,
+        ["a body (the ground for the options)", NO_WAITER]
+    );
     let asked_id = asked.id.clone().unwrap();
     assert_eq!(
         asked.next,
@@ -154,7 +158,7 @@ fn add_operations_report_what_their_new_node_lacks() {
     }
     .run(&mut repo)
     .unwrap();
-    assert_eq!(criterion.missing, ["本文（測り方）"]);
+    assert_eq!(criterion.missing, ["a body (how to measure)"]);
     let criterion_id = criterion.id.clone().unwrap();
     assert_eq!(
         criterion.next,
@@ -167,7 +171,7 @@ fn add_operations_report_what_their_new_node_lacks() {
     let requirement = req_add(&need_id).run(&mut repo).unwrap();
     assert_eq!(
         requirement.missing,
-        ["relies-on の決定", "targets の AC", "ref"]
+        ["a relies-on decision", "a targets criterion", "ref"]
     );
     assert_eq!(
         requirement.next,
@@ -192,12 +196,12 @@ fn a_need_with_a_body_is_not_told_to_edit() {
     .run(&mut repo)
     .unwrap();
     assert!(
-        !added.missing.iter().any(|gap| gap == "本文"),
+        !added.missing.iter().any(|gap| gap == "a body"),
         "{:?}",
         added.missing
     );
     let id = added.id.clone().unwrap();
-    assert_eq!(added.next, [format!("req add \"<題>\" --need {id} …")]);
+    assert_eq!(added.next, [format!("req add \"<title>\" --need {id} …")]);
 }
 
 #[test]
@@ -211,13 +215,13 @@ fn decide_reports_missing_and_suggests_a_link() {
     seed(&mut repo, &[old, question]);
 
     let bare = decide(None, Vec::new(), Vec::new()).run(&mut repo).unwrap();
-    assert_eq!(bare.missing, ["本文", "closes した論点"]);
+    assert_eq!(bare.missing, ["a body", "a question it closes"]);
     let bare_id = bare.id.clone().unwrap();
     assert_eq!(
         bare.next,
         [
             format!("edit {bare_id} --body-file … --reason …"),
-            format!("link {bare_id} narrows <古い D> --mark <文>")
+            format!("link {bare_id} narrows <older D> --mark <text>")
         ]
     );
 

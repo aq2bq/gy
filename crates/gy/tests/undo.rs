@@ -15,7 +15,7 @@ fn undo_restores_the_previous_value() {
     assert!(out.status.success(), "{}", stderr(&out));
     assert!(stdout(&out).contains("changed: undone"));
     assert!(
-        stdout(&out).contains("next: もう一度 undo"),
+        stdout(&out).contains("next: undo again"),
         "{}",
         stdout(&out)
     );
@@ -24,7 +24,7 @@ fn undo_restores_the_previous_value() {
     let out = fx.run(&["undo", "--reason", "again"]);
     assert!(out.status.success(), "{}", stderr(&out));
     assert!(
-        stdout(&out).contains("next: redo になった"),
+        stdout(&out).contains("next: this was a redo"),
         "{}",
         stdout(&out)
     );

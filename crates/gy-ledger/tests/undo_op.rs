@@ -108,14 +108,10 @@ fn undo_says_whether_the_next_one_is_a_redo() {
     add_need(&mut repo);
     let outcome = undo("mistake").run(&mut repo).unwrap();
     assert_eq!(outcome.next.len(), 1);
-    assert!(
-        outcome.next[0].contains("もう一度 undo"),
-        "{:?}",
-        outcome.next
-    );
+    assert!(outcome.next[0].contains("undo again"), "{:?}", outcome.next);
     let outcome = undo("again").run(&mut repo).unwrap();
     assert!(
-        outcome.next[0].contains("redo になった"),
+        outcome.next[0].contains("this was a redo"),
         "{:?}",
         outcome.next
     );

@@ -61,8 +61,8 @@ fn a_question_without_a_waiting_need_reports_it() {
     assert_eq!(
         outcome.missing,
         [
-            "本文（選択肢の根拠）",
-            "待つニーズ（waits-on）か生んだ要求（raised）"
+            "a body (the ground for the options)",
+            "a need that waits on it (waits-on) or a requirement that raised it (raised)"
         ]
     );
     assert_eq!(
@@ -95,5 +95,5 @@ fn a_question_without_a_waiting_need_reports_it() {
     .run(&mut repo)
     .unwrap();
     let text = show(&repo, &[id.to_string()], false).unwrap()[0].to_string();
-    assert!(!text.contains("待つニーズ"), "{text}");
+    assert!(!text.contains("waits on it"), "{text}");
 }

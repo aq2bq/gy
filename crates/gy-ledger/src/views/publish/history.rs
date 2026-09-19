@@ -5,7 +5,7 @@ use crate::ops::repository::{Repository, Result, Store};
 use std::collections::BTreeMap;
 use std::fmt::Write;
 
-const HEADER: &str = "| seq | 日時 | 書き手 | ノード | 何を | なぜ | 出典 |\n\
+const HEADER: &str = "| seq | when | writer | node | what | why | source |\n\
                       |---|---|---|---|---|---|---|\n";
 
 pub(super) fn history<S: Store>(
@@ -44,7 +44,7 @@ pub(super) fn history<S: Store>(
         );
     }
     if count == 0 {
-        out.push_str("（履歴は無し）\n");
+        out.push_str("(no history)\n");
     }
     Ok(out)
 }

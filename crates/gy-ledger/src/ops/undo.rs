@@ -13,8 +13,12 @@ impl<S: Store> Operation<S> for Undo {
             return Err(Error::invalid("undo needs a reason"));
         }
         let next = match repo.store_mut().undo(UNDO_WHY, &self.reason)? {
-            UndoneKind::Undo { seq } => vec![format!("redo になった（{seq} の undo を戻した）")],
-            UndoneKind::Write => vec!["もう一度 undo すると今の undo を戻す（redo）".to_string()],
+            UndoneKind::Undo { seq } => {
+                vec![format!("this was a redo: it took back the undo of {seq}")]
+            }
+            UndoneKind::Write => {
+                vec!["undo again to take this undo back (redo)".to_string()]
+            }
         };
         Ok(Outcome {
             id: None,

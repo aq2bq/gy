@@ -135,7 +135,7 @@ fn closed_need_reports_an_unmet_criterion_no_open_need_bears() {
     let outcome = close(&id, ClosedBy::Fact, "resolved")
         .run(&mut repo)
         .unwrap();
-    assert_eq!(outcome.missing, [format!("未達の受け入れ条件 {ac_id}")]);
+    assert_eq!(outcome.missing, [format!("unmet criterion {ac_id}")]);
     assert_eq!(
         outcome.next,
         [format!("criterion satisfy {ac_id} --evidence …")]

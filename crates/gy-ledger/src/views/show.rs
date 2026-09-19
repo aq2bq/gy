@@ -150,7 +150,7 @@ impl fmt::Display for Shown {
             writeln!(f, "{}", self.body)?;
         }
         if !self.missing.is_empty() {
-            writeln!(f, "無いもの: {}", self.missing.join(", "))?;
+            writeln!(f, "missing: {}", self.missing.join(", "))?;
         }
         Ok(())
     }

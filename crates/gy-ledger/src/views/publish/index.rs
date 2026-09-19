@@ -16,13 +16,13 @@ pub(super) fn index<S: Store>(
     location: &str,
 ) -> Result<FileEntry> {
     let mut out = header(scope, seq, since, writer, location);
-    out.push_str("\n## 読み方\n\n");
+    out.push_str("\n## How to read\n\n");
     out.push_str(reading());
-    out.push_str("\n## 一覧\n\n");
+    out.push_str("\n## Lists\n\n");
     out.push_str(&lists(all, scope));
-    out.push_str("\n## 履歴\n\n");
+    out.push_str("\n## History\n\n");
     out.push_str(&history::history(repository, all, scope, since)?);
-    out.push_str("\n## 診断\n\n");
+    out.push_str("\n## Diagnostics\n\n");
     out.push_str(&diagnostics::diagnostics(repository, Some(scope))?);
     Ok(FileEntry {
         path: "README.md".to_string(),
@@ -32,19 +32,19 @@ pub(super) fn index<S: Store>(
 
 fn header(scope: &str, seq: u64, since: Option<u64>, writer: &str, location: &str) -> String {
     let generated = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ");
-    let since = since.map_or("(先頭から)".to_string(), |since| since.to_string());
+    let since = since.map_or("(from the start)".to_string(), |since| since.to_string());
     let writer = if writer.trim().is_empty() {
         String::new()
     } else {
-        format!("- 書き手: {writer}\n")
+        format!("- Writer: {writer}\n")
     };
     format!(
-        "# gy の公開物 — {scope}\n\n\
-         - 生成: {generated}\n\
+        "# gy publication — {scope}\n\n\
+         - Generated: {generated}\n\
          - seq: {seq}\n\
          - scope: {scope}\n\
          - since: {since}\n\
-         {writer}- 正本: {location}\n"
+         {writer}- Canonical store: {location}\n"
     )
 }
 
@@ -59,7 +59,7 @@ fn lists(all: &[Node], scope: &str) -> String {
             .collect();
         nodes.sort_by_key(|node| (node.created().to_string(), node.id().to_string()));
         if nodes.is_empty() {
-            out.push_str("- 無し\n");
+            out.push_str("- none\n");
             continue;
         }
         for node in nodes {
@@ -103,35 +103,35 @@ fn state(node: &Node, all: &[Node]) -> Option<String> {
 
 /// What a reader needs to read the rest without the ledger.
 fn reading() -> &'static str {
-    "ノードの種類（5 種）:\n\
-     - need（n-…）: これから行う作業。受け入れ条件を対象にする。\n\
-     - question（q-…）: まだ決めていないこと。決定者と 2 つ以上の選択肢を持つ。\n\
-     - decision（d-…）: 条件付きの決定。成立範囲（decision_scope）を持つ。\n\
-     - requirement（r-…）: ニーズを承認に回したもの。外への参照（ref）を持つ。\n\
-     - criterion（ac-…）: 受け入れ条件。作業の進みを数える相手。\n\n\
-     要求の状態（4 つ）:\n\
-     - filed: 起票済み。設計はまだ承認されていない。\n\
-     - approved: 確定。マスターの設計承認がある。\n\
-     - done: 完了。出荷の根拠が記録されている。\n\
-     - cancelled: 中止。完了以外の理由で閉じた。\n\n\
-     関係（12）と向き:\n\
-     - closes: 論点 → 決定。\n\
-     - narrows / widens / supersedes / completes: 決定 → 決定。\n\
-     - targets: ニーズ / 要求 → 受け入れ条件。\n\
-     - spawned-by: ニーズ → 決定。\n\
-     - filed-as: ニーズ → 要求。\n\
-     - depends-on: ニーズ → ニーズ。\n\
-     - relies-on: 要求 → 決定。\n\
-     - raised: 要求 → 論点。\n\
-     - waits-on: ニーズ → 論点・要求。\n\
-     辺は始点のノードだけに保存し、逆向きは導出する。この文書は両向きを出す。\n\n\
-     論点の閉じ方:\n\
-     - fact: 事実で閉じた。 - decision: 決定で閉じた。 - non-decision: 決定を伴わずに閉じた。\n\n\
-     ID と別名:\n\
-     - ID は種類の接頭辞と短いハッシュ（例 n-3f9a）。旧 ID があれば別名として併記する（例 D-78）。\n\
-     - 参照はすべて「ID（別名） 題名」で書く。要求は ref（外への参照）も持つ。\n\n\
-     履歴の項目:\n\
-     - seq: 書き込みの連番（時点）。 - 日時・書き手: いつ・誰が（GY_ACTOR）。\n\
-     - ノード: 対象の ID と題名。 - 何を: created / updated / deleted。\n\
-     - なぜ: 操作の名前と対象。 - 出典: 操作に渡した根拠や URL。\n"
+    "Node kinds (5):\n\
+     - need (n-…): work still to do. It targets criteria.\n\
+     - question (q-…): something not yet decided. It has a decider and two or more options.\n\
+     - decision (d-…): a decision, with the conditions under which it holds (decision_scope).\n\
+     - requirement (r-…): what will change, filed for approval. It may carry an external reference (ref).\n\
+     - criterion (ac-…): an acceptance criterion. The unit that counts a need's progress.\n\n\
+     Requirement states (4):\n\
+     - filed: filed. The design is not yet approved.\n\
+     - approved: confirmed. The design was approved.\n\
+     - done: done. The ground for shipping is recorded.\n\
+     - cancelled: cancelled. Closed for a reason other than completion.\n\n\
+     Relations (12) and their direction:\n\
+     - closes: question → decision.\n\
+     - narrows / widens / supersedes / completes: decision → decision.\n\
+     - targets: need / requirement → criterion.\n\
+     - spawned-by: need → decision.\n\
+     - filed-as: need → requirement.\n\
+     - depends-on: need → need.\n\
+     - relies-on: requirement → decision.\n\
+     - raised: requirement → question.\n\
+     - waits-on: need → question / requirement.\n\
+     An edge is stored only on its source node; the reverse direction is derived. This document shows both directions.\n\n\
+     How a question closes:\n\
+     - fact: closed on a fact. - decision: closed on a decision. - non-decision: closed without a decision.\n\n\
+     IDs and aliases:\n\
+     - An ID is the kind's prefix and a short hash (e.g. n-3f9a). An older ID, if any, is listed with it as an alias (e.g. D-78).\n\
+     - Every reference is written \"ID (alias) title\". A requirement also has a ref (an external reference).\n\n\
+     History fields:\n\
+     - seq: the write's serial number (a point in time). - when / writer: when and who (GY_ACTOR).\n\
+     - node: the target ID and title. - what: created / updated / deleted.\n\
+     - why: the operation's name and target. - source: the ground or URL passed to the operation.\n"
 }

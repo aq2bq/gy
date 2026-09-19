@@ -151,11 +151,11 @@ fn a_decision_file_has_one_relations_section_and_a_spaced_shape() {
         newer.starts_with("# d-0006 (D-2) the new decision\n\n"),
         "{newer}"
     );
-    assert_eq!(newer.matches("## 関係").count(), 1, "{newer}");
-    assert_eq!(newer.matches("## 成立範囲").count(), 1, "{newer}");
+    assert_eq!(newer.matches("## Relations").count(), 1, "{newer}");
+    assert_eq!(newer.matches("## Where it holds").count(), 1, "{newer}");
     assert_eq!(newer.matches("applies at dawn").count(), 1, "{newer}");
     assert!(
-        newer.contains("- narrows d-0005 (D-1) the old decision（mark: the changed part）"),
+        newer.contains("- narrows d-0005 (D-1) the old decision (mark: the changed part)"),
         "{newer}"
     );
     for (index, line) in newer.lines().enumerate() {
@@ -181,8 +181,8 @@ fn the_index_omits_an_empty_writer() {
 
     let index = publish(&repo, None, None, "", "/ledger").unwrap();
     let index = file(&index, "a", "README.md");
-    assert!(!index.contains("- 書き手:"), "{index}");
-    assert!(index.contains("- 正本: /ledger"), "{index}");
+    assert!(!index.contains("- Writer:"), "{index}");
+    assert!(index.contains("- Canonical store: /ledger"), "{index}");
 }
 
 #[test]
@@ -194,16 +194,16 @@ fn an_index_lists_nodes_with_links_and_sections() {
 
     let publication = render(&repo);
     let index = file(&publication, "a", "README.md");
-    assert!(index.starts_with("# gy の公開物 — a\n"), "{index}");
+    assert!(index.starts_with("# gy publication — a\n"), "{index}");
     for marker in [
         "- seq: ",
         "- scope: a",
-        "- 書き手: piko",
-        "- 正本: /ledger",
-        "## 読み方",
-        "## 一覧",
-        "## 履歴",
-        "## 診断",
+        "- Writer: piko",
+        "- Canonical store: /ledger",
+        "## How to read",
+        "## Lists",
+        "## History",
+        "## Diagnostics",
     ] {
         assert!(index.contains(marker), "missing {marker}:\n{index}");
     }
@@ -231,7 +231,7 @@ fn the_index_history_honors_since() {
 
     let index = render_since(&repo, Some(1));
     let index = file(&index, "a", "README.md");
-    let history = section(index, "## 履歴");
+    let history = section(index, "## History");
     assert!(history.contains("second need"), "{history}");
     assert!(!history.contains("first need"), "{history}");
 }
@@ -248,7 +248,7 @@ fn two_runs_produce_the_same_files() {
     assert_eq!(paths(&first, "a"), paths(&second, "a"));
     let strip = |text: &str| {
         text.lines()
-            .filter(|line| !line.starts_with("- 生成:"))
+            .filter(|line| !line.starts_with("- Generated:"))
             .collect::<Vec<_>>()
             .join("\n")
     };

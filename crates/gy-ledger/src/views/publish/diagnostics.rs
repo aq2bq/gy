@@ -10,8 +10,8 @@ pub(super) fn diagnostics<S: Store>(
 ) -> Result<String> {
     let report = handover(repository, scope)?;
     let mut out = String::from(
-        "エラーは正本の整合の破れ。`show <ID>` で該当ノードを読み、`edit` か `link` で直す。\
-         警告は注意が要る状態で、`handover` に一覧が出る。\n\n",
+        "Errors are breaks in the ledger's integrity. Read the node with `show <ID>` and fix it \
+         with `edit` or `link`. Warnings are states that need attention, listed by `handover`.\n\n",
     );
     let _ = writeln!(out, "errors: {}", report.errors.len());
     for error in &report.errors {

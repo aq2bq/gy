@@ -56,7 +56,7 @@ fn question_add_then_close() {
     ]);
     assert!(out.status.success(), "{}", stderr(&out));
     assert!(stdout(&out).contains("changed: created, decider, options"));
-    assert!(stdout(&out).contains("missing: 本文（選択肢の根拠）"));
+    assert!(stdout(&out).contains("missing: a body (the ground for the options)"));
     let id = id_of(&out);
 
     let out = fx.run(&[

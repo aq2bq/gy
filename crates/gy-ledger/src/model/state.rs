@@ -3,8 +3,8 @@ use super::node::{Criterion, valid_created};
 use crate::store::{Error, Result};
 use serde::{Deserialize, Serialize};
 
-/// The four requirement states (D-70). `Filed` is "起票済み": the request has
-/// been filed but the design is not yet approved.
+/// The four requirement states (D-70). `Filed`: the request has been filed but
+/// the design is not yet approved.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum RequirementState {
     #[default]

@@ -19,7 +19,7 @@ pub fn missing(node: &Node, all: &[Node]) -> Vec<String> {
         NodeData::Question(data) if data.closure.is_none() => question_missing(node, all),
         NodeData::Decision(_) => decision_missing(node, all),
         NodeData::Requirement(data) if pre_approval(data) => requirement_missing(node),
-        NodeData::Criterion(data) if !data.satisfied => body(node, "本文（測り方）"),
+        NodeData::Criterion(data) if !data.satisfied => body_gap(node).into_iter().collect(),
         _ => Vec::new(),
     }
 }
@@ -31,7 +31,7 @@ pub fn next(node: &Node, all: &[Node]) -> Vec<String> {
     let mut out = match node.data() {
         NodeData::Need(data) => {
             if data.closed.is_none() {
-                vec![format!("req add \"<題>\" --need {id} …")]
+                vec![format!("req add \"<title>\" --need {id} …")]
             } else {
                 closed_need_next(node, all)
             }
@@ -46,18 +46,18 @@ pub fn next(node: &Node, all: &[Node]) -> Vec<String> {
         NodeData::Criterion(data) => criterion_next(node, data, all),
         _ => Vec::new(),
     };
-    // One rule for every kind: when `missing` names a body, the edit that
-    // would fill it leads what else could follow.
-    if missing(node, all).iter().any(|gap| gap.starts_with("本文")) {
+    // One rule for every kind: when the body is still empty and the state
+    // reports it, the edit that would fill it leads what else could follow.
+    if body_gap(node).is_some() {
         out.insert(0, format!("edit {id} --body-file … --reason …"));
     }
     out
 }
 
 fn need_missing(node: &Node) -> Vec<String> {
-    let mut out = body(node, "本文");
+    let mut out: Vec<String> = body_gap(node).into_iter().collect();
     if linked(node, Relation::FiledAs).is_empty() {
-        out.push("filed-as の要求".to_string());
+        out.push("a filed-as requirement".to_string());
     }
     out
 }
@@ -68,7 +68,7 @@ fn need_missing(node: &Node) -> Vec<String> {
 fn closed_need_missing(node: &Node, all: &[Node]) -> Vec<String> {
     orphaned_criteria(node, all)
         .into_iter()
-        .map(|criterion| format!("未達の受け入れ条件 {}", criterion.id()))
+        .map(|criterion| format!("unmet criterion {}", criterion.id()))
         .collect()
 }
 
@@ -113,9 +113,12 @@ fn closed_need(node: &Node) -> bool {
 /// open question nobody waits on is the one that ages into "why did I ask
 /// this" (n-fa11, d-09b6).
 fn question_missing(node: &Node, all: &[Node]) -> Vec<String> {
-    let mut out = body(node, "本文（選択肢の根拠）");
+    let mut out: Vec<String> = body_gap(node).into_iter().collect();
     if unwaited(node, all) {
-        out.push("待つニーズ（waits-on）か生んだ要求（raised）".to_string());
+        out.push(
+            "a need that waits on it (waits-on) or a requirement that raised it (raised)"
+                .to_string(),
+        );
     }
     out
 }
@@ -131,12 +134,12 @@ pub fn unwaited(node: &Node, all: &[Node]) -> bool {
 }
 
 fn decision_missing(node: &Node, all: &[Node]) -> Vec<String> {
-    let mut out = body(node, "本文");
+    let mut out: Vec<String> = body_gap(node).into_iter().collect();
     let closes = all
         .iter()
         .any(|other| linked(other, Relation::Closes).contains(node.id()));
     if !closes {
-        out.push("closes した論点".to_string());
+        out.push("a question it closes".to_string());
     }
     out
 }
@@ -144,10 +147,10 @@ fn decision_missing(node: &Node, all: &[Node]) -> Vec<String> {
 fn requirement_missing(node: &Node) -> Vec<String> {
     let mut out = Vec::new();
     if linked(node, Relation::ReliesOn).is_empty() {
-        out.push("relies-on の決定".to_string());
+        out.push("a relies-on decision".to_string());
     }
     if linked(node, Relation::Targets).is_empty() {
-        out.push("targets の AC".to_string());
+        out.push("a targets criterion".to_string());
     }
     if reference(node).is_none() {
         out.push("ref".to_string());
@@ -168,7 +171,10 @@ fn decision_next(node: &Node, all: &[Node]) -> Vec<String> {
             && other.scope() == node.scope()
     });
     if !lineage && sibling {
-        vec![format!("link {} narrows <古い D> --mark <文>", node.id())]
+        vec![format!(
+            "link {} narrows <older D> --mark <text>",
+            node.id()
+        )]
     } else {
         Vec::new()
     }
@@ -217,11 +223,20 @@ fn unsatisfied(node: &Node) -> bool {
     matches!(node.data(), NodeData::Criterion(data) if !data.satisfied)
 }
 
-fn body(node: &Node, name: &str) -> Vec<String> {
-    if node.body().trim().is_empty() {
-        vec![name.to_string()]
-    } else {
-        Vec::new()
+/// The body gap a node still has: its state reports one and its body is empty.
+/// One derivation, so `missing` and `next` cannot drift.
+fn body_gap(node: &Node) -> Option<String> {
+    if !node.body().trim().is_empty() {
+        return None;
+    }
+    match node.data() {
+        NodeData::Need(data) if data.closed.is_none() => Some("a body".to_string()),
+        NodeData::Question(data) if data.closure.is_none() => {
+            Some("a body (the ground for the options)".to_string())
+        }
+        NodeData::Decision(_) => Some("a body".to_string()),
+        NodeData::Criterion(data) if !data.satisfied => Some("a body (how to measure)".to_string()),
+        _ => None,
     }
 }
 
