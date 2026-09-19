@@ -36,6 +36,21 @@ impl Relation {
         ("raised", "raised-by"),
         ("waits-on", "awaited-by"),
     ];
+    /// Every relation, in the one order the parse, the help, and a failure use.
+    pub const ALL: [Self; 12] = [
+        Self::Closes,
+        Self::Narrows,
+        Self::Widens,
+        Self::Supersedes,
+        Self::Completes,
+        Self::Targets,
+        Self::SpawnedBy,
+        Self::FiledAs,
+        Self::DependsOn,
+        Self::ReliesOn,
+        Self::Raised,
+        Self::WaitsOn,
+    ];
     /// The (from kind, to kind) pairs each relation allows. One table, in the
     /// model, so an edge that breaks a kind pairing cannot be built (D-75).
     const ALLOWED: &'static [(Self, NodeKind, NodeKind)] = &[
@@ -56,6 +71,15 @@ impl Relation {
     ];
     pub fn name(self) -> &'static str {
         Self::PAIRS[self as usize].0
+    }
+    /// The names the closed set carries, comma-separated, for the help a reader
+    /// reads and the failure that says what to type next (n-c82e).
+    pub fn names() -> String {
+        Self::ALL
+            .into_iter()
+            .map(|relation| relation.name())
+            .collect::<Vec<_>>()
+            .join(", ")
     }
     pub fn inverse(self) -> &'static str {
         Self::PAIRS[self as usize].1

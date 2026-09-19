@@ -1,6 +1,7 @@
 //! The command line's surface (n-4ce6): the clap definitions in one place. The
 //! words here are the words a reader sees in `--help`, so they belong together;
 //! main.rs only wires what they name to the views and the ops.
+use crate::write;
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -121,7 +122,7 @@ pub enum NeedAction {
     /// Close a need by a fact or an external tracker.
     Close {
         id: String,
-        #[arg(long, value_name = "KIND")]
+        #[arg(long, value_name = "KIND", help = write::closed_by_help())]
         by: String,
         #[arg(long, value_name = "TEXT")]
         evidence: String,
@@ -147,7 +148,7 @@ pub enum QuestionAction {
     /// Close a question by a fact, a decision, or neither.
     Close {
         id: String,
-        #[arg(long, value_name = "KIND")]
+        #[arg(long, value_name = "KIND", help = write::closure_help())]
         by: String,
         #[arg(long, value_name = "TEXT")]
         evidence: String,
@@ -184,8 +185,7 @@ pub struct DecideArgs {
     /// Repeat for each: `--closes A --closes B`.
     #[arg(long, value_name = "Q")]
     pub closes: Vec<String>,
-    /// One lineage relation and its decision: <relation> <D>, at most once.
-    #[arg(long, num_args = 2, value_names = ["RELATION", "D"])]
+    #[arg(long, num_args = 2, value_names = ["RELATION", "D"], help = write::relate_help())]
     pub relate: Vec<String>,
     #[arg(long, value_name = "TEXT")]
     pub mark: Option<String>,
@@ -196,6 +196,7 @@ pub struct DecideArgs {
 #[derive(Args)]
 pub struct LinkArgs {
     pub from: String,
+    #[arg(help = write::relation_help())]
     pub relation: String,
     pub to: String,
     #[arg(long, value_name = "TEXT")]

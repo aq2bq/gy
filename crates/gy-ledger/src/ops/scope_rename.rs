@@ -31,8 +31,12 @@ impl<S: Store> Operation<S> for ScopeRename {
 
 /// The old name must be declared and the new one must be a new, usable name.
 fn check<S: Store>(repo: &Repository<S>, from: &str, to: &str) -> Result<()> {
-    if !repo.scopes().iter().any(|scope| scope == from) {
-        return Err(Error::invalid(format!("unknown scope {from}")));
+    let scopes = repo.scopes();
+    if !scopes.iter().any(|scope| scope == from) {
+        return Err(Error::invalid(format!(
+            "unknown scope {from}; expected one of {}",
+            scopes.join(", ")
+        )));
     }
     if repo.scopes().iter().any(|scope| scope == to) {
         return Err(Error::invalid(format!("scope {to} already exists")));

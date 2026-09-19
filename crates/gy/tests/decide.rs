@@ -46,6 +46,39 @@ fn decide_help_shows_the_repeated_closes_form() {
 }
 
 #[test]
+fn decide_relate_names_the_valid_relations() {
+    let fx = fixture();
+    fx.seed(&[decision("0003", "an old decision")]);
+
+    let out = fx.run(&[
+        "decide",
+        "d",
+        "--scope-note",
+        "x",
+        "--relate",
+        "bogus",
+        "d-0003",
+    ]);
+    assert_eq!(out.status.code(), Some(2));
+    let message = stderr(&out);
+    assert!(message.contains("expected one of"), "{message}");
+    for relation in gy_ledger::Relation::ALL {
+        assert!(message.contains(relation.name()), "{message}");
+    }
+}
+
+#[test]
+fn decide_help_names_the_relations() {
+    let fx = fixture();
+    let help = fx.run(&["decide", "--help"]);
+    assert!(help.status.success(), "{}", stderr(&help));
+    let text = stdout(&help);
+    for relation in gy_ledger::Relation::ALL {
+        assert!(text.contains(relation.name()), "{text}");
+    }
+}
+
+#[test]
 fn decide_errors_and_json() {
     let fx = fixture();
     fx.seed(&[decision("0003", "an old decision")]);

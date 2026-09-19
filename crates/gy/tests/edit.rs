@@ -48,6 +48,18 @@ fn edit_moves_a_node_to_a_declared_scope() {
 }
 
 #[test]
+fn edit_names_the_declared_scopes() {
+    let fx = fixture();
+    std::fs::write(fx.root.join("gy.toml"), "[scopes.a]\n[scopes.b]\n").unwrap();
+    fx.seed(&[need("0001", "a need")]);
+
+    let out = fx.run(&["edit", "n-0001", "--reason", "move", "--set", "scope=nope"]);
+    assert_eq!(out.status.code(), Some(2));
+    let message = stderr(&out);
+    assert!(message.contains("expected one of a, b"), "{message}");
+}
+
+#[test]
 fn edit_help_shows_the_repeated_attribute_forms() {
     let fx = fixture();
     let help = fx.run(&["edit", "--help"]);

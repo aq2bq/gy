@@ -62,6 +62,27 @@ fn scope_rename_errors_leave_gy_toml_alone() {
 }
 
 #[test]
+fn scope_rename_names_the_declared_scopes() {
+    let fx = fixture();
+    std::fs::write(fx.root.join("gy.toml"), "[scopes.a]\n[scopes.b]\n").unwrap();
+    fx.seed(&[need("0001", "a need")]);
+
+    let out = fx.run(&["scope", "rename", "missing", "c"]);
+    assert_eq!(out.status.code(), Some(2));
+    let message = stderr(&out);
+    assert!(message.contains("expected one of a, b"), "{message}");
+}
+
+#[test]
+fn a_write_names_the_declared_scopes() {
+    let fx = fixture();
+    let out = fx.run(&["--scope", "nope", "criterion", "add", "an ac"]);
+    assert_eq!(out.status.code(), Some(2));
+    let message = stderr(&out);
+    assert!(message.contains("expected one of a"), "{message}");
+}
+
+#[test]
 fn scope_rename_rolls_the_log_back_when_gy_toml_cannot_follow() {
     use std::os::unix::fs::PermissionsExt;
     let fx = fixture();

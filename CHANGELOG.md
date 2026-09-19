@@ -206,6 +206,13 @@ brings the new one along.
     `missing:` names a body, for every kind of node (before, only a need
     showed it, and it showed it even when the need had a body). A need
     that has a body no longer lists the edit; its other hints are the same.
+  - an argument that takes one of a fixed set of words says the words when
+    it is given another: `need close --by` (fact, external),
+    `question close --by` (fact, decision, non-decision), the relation of
+    `link` and `decide --relate` (all twelve), and `unknown scope` (the
+    scopes in `gy.toml`). `--help` lists them too, from the same table the
+    parser reads. A user's agent had to read gy's source to find
+    `--by external` (n-c82e).
   No subcommand, option or exit code changed.
 - **The bundled skills say how to work, not only how to type** (n-d053,
   d-8b39, d-f540). `gy-loop` is the single entry point. It says nothing

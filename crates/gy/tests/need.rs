@@ -44,6 +44,32 @@ fn need_add_then_close() {
 }
 
 #[test]
+fn need_close_names_the_valid_by_values() {
+    let fx = fixture();
+    fx.seed(&[criterion("0001")]);
+    let id = id_of(&fx.run(&["need", "add", "a need", "--targets", "ac-0001"]));
+
+    let out = fx.run(&["need", "close", &id, "--by", "nope", "--evidence", "e"]);
+    assert_eq!(out.status.code(), Some(2));
+    let message = stderr(&out);
+    assert!(message.contains("expected one of"), "{message}");
+    for word in ["fact", "external"] {
+        assert!(message.contains(word), "{message}");
+    }
+}
+
+#[test]
+fn need_close_help_names_the_by_values() {
+    let fx = fixture();
+    let help = fx.run(&["need", "close", "--help"]);
+    assert!(help.status.success(), "{}", stderr(&help));
+    let text = stdout(&help);
+    for word in ["fact", "external"] {
+        assert!(text.contains(word), "{text}");
+    }
+}
+
+#[test]
 fn need_add_usage_shows_the_repeated_form() {
     let fx = fixture();
     let out = fx.run(&["need", "add", "t", "--targets", "ac-0001", "ac-0002"]);

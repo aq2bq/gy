@@ -83,7 +83,11 @@ pub fn scope(root: &Path, given: Option<&str>) -> Result<String> {
     let settings = config::read(root)?;
     if let Some(name) = given {
         if !settings.scopes.contains_key(name) {
-            return Err(Error::invalid(format!("unknown scope {name}")));
+            let names: Vec<&str> = settings.scopes.keys().map(String::as_str).collect();
+            return Err(Error::invalid(format!(
+                "unknown scope {name}; expected one of {}",
+                names.join(", ")
+            )));
         }
         return Ok(name.to_string());
     }
@@ -107,42 +111,84 @@ pub fn resolve_opt<S: Store>(
     text.map(|text| repository.resolve(text)).transpose()
 }
 
+/// The `--by` words a need close takes: one table for the parse and the help.
+const CLOSED_BY: [(&str, ClosedBy); 2] =
+    [("fact", ClosedBy::Fact), ("external", ClosedBy::External)];
+
+/// The `--by` words a question close takes: one table for the parse and the help.
+const CLOSURE: [(&str, Closure); 3] = [
+    ("fact", Closure::Fact),
+    ("decision", Closure::Decision),
+    ("non-decision", Closure::NonDecision),
+];
+
 pub fn closed_by(text: &str) -> Result<ClosedBy> {
-    match text {
-        "fact" => Ok(ClosedBy::Fact),
-        "external" => Ok(ClosedBy::External),
-        _ => Err(Error::invalid(format!("unknown --by {text}"))),
-    }
+    find(&CLOSED_BY, text).ok_or_else(|| {
+        Error::invalid(format!(
+            "unknown --by {text}; expected one of {}",
+            words(&CLOSED_BY)
+        ))
+    })
 }
 
 pub fn closure(text: &str) -> Result<Closure> {
-    match text {
-        "fact" => Ok(Closure::Fact),
-        "decision" => Ok(Closure::Decision),
-        "non-decision" => Ok(Closure::NonDecision),
-        _ => Err(Error::invalid(format!("unknown --by {text}"))),
-    }
+    find(&CLOSURE, text).ok_or_else(|| {
+        Error::invalid(format!(
+            "unknown --by {text}; expected one of {}",
+            words(&CLOSURE)
+        ))
+    })
+}
+
+/// The help for `need close --by`, from the table the parse reads (n-c82e).
+pub fn closed_by_help() -> String {
+    format!("One of {}.", words(&CLOSED_BY))
+}
+
+/// The help for `question close --by`, from the table the parse reads (n-c82e).
+pub fn closure_help() -> String {
+    format!("One of {}.", words(&CLOSURE))
+}
+
+/// The help for `link <relation>`, from the names the parse reads (n-c82e).
+pub fn relation_help() -> String {
+    format!("One of {}.", Relation::names())
+}
+
+/// The help for `decide --relate`, from the names the parse reads (n-c82e).
+pub fn relate_help() -> String {
+    format!(
+        "One lineage relation and its decision: <relation> <D>, at most once. One of {}.",
+        Relation::names()
+    )
+}
+
+fn find<T: Copy>(table: &[(&str, T)], text: &str) -> Option<T> {
+    table
+        .iter()
+        .find(|(name, _)| *name == text)
+        .map(|(_, value)| *value)
+}
+
+fn words<T>(table: &[(&str, T)]) -> String {
+    table
+        .iter()
+        .map(|(name, _)| *name)
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// The canonical name of any relation a `link` may name.
 pub fn relation(text: &str) -> Result<Relation> {
-    [
-        Relation::Closes,
-        Relation::Narrows,
-        Relation::Widens,
-        Relation::Supersedes,
-        Relation::Completes,
-        Relation::Targets,
-        Relation::SpawnedBy,
-        Relation::FiledAs,
-        Relation::DependsOn,
-        Relation::ReliesOn,
-        Relation::Raised,
-        Relation::WaitsOn,
-    ]
-    .into_iter()
-    .find(|relation| relation.name() == text)
-    .ok_or_else(|| Error::invalid(format!("unknown relation {text}")))
+    Relation::ALL
+        .into_iter()
+        .find(|relation| relation.name() == text)
+        .ok_or_else(|| {
+            Error::invalid(format!(
+                "unknown relation {text}; expected one of {}",
+                Relation::names()
+            ))
+        })
 }
 
 /// `key=value` pairs, as `--set` and `--append` take them.

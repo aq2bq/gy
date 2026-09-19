@@ -76,6 +76,41 @@ fn question_add_then_close() {
 }
 
 #[test]
+fn question_close_names_the_valid_by_values() {
+    let fx = fixture();
+    let id = id_of(&fx.run(&[
+        "question",
+        "add",
+        "q",
+        "--decider",
+        "m",
+        "--options",
+        "a",
+        "--options",
+        "b",
+    ]));
+
+    let out = fx.run(&["question", "close", &id, "--by", "nope", "--evidence", "e"]);
+    assert_eq!(out.status.code(), Some(2));
+    let message = stderr(&out);
+    assert!(message.contains("expected one of"), "{message}");
+    for word in ["fact", "decision", "non-decision"] {
+        assert!(message.contains(word), "{message}");
+    }
+}
+
+#[test]
+fn question_close_help_names_the_by_values() {
+    let fx = fixture();
+    let help = fx.run(&["question", "close", "--help"]);
+    assert!(help.status.success(), "{}", stderr(&help));
+    let text = stdout(&help);
+    for word in ["fact", "decision", "non-decision"] {
+        assert!(text.contains(word), "{text}");
+    }
+}
+
+#[test]
 fn question_errors_and_json() {
     let fx = fixture();
     let out = fx.run(&[

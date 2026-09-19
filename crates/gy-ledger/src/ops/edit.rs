@@ -86,7 +86,10 @@ fn set_one(
     match key {
         "scope" => {
             if !scopes.iter().any(|scope| scope == value) {
-                return Err(Error::invalid(format!("unknown scope {value}")));
+                return Err(Error::invalid(format!(
+                    "unknown scope {value}; expected one of {}",
+                    scopes.join(", ")
+                )));
             }
             node.set_scope(value)?;
             changed.push("scope".into());
