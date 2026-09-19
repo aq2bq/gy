@@ -1,6 +1,6 @@
 use gy_ledger::{
-    Actor, CriterionSatisfy, FormatVersion, MemoryStore, Node, NodeData, NodeId, NodeKind,
-    Operation, Repository, Store,
+    Actor, CriterionSatisfy, FormatVersion, Link, MemoryStore, Node, NodeData, NodeId, NodeKind,
+    Operation, Relation, Repository, Store,
 };
 
 const SCOPE: &str = "a";
@@ -21,6 +21,26 @@ fn criterion(hash: &str) -> Node {
         "a criterion",
     )
     .unwrap()
+}
+
+fn need(hash: &str) -> Node {
+    Node::need(
+        NodeId::from_hash(NodeKind::Need, hash).unwrap(),
+        SCOPE,
+        DATE,
+        "a need",
+    )
+    .unwrap()
+}
+
+fn seed(repo: &mut Repository<MemoryStore>, nodes: &[Node]) {
+    repo.transaction("seed", "test", |repo| {
+        for node in nodes {
+            repo.put(node)?;
+        }
+        Ok(())
+    })
+    .unwrap();
 }
 
 fn satisfy(id: &NodeId, evidence: &str, revoke: bool) -> CriterionSatisfy {
@@ -112,4 +132,29 @@ fn satisfying_a_non_criterion_is_rejected() {
             .run(&mut repo)
             .is_err()
     );
+}
+
+#[test]
+fn criterion_satisfy_points_at_the_other_criterion() {
+    let mut repo = repo();
+    let mut need = need("0001");
+    let need_id = need.id().clone();
+    let first = criterion("0002");
+    let first_id = first.id().clone();
+    let second = criterion("0003");
+    let second_id = second.id().clone();
+    need.link(Link::new(need_id.clone(), Relation::Targets, first_id.clone()).unwrap());
+    need.link(Link::new(need_id, Relation::Targets, second_id.clone()).unwrap());
+    seed(&mut repo, &[need, first, second]);
+
+    let satisfied = satisfy(&first_id, "verified", false)
+        .run(&mut repo)
+        .unwrap();
+    assert!(satisfied.missing.is_empty());
+    assert_eq!(satisfied.next, [format!("criterion satisfy {second_id}")]);
+
+    let last = satisfy(&second_id, "verified", false)
+        .run(&mut repo)
+        .unwrap();
+    assert!(last.next.is_empty());
 }

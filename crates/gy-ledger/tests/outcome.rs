@@ -1,9 +1,9 @@
 //! N-39: what a write reports as still missing, and the shape of the command
 //! that could follow. One test per row of the brief's table, plus show.
 use gy_ledger::{
-    Actor, CriterionAdd, CriterionSatisfy, Decide, DecisionScope, FormatVersion, Link, MemoryStore,
-    NeedAdd, Node, NodeId, NodeKind, Operation, QuestionAdd, Relation, Repository, ReqAdd,
-    ReqApprove, ReqCancel, ReqDone, ReqRevise, Store, link, show,
+    Actor, CriterionAdd, Decide, DecisionScope, FormatVersion, MemoryStore, NeedAdd, Node, NodeId,
+    NodeKind, Operation, QuestionAdd, Relation, Repository, ReqAdd, ReqApprove, ReqCancel, ReqDone,
+    ReqRevise, Store, link, show,
 };
 
 const SCOPE: &str = "a";
@@ -240,40 +240,6 @@ fn requirement_transitions_report_the_next_state_only() {
     let done = done(&requirement).run(&mut repo).unwrap();
     assert!(done.missing.is_empty());
     assert!(done.next.is_empty());
-}
-
-#[test]
-fn criterion_satisfy_points_at_the_other_criterion() {
-    let mut repo = repo();
-    let need = need("0001");
-    let need_id = need.id().clone();
-    let first = criterion("0002");
-    let first_id = first.id().clone();
-    let second = criterion("0003");
-    let second_id = second.id().clone();
-    let mut need = need;
-    need.link(Link::new(need_id.clone(), Relation::Targets, first_id.clone()).unwrap());
-    need.link(Link::new(need_id, Relation::Targets, second_id.clone()).unwrap());
-    seed(&mut repo, &[need, first, second]);
-
-    let satisfied = CriterionSatisfy {
-        id: first_id,
-        evidence: "verified".into(),
-        revoke: false,
-    }
-    .run(&mut repo)
-    .unwrap();
-    assert!(satisfied.missing.is_empty());
-    assert_eq!(satisfied.next, [format!("criterion satisfy {second_id}")]);
-
-    let last = CriterionSatisfy {
-        id: second_id,
-        evidence: "verified".into(),
-        revoke: false,
-    }
-    .run(&mut repo)
-    .unwrap();
-    assert!(last.next.is_empty());
 }
 
 #[test]
