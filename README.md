@@ -67,6 +67,8 @@ A requirement has four states: `filed` (registered), `approved` (design confirme
 | approved | done | `req done` |
 | filed, approved | cancelled | `req cancel` |
 
+Approval is the gate for outside work. gy cannot see what is built outside the ledger, but it refuses to record its result: `criterion satisfy` is refused unless an approved or done requirement `targets` the criterion, and the refusal says the command that comes next (`req add …` or `req approve …`). While a requirement is approved, its title, body, `targets` and `relies-on`, and the title and body of the criteria it targets, cannot be edited; `req revise` sends it back to filed first. Who approves is your policy, not gy's: the bundled `gy-loop` skill has the agent ask once whether you read every requirement, only the first, or leave it to the agent.
+
 gy holds nothing about the work after approval except these four records. Where the implementation is tracked, how it is designed, and when it is audited belong outside gy, in the issue and pull request that the requirement's reference points at.
 
 ## Where the ledger lives
