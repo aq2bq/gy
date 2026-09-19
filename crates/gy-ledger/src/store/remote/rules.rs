@@ -4,7 +4,7 @@ use super::git;
 use super::rebase::Rejected;
 use serde::Deserialize;
 use serde_json::Value;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 /// An error with the way out on its second line (n-94bb 3B).
@@ -104,6 +104,30 @@ pub(super) fn write_rejected(ledger: &Path, rejects: &[Rejected]) -> Result<()> 
     }
     Ok(())
 }
+/// The identity of a write across a rebase: everything but the sequence, which
+/// a rebase may change (n-6b44).
+pub(super) fn key(event: &log::Event) -> String {
+    let mut copy = event.clone();
+    copy.seq = 0;
+    serde_json::to_string(&copy).unwrap_or_default()
+}
+
+/// The remote events in `(committed, ..]` whose content is one of the copy's
+/// uncommitted writes. They already landed, so a rebase counts them as pushed
+/// instead of refusing them as the remote's change (n-6b44).
+pub(super) fn landed(
+    remote: &[log::Event],
+    committed: u64,
+    pending: &[log::Event],
+) -> BTreeSet<String> {
+    let wanted: BTreeSet<String> = pending.iter().map(key).collect();
+    remote
+        .iter()
+        .filter(|event| event.seq > committed && wanted.contains(&key(event)))
+        .map(key)
+        .collect()
+}
+
 pub(super) fn now() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

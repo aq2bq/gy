@@ -1,7 +1,7 @@
 //! Rebase uncommitted writes onto the remote's new lines (n-ecbf 2B, ac-08cc).
 use super::super::{Result, log, replay};
 use super::report::{Pulled, Range, Sync};
-use super::rules::{now, parse, targets, touched, write_rejected};
+use super::rules::{key, landed, now, parse, targets, touched, write_rejected};
 use super::{git, sync::push_writes, sync::rebuild_snapshot, sync::writers};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -31,8 +31,12 @@ pub(super) fn rebase(
     report: &mut Sync,
 ) -> Result<()> {
     let (remote_text, remote, pending) = inputs(ledger, upstream, committed)?;
-    let (mut nodes, changed, removed, causes, remote_seq) = remote_changes(&remote, committed);
-    let (accepted, rejects) = place(&mut nodes, pending, &changed, &removed, &causes, remote_seq);
+    let on_remote = landed(&remote, committed, &pending);
+    let (mut nodes, changed, removed, causes, remote_seq) =
+        remote_changes(&remote, committed, &on_remote);
+    let (accepted, rejects) = place(
+        &mut nodes, pending, &changed, &removed, &causes, remote_seq, &on_remote,
+    );
     git::reset_hard(ledger, upstream)?;
     let mut text = remote_text;
     for event in &accepted {
@@ -77,6 +81,7 @@ fn inputs(
 fn remote_changes(
     remote: &[log::Event],
     committed: u64,
+    on_remote: &BTreeSet<String>,
 ) -> (
     BTreeMap<String, Value>,
     BTreeSet<String>,
@@ -95,15 +100,17 @@ fn remote_changes(
             continue;
         }
         remote_seq = event.seq;
-        for node in touched(&nodes, event) {
-            changed.insert(node.clone());
-            causes
-                .entry(node)
-                .or_insert_with(|| (event.seq, event.actor.clone(), event.by.clone()));
-        }
-        for change in &event.changes {
-            if let log::Change::Deleted { node, .. } = change {
-                removed.insert(node.clone());
+        if !on_remote.contains(&key(event)) {
+            for node in touched(&nodes, event) {
+                changed.insert(node.clone());
+                causes
+                    .entry(node)
+                    .or_insert_with(|| (event.seq, event.actor.clone(), event.by.clone()));
+            }
+            for change in &event.changes {
+                if let log::Change::Deleted { node, .. } = change {
+                    removed.insert(node.clone());
+                }
             }
         }
         replay::apply(&mut nodes, event);
@@ -117,12 +124,16 @@ fn place(
     removed: &BTreeSet<String>,
     causes: &BTreeMap<String, Cause>,
     remote_seq: u64,
+    on_remote: &BTreeSet<String>,
 ) -> (Vec<log::Event>, Vec<Rejected>) {
     let mut accepted = Vec::new();
     let mut rejects = Vec::new();
     let mut rejected_created: BTreeSet<String> = BTreeSet::new();
     let mut next = remote_seq + 1;
     for event in pending {
+        if on_remote.contains(&key(&event)) {
+            continue;
+        }
         if let Some(rejected) =
             rejection(nodes, changed, removed, &rejected_created, causes, &event)
         {

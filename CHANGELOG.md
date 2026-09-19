@@ -168,6 +168,18 @@ brings the new one along.
   one is filed; the choice among solutions is the writer's to decide and
   record, not the master's to pick from a menu.
 
+### Fixed
+
+- **Writes typed in quick succession no longer come back as "did not land"**
+  (n-6b44). Each write starts a background sync; two of them could fetch the
+  same remote ref, one pushed, and the other, refused, rebased and took its
+  own already-pushed writes for the remote's change — a false notice that
+  told the writer to redo a write that had landed. A rebase now recognises a
+  remote event identical to one of its uncommitted writes (everything but
+  the sequence) and counts it as pushed, and one sync runs at a time per
+  copy (an exclusive lock on the already-ignored `sync.pid`, held for the
+  whole sync; a write still never waits on a fetch).
+
 ## 0.9.0 - 2026-09-18
 
 ### Updating

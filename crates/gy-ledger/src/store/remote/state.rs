@@ -3,7 +3,31 @@
 use super::super::{Error, Result, SyncStatus};
 use super::git;
 use super::report::Sync;
+use fs2::FileExt;
 use std::path::Path;
+
+/// The whole-sync exclusion (n-6b44): one sync runs at a time per copy, so two
+/// syncs cannot both fetch a stale remote ref and push from it. It is a
+/// different file from `lock`, which is held only around a change, so a write
+/// still never waits on a fetch. `sync.pid` carries the copy's sync pid and is
+/// already in the ledger's `.gitignore`; the pid text and this lock share it.
+pub(super) struct SyncLock {
+    _file: std::fs::File,
+}
+
+impl SyncLock {
+    /// Wait for the copy's sync lock and hold it for the whole sync.
+    pub(super) fn take(ledger: &Path) -> Result<Self> {
+        std::fs::create_dir_all(ledger)?;
+        let file = std::fs::OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .write(true)
+            .open(ledger.join("sync.pid"))?;
+        file.lock_exclusive()?;
+        Ok(Self { _file: file })
+    }
+}
 
 /// Record that a background sync gave up after its deadline (n-ecbf). The
 /// child calls this from its watchdog, so the next command can report it.

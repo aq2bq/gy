@@ -10,6 +10,7 @@ use std::path::Path;
 /// it under the lock only when a change is due (n-ecbf). The state file is
 /// written either way.
 pub fn sync(ledger: &Path, remote: &str) -> Result<Sync> {
+    let _exclusive = state::SyncLock::take(ledger)?;
     let outcome = sync_inner(ledger, remote);
     state::clear_step(ledger);
     state::record_state(ledger, &outcome);
