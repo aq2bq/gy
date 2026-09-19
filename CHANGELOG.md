@@ -5,8 +5,8 @@
 ### Updating
 
 Nothing changes for a ledger without a remote. Every subcommand, option,
-output shape and `gy.toml` key of 0.9.0 is the same; the only new command
-is `sync` and the only new key is `remote`. The ledger format stays 3.
+output shape and `gy.toml` key of 0.9.0 is the same; the new commands are
+`share`, `join` and `sync`, and the only new key is `remote`. The ledger format stays 3.
 
 ```
 cargo install gy --locked    # gy 1.0.0
@@ -34,14 +34,24 @@ For an agent driving gy on a ledger that a team shares (a `remote` in
 - **Name a point in time by `seq` or an id**, not by a date; dates print
   in each reader's own time zone.
 
-To start sharing a ledger: create an empty private repository for the
-ledger alone, put `remote = "<its URL>"` before the first `[scopes.*]`
-table in `gy.toml`, and run `gy sync` once. The bundled skills changed
+To start sharing a ledger, create an empty private repository for the
+ledger alone and run `gy share <its URL>`; a member gets write access to
+that repository and runs `gy join` in a checkout of the project. Both
+commands say what is missing and what to do next. The bundled skills changed
 with this release (`gy-ledger` gained a section on shared ledgers): copy
 them again as the README says.
 
 ### Added
 
+- **`gy share <URL>` and `gy join`** (n-57c5, d-b1d4): the two procedures
+  of sharing a ledger have names. `share` checks the remote (empty or
+  ledger-only, pushable), writes `remote` into `gy.toml`, uploads the
+  ledger as it is and prints how to protect the branch and how to invite
+  a member; `join` checks what a member needs (git, credentials,
+  `user.name` and `user.email`) with the fix for each, fetches the copy
+  and says who they write as and what to do next. Both are harmless to
+  repeat, and the first gy command on a fresh clone still fetches the
+  copy and prints the same "joined" line.
 - **Experimental: `gy sync` and a `remote` in `gy.toml`** (n-6f47, n-8a52,
   n-f4cd; d-39f6, d-1e50). A ledger can name a ledger-only git repository as
   its remote. The copy on each machine becomes a working tree of it: the

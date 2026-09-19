@@ -13,6 +13,8 @@ gy は要求が確定するまでの状態をグラフで持ち、書き込み�
   gy next                                              前提の片付いたニーズ
   gy handover                                          進行中の要求と再開に要る件数
   gy publish [--scope] [--since] [--out]                記録の公開物（範囲内の全ノードの逐語・履歴・診断）。コミットして後から振り返る
+  gy share <URL>                                       共有を始める（experimental）。remote の検査、gy.toml への remote、最初の上げ、守りと招待の文
+  gy join                                               参加する（experimental）。要るものと直し方、複製の取得、誰として書くか、次の一手。冪等
   gy sync                                               remote と同期（experimental）。複製の取得、未 push の push、取り込みと載せ直し。異常時は原因と手段
   gy serve                                              台帳をブラウザで読む。127.0.0.1、GET だけ、書く経路は無い。止めるまで。端末から起動したときはブラウザを開く
 
