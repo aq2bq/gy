@@ -13,8 +13,7 @@ pub const GITIGNORE_FILE: &str = ".gitignore";
 
 /// The bytes of the ledger repository's `.gitignore`: the derived and local
 /// files never belong in the remote.
-pub const GITIGNORE: &str =
-    "snapshot.json\nlock\n*.bak\n.*.tmp\nremote\nsync.state\nsync.pid\nsync.log\nrejected.jsonl\n";
+pub const GITIGNORE: &str = "snapshot.json\nlock\n*.bak\n.*.tmp\nremote\nsync.state\nsync.step\nsync.pid\nsync.log\nrejected.jsonl\n";
 
 /// The bytes of the ledger repository's `README.md`: minimal, so a reader
 /// knows not to touch it, plus the branch protection (ac-af33).

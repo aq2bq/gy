@@ -106,6 +106,12 @@ them again as the README says.
   carries a small mark in the live rail and the history, and the time band
   draws the unpushed range dotted. `/api/now` carries `resume.sync` and
   `resume.errors` on a synced copy only.
+- **serve's sync log says where it stopped and what to do** (n-08ae): a
+  round that gives up names the step (`while fetching/rebasing/pushing/
+  cloning the remote`), every failure is followed by a `→` line with the
+  way out, the same failure is logged once and then every ten rounds as
+  `still failing since …`, and a recovery is logged once. A fresh copy is
+  cloned beside the ledger directory and moved into place.
 - **`gy sync` says what went wrong and what to do** (n-94bb 3B): a copy
   whose log holds a line that cannot be read is reported with the count,
   the readable unpushed writes and the way to take the ledger again (a

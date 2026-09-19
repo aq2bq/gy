@@ -85,16 +85,7 @@ pub fn serve(root: &Path, ledger: &Path, name: String) -> Result<()> {
     let remote = config::read(root)?.remote;
     if ledger.join("remote").is_file() {
         let (root, ledger) = (root.to_path_buf(), ledger.to_path_buf());
-        std::thread::spawn(move || {
-            loop {
-                match repo::sync_tick(&root, &ledger) {
-                    repo::Tick::Out(line) => eprintln!("{} sync: {line}", clock()),
-                    repo::Tick::Failed(error) => eprintln!("{} sync failed: {error}", clock()),
-                    repo::Tick::Silent | repo::Tick::Skipped => {}
-                }
-                std::thread::sleep(Duration::from_secs(10));
-            }
-        });
+        std::thread::spawn(move || sync_log(&root, &ledger));
     }
     let watched = ledger.to_path_buf();
     let ledger = ledger.to_path_buf();
@@ -119,6 +110,37 @@ pub fn serve(root: &Path, ledger: &Path, name: String) -> Result<()> {
         name,
         remote,
     )
+}
+
+/// The serve sync thread: one round every ten seconds, with the failure
+/// throttle (n-08ae). A failure shows its first line and the way out on the
+/// next; a recovery shows once.
+fn sync_log(root: &Path, ledger: &Path) {
+    let mut rounds = gy_ledger::Rounds::new();
+    loop {
+        let at = clock();
+        match repo::sync_tick(root, ledger) {
+            repo::Tick::Out(line) => {
+                for note in rounds.recovered(&at) {
+                    eprintln!("{note}");
+                }
+                eprintln!("{at} sync: {line}");
+            }
+            repo::Tick::Failed(fallback) => {
+                let (first, advice) = gy_ledger::sync_error(ledger).unwrap_or((fallback, None));
+                for note in rounds.failed(&first, advice.as_deref(), &at) {
+                    eprintln!("{note}");
+                }
+            }
+            repo::Tick::Silent => {
+                for note in rounds.recovered(&at) {
+                    eprintln!("{note}");
+                }
+            }
+            repo::Tick::Skipped => {}
+        }
+        std::thread::sleep(Duration::from_secs(10));
+    }
 }
 
 /// The wall clock for serve's log lines, `HH:MM:SS` in the reader's own place

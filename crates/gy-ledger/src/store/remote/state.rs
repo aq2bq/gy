@@ -11,17 +11,72 @@ pub fn record_timeout(ledger: &Path) {
     record_timeout_after(ledger, 30);
 }
 
-/// Record a give-up after `secs` seconds, named for the caller (n-ecbf).
+/// The stage a running sync is in, beside the log so a killed child leaves it
+/// behind (n-08ae). It holds one word: fetch, rebase, push, or clone.
+const STEP_FILE: &str = "sync.step";
+
+/// Record the stage a sync has entered (n-08ae).
+pub(super) fn set_step(ledger: &Path, step: &str) {
+    let _ = std::fs::write(ledger.join(STEP_FILE), step);
+}
+
+/// Forget the stage: the sync ended, one way or the other (n-08ae).
+pub fn clear_step(ledger: &Path) {
+    let _ = std::fs::remove_file(ledger.join(STEP_FILE));
+}
+
+/// The stage a killed sync left, taken so it is never read twice (n-08ae).
+fn take_step(ledger: &Path) -> Option<String> {
+    let step = std::fs::read_to_string(ledger.join(STEP_FILE)).ok()?;
+    let _ = std::fs::remove_file(ledger.join(STEP_FILE));
+    let step = step.trim().to_string();
+    if step.is_empty() { None } else { Some(step) }
+}
+
+/// The last error as `(first line, gy's way out)`: the advice is gy's added
+/// last line, so a multi-line git message keeps only its own first line and
+/// drops the middle (n-08ae).
+pub fn sync_error(ledger: &Path) -> Option<(String, Option<String>)> {
+    let error = read_state(ledger).last_error?;
+    let mut lines = error.lines();
+    let first = lines.next().unwrap_or("").to_string();
+    let advice = lines
+        .next_back()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(str::to_string);
+    Some((first, advice))
+}
+
+/// Record a give-up after `secs` seconds, named for the caller (n-ecbf). When
+/// the child left a stage, the message names it (n-08ae).
 pub fn record_timeout_after(ledger: &Path, secs: u64) {
     if !git::is_repo(ledger) {
         return;
     }
     let mut state = read_state(ledger);
-    state.last_error = Some(format!(
-        "the sync gave up after {secs} seconds waiting for the remote"
-    ));
+    state.last_error = Some(gave_up(secs, take_step(ledger).as_deref()));
     state.last_error_at = Some(now());
     let _ = write_state(ledger, &state);
+}
+
+/// The give-up message: the stage when there is one, the old wording otherwise.
+fn gave_up(secs: u64, step: Option<&str>) -> String {
+    match step.map(gerund) {
+        Some(ing) => format!("the sync gave up after {secs} seconds while {ing} the remote"),
+        None => format!("the sync gave up after {secs} seconds waiting for the remote"),
+    }
+}
+
+/// A stage name as the message reads it: `fetch` -> `fetching`.
+fn gerund(step: &str) -> String {
+    match step {
+        "fetch" => "fetching".to_string(),
+        "rebase" => "rebasing".to_string(),
+        "push" => "pushing".to_string(),
+        "clone" => "cloning".to_string(),
+        other => other.to_string(),
+    }
 }
 
 /// Write `sync.state` after every sync, front or background (n-ecbf). A

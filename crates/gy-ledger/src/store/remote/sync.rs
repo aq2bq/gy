@@ -11,6 +11,7 @@ use std::path::Path;
 /// written either way.
 pub fn sync(ledger: &Path, remote: &str) -> Result<Sync> {
     let outcome = sync_inner(ledger, remote);
+    state::clear_step(ledger);
     state::record_state(ledger, &outcome);
     outcome
 }
@@ -25,6 +26,7 @@ fn sync_inner(ledger: &Path, remote: &str) -> Result<Sync> {
     let cloned = if git::is_repo(ledger) {
         None
     } else {
+        state::set_step(ledger, "clone");
         prepare::prepare(ledger, remote)?
     };
     let mut report = Sync::default();
@@ -37,6 +39,7 @@ fn sync_inner(ledger: &Path, remote: &str) -> Result<Sync> {
         report.seq = seq;
     }
     // Communication is outside the lock: a write is not blocked by a fetch.
+    state::set_step(ledger, "fetch");
     git::fetch(ledger).map_err(|error| {
         rules::advice(
             error,
@@ -46,6 +49,7 @@ fn sync_inner(ledger: &Path, remote: &str) -> Result<Sync> {
     let branch = git::head_branch(ledger)?;
     let upstream = format!("origin/{branch}");
     rules::check_remote_format(ledger, &upstream)?;
+    state::set_step(ledger, "push");
     first_push(ledger, remote, &branch, &mut report)?;
     reconcile(ledger, branch.as_str(), &upstream, &mut report)?;
     Ok(report)
@@ -62,6 +66,7 @@ fn locked(ledger: &Path, f: impl FnOnce() -> Result<()>) -> Result<()> {
 /// made (a push that failed) pushes them; one with uncommitted lines commits
 /// and pushes them one write each.
 fn reconcile(ledger: &Path, branch: &str, upstream: &str, report: &mut Sync) -> Result<()> {
+    state::set_step(ledger, "push");
     let head =
         git::rev(ledger, "HEAD").ok_or_else(|| Error::invalid("the copy has no commit yet"))?;
     let Some(remote_sha) = git::rev(ledger, upstream) else {
@@ -98,10 +103,12 @@ fn pull(
     if working_seq(ledger)? > committed {
         // The copy has its own uncommitted writes and the remote moved: put
         // them back on top of the remote's lines (n-ecbf 2B).
+        state::set_step(ledger, "rebase");
         return locked(ledger, || {
             rebase::rebase(ledger, branch, upstream, committed, report)
         });
     }
+    state::set_step(ledger, "fetch");
     locked(ledger, || {
         git::reset_hard(ledger, upstream)?;
         rebuild_snapshot(ledger)

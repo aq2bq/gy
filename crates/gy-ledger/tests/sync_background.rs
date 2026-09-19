@@ -218,6 +218,62 @@ fn a_timeout_is_recorded() {
 }
 
 #[test]
+fn a_timeout_names_the_stage_and_takes_it() {
+    ident();
+    let temp = tempfile::tempdir().unwrap();
+    let (first, _second, _remote) = pair(temp.path());
+    std::fs::write(first.join("sync.step"), "fetch").unwrap();
+
+    gy_ledger::record_timeout_after(&first, 10);
+
+    let state = store(&first).sync_state().unwrap();
+    assert_eq!(
+        state.last_error.as_deref(),
+        Some("the sync gave up after 10 seconds while fetching the remote")
+    );
+    assert!(!first.join("sync.step").exists(), "the stage is taken");
+    assert_eq!(
+        gy_ledger::sync_error(&first),
+        Some((
+            "the sync gave up after 10 seconds while fetching the remote".to_string(),
+            None
+        ))
+    );
+}
+
+#[test]
+fn sync_error_takes_gys_last_line_as_the_advice() {
+    ident();
+    let temp = tempfile::tempdir().unwrap();
+    let (first, _second, _remote) = pair(temp.path());
+    std::fs::write(
+        first.join("sync.state"),
+        serde_json::json!({
+            "last_error": "remote: Repository not found.\nfatal: could not read from remote\ncheck the remote URL and your git credentials",
+        })
+        .to_string(),
+    )
+    .unwrap();
+
+    assert_eq!(
+        gy_ledger::sync_error(&first),
+        Some((
+            "remote: Repository not found.".to_string(),
+            Some("check the remote URL and your git credentials".to_string())
+        )),
+        "git's middle line is dropped"
+    );
+}
+
+#[test]
+fn a_finished_sync_leaves_no_stage() {
+    ident();
+    let temp = tempfile::tempdir().unwrap();
+    let (first, _second, _remote) = pair(temp.path());
+    assert!(!first.join("sync.step").exists(), "the stage is cleared");
+}
+
+#[test]
 fn handover_shows_pending_and_json_on_a_synced_copy() {
     ident();
     let temp = tempfile::tempdir().unwrap();

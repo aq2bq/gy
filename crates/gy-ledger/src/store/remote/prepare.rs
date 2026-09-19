@@ -4,7 +4,7 @@
 use super::super::{Error, Result, log};
 use super::sync::{diverged, seq_at, working_seq};
 use super::{git, shape};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Make the missing copy: clone the remote's ledger branch (returning its
 /// sequence), or initialize an empty remote from the local ledger.
@@ -100,18 +100,57 @@ fn initialize(ledger: &Path, remote: &str) -> Result<()> {
     Ok(())
 }
 
-/// Clone the ledger branch into the copy and refuse a non-ledger, leaving no
-/// half-clone behind.
+/// Clone the ledger branch beside the copy, judge it, then move it into place
+/// (n-08ae). The copy itself must stay empty for the clone, and a sync killed
+/// mid-clone leaves the temporary for the next sync to remove.
 fn clone(ledger: &Path, remote: &str, branch: &str) -> Result<()> {
-    git::clone_branch(ledger, remote, branch)?;
-    let files = git::ls_tree(ledger, "HEAD")?;
+    clear_stale_clones(ledger);
+    let temp = clone_temp(ledger);
+    let _ = std::fs::remove_dir_all(&temp);
+    std::fs::create_dir_all(&temp)?;
+    let files = git::clone_branch(&temp, remote, branch)
+        .and_then(|()| git::ls_tree(&temp, "HEAD"))
+        .inspect_err(|_| {
+            let _ = std::fs::remove_dir_all(&temp);
+        })?;
     if !shape::dedicated(&files) {
-        std::fs::remove_dir_all(ledger)?;
+        std::fs::remove_dir_all(&temp)?;
+        let _ = std::fs::remove_dir_all(ledger);
         std::fs::create_dir_all(ledger)?;
         return Err(not_ledger(&files.join(", ")));
     }
+    let _ = std::fs::remove_dir_all(ledger);
+    std::fs::rename(&temp, ledger)?;
     std::fs::write(ledger.join("remote"), remote)?;
     Ok(())
+}
+
+/// The temporary clone beside the copy: `<copy>.clone.<pid>`.
+fn clone_temp(ledger: &Path) -> PathBuf {
+    let name = ledger
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("ledger");
+    ledger.with_file_name(format!("{name}.clone.{}", std::process::id()))
+}
+
+/// Remove temporary clones a killed sync left beside the copy (n-08ae).
+fn clear_stale_clones(ledger: &Path) {
+    let (Some(name), Some(parent)) = (
+        ledger.file_name().and_then(|name| name.to_str()),
+        ledger.parent(),
+    ) else {
+        return;
+    };
+    let prefix = format!("{name}.clone.");
+    let Ok(entries) = std::fs::read_dir(parent) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        if entry.file_name().to_string_lossy().starts_with(&prefix) {
+            let _ = std::fs::remove_dir_all(entry.path());
+        }
+    }
 }
 
 /// The tracked files of the remote's branch, cloned into a throwaway directory
