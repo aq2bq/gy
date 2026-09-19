@@ -24,6 +24,33 @@ fn write_toml(fx: &common::Fixture, remote: &str) {
     .unwrap();
 }
 
+/// Collect the child's standard error until it holds a `sync failed: ` line and
+/// the `  → ` line after it, or until `deadline` has passed (n-a237).
+fn failure_lines(child: &mut std::process::Child, deadline: Duration) -> String {
+    use std::io::{BufRead, BufReader};
+    let stderr = child.stderr.take().expect("the child's stderr is piped");
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        for line in BufReader::new(stderr).lines().map_while(Result::ok) {
+            if sender.send(line).is_err() {
+                break;
+            }
+        }
+    });
+    let started = std::time::Instant::now();
+    let mut seen = String::new();
+    while started.elapsed() < deadline {
+        if let Ok(line) = receiver.recv_timeout(Duration::from_millis(200)) {
+            seen.push_str(&line);
+            seen.push('\n');
+        }
+        if seen.contains("sync failed: ") && seen.contains("  → ") {
+            break;
+        }
+    }
+    seen
+}
+
 /// The first sync: it makes the copy and pushes the seed, as `gy sync` does.
 fn front_sync(fx: &common::Fixture) {
     let out = Command::new(env!("CARGO_BIN_EXE_gy"))
@@ -72,10 +99,12 @@ fn serve_logs_the_failure_and_its_way_out() {
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    std::thread::sleep(Duration::from_secs(3));
+    // Wait for the event, not for a span of time (n-a237): read the child's
+    // standard error until the failure and its way out have both appeared, or
+    // a generous deadline passes on a loaded machine.
+    let err = failure_lines(&mut child, Duration::from_secs(30));
     let _ = child.kill();
-    let output = child.wait_with_output().unwrap();
-    let err = String::from_utf8_lossy(&output.stderr);
+    let _ = child.wait();
 
     assert!(err.contains("sync failed: "), "{err}");
     assert!(
