@@ -9,20 +9,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
 
-/// The commit identity the child git inherits.
-fn ident() {
-    static ONCE: std::sync::Once = std::sync::Once::new();
-    ONCE.call_once(|| unsafe {
-        for (key, value) in [
-            ("GIT_AUTHOR_NAME", "piko"),
-            ("GIT_AUTHOR_EMAIL", "piko@example.com"),
-            ("GIT_COMMITTER_NAME", "piko"),
-            ("GIT_COMMITTER_EMAIL", "piko@example.com"),
-        ] {
-            std::env::set_var(key, value);
-        }
-    });
-}
+mod common;
+use common::ident;
 
 fn git(cwd: &Path, args: &[&str]) -> String {
     let out = Command::new("git")
