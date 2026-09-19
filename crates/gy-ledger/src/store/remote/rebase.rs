@@ -3,7 +3,7 @@ use super::super::{Result, log, replay};
 use super::rejected::{Rejected, RejectedBy, write_rejected};
 use super::report::{Pulled, Range, Sync};
 use super::rules::{key, landed, now, parse, targets, touched};
-use super::{git, sync::push_writes, sync::rebuild_snapshot, sync::writers};
+use super::{git, push::push_writes, sync::rebuild_snapshot, sync::writers};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
