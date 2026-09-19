@@ -1,49 +1,52 @@
-gy は要求が確定するまでの状態をグラフで持ち、書き込みはすべて 1 トランザクションで追記する。不正は書いた時点で拒まれる。
+gy keeps the state of work, up to the point a requirement is confirmed, as a graph. Every write is appended as one transaction, and an invalid write is refused when it is made.
 
-ノードを作る書き込み（`need add` / `question add` / `criterion add` / `decide` / `req add`）は、人向けの出力の先頭に `id: <ID>` を出す。ほかの書き込みは、既に知っている ID を裸で返す。
+A write that creates a node (`need add` / `question add` / `criterion add` / `decide` / `req add`) prints `id: <ID>` first. Other writes answer with the ID you already know. A flag shown with `...` takes one value each time: repeat the flag (`--targets A --targets B`).
 
-セッション開始:
+Starting a session:
   gy handover
   gy next
   gy show <ID>
 
-読み (6):
-  gy show <ID|ref>... [--full]                         ノードを表示し、足りないものも出す
-  gy list [--type] [--status] [--targets] [--grep] [--actor] [--since]   一覧。--actor / --since で書き込み単位。綴りは大小を問わない。--since は seq か日付（YYYY-MM-DD、あなたの場所のその日の 0 時から）
-  gy next                                              前提の片付いたニーズ
-  gy handover                                          進行中の要求と再開に要る件数
-  gy publish [--scope] [--since] [--out]                記録の公開物（範囲内の全ノードの逐語・履歴・診断）。コミットして後から振り返る
-  gy share <URL>                                       共有を始める（experimental）。remote の検査、gy.toml への remote、最初の上げ、守りと招待の文
-  gy join                                               参加する（experimental）。要るものと直し方、複製の取得、誰として書くか、次の一手。冪等
-  gy sync                                               remote と同期（experimental）。複製の取得、未 push の push、取り込みと載せ直し。異常時は原因と手段
-  gy serve                                              台帳をブラウザで読む。127.0.0.1、GET だけ、書く経路は無い。止めるまで。端末から起動したときはブラウザを開く
+Reads:
+  gy show <ID|ref>... [--full]                         show nodes, with what each still lacks
+  gy list [--type] [--status] [--targets] [--grep] [--actor] [--since]   list nodes; with --actor / --since, list write units. Spelling ignores case. --since takes a seq or a date (YYYY-MM-DD, from midnight where you are)
+  gy next                                              the needs whose prerequisites are settled
+  gy handover                                          requirements in progress and the counts a session needs to resume
+  gy publish [--scope] [--since] [--out]                the publication: every node in range verbatim, the history, the diagnostics. Commit it to look back later
+  gy share <URL>                                       start sharing (experimental): checks the remote, writes remote into gy.toml, uploads the ledger, says how to protect it and how to invite
+  gy join                                               join (experimental): what is needed and how to fix it, fetches the copy, says who you write as and what comes next. Idempotent
+  gy sync                                               sync with the remote (experimental): fetch the copy, push what is not pushed, pull and rebase. On trouble, the cause and the way out
+  gy serve                                              read the ledger in a browser: 127.0.0.1, GET only, no path that writes, until stopped. Opens the browser when started from a terminal
 
-書き (16):
-  gy need add "<題>" --targets <AC>... [--spawned-by <D>] [--body-file <path>]
-  gy need close <ID> --by fact|external --evidence <文>
-  gy question add "<題>" --decider <名> --options <文>... [--body-file <path>]        選択肢は 2 つ以上
-  gy question close <ID> --by fact|decision|non-decision --evidence <文> [--decision <D>]
-  gy criterion add "<題>" [--body-file <path>]
-  gy criterion satisfy <AC> --evidence <文> [--revoke]
-  gy req add "<題>" --need <N>... [--relies-on <D>]... [--targets <AC>]... [--ref <URL>] [--body-file <path>]
-  gy req approve <ID|ref> --design <文> --heard-by <名> --evidence <文>
-  gy req revise <ID> --reason <文> --source <文>
-  gy req done <ID> --evidence <文>
-  gy req cancel <ID> --reason <文> --source <文>
-  gy decide "<題>" --scope-note <文> [--body-file <path>] [--closes <Q>]... [--relate <関係> <D> --mark <文>] [--source <文>]
-  gy link <from> <関係> <to> [--mark <文>] [--remove]
-  gy edit <ID> --reason <文> [--title] [--body-file] [--set k=v] [--append k=v]
-        自由属性は文字列。--set は上書き、--set k= は消去、--append は改行区切りで 1 行足す
-        --set scope=<名前> で gy.toml にあるスコープへ移動。--set decision_scope=<文> で未記録の成立範囲を 1 回だけ記録
-  gy scope rename <旧> <新>
-        旧スコープの全ノードを新名へ移し、gy.toml をコメントと順序を保ったまま書き換える
-  gy undo --reason <文>
-        直前の 1 件だけを戻す。続けて打つと undo 自身を戻す（redo）。2 件以上戻す操作は無い
+Writes:
+  gy need add "<title>" --targets <AC>... [--spawned-by <D>] [--body-file <path>]
+  gy need close <ID> --by fact|external --evidence <text>
+  gy question add "<title>" --decider <name> --options <text>... [--body-file <path>]        at least two options
+  gy question close <ID> --by fact|decision|non-decision --evidence <text> [--decision <D>]
+  gy criterion add "<title>" [--body-file <path>]
+  gy criterion satisfy <AC> --evidence <text> [--revoke]
+  gy req add "<title>" --need <N>... [--relies-on <D>]... [--targets <AC>]... [--ref <URL>] [--body-file <path>]
+  gy req approve <ID|ref> --design <text> --heard-by <name> --evidence <text>
+  gy req revise <ID> --reason <text> --source <text>
+  gy req done <ID> --evidence <text>
+  gy req cancel <ID> --reason <text> --source <text>
+  gy decide "<title>" --scope-note <text> [--body-file <path>] [--closes <Q>]... [--relate <relation> <D> --mark <text>] [--source <text>]
+        --mark is not a note: it is the exact text in the older decision that stops applying
+  gy link <from> <relation> <to> [--mark <text>] [--remove]
+        relations: targets, filed-as, relies-on, depends-on, waits-on, raised, spawned-by, closes, narrows, widens, supersedes, completes. --mark only with narrows and supersedes
+  gy edit <ID> --reason <text> [--title] [--body-file] [--set k=v] [--append k=v]
+        free attributes are strings. --set overwrites, --set k= removes, --append adds one line
+        --set scope=<name> moves the node to a scope in gy.toml. --set decision_scope=<text> records a missing scope note, once
+  gy scope rename <old> <new>
+        moves every node of the old scope to the new name and rewrites gy.toml, keeping comments and order
+  gy undo --reason <text>
+        takes back the last write only. Typed again, it takes back the undo (redo). There is no way to take back two
 
-設定はスコープ名と出力先だけ:
+gy.toml holds the scope names and, if you want, where publish writes. Keys outside a table come before the first [scopes.*]:
+
+  output = "docs/publication"
 
   [scopes.myproject]
-  output = "docs/gy.md"
 
-書き込みの前に GY_ACTOR を名乗る。読みは名乗らなくてよい。
-  export GY_ACTOR=<名前>
+Name yourself before a write. A read needs no name.
+  export GY_ACTOR=<name>

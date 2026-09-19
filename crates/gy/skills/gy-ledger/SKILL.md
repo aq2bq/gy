@@ -1,22 +1,22 @@
 ---
 name: gy-ledger
-description: gy の台帳のノードと辺を操作するとき、ニーズ・要求・受け入れ条件の繋ぎ方と閉じ方、チームで共有する台帳の振る舞いを確かめるときに使う。仕事の進め方は gy-loop。
+description: Use when you operate nodes and edges in a gy ledger: how needs, requirements and acceptance criteria connect and close, and how a ledger shared with a team behaves. How to work is in gy-loop.
 ---
 
-# gy の台帳
+# The gy ledger
 
-仕事の進め方（復元する、1 つ選ぶ、進める、止まる、満たす）は `gy-loop` にある。ここはノードと辺の意味である。コマンドの形は `gy-loop` の `CHEATSHEET.md` にある。
+How to work (restore, pick one, advance, ask, stop, satisfy) is in `gy-loop`. This is what the nodes and edges mean. The shape of every command is in `gy-loop`'s `CHEATSHEET.md`.
 
-## ニーズ・要求・受け入れ条件
+## Needs, requirements, acceptance criteria
 
-- ニーズは受け入れ条件を `targets` で指す。`need add` は出力の先頭に `id: <ID>` を出し、`next` が次のコマンドを示す。本文は `--body-file` で作成と一緒に入る。
-- 要求は `req add` で立て、担うニーズ（`--need`）、使える決定（`--relies-on`）、受け入れ条件（`--targets`）に結ぶ。
-- 着手の前提は `depends-on` と `waits-on` の辺で表す。`next` はこれを見る。
-- ニーズは、`filed-as` の要求が完了すれば導出で `done` になる。`need close` で閉じても受け入れ条件は満たされない。閉じたときの `missing` に未達の条件が出るので、証拠があれば `criterion satisfy`、取り下げるなら `link --remove <need> targets <ac>`。
-- 日付は自分の場所の時刻で出る。他の書き手に時点を伝えるときは日付でなく `seq` か ID を使う。
+- A need points at its acceptance criteria with `targets`. `need add` prints `id: <ID>` first, and `next` shows the command that could follow. The body goes in with `--body-file` at creation.
+- A requirement is filed with `req add` and tied to the needs it serves (`--need`), the decisions it relies on (`--relies-on`) and the criteria it targets (`--targets`).
+- What must come first is an edge: `depends-on` and `waits-on`. `next` reads them.
+- A need becomes `done` by derivation when its `filed-as` requirement is done. Closing a need with `need close` does not satisfy its criteria: the close lists the unmet ones under `missing`, so satisfy them with evidence (`criterion satisfy`) or drop them (`link --remove <need> targets <ac>`).
+- Dates print in your local time. When you tell another writer a point in time, use the `seq` or an ID, not a date.
 
-## チームの台帳（gy.toml に remote があるとき）
+## A team's ledger (a `remote` in gy.toml)
 
-- 書きは今までどおり。push は背景で行われ、`gy sync` で明示にもできる。`handover` の先頭に未 push の件数と最終同期が出る。
-- 標準エラーに `notice: your write seq … did not land` が出たら、その書きは相手が先に同じノードを変えたため載らなかった。今の台帳を読み直し、まだ要るならやり直す。
-- `undo` は自分の書きだけ。
+- Write as before. The push happens in the background, and `gy sync` does it on request. `handover` starts with the number of writes not yet pushed and the last sync.
+- `notice: your write seq … did not land` on stderr means the other side changed the same node first and your write was not placed. Read the ledger again and redo it if it still applies.
+- `undo` takes back only your own write.

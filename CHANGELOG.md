@@ -38,8 +38,10 @@ To start sharing a ledger, create an empty private repository for the
 ledger alone and run `gy share <its URL>`; a member gets write access to
 that repository and runs `gy join` in a checkout of the project. Both
 commands say what is missing and what to do next. The bundled skills changed
-with this release: `gy-loop` is new and is the entry point (one turn of
-work around the ledger: restore, pick one, advance, stop, satisfy), the
+with this release: `gy-loop` is new and is the entry point (first agree
+once on how to work — who approves requirements, what to do with an
+unclear need — then the loop: restore, pick one, advance, ask, stop,
+satisfy), the skills are now in English, the
 cheat sheet moved next to it (`skills/gy-loop/CHEATSHEET.md`), and
 `gy-ledger` keeps the meaning of nodes and edges and gained a section on
 shared ledgers. Copy them again as the README says; `cp -R …/skills/gy-*`
@@ -166,7 +168,8 @@ brings the new one along.
   matches the level it is asked at: about the need while the need is
   unclear (what it is for, what matters most), about the requirement once
   one is filed; the choice among solutions is the writer's to decide and
-  record, not the master's to pick from a menu.
+  record, not the person's to pick from a menu. Who approves a requirement
+  is the user's policy (d-5dfe): the skill asks once and records the answer.
 
 ### Fixed
 
