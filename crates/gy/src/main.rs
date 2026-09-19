@@ -58,7 +58,7 @@ fn run(cli: &Cli) -> Result<()> {
         }
         Command::Serve => reads::serve(&root, &ledger, tab_name(&root)),
         Command::Sync => reads::sync_command(cli, &root, &ledger),
-        Command::Share { .. } => unreachable!("share runs before reconcile_copy"),
+        Command::Share { .. } | Command::Join => unreachable!("before reconcile_copy"),
         Command::Need { action } => write_need(cli, &root, &ledger, action),
         Command::Question { action } => write_question(cli, &root, &ledger, action),
         Command::Criterion { action } => write_criterion(cli, &root, &ledger, action),
@@ -80,6 +80,7 @@ fn run(cli: &Cli) -> Result<()> {
 fn before_reconcile(cli: &Cli, root: &Path, ledger: &Path) -> Option<Result<()>> {
     match &cli.command {
         Command::Share { url } => Some(writes::share(cli, root, ledger, url)),
+        Command::Join => Some(writes::join(cli, root, ledger)),
         _ => None,
     }
 }
@@ -87,10 +88,19 @@ fn before_reconcile(cli: &Cli, root: &Path, ledger: &Path) -> Option<Result<()>>
 /// Reconcile the copy's marker with gy.toml, and tell the reader once when
 /// syncing stopped (n-8a52).
 fn reconcile_copy(root: &Path, ledger: &Path) -> Result<()> {
-    if let Some(url) = reconcile(ledger, config::read(root)?.remote.as_deref())? {
+    let had = ledger.join("remote").is_file();
+    let remote = config::read(root)?.remote;
+    if let Some(url) = reconcile(ledger, remote.as_deref())? {
         eprintln!(
             "stopped syncing with {url}; this copy is local from here on and other members' writes will not arrive"
         );
+    }
+    // The automatic clone (d-b1d4): say once, on stderr, that this machine is
+    // now a member. A clone leaves the marker where there was none.
+    if !had {
+        if let Some(url) = remote.filter(|_| ledger.join("remote").is_file()) {
+            eprintln!("{}", gy_ledger::join_notice(ledger, &url));
+        }
     }
     Ok(())
 }

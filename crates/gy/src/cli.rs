@@ -68,6 +68,8 @@ pub enum Command {
         #[arg(value_name = "URL")]
         url: String,
     },
+    /// Join a shared project: check what you need, take the copy, say who you write as.
+    Join,
     /// File or close a need.
     Need {
         #[command(subcommand)]

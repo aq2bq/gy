@@ -21,8 +21,8 @@ pub use ops::{
     ScopeRename, Undo, config, link, local_clock, local_day_start, local_time, retry,
 };
 pub use store::remote::{
-    Pulled, Range, Share, Sync, clear_rejected, reconcile, record_timeout, record_timeout_after,
-    rejected_notices, share_check, share_upload, sync,
+    Join, Pulled, Range, Share, Sync, clear_rejected, join_check, join_notice, join_run, reconcile,
+    record_timeout, record_timeout_after, rejected_notices, share_check, share_upload, sync,
 };
 pub use store::{
     Actor, Error, ErrorKind, FileStore, FormatVersion, HistoryEntry, IdSource, MemoryStore, Result,

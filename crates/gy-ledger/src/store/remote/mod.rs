@@ -2,6 +2,7 @@
 //! only place that knows the remote exists; model, ops, and views do not.
 pub mod git;
 mod guard;
+mod join;
 mod origin;
 mod prepare;
 pub mod rebase;
@@ -13,6 +14,7 @@ mod share;
 mod state;
 pub mod sync;
 
+pub use join::{Join, check as join_check, notice as join_notice, run as join_run};
 pub use prepare::reconcile;
 pub use rebase::{clear_rejected, rejected_notices};
 pub use report::{Pulled, Range, Sync};

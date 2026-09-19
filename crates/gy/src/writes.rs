@@ -9,9 +9,21 @@ use gy_ledger::link::Link as LinkOp;
 use gy_ledger::{
     Decide, DecisionScope, Edit, Error, FileStore, NodeId, Outcome, Ref, Relation, Repository,
     ReqAdd, ReqApprove, ReqCancel, ReqDone, ReqRevise, Result, ScopeRename, Share, Store, Undo,
-    config, retry, share_check, share_upload,
+    config, join_check, join_run, retry, share_check, share_upload,
 };
 use std::path::Path;
+
+/// `gy join`: check everything, then take the copy and say who writes
+/// (n-57c5, ac-545c). The gy.toml remote is required; the automatic clone is
+/// for the other commands.
+pub fn join(cli: &Cli, root: &Path, ledger: &Path) -> Result<()> {
+    let remote = config::read(root)?.remote.ok_or_else(|| {
+        Error::invalid("this project is not shared; the owner runs gy share <URL>")
+    })?;
+    join_check(root, &remote)?;
+    let actor = std::env::var("GY_ACTOR").ok();
+    emit(cli.json, &join_run(ledger, &remote, actor.as_deref())?)
+}
 
 /// `gy share <URL>`: check the remote, write gy.toml, upload the ledger
 /// (n-57c5, ac-efd7). The order lives here: the checks and the words are in
