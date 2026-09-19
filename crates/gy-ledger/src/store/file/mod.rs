@@ -1,10 +1,11 @@
 //! The file-backed store: an append-only JSONL event log with an exclusive
 //! lock, sequence-based conflict detection, and replay on open (D-82).
-use super::{Actor, FormatVersion, HistoryEntry, Result, format, log, replay, snapshot};
+use super::{Actor, FormatVersion, Gate, HistoryEntry, Result, format, log, replay, snapshot};
 use serde_json::Value;
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 pub use super::as_of::open_at;
@@ -35,6 +36,7 @@ pub struct FileStore {
     retries: u32,
     remote: Option<String>,
     migrated: Option<(u32, u32)>,
+    gate: Option<Arc<dyn Gate>>,
 }
 impl FileStore {
     /// Open the ledger directory, reading the actor from `GY_ACTOR`.
@@ -77,6 +79,7 @@ impl FileStore {
             retries: 0,
             remote: read_remote(dir),
             migrated,
+            gate: None,
         })
     }
     /// The remote this copy syncs with, when it carries the marker (n-8a52).

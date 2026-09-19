@@ -4,6 +4,7 @@
 mod kind;
 mod links;
 mod node;
+mod rule;
 mod scope;
 mod state;
 
@@ -17,3 +18,5 @@ pub use scope::DecisionScope;
 pub use state::{
     Approval, Cancellation, Closed, ClosedBy, Closure, Completion, RequirementState, Revision,
 };
+
+pub use rule::{Before, Change, admit};

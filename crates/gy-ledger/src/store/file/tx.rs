@@ -2,13 +2,15 @@
 //! commit or roll back, undo, and mint ids (D-82).
 use super::super::id::{id_seed, unique_hash};
 use super::super::{
-    Error, HistoryEntry, IdSource, Result, Store, SyncStatus, UndoneKind, log, replay, snapshot,
+    Error, Gate, HistoryEntry, IdSource, Result, Store, SyncStatus, UndoneKind, log, replay,
+    snapshot,
 };
 use super::FileStore;
 use fs2::FileExt;
 use serde_json::Value;
 use std::collections::BTreeSet;
 use std::path::Path;
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 impl FileStore {
@@ -64,6 +66,13 @@ impl FileStore {
             }
         }
     }
+    /// Refuse the open transaction when the installed gate does (n-557f).
+    fn judged(&self, changes: &[log::Change]) -> Result<()> {
+        match &self.gate {
+            Some(gate) => gate.admit(&self.nodes, changes),
+            None => Ok(()),
+        }
+    }
     /// Append the open transaction under the lock, then update the state. The
     /// writer drops an incomplete trailing line here, under the same lock, so
     /// that a reader never rewrites the log (n-6b71).
@@ -80,6 +89,8 @@ impl FileStore {
                 "another writer advanced the ledger; reopen and retry",
             ));
         }
+        let changes = self.changes()?;
+        self.judged(&changes)?;
         let event = log::Event {
             seq: self.seq + 1,
             at: now(),
@@ -89,7 +100,7 @@ impl FileStore {
             retries: self.retries,
             by,
             by_mail,
-            changes: self.changes()?,
+            changes,
         };
         log::append(&self.dir, &event)?;
         self.seq += 1;
@@ -125,6 +136,12 @@ impl Store for FileStore {
     }
     fn set_retries(&mut self, retries: u32) {
         self.retries = retries;
+    }
+    fn set_gate(&mut self, gate: Arc<dyn Gate>) {
+        self.gate = Some(gate);
+    }
+    fn gate(&self) -> Option<&dyn Gate> {
+        self.gate.as_deref()
     }
     fn get(&self, node: &str) -> Option<Vec<u8>> {
         self.nodes

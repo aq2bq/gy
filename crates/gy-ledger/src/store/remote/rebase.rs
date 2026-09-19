@@ -1,5 +1,5 @@
 //! Rebase uncommitted writes onto the remote's new lines (n-ecbf 2B, ac-08cc).
-use super::super::{Result, log, replay};
+use super::super::{Gate, Result, log, replay};
 use super::rejected::{Rejected, RejectedBy, write_rejected};
 use super::report::{Pulled, Range, Sync};
 use super::rules::{key, landed, now, parse, targets, touched};
@@ -14,20 +14,17 @@ pub(super) fn rebase(
     upstream: &str,
     committed: u64,
     report: &mut Sync,
+    gate: &dyn Gate,
 ) -> Result<()> {
     let (remote_text, remote, pending) = inputs(ledger, upstream, committed)?;
     let on_remote = landed(&remote, committed, &pending);
     let (mut nodes, changed, removed, causes, remote_seq) =
         remote_changes(&remote, committed, &on_remote);
     let (accepted, rejects) = place(
-        &mut nodes, pending, &changed, &removed, &causes, remote_seq, &on_remote,
+        &mut nodes, pending, &changed, &removed, &causes, remote_seq, &on_remote, gate,
     );
     git::reset_hard(ledger, upstream)?;
-    let mut text = remote_text;
-    for event in &accepted {
-        text.push_str(&log::line(event)?);
-    }
-    log::replace(ledger, &text)?;
+    place_log(ledger, remote_text, &accepted)?;
     rebuild_snapshot(ledger)?;
     report.pulled = Some(Pulled {
         from: committed,
@@ -47,6 +44,15 @@ pub(super) fn rebase(
     }
     report.seq = log::read(ledger)?.0.last().map_or(0, |event| event.seq);
     Ok(())
+}
+/// Write the remote's log plus the accepted candidates back to the copy
+/// (n-557f).
+fn place_log(ledger: &Path, remote_text: String, accepted: &[log::Event]) -> Result<()> {
+    let mut text = remote_text;
+    for event in accepted {
+        text.push_str(&log::line(event)?);
+    }
+    log::replace(ledger, &text)
 }
 fn inputs(
     ledger: &Path,
@@ -102,6 +108,7 @@ fn remote_changes(
     }
     (nodes, changed, removed, causes, remote_seq)
 }
+#[allow(clippy::too_many_arguments)] // the gate is one more, next to the six
 fn place(
     nodes: &mut BTreeMap<String, Value>,
     pending: Vec<log::Event>,
@@ -110,6 +117,7 @@ fn place(
     causes: &BTreeMap<String, Cause>,
     remote_seq: u64,
     on_remote: &BTreeSet<String>,
+    gate: &dyn Gate,
 ) -> (Vec<log::Event>, Vec<Rejected>) {
     let mut accepted = Vec::new();
     let mut rejects = Vec::new();
@@ -119,14 +127,16 @@ fn place(
         if on_remote.contains(&key(&event)) {
             continue;
         }
-        if let Some(rejected) =
-            rejection(nodes, changed, removed, &rejected_created, causes, &event)
-        {
-            for change in &rejected.event.changes {
-                if let log::Change::Created { node, .. } = change {
-                    rejected_created.insert(node.clone());
-                }
-            }
+        if let Some(rejected) = rejection(
+            nodes,
+            changed,
+            removed,
+            &rejected_created,
+            causes,
+            &event,
+            gate,
+        ) {
+            refused_created(&rejected, &mut rejected_created);
             rejects.push(rejected);
         } else {
             let mut placed = event;
@@ -138,6 +148,15 @@ fn place(
     }
     (accepted, rejects)
 }
+/// Remember the nodes a refused candidate created, so a later write that
+/// points at one is refused too (n-557f).
+fn refused_created(rejected: &Rejected, created: &mut BTreeSet<String>) {
+    for change in &rejected.event.changes {
+        if let log::Change::Created { node, .. } = change {
+            created.insert(node.clone());
+        }
+    }
+}
 fn rejection(
     nodes: &BTreeMap<String, Value>,
     changed: &BTreeSet<String>,
@@ -145,9 +164,15 @@ fn rejection(
     rejected_created: &BTreeSet<String>,
     causes: &BTreeMap<String, Cause>,
     event: &log::Event,
+    gate: &dyn Gate,
 ) -> Option<Rejected> {
     let touched = touched(nodes, event);
-    let reason = judge(nodes, changed, removed, rejected_created, event, &touched)?;
+    let reason =
+        judge(nodes, changed, removed, rejected_created, event, &touched).or_else(|| {
+            gate.admit(nodes, &event.changes)
+                .err()
+                .map(|error| error.message)
+        })?;
     let by = touched
         .iter()
         .find_map(|node| causes.get(node))

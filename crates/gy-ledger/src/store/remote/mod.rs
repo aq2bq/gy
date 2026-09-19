@@ -24,4 +24,4 @@ pub use report::{Pulled, Range, Sync};
 pub use rounds::Rounds;
 pub use share::{Share, check as share_check, upload as share_upload};
 pub use state::{record_timeout, record_timeout_after, sync_error};
-pub use sync::sync;
+pub use sync::sync_with;

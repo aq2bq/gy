@@ -18,17 +18,21 @@ pub use model::{
 pub use ops::{
     CriterionAdd, CriterionSatisfy, Decide, Edit, NeedAdd, NeedClose, Operation, Outcome,
     QuestionAdd, QuestionClose, Repository, ReqAdd, ReqApprove, ReqCancel, ReqDone, ReqRevise,
-    ScopeRename, Undo, config, link, local_clock, local_day_start, local_time, retry,
+    ScopeRename, Undo, config, link, local_clock, local_day_start, local_time, retry, sync,
 };
 pub use store::remote::{
     Join, Pulled, Range, Rounds, Share, Sync, clear_rejected, join_check, join_notice, join_run,
     reconcile, record_timeout, record_timeout_after, rejected_notices, share_check, share_upload,
-    sync, sync_error,
+    sync_error,
 };
 pub use store::{
     Actor, Error, ErrorKind, FileStore, FormatVersion, HistoryEntry, IdSource, MemoryStore, Result,
     Store, SyncStatus, UndoneKind, file, format, location, log,
 };
+/// The write-time gate and its open default, for a test that installs its own
+/// (n-557f). Not part of the public reading surface.
+#[doc(hidden)]
+pub use store::{Gate, Open, remote::sync_with};
 pub use views::{
     EdgeLine, Filter, Handover, Listing, LogRow, NeedState, NextRow, NodeRow, Now, ProgressRow,
     Publication, Ready, RequirementLine, Resume, Row, Shown, SyncRow, Waiting, Warning, handover,

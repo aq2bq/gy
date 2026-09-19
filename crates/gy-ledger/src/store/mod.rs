@@ -14,8 +14,11 @@ mod snapshot;
 pub use file::FileStore;
 pub use memory::MemoryStore;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 pub use snapshot::FILE as SNAPSHOT_FILE;
+use std::collections::BTreeMap;
 use std::env;
+use std::sync::Arc;
 
 /// The copy's last sync, kept in `sync.state` (n-ecbf, d-1e50). The store
 /// hands it out; the reader decides what to show.
@@ -156,6 +159,23 @@ pub trait IdSource {
     fn next_hash(&mut self, prefix: &str) -> Result<String>;
 }
 
+/// The write-time gate (n-557f): one transaction's changes against the node
+/// state before it. Its terms are the store's own — JSON values and `log`
+/// changes — so the store calls no model or ops (D-76). `Ok` admits the write;
+/// `Err` refuses it, and the message is the reason.
+pub trait Gate: std::fmt::Debug + Send + Sync {
+    fn admit(&self, before: &BTreeMap<String, Value>, changes: &[log::Change]) -> Result<()>;
+}
+
+/// The gate that admits everything: the default while the rule is empty.
+#[derive(Debug, Default)]
+pub struct Open;
+impl Gate for Open {
+    fn admit(&self, _before: &BTreeMap<String, Value>, _changes: &[log::Change]) -> Result<()> {
+        Ok(())
+    }
+}
+
 /// Transactional storage. `commit` applies every staged change or, on error,
 /// none (AC-45); history records why and from where (AC-46).
 pub trait Store: IdSource {
@@ -163,6 +183,13 @@ pub trait Store: IdSource {
     /// The retries the next appended event carries (n-fe59). A store that
     /// cannot lose a race ignores it.
     fn set_retries(&mut self, _retries: u32) {}
+    /// Install the write-time gate (n-557f). A store that does not judge
+    /// ignores it; the open gate stays the default.
+    fn set_gate(&mut self, _gate: Arc<dyn Gate>) {}
+    /// The gate in force, when a caller installed one (n-557f).
+    fn gate(&self) -> Option<&dyn Gate> {
+        None
+    }
     /// The stored bytes for a node id, or `None`.
     fn get(&self, key: &str) -> Option<Vec<u8>>;
     /// Every stored node id.

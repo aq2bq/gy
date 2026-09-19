@@ -1,24 +1,33 @@
 //! `gy sync` (n-6f47, d-39f6, d-1e50): prepare the copy, fetch, pull, and
 //! push each local write as one commit.
-use super::super::{Error, Result, SNAPSHOT_FILE, file::FileStore, log};
+use super::super::{Error, Gate, Open, Result, SNAPSHOT_FILE, file::FileStore, log};
 use super::push::{first_push, push, push_writes};
 use super::report::{Pulled, Sync};
 use super::{git, guard, prepare, rebase, recovery, rules, state};
 use fs2::FileExt;
 use std::path::Path;
+use std::sync::Arc;
 
 /// Sync the ledger's copy with `remote`: prepare the copy, fetch, then change
 /// it under the lock only when a change is due (n-ecbf). The state file is
-/// written either way.
-pub fn sync(ledger: &Path, remote: &str) -> Result<Sync> {
+/// written either way. `gate` judges each write a rebase places (n-557f).
+#[doc(hidden)]
+pub fn sync_with(ledger: &Path, remote: &str, gate: Arc<dyn Gate>) -> Result<Sync> {
     let _exclusive = state::SyncLock::take(ledger)?;
-    let outcome = sync_inner(ledger, remote);
+    let outcome = sync_inner(ledger, remote, &*gate);
     state::clear_step(ledger);
     state::record_state(ledger, &outcome);
     outcome
 }
 
-fn sync_inner(ledger: &Path, remote: &str) -> Result<Sync> {
+/// The same sync under the open gate, for the store's own callers (n-6a8d).
+/// The rule reaches the rebase through `sync_with`, which `gy_ledger::sync`
+/// uses (n-557f).
+pub fn sync(ledger: &Path, remote: &str) -> Result<Sync> {
+    sync_with(ledger, remote, Arc::new(Open))
+}
+
+fn sync_inner(ledger: &Path, remote: &str, gate: &dyn Gate) -> Result<Sync> {
     std::fs::create_dir_all(ledger)?;
     if git::is_repo(ledger) {
         if let Some(message) = recovery::damaged(ledger)? {
@@ -53,7 +62,7 @@ fn sync_inner(ledger: &Path, remote: &str) -> Result<Sync> {
     rules::check_remote_format(ledger, &upstream)?;
     state::set_step(ledger, "push");
     first_push(ledger, remote, &branch, &mut report)?;
-    reconcile(ledger, branch.as_str(), &upstream, &mut report)?;
+    reconcile(ledger, branch.as_str(), &upstream, &mut report, gate)?;
     Ok(report)
 }
 
@@ -67,7 +76,13 @@ pub(super) fn locked(ledger: &Path, f: impl FnOnce() -> Result<()>) -> Result<()
 /// Pull or push, or refuse a divergence. A copy with local commits already
 /// made (a push that failed) pushes them; one with uncommitted lines commits
 /// and pushes them one write each.
-fn reconcile(ledger: &Path, branch: &str, upstream: &str, report: &mut Sync) -> Result<()> {
+fn reconcile(
+    ledger: &Path,
+    branch: &str,
+    upstream: &str,
+    report: &mut Sync,
+    gate: &dyn Gate,
+) -> Result<()> {
     state::set_step(ledger, "push");
     let head =
         git::rev(ledger, "HEAD").ok_or_else(|| Error::invalid("the copy has no commit yet"))?;
@@ -84,7 +99,7 @@ fn reconcile(ledger: &Path, branch: &str, upstream: &str, report: &mut Sync) -> 
             report.seq = working_seq(ledger)?;
         }
     } else if git::ancestor(ledger, "HEAD", upstream) {
-        pull(ledger, branch, upstream, committed, report)?;
+        pull(ledger, branch, upstream, committed, report, gate)?;
     } else {
         push(ledger, branch, upstream, committed, report)?;
     }
@@ -98,6 +113,7 @@ fn pull(
     upstream: &str,
     committed: u64,
     report: &mut Sync,
+    gate: &dyn Gate,
 ) -> Result<()> {
     // Shape first: a changed remote must read as a guard refusal, not as a
     // divergence that tells the reader to delete a copy (n-f4cd).
@@ -107,7 +123,7 @@ fn pull(
         // them back on top of the remote's lines (n-ecbf 2B).
         state::set_step(ledger, "rebase");
         return locked(ledger, || {
-            rebase::rebase(ledger, branch, upstream, committed, report)
+            rebase::rebase(ledger, branch, upstream, committed, report, gate)
         });
     }
     state::set_step(ledger, "fetch");

@@ -1,11 +1,13 @@
 //! The in-memory implementation for the skeleton and tests.
 use super::id::{id_seed, unique_hash};
 use super::{
-    Actor, Error, FormatVersion, HistoryEntry, IdSource, Result, Store, UndoneKind, undone_kind,
+    Actor, Error, FormatVersion, Gate, HistoryEntry, IdSource, Result, Store, UndoneKind, log,
+    undone_kind,
 };
 use serde_json::Value;
 use std::{
     collections::{BTreeMap, BTreeSet},
+    sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -22,6 +24,7 @@ pub struct MemoryStore {
     undo_stack: Vec<Vec<(String, Option<Vec<u8>>)>>,
     seq: u64,
     salt: u64,
+    gate: Option<Arc<dyn Gate>>,
 }
 impl MemoryStore {
     /// Open the store, reading the actor from `GY_ACTOR`.
@@ -48,6 +51,7 @@ impl MemoryStore {
             undo_stack: Vec::new(),
             seq: 0,
             salt: 0,
+            gate: None,
         }
     }
     /// The store for a point in the log (n-10e1): the nodes and the history
@@ -74,6 +78,7 @@ impl MemoryStore {
             undo_stack: Vec::new(),
             seq,
             salt: 0,
+            gate: None,
         })
     }
     /// Commit on `Ok`, roll back on `Err`, so a half-finished change writes nothing.
@@ -90,10 +95,62 @@ impl MemoryStore {
             }
         }
     }
+    /// Refuse the open transaction when the installed gate does (n-557f).
+    fn judged(&self) -> Result<()> {
+        match &self.gate {
+            Some(gate) => gate.admit(&self.before_map(), &self.pending_changes()),
+            None => Ok(()),
+        }
+    }
+    /// The committed nodes as JSON, for the gate (n-557f). A test store may
+    /// pay this per commit; the file store hands over the map it already has.
+    fn before_map(&self) -> BTreeMap<String, Value> {
+        self.committed
+            .iter()
+            .filter_map(|(key, bytes)| Some((key.clone(), serde_json::from_slice(bytes).ok()?)))
+            .collect()
+    }
+    /// The open transaction's changes, for the gate (n-557f).
+    fn pending_changes(&self) -> Vec<log::Change> {
+        let mut out = Vec::new();
+        for (key, value) in &self.staged {
+            let removed = value.is_empty();
+            let current = if removed {
+                self.committed
+                    .get(key)
+                    .and_then(|bytes| serde_json::from_slice(bytes).ok())
+            } else {
+                serde_json::from_slice(value).ok()
+            };
+            let node = key.clone();
+            let value = current.unwrap_or(Value::Null);
+            out.push(if removed {
+                log::Change::Deleted { node, value }
+            } else if self.committed.contains_key(key) {
+                log::Change::Updated { node, value }
+            } else {
+                log::Change::Created { node, value }
+            });
+        }
+        if let Some((from, to, nodes)) = &self.staged_rename {
+            out.push(log::Change::ScopeRenamed {
+                from: from.clone(),
+                to: to.clone(),
+                nodes: *nodes,
+            });
+        }
+        out
+    }
 }
 impl Store for MemoryStore {
     fn version(&self) -> FormatVersion {
         self.version
+    }
+    fn set_gate(&mut self, gate: Arc<dyn Gate>) {
+        self.gate = Some(gate);
+    }
+    fn gate(&self) -> Option<&dyn Gate> {
+        self.gate.as_deref()
     }
     fn get(&self, key: &str) -> Option<Vec<u8>> {
         self.committed.get(key).cloned()
@@ -121,6 +178,7 @@ impl Store for MemoryStore {
         Ok(nodes)
     }
     fn commit(&mut self) -> Result<()> {
+        self.judged()?;
         let mut before = Vec::new();
         for (key, value) in self.staged.drain(..) {
             before.push((key.clone(), self.committed.get(&key).cloned()));

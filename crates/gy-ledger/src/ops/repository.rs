@@ -3,7 +3,9 @@
 use crate::model::{Edge, Node, NodeData, NodeId, NodeKind};
 // Re-exported so a view can use `Repository` without reaching into the store
 // layer (D-76): the trait bound and its result are part of this API.
+use crate::store::Gate;
 pub use crate::store::{Error, Result, Store, SyncStatus};
+use std::sync::Arc;
 
 pub struct Repository<S: Store> {
     store: S,
@@ -13,7 +15,14 @@ pub struct Repository<S: Store> {
     retries: u32,
 }
 impl<S: Store> Repository<S> {
+    /// The repository with this build's rule installed as the gate (n-557f).
     pub fn new(store: S) -> Self {
+        Self::with_gate(store, Arc::new(super::judge::Rules))
+    }
+    /// The repository with a chosen gate, for tests (n-557f).
+    #[doc(hidden)]
+    pub fn with_gate(mut store: S, gate: Arc<dyn Gate>) -> Self {
+        store.set_gate(gate);
         Self {
             store,
             why: String::new(),
