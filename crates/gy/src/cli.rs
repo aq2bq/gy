@@ -63,6 +63,11 @@ pub enum Command {
     Serve,
     /// Sync this copy with the remote named in gy.toml.
     Sync,
+    /// Start sharing: check the remote, write gy.toml, upload the ledger.
+    Share {
+        #[arg(value_name = "URL")]
+        url: String,
+    },
     /// File or close a need.
     Need {
         #[command(subcommand)]

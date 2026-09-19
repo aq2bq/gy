@@ -5,8 +5,7 @@ use super::origin;
 use std::path::Path;
 use std::process::{Command, Output};
 
-/// Run git in `dir`, returning stdout. A failed command is an error carrying
-/// git's own message.
+/// Run git in `dir`, returning stdout; a failure carries git's own message.
 pub fn run(dir: &Path, args: &[&str]) -> Result<String> {
     let output = spawn(dir, args)?;
     if !output.status.success() {
@@ -23,6 +22,16 @@ pub fn run(dir: &Path, args: &[&str]) -> Result<String> {
 /// Run git and return stdout, or `None` on a non-zero exit.
 fn run_maybe(dir: &Path, args: &[&str]) -> Option<String> {
     run(dir, args).ok()
+}
+
+/// Run git for a read-only probe, keeping only success or failure, so a clone's
+/// warning never adds a word to the reader's stderr (n-57c5).
+pub fn quiet(dir: &Path, args: &[&str]) -> Result<()> {
+    if spawn(dir, args)?.status.success() {
+        Ok(())
+    } else {
+        Err(Error::invalid(format!("git {}", args.join(" "))))
+    }
 }
 
 /// The configured `origin` URL, or `None` when the copy has no origin.
@@ -47,9 +56,9 @@ fn spawn(dir: &Path, args: &[&str]) -> Result<Output> {
 }
 
 /// Whether `dir` is its own git work tree (a prepared copy), not a directory
-/// inside another work tree. The judgment is `rev-parse --show-toplevel`
-/// naming `dir`; a parent's toplevel does not count (ac-ad40). Every plumbing
-/// path below is relative to `dir`, which this equality makes the tree's root.
+/// inside another work tree. `rev-parse --show-toplevel` must name `dir`; a
+/// parent's toplevel does not count (ac-ad40), and every plumbing path is
+/// relative to `dir`.
 pub fn is_repo(dir: &Path) -> bool {
     let Some(toplevel) = run_maybe(dir, &["rev-parse", "--show-toplevel"]) else {
         return false;
@@ -68,8 +77,7 @@ pub fn init(dir: &Path, branch: &str) -> Result<()> {
     run(dir, &["init", "-q", "-b", branch]).map(|_| ())
 }
 
-/// Clone `url`'s `branch` into `dir`, which must exist and be empty. The
-/// branch is named, so a remote whose HEAD is unborn still checks out.
+/// Clone `url`'s `branch` into `dir` (which must exist and be empty).
 pub fn clone_branch(dir: &Path, url: &str, branch: &str) -> Result<()> {
     run(dir, &["clone", "-q", "--branch", branch, url, "."]).map(|_| ())
 }

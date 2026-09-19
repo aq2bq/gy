@@ -37,6 +37,9 @@ fn tab_name(root: &Path) -> String {
 fn run(cli: &Cli) -> Result<()> {
     let root = repo::root(cli.directory.as_deref())?;
     let ledger = location::ledger_dir(&root);
+    if let Some(outcome) = before_reconcile(cli, &root, &ledger) {
+        return outcome;
+    }
     reconcile_copy(&root, &ledger)?;
     repo::announce_rejected(&ledger);
     let outcome = match &cli.command {
@@ -55,6 +58,7 @@ fn run(cli: &Cli) -> Result<()> {
         }
         Command::Serve => reads::serve(&root, &ledger, tab_name(&root)),
         Command::Sync => reads::sync_command(cli, &root, &ledger),
+        Command::Share { .. } => unreachable!("share runs before reconcile_copy"),
         Command::Need { action } => write_need(cli, &root, &ledger, action),
         Command::Question { action } => write_question(cli, &root, &ledger, action),
         Command::Criterion { action } => write_criterion(cli, &root, &ledger, action),
@@ -69,6 +73,15 @@ fn run(cli: &Cli) -> Result<()> {
     // for nothing (n-ecbf).
     after_write(cli, &root, &ledger, &outcome);
     outcome
+}
+
+/// The commands that run before the automatic clone, so their own checks come
+/// first and nothing is fetched quietly (n-57c5). `None` is the usual path.
+fn before_reconcile(cli: &Cli, root: &Path, ledger: &Path) -> Option<Result<()>> {
+    match &cli.command {
+        Command::Share { url } => Some(writes::share(cli, root, ledger, url)),
+        _ => None,
+    }
 }
 
 /// Reconcile the copy's marker with gy.toml, and tell the reader once when

@@ -49,3 +49,26 @@ pub fn rename_scope(root: &Path, from: &str, to: &str) -> Result<()> {
     std::fs::write(&path, text.replace(&old, &new))
         .map_err(|error| Error::invalid(format!("gy.toml: {error}")))
 }
+
+/// Write the ledger's `remote` into gy.toml, just before the first `[scopes.*]`
+/// so it stays a top-level key, or at the end when there is no scope table
+/// (n-57c5, ac-efd7). The other bytes (comments, order, the other keys) are
+/// left as they were.
+pub fn write_remote(root: &Path, url: &str) -> Result<()> {
+    let path = root.join("gy.toml");
+    let text = std::fs::read_to_string(&path)
+        .map_err(|_| Error::invalid(format!("no gy.toml at {}", path.display())))?;
+    let line = format!("remote = \"{url}\"\n");
+    let out = match text.find("[scopes.") {
+        Some(at) => format!("{}{}{}", &text[..at], line, &text[at..]),
+        None => {
+            let mut out = text;
+            if !out.is_empty() && !out.ends_with('\n') {
+                out.push('\n');
+            }
+            out.push_str(&line);
+            out
+        }
+    };
+    std::fs::write(&path, out).map_err(|error| Error::invalid(format!("gy.toml: {error}")))
+}

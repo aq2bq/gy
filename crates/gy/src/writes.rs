@@ -8,10 +8,34 @@ use crate::write::{self, Written};
 use gy_ledger::link::Link as LinkOp;
 use gy_ledger::{
     Decide, DecisionScope, Edit, Error, FileStore, NodeId, Outcome, Ref, Relation, Repository,
-    ReqAdd, ReqApprove, ReqCancel, ReqDone, ReqRevise, Result, ScopeRename, Store, Undo, config,
-    retry,
+    ReqAdd, ReqApprove, ReqCancel, ReqDone, ReqRevise, Result, ScopeRename, Share, Store, Undo,
+    config, retry, share_check, share_upload,
 };
 use std::path::Path;
+
+/// `gy share <URL>`: check the remote, write gy.toml, upload the ledger
+/// (n-57c5, ac-efd7). The order lives here: the checks and the words are in
+/// `gy-ledger`, the gy.toml write in `ops::config`, and store cannot call ops.
+pub fn share(cli: &Cli, root: &Path, ledger: &Path, url: &str) -> Result<()> {
+    match config::read(root)?.remote {
+        Some(existing) if existing == url => {
+            if ledger.join("remote").is_file() {
+                return emit(cli.json, &Share::already(url));
+            }
+            return Err(Error::invalid("this project is shared; run gy join"));
+        }
+        Some(existing) => {
+            return Err(Error::invalid(format!(
+                "this project is shared with {existing}; gy does not switch remotes"
+            )));
+        }
+        None => {}
+    }
+    let checked = share_check(root, url)?;
+    config::write_remote(root, url)?;
+    let uploaded = share_upload(ledger, url, &checked.branch)?;
+    emit(cli.json, &Share::shared(url, checked.line, uploaded))
+}
 
 pub fn decide(cli: &Cli, root: &Path, ledger: &Path, args: &DecideArgs) -> Result<()> {
     let repository = repo::open_write(ledger)?;

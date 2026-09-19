@@ -9,11 +9,13 @@ mod recovery;
 pub mod report;
 mod rules;
 pub mod shape;
+mod share;
 mod state;
 pub mod sync;
 
 pub use prepare::reconcile;
 pub use rebase::{clear_rejected, rejected_notices};
 pub use report::{Pulled, Range, Sync};
+pub use share::{Share, check as share_check, upload as share_upload};
 pub use state::{record_timeout, record_timeout_after};
 pub use sync::sync;
