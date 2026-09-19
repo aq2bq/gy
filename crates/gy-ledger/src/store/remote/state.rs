@@ -5,6 +5,12 @@ use super::git;
 use super::report::Sync;
 use fs2::FileExt;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// True while this process is waiting for the whole-sync lock (n-8b91). A
+/// timeout then is not its own failure: the holder is the one whose result
+/// tells the truth, so `record_timeout` writes nothing for a waiter.
+static WAITING: AtomicBool = AtomicBool::new(false);
 
 /// The whole-sync exclusion (n-6b44): one sync runs at a time per copy, so two
 /// syncs cannot both fetch a stale remote ref and push from it. It is a
@@ -24,7 +30,10 @@ impl SyncLock {
             .truncate(false)
             .write(true)
             .open(ledger.join("sync.pid"))?;
-        file.lock_exclusive()?;
+        WAITING.store(true, Ordering::SeqCst);
+        let locked = file.lock_exclusive();
+        WAITING.store(false, Ordering::SeqCst);
+        locked?;
         Ok(Self { _file: file })
     }
 }
@@ -73,8 +82,13 @@ pub fn sync_error(ledger: &Path) -> Option<(String, Option<String>)> {
 }
 
 /// Record a give-up after `secs` seconds, named for the caller (n-ecbf). When
-/// the child left a stage, the message names it (n-08ae).
+/// the child left a stage, the message names it (n-08ae). A process that was
+/// only waiting for the lock does not write: its timeout is not a failure, and
+/// the holder's own result is what the copy keeps (n-8b91).
 pub fn record_timeout_after(ledger: &Path, secs: u64) {
+    if WAITING.load(Ordering::SeqCst) {
+        return;
+    }
     if !git::is_repo(ledger) {
         return;
     }

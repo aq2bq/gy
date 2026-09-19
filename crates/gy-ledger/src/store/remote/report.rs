@@ -91,13 +91,18 @@ fn pulled_line(f: &mut fmt::Formatter<'_>, pulled: &Pulled) -> fmt::Result {
     writeln!(f, ")")
 }
 
-/// `pushed` / `rebased`: `label: n writes (seq a → b)`.
+/// `pushed` / `rebased`: `label: n writes (seq a → b)`. A reversed span (from >
+/// to) is no span at all, so it reads as zero writes rather than underflowing
+/// (n-8b91).
 fn range_line(f: &mut fmt::Formatter<'_>, label: &str, range: &Range) -> fmt::Result {
+    let writes = if range.to >= range.from {
+        range.to - range.from + 1
+    } else {
+        0
+    };
     writeln!(
         f,
-        "{label}: {} writes (seq {} → {})",
-        range.to - range.from + 1,
-        range.from,
-        range.to
+        "{label}: {writes} writes (seq {} → {})",
+        range.from, range.to
     )
 }

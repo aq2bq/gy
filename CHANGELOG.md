@@ -264,6 +264,15 @@ brings the new one along.
   the sequence) and counts it as pushed, and one sync runs at a time per
   copy (an exclusive lock on the already-ignored `sync.pid`, held for the
   whole sync; a write still never waits on a fetch).
+- **A sync that only waited for its turn no longer leaves a false timeout**
+  (n-8b91). A background sync waiting for the whole-sync lock could hit its
+  30-second watchdog after the holder had already succeeded, and its
+  "gave up" line stayed at the top of `handover` over a correct ledger. A
+  process that is only waiting records nothing; the holder's own result is
+  what the copy keeps. A reversed range in a sync report reads as zero
+  writes instead of underflowing. Two syncs racing to make the first clone
+  were measured (the lock file is replaced by the clone, yet the waiter
+  skips the clone once it gets in) and left as they are, with the test kept.
 
 ## 0.9.0 - 2026-09-18
 
