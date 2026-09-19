@@ -28,13 +28,10 @@ pub fn missing(node: &Node, all: &[Node]) -> Vec<String> {
 /// the arguments that depend on a choice stay as `<...>` holes.
 pub fn next(node: &Node, all: &[Node]) -> Vec<String> {
     let id = node.id();
-    match node.data() {
+    let mut out = match node.data() {
         NodeData::Need(data) => {
             if data.closed.is_none() {
-                vec![
-                    format!("edit {id} --body-file … --reason …"),
-                    format!("req add \"<題>\" --need {id} …"),
-                ]
+                vec![format!("req add \"<題>\" --need {id} …")]
             } else {
                 closed_need_next(node, all)
             }
@@ -48,7 +45,13 @@ pub fn next(node: &Node, all: &[Node]) -> Vec<String> {
         NodeData::Requirement(data) => requirement_next(id, data),
         NodeData::Criterion(data) => criterion_next(node, data, all),
         _ => Vec::new(),
+    };
+    // One rule for every kind: when `missing` names a body, the edit that
+    // would fill it leads what else could follow.
+    if missing(node, all).iter().any(|gap| gap.starts_with("本文")) {
+        out.insert(0, format!("edit {id} --body-file … --reason …"));
     }
+    out
 }
 
 fn need_missing(node: &Node) -> Vec<String> {

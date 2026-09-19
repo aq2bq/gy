@@ -135,6 +135,22 @@ them again as the README says.
   repository of its own. Before any commit or push the copy's `origin`
   must equal the recorded remote, else gy refuses to touch the directory.
 
+### Changed
+
+- **A failure says what to type next** (n-1de7). A first-time agent given
+  only the bundled skills and the README failed 14 gy calls in three
+  sessions; each of these now names the fix in its own output:
+  - no `gy.toml`: the message keeps `pass -C <dir>` and adds that a single
+    line `[scopes.<name>]` starts a repository and the first write makes
+    the ledger. The exit code is unchanged.
+  - `GY_ACTOR` unset: the message adds `export GY_ACTOR=<name>`.
+  - `question add --help` says `--options` is repeated once per option.
+  - `next:` leads with `edit <id> --body-file … --reason …` whenever
+    `missing:` names a body, for every kind of node (before, only a need
+    showed it, and it showed it even when the need had a body). A need
+    that has a body no longer lists the edit; its other hints are the same.
+  No subcommand, option or exit code changed.
+
 ## 0.9.0 - 2026-09-18
 
 ### Updating

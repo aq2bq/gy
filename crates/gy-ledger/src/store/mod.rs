@@ -102,7 +102,7 @@ impl Actor {
         let name = name.into();
         if name.trim().is_empty() {
             return Err(Error::invalid(
-                "GY_ACTOR is not set; every write names its actor",
+                "GY_ACTOR is not set; every write names its actor; set it with `export GY_ACTOR=<name>`",
             ));
         }
         Ok(Self(name))

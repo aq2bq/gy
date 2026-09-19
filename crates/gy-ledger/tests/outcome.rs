@@ -140,6 +140,7 @@ fn add_operations_report_what_their_new_node_lacks() {
     assert_eq!(
         asked.next,
         [
+            format!("edit {asked_id} --body-file … --reason …"),
             format!("question close {asked_id} --by … --evidence …"),
             format!("decide … --closes {asked_id}"),
             format!("link <need> waits-on {asked_id}")
@@ -157,7 +158,10 @@ fn add_operations_report_what_their_new_node_lacks() {
     let criterion_id = criterion.id.clone().unwrap();
     assert_eq!(
         criterion.next,
-        [format!("criterion satisfy {criterion_id} --evidence …")]
+        [
+            format!("edit {criterion_id} --body-file … --reason …"),
+            format!("criterion satisfy {criterion_id} --evidence …")
+        ]
     );
 
     let requirement = req_add(&need_id).run(&mut repo).unwrap();
@@ -169,6 +173,31 @@ fn add_operations_report_what_their_new_node_lacks() {
         requirement.next,
         [approve_cmd(&requirement.id.clone().unwrap())]
     );
+}
+
+#[test]
+fn a_need_with_a_body_is_not_told_to_edit() {
+    let mut repo = repo();
+    let ac = criterion("0001");
+    let ac_id = ac.id().clone();
+    seed(&mut repo, &[ac]);
+
+    let added = NeedAdd {
+        scope: SCOPE.into(),
+        title: "a need".into(),
+        targets: vec![ac_id],
+        spawned_by: None,
+        body: Some("the body".into()),
+    }
+    .run(&mut repo)
+    .unwrap();
+    assert!(
+        !added.missing.iter().any(|gap| gap == "本文"),
+        "{:?}",
+        added.missing
+    );
+    let id = added.id.clone().unwrap();
+    assert_eq!(added.next, [format!("req add \"<題>\" --need {id} …")]);
 }
 
 #[test]
@@ -186,7 +215,10 @@ fn decide_reports_missing_and_suggests_a_link() {
     let bare_id = bare.id.clone().unwrap();
     assert_eq!(
         bare.next,
-        [format!("link {bare_id} narrows <古い D> --mark <文>")]
+        [
+            format!("edit {bare_id} --body-file … --reason …"),
+            format!("link {bare_id} narrows <古い D> --mark <文>")
+        ]
     );
 
     let full = decide(

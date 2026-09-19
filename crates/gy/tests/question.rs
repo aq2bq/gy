@@ -3,6 +3,15 @@ mod common;
 use common::{fixture, id_of, stderr, stdout};
 
 #[test]
+fn question_add_help_shows_the_repeated_form() {
+    let fx = fixture();
+    let out = fx.run(&["question", "add", "--help"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    let text = stdout(&out);
+    assert!(text.contains("--options A --options B"), "{text}");
+}
+
+#[test]
 fn question_add_then_close() {
     let fx = fixture();
     let out = fx.run(&[

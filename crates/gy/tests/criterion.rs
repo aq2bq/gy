@@ -28,7 +28,9 @@ fn criterion_add_satisfy_and_revoke() {
     assert!(stdout(&out).contains("changed: created"));
     let id = id_of(&out);
     assert!(
-        stdout(&out).contains(&format!("next: criterion satisfy {id} --evidence …")),
+        stdout(&out).contains(&format!(
+            "next: edit {id} --body-file … --reason …, criterion satisfy {id} --evidence …"
+        )),
         "{}",
         stdout(&out)
     );

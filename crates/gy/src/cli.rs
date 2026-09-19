@@ -134,6 +134,7 @@ pub enum QuestionAction {
         title: String,
         #[arg(long, value_name = "NAME")]
         decider: String,
+        /// Repeat for each option, at least two: `--options A --options B`.
         #[arg(long = "options", value_name = "OPTION", required = true)]
         options: Vec<String>,
         #[arg(long = "body-file", value_name = "PATH")]

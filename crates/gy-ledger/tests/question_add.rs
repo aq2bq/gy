@@ -68,6 +68,7 @@ fn a_question_without_a_waiting_need_reports_it() {
     assert_eq!(
         outcome.next,
         [
+            format!("edit {id} --body-file … --reason …"),
             format!("question close {id} --by … --evidence …"),
             format!("decide … --closes {id}"),
             format!("link <need> waits-on {id}")

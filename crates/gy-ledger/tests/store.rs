@@ -8,6 +8,8 @@ fn store() -> MemoryStore {
 fn opening_without_an_actor_fails() {
     assert!(Actor::from_lookup(|_| None).is_err());
     assert!(Actor::new("   ").is_err());
+    let error = Actor::new("").unwrap_err().to_string();
+    assert!(error.contains("export GY_ACTOR="), "{error}");
     assert!(MemoryStore::open_with(FormatVersion::CURRENT, |_| None).is_err());
     assert!(MemoryStore::open_with(FormatVersion::CURRENT, |_| Some("piko".into())).is_ok());
 }
