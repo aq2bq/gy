@@ -1,5 +1,5 @@
 mod common;
-use common::{fixture, stderr, stdout};
+use common::{fixture, ident, stderr, stdout};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::time::Duration;
@@ -62,6 +62,7 @@ fn wait_for(mut done: impl FnMut() -> bool) -> bool {
 }
 #[test]
 fn a_write_starts_a_detached_sync() {
+    ident();
     let temp = tempfile::tempdir().unwrap();
     let remote = temp.path().join("remote.git");
     init_remote(&remote);
@@ -78,6 +79,7 @@ fn a_write_starts_a_detached_sync() {
 }
 #[test]
 fn a_live_pid_stops_a_second_background_sync() {
+    ident();
     let temp = tempfile::tempdir().unwrap();
     let remote = temp.path().join("remote.git");
     init_remote(&remote);
@@ -95,6 +97,7 @@ fn a_live_pid_stops_a_second_background_sync() {
 }
 #[test]
 fn a_rejected_write_is_noticed_without_touching_the_output() {
+    ident();
     let fx = fixture();
     fx.seed(&[common::need("0001", "a need")]);
     let rejected = serde_json::json!({
@@ -119,6 +122,7 @@ fn a_rejected_write_is_noticed_without_touching_the_output() {
 }
 #[test]
 fn handover_reaches_the_remote_first() {
+    ident();
     let temp = tempfile::tempdir().unwrap();
     let remote = temp.path().join("remote.git");
     init_remote(&remote);
@@ -135,6 +139,7 @@ fn handover_reaches_the_remote_first() {
 }
 #[test]
 fn handover_still_shows_a_copy_when_the_remote_is_unreachable() {
+    ident();
     let temp = tempfile::tempdir().unwrap();
     let remote = temp.path().join("remote.git");
     init_remote(&remote);
@@ -158,6 +163,7 @@ fn handover_still_shows_a_copy_when_the_remote_is_unreachable() {
 }
 #[test]
 fn an_unreachable_remote_records_the_error_and_the_write_passes() {
+    ident();
     let temp = tempfile::tempdir().unwrap();
     let remote = temp.path().join("remote.git");
     init_remote(&remote);
@@ -183,6 +189,7 @@ fn an_unreachable_remote_records_the_error_and_the_write_passes() {
 }
 #[test]
 fn sync_without_git_says_git_is_required() {
+    ident();
     let fx = fixture();
     write_toml(&fx, "file:///nonexistent/ledger.git");
     fx.seed(&[common::criterion("0001", "an ac")]);
@@ -203,6 +210,7 @@ fn sync_without_git_says_git_is_required() {
 }
 #[test]
 fn the_first_read_clones_the_copy() {
+    ident();
     let temp = tempfile::tempdir().unwrap();
     let remote = temp.path().join("remote.git");
     let bare = Command::new("git")
@@ -239,6 +247,7 @@ fn the_first_read_clones_the_copy() {
 }
 #[test]
 fn serve_syncs_while_it_runs() {
+    ident();
     let temp = tempfile::tempdir().unwrap();
     let remote = temp.path().join("remote.git");
     init_remote(&remote);

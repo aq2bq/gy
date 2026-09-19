@@ -8,6 +8,9 @@ use std::path::Path;
 use std::process::Command;
 use std::sync::Arc;
 
+mod common;
+use common::ident;
+
 fn git(cwd: &Path, args: &[&str]) -> String {
     let out = Command::new("git")
         .args(args)
@@ -61,6 +64,7 @@ fn non_ledger(remote: &Path) {
 
 #[test]
 fn check_passes_for_an_empty_remote_and_changes_nothing() {
+    ident();
     let temp = tempfile::tempdir().unwrap();
     let root = temp.path().join("root");
     std::fs::create_dir_all(&root).unwrap();
@@ -76,6 +80,7 @@ fn check_passes_for_an_empty_remote_and_changes_nothing() {
 
 #[test]
 fn check_refuses_a_remote_that_is_not_a_ledger() {
+    ident();
     let temp = tempfile::tempdir().unwrap();
     let root = temp.path().join("root");
     std::fs::create_dir_all(&root).unwrap();
@@ -91,6 +96,7 @@ fn check_refuses_a_remote_that_is_not_a_ledger() {
 
 #[test]
 fn check_refuses_an_unreachable_remote() {
+    ident();
     let temp = tempfile::tempdir().unwrap();
     let error = share_check(temp.path(), "file:///nonexistent/ledger.git").unwrap_err();
     assert!(
@@ -102,6 +108,7 @@ fn check_refuses_an_unreachable_remote() {
 
 #[test]
 fn upload_pushes_the_first_copy() {
+    ident();
     let temp = tempfile::tempdir().unwrap();
     let ledger = temp.path().join("ledger");
     seed(&ledger);
@@ -121,6 +128,7 @@ fn upload_pushes_the_first_copy() {
 
 #[test]
 fn upload_failure_keeps_the_remote_and_names_the_way_out() {
+    ident();
     let temp = tempfile::tempdir().unwrap();
     let ledger = temp.path().join("ledger");
     seed(&ledger);
@@ -137,6 +145,7 @@ fn upload_failure_keeps_the_remote_and_names_the_way_out() {
 
 #[test]
 fn upload_without_a_ledger_only_says_so() {
+    ident();
     let temp = tempfile::tempdir().unwrap();
     let ledger = temp.path().join("ledger");
     let uploaded = share_upload(
@@ -152,6 +161,7 @@ fn upload_without_a_ledger_only_says_so() {
 
 #[test]
 fn write_remote_stays_top_level() {
+    ident();
     let temp = tempfile::tempdir().unwrap();
     let root = temp.path().join("root");
     std::fs::create_dir_all(&root).unwrap();
@@ -174,6 +184,7 @@ fn write_remote_stays_top_level() {
 
 #[test]
 fn the_share_lines_carry_their_prefixes_in_order() {
+    ident();
     let checked = "checked: file:///remote.git is empty".to_string();
     let uploaded = vec!["uploaded: seq 1 → 1 as one commit to main".to_string()];
     let share = Share::shared("file:///remote.git", checked, uploaded);

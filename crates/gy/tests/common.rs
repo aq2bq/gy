@@ -140,3 +140,26 @@ impl Fixture {
         command
     }
 }
+
+/// The identity the child git works under, and the only git config it can see.
+/// A write to a shared copy reads `git config user.name`, and git itself needs
+/// a name it can put on a commit; a developer's machine supplies both and a CI
+/// runner supplies neither, so the test carries its own (n-8f60).
+pub fn ident() {
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| unsafe {
+        let path = std::env::temp_dir().join(format!("gy-ident-{}", std::process::id()));
+        std::fs::write(&path, "[user]\n\tname = piko\n\temail = piko@example.com\n").unwrap();
+        for (key, value) in [
+            ("GIT_CONFIG_GLOBAL", path.display().to_string()),
+            ("GIT_CONFIG_SYSTEM", "/dev/null".to_string()),
+            ("GIT_CONFIG_NOSYSTEM", "1".to_string()),
+            ("GIT_AUTHOR_NAME", "piko".to_string()),
+            ("GIT_AUTHOR_EMAIL", "piko@example.com".to_string()),
+            ("GIT_COMMITTER_NAME", "piko".to_string()),
+            ("GIT_COMMITTER_EMAIL", "piko@example.com".to_string()),
+        ] {
+            std::env::set_var(key, value);
+        }
+    });
+}
