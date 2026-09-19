@@ -130,6 +130,9 @@ pub enum NeedAction {
 #[derive(Subcommand)]
 pub enum QuestionAction {
     /// Open a question with a decider and at least two options.
+    #[command(
+        override_usage = "gy question add [OPTIONS] --decider <NAME> --options <A> --options <B> <TITLE>"
+    )]
     Add {
         title: String,
         #[arg(long, value_name = "NAME")]

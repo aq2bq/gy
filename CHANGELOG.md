@@ -144,7 +144,9 @@ them again as the README says.
     line `[scopes.<name>]` starts a repository and the first write makes
     the ledger. The exit code is unchanged.
   - `GY_ACTOR` unset: the message adds `export GY_ACTOR=<name>`.
-  - `question add --help` says `--options` is repeated once per option.
+  - `question add`: the usage line, in `--help` and after a rejected
+    `--options A B`, reads `--options <A> --options <B>`; the flag is
+    repeated once per option, as before.
   - `next:` leads with `edit <id> --body-file … --reason …` whenever
     `missing:` names a body, for every kind of node (before, only a need
     showed it, and it showed it even when the need had a body). A need

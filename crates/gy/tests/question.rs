@@ -12,6 +12,35 @@ fn question_add_help_shows_the_repeated_form() {
 }
 
 #[test]
+fn question_add_usage_shows_the_repeated_form() {
+    let fx = fixture();
+    let out = fx.run(&[
+        "question",
+        "add",
+        "t",
+        "--decider",
+        "m",
+        "--options",
+        "A",
+        "B",
+    ]);
+    assert_eq!(out.status.code(), Some(2));
+    assert!(
+        stderr(&out).contains("--options <A> --options <B>"),
+        "{}",
+        stderr(&out)
+    );
+
+    let help = fx.run(&["question", "add", "--help"]);
+    assert!(help.status.success(), "{}", stderr(&help));
+    assert!(
+        stdout(&help).contains("--options <A> --options <B>"),
+        "{}",
+        stdout(&help)
+    );
+}
+
+#[test]
 fn question_add_then_close() {
     let fx = fixture();
     let out = fx.run(&[
