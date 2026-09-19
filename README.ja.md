@@ -157,6 +157,8 @@ gy share https://github.com/you/yourproject-ledger.git
 
 remote を検査し（空か台帳専用か、push できるか）、`gy.toml` に `remote` を書き、今の台帳をそのまま上げ、branch protection の付け方（linear history の必須、force push の禁止。gy は設定を変えません）と、メンバーへの招待の文を出します。`gy.toml` はプロジェクトと一緒にコミットします。
 
+`gy share` は台帳の全体をその repo へ上げます。エージェントに打たせる場合、エージェントの実行環境がこれを外部への送信と見なして、持ち主が許すまで拒むことがあります。先に許可を与えてください。
+
 **参加する（招待された人）**。台帳 repo の write の権限をもらい、プロジェクトを clone して打ちます。
 
 ```sh
@@ -222,7 +224,7 @@ cp -R crates/gy/skills/gy-* ~/.agents/skills/
 cp -R ~/.cargo/registry/src/*/gy-1.0.0/skills/gy-* ~/.agents/skills/
 ```
 
-スキルが変わった版は CHANGELOG の Updating にそう書いてあります。その版に上げたら写し直してください。台帳の形式の版が上がったときは、gy が移行の直後に標準エラーへ 1 行で知らせ、CHANGELOG の Updating を指します。
+スキルが変わった版は CHANGELOG の Updating にそう書いてあります。その版に上げたら写し直し、エージェントから gy のスキルが全部見えることを確かめてください。スキルごとのリンク（例: `~/.claude/skills/gy-ledger` → `~/.agents/skills/gy-ledger`）で読ませている場合は、増えたスキルのリンクを足す必要があります。台帳の形式の版が上がったときは、gy が移行の直後に標準エラーへ 1 行で知らせ、CHANGELOG の Updating を指します。
 
 ## 開発
 

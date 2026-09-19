@@ -157,6 +157,8 @@ gy share https://github.com/you/yourproject-ledger.git
 
 It checks the remote (empty or ledger-only, and that you can push), writes `remote` into `gy.toml`, uploads the ledger you have as it is, and prints how to protect the branch (require linear history, block force pushes; gy changes no settings) and the invitation to send a member. Commit `gy.toml` with the project.
 
+`gy share` uploads the whole ledger to that repository. If an agent runs it, the agent's runtime may treat the upload as sending data out and refuse it until its owner allows it; give that permission first.
+
 **Join (the one invited).** Get write access to the ledger repository, clone the project, and run:
 
 ```sh
@@ -222,7 +224,7 @@ cp -R crates/gy/skills/gy-* ~/.agents/skills/
 cp -R ~/.cargo/registry/src/*/gy-1.0.0/skills/gy-* ~/.agents/skills/
 ```
 
-A release that changed the skills says so under Updating in the changelog; copy them again when you move to that release. When the ledger format moves up, gy prints one line to stderr right after the migration, pointing at the changelog's Updating section.
+A release that changed the skills says so under Updating in the changelog; copy them again when you move to that release, and check that your agent lists every gy skill afterwards: where an agent reads skills through per-skill links (for example `~/.claude/skills/gy-ledger` → `~/.agents/skills/gy-ledger`), a new skill needs a link of its own. When the ledger format moves up, gy prints one line to stderr right after the migration, pointing at the changelog's Updating section.
 
 ## Development
 

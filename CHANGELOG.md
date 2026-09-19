@@ -5,13 +5,20 @@
 ### Updating
 
 This release changes how work is recorded, so read this before you upgrade.
+The order that works: install 1.0.0, copy the bundled skills again (there is
+a new one), then run `gy handover` once — that first open migrates the
+ledger and says so in one line on stderr.
 
 - **An achievement needs an approved requirement.** `criterion satisfy` is
   refused unless an approved or done requirement `targets` the criterion,
   and an approved requirement (and the criteria it targets) cannot be
   edited until `req revise`. What a ledger already holds stays valid; the
   rule judges new writes. A need that has no requirement yet gets one when
-  you come to satisfy its criteria: gy says which command to type.
+  you come to satisfy its criteria, and gy says which command to type:
+  `criterion satisfy ac-1` answers `ac-1 is not covered by an approved
+  requirement (targets); req add "<title>" --need <N> --targets ac-1`, and
+  once that requirement is filed, `req approve <R> --design … --heard-by …
+  --evidence …`.
 - **The ledger format moves from 3 to 4**, automatically and without
   touching the log (`format.3.bak` is kept). An older gy cannot open a
   format-4 ledger, by design: it does not know the rule.
@@ -23,6 +30,22 @@ This release changes how work is recorded, so read this before you upgrade.
 - **What gy prints is in English**, including the phrases under `missing:`
   and `next:`. An agent that matched the Japanese phrases must match the
   English ones.
+- **`publish` writes English too.** If you keep the publication under version
+  control, the first `publish` after the upgrade rewrites every node file,
+  because the section names change even where your content does not. Commit
+  that once on its own, so it does not mix with a diff of content.
+- **One more skill, and it must show up where your agent reads.** `gy-loop`
+  is new and is the entry point. `cp -R …/skills/gy-* <your skills dir>`
+  brings it along, but if your agent reads skills through per-skill links
+  (for example `~/.claude/skills/gy-ledger` → `~/.agents/skills/gy-ledger`),
+  add the link for `gy-loop` and check that your agent lists four gy skills.
+  With `gy-loop` in place the agent asks you two short questions once — who
+  approves requirements, and what to do with an unclear need — and records
+  your answers as decisions.
+- **`share`, `join` and `sync` talk to the network.** `gy share` uploads the
+  whole ledger to the repository you name. An agent's runtime may treat
+  that as sending data out and refuse it until its owner allows it: give
+  the permission before you ask an agent to share a ledger.
 - The subcommands and options are those of 0.9.0 plus `share`, `join` and
   `sync`; the only new `gy.toml` key is `remote`.
 
