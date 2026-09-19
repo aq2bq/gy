@@ -23,7 +23,12 @@ pub fn root(start: Option<&Path>) -> Result<PathBuf> {
         }
         match dir.parent() {
             Some(parent) => dir = parent.to_path_buf(),
-            None => return Err(Error::invalid("no gy.toml found; pass -C <dir>")),
+            None => {
+                return Err(Error::invalid(
+                    "no gy.toml found; pass -C <dir> to name the repository\n\
+                     to start one, write gy.toml with a single line `[scopes.<name>]`; your first write makes the ledger",
+                ));
+            }
         }
     }
 }
