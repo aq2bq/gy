@@ -144,3 +144,46 @@ fn decide_errors_and_json() {
     assert!(json["id"].is_string());
     assert_eq!(json["changed"][0], "created");
 }
+
+#[test]
+fn show_without_full_names_the_passage_a_decision_retracted() {
+    let fx = fixture();
+    let mut old = decision("0002", "an old decision");
+    old.set_body("## Decision\nthe old passage here\n");
+    fx.seed(&[old]);
+
+    let out = fx.run(&[
+        "decide",
+        "a narrowing decision",
+        "--scope-note",
+        "now",
+        "--relate",
+        "narrows",
+        "d-0002",
+        "--mark",
+        "the old passage here",
+    ]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    let newer = id_of(&out);
+
+    let text = stdout(&fx.run(&["show", "d-0002"]));
+    assert!(
+        text.contains(&format!("[[retracted by {newer}: the old passage here]]")),
+        "{text}"
+    );
+    assert!(
+        text.contains(&format!("narrowed-by {newer} (the old passage here)")),
+        "{text}"
+    );
+
+    let out = fx.run(&["--json", "show", "d-0002"]);
+    let json: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(json[0]["body"], "## Decision\nthe old passage here");
+    assert!(
+        json[0]["body_marked"]
+            .as_str()
+            .unwrap()
+            .contains("[[retracted by"),
+        "{json}"
+    );
+}

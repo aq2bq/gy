@@ -7,6 +7,7 @@ mod list;
 mod next;
 mod now;
 mod publish;
+mod retraction;
 mod show;
 mod sync_row;
 
@@ -16,6 +17,7 @@ pub use list::{Filter, Listing, LogRow, Row, list};
 pub use next::{NextRow, RequirementLine, next};
 pub use now::{NodeRow, Now, Ready, Resume, Waiting, now};
 pub use publish::{Publication, publish};
+pub use retraction::{Narrowed, Retraction};
 pub use show::{EdgeLine, Shown, show};
 pub use sync_row::SyncRow;
 

@@ -53,7 +53,21 @@
   }
 
   function left() {
-    return `${head()}${facts()}${body()}`;
+    return `${head()}${retraction()}${facts()}${body()}`;
+  }
+
+  /* The retractions the view judged (n-0c6f): the decisions that narrowed a
+     passage of this one, or replaced it whole. The marks themselves are already
+     in the body and the scope the answer carries; this only names who did it. */
+  function retraction() {
+    const cancelled = node.cancellation;
+    if (!cancelled) return '';
+    const rows = [
+      ...(cancelled.superseded_by || []).map(id => `${t('rel.superseded-by')} <b>${esc(id)}</b>`),
+      ...(cancelled.narrowed || []).map(narrow => `${t('rel.narrowed-by')} <b>${esc(narrow.by)}</b> (${esc(narrow.mark)})`),
+    ];
+    if (!rows.length) return '';
+    return `<div class="fact" style="margin-top:22px;border-left:3px solid var(--need);padding:2px 0 2px 14px">${rows.map(row => `<div>${row}</div>`).join('')}</div>`;
   }
 
   function head() {
@@ -71,7 +85,7 @@
   function facts() {
     const data = node.data;
     if (node.kind === 'Decision') {
-      const text = data.Decision.scope.text || t('unrecorded');
+      const text = node.decision_scope_marked || data.Decision.scope.text || t('unrecorded');
       return card(t('scopeOf'), `<div class="scope">${esc(text)}</div>`);
     }
     if (node.kind === 'Question') {
@@ -115,7 +129,7 @@
   }
 
   function body() {
-    const text = (node.body || '').trim() || t('noBody');
+    const text = (node.body_marked || node.body || '').trim() || t('noBody');
     return `<div class="body"><div class="bt">${t('bodyTitle')}</div><pre>${esc(text)}</pre></div>`;
   }
 

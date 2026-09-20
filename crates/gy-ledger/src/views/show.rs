@@ -2,6 +2,7 @@
 //! (proposal-v3 4). A requirement always shows its id with its ref beside it.
 use super::derive::need_state;
 use super::open_or_closed;
+use super::retraction::{Retraction, retracted, retractions_by_node, scope_marked};
 use crate::model::{Criterion, Edge, Node, NodeData, NodeKind};
 use crate::ops::repository::{Error, Repository, Result, Store};
 use crate::ops::{advice, local_time};
@@ -45,6 +46,13 @@ pub struct Shown {
     pub kind: NodeKind,
     pub title: String,
     pub body: String,
+    /// The body with its narrowed passages marked; `None` when nothing of it
+    /// loses effect. The raw `body` stays the record (n-0c6f).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub body_marked: Option<String>,
+    /// The applicability conditions with their narrowed passages marked.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub decision_scope_marked: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scope: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -52,6 +60,9 @@ pub struct Shown {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub aliases: Vec<String>,
     pub data: NodeData,
+    /// What later decisions retract of this one (n-0c6f, d-bde9).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cancellation: Option<Retraction>,
     /// A need's derived state (open / closed / done), from the graph (n-35cf).
     #[serde(skip_serializing)]
     pub need: Option<&'static str>,
@@ -63,21 +74,35 @@ pub struct Shown {
     pub attributes: BTreeMap<String, String>,
 }
 impl Shown {
-    fn new(node: &Node, incoming: &[Edge], all: &[Node], full: bool) -> Self {
+    fn new(
+        node: &Node,
+        incoming: &[Edge],
+        cancellation: Option<Retraction>,
+        all: &[Node],
+        full: bool,
+    ) -> Self {
         let reference = match node.data() {
             NodeData::Requirement(data) => data.reference.as_ref().map(|ref_| ref_.0.clone()),
             _ => None,
         };
+        let body = projected_body(node, full, cancellation.as_ref());
+        let body_marked = cancellation
+            .as_ref()
+            .and_then(|retraction| retracted(&body, retraction));
+        let decision_scope_marked = scope_marked(node, cancellation.as_ref());
         Self {
             id: node.id().to_string(),
             reference,
             kind: node.kind(),
             title: node.title().to_string(),
-            body: projected_body(node, full),
+            body,
+            body_marked,
+            decision_scope_marked,
             scope: full.then(|| node.scope().to_string()),
             created: full.then(|| node.created().to_string()),
             aliases: projected_aliases(node, full),
             data: node.data().clone(),
+            cancellation,
             need: match node.data() {
                 NodeData::Need(_) => Some(need_state(node, all).name()),
                 _ => None,
@@ -113,7 +138,9 @@ impl Shown {
                 let scope = if data.scope.is_unrecorded() {
                     "(unrecorded)".to_string()
                 } else {
-                    data.scope.text().to_string()
+                    self.decision_scope_marked
+                        .clone()
+                        .unwrap_or_else(|| data.scope.text().to_string())
                 };
                 let _ = writeln!(out, "decision_scope: {scope}");
             }
@@ -130,6 +157,14 @@ impl Shown {
 impl fmt::Display for Shown {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "{}", self.heading())?;
+        if let Some(retraction) = &self.cancellation {
+            for id in &retraction.superseded_by {
+                writeln!(f, "superseded-by {id}")?;
+            }
+            for narrow in &retraction.narrowed {
+                writeln!(f, "narrowed-by {} ({})", narrow.by, narrow.mark)?;
+            }
+        }
         f.write_str(&self.verbatim())?;
         for (name, value) in &self.attributes {
             writeln!(f, "{name}: {value}")?;
@@ -146,7 +181,9 @@ impl fmt::Display for Shown {
         if !self.aliases.is_empty() {
             writeln!(f, "aliases: {}", self.aliases.join(", "))?;
         }
-        if !self.body.is_empty() {
+        if let Some(marked) = &self.body_marked {
+            writeln!(f, "{marked}")?;
+        } else if !self.body.is_empty() {
             writeln!(f, "{}", self.body)?;
         }
         if !self.missing.is_empty() {
@@ -160,6 +197,7 @@ impl fmt::Display for Shown {
 /// that names the candidates when several refs match (proposal-v3 11).
 pub fn show<S: Store>(repo: &Repository<S>, texts: &[String], full: bool) -> Result<Vec<Shown>> {
     let all = repo.all()?;
+    let retractions = retractions_by_node(&all);
     let mut out = Vec::new();
     for text in texts {
         let id = repo.resolve(text)?;
@@ -171,7 +209,8 @@ pub fn show<S: Store>(repo: &Repository<S>, texts: &[String], full: bool) -> Res
         } else {
             Vec::new()
         };
-        out.push(Shown::new(&node, &incoming, &all, full));
+        let cancellation = retractions.get(&id.to_string()).cloned();
+        out.push(Shown::new(&node, &incoming, cancellation, &all, full));
     }
     Ok(out)
 }
@@ -187,11 +226,21 @@ fn criterion_line(data: &Criterion) -> String {
     line
 }
 
-fn projected_body(node: &Node, full: bool) -> String {
-    match node.data() {
-        NodeData::Decision(_) if !full => decision_section(node.body()),
-        _ => node.body().to_string(),
+fn projected_body(node: &Node, full: bool, cancellation: Option<&Retraction>) -> String {
+    let NodeData::Decision(data) = node.data() else {
+        return node.body().to_string();
+    };
+    if full {
+        return node.body().to_string();
     }
+    let section = decision_section(node.body());
+    if let Some(retraction) = cancellation {
+        let scope = retracted(data.scope.text(), retraction).is_some();
+        if !retraction.narrowed.is_empty() && retracted(&section, retraction).is_none() && !scope {
+            return node.body().to_string();
+        }
+    }
+    section
 }
 
 /// The `## Decision` section, up to the next `## ` heading; without one, the

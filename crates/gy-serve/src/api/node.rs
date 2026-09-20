@@ -2,7 +2,8 @@
 //! peer named and the node's own writes (n-bd52). No judgement here.
 use crate::http::Response;
 use gy_ledger::{
-    EdgeLine, Filter, Listing, LogRow, NodeData, NodeKind, Repository, Store, list, show,
+    EdgeLine, Filter, Listing, LogRow, NodeData, NodeKind, Repository, Retraction, Store, list,
+    show,
 };
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -33,12 +34,18 @@ struct Node {
     title: String,
     body: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    body_marked: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    decision_scope_marked: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     scope: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     created: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     aliases: Vec<String>,
     data: NodeData,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    cancellation: Option<Retraction>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     missing: Vec<String>,
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
@@ -61,10 +68,13 @@ pub fn node<S: Store>(repo: &Repository<S>, id: &str) -> Response {
         kind: shown.kind,
         title: shown.title,
         body: shown.body,
+        body_marked: shown.body_marked,
+        decision_scope_marked: shown.decision_scope_marked,
         scope: shown.scope,
         created: shown.created,
         aliases: shown.aliases,
         data: shown.data,
+        cancellation: shown.cancellation,
         missing: shown.missing,
         attributes: shown.attributes,
         edges,
