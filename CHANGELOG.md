@@ -214,6 +214,18 @@ brings the new one along.
   repository in a new tab. The raw assets hold no URL — the server writes
   it in — so the pages stay self-contained while a reader still knows
   where gy lives. Its name follows the language switch without a reload.
+- **The node page rings two hops and marks where you came from** (n-9c2b,
+  d-1e26): the detail page's connections card drew only the node's direct
+  edges, so following a box lost the node you arrived from. It now puts
+  the focus at the centre, its neighbours on an inner ring and their
+  neighbours on a lighter, dashed outer ring: all twelve relations treated
+  alike, each node once at its shortest hop, stopping at forty nodes with
+  `+N` for the rest. A tab's visit trail (up to twenty nodes) puts a back
+  chip at the head of the card and highlights the box you clicked. The URL
+  (`#/n/<id>`) and the stored form are unchanged, so the trail is gone
+  after a reload. `/api/node` carries `neighborhood` (root, nodes, edges,
+  truncated); an edge holds `name` and `inverse`, and only the focus's own
+  edges draw their relation name.
 
 ### Changed
 
