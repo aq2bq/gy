@@ -77,9 +77,15 @@ The canonical ledger is an append-only event log outside the repository, under `
 
 `undo --reason <text>` inverts the last transaction as a new one, so the history keeps both the mistake and the correction. It undoes one transaction only; a second undo undoes the first undo (a redo). The log is the ledger; a snapshot file alongside it only speeds up opening and can be deleted.
 
-## The twenty operations
+## The twenty-six operations
 
-Reads (6):
+Before the first write (1):
+
+| Operation | Result |
+| --- | --- |
+| `init <scope>` | Start a repository here: write `gy.toml` with one scope, then name the skill to read and the first node to file. A `gy.toml` already here is reported, not touched |
+
+Reads (9):
 
 | Operation | Result |
 | --- | --- |

@@ -18,6 +18,8 @@ Until they answer, do not approve your own requirement, and ask when a need is u
 
 ## Part 2. The loop
 
+If the project has no `gy.toml` yet, start it once with `gy init <scope>`; its output names this skill and the first node to file.
+
 1. **Restore.** Start from the ledger, not from memory: `gy handover`, `gy next`, `gy show <ID>...`. Name yourself before you write (`export GY_ACTOR=<name>`; earlier writers are in `gy list --since 0`; keep the same name when you continue the same work).
 2. **Pick one.** One problem per turn. Put a new request down as completion criteria that can be measured (`criterion add`, with how to measure it in the body) and a need that points at them (`need add --targets`).
 3. **Advance.** Type what `next` shows until `missing` is empty. Record a judgement with `decide` at the moment you make it, with where it holds and the options you turned down and why, so the person can read it later and overrule it.

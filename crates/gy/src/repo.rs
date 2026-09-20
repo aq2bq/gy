@@ -8,29 +8,46 @@ use std::time::{Duration, Instant};
 /// A placeholder actor for reads. Only a write names the real `GY_ACTOR`.
 const READ_ACTOR: &str = "gy-read";
 
-/// The directory that holds `gy.toml`, starting at `start` (or the current
-/// directory) and walking up.
-pub fn root(start: Option<&Path>) -> Result<PathBuf> {
-    let mut dir = match start {
+/// `start`, or the current directory, as a real path.
+fn here(start: Option<&Path>) -> Result<PathBuf> {
+    match start {
         Some(dir) => dir
             .canonicalize()
-            .map_err(|_| Error::invalid(format!("no directory {}", dir.display())))?,
-        None => std::env::current_dir()?,
-    };
+            .map_err(|_| Error::invalid(format!("no directory {}", dir.display()))),
+        None => Ok(std::env::current_dir()?),
+    }
+}
+
+/// The directory `gy init` writes into: `-C` if given, else the current
+/// directory, canonicalized so the report names a real path (n-29b3).
+pub fn init_dir(start: Option<&Path>) -> Result<PathBuf> {
+    here(start)
+}
+
+/// The nearest ancestor of `start` (or the current directory) that holds
+/// `gy.toml`, or `None` when there is none (n-29b3).
+pub fn find_root(start: Option<&Path>) -> Result<Option<PathBuf>> {
+    let mut dir = here(start)?;
     loop {
         if dir.join("gy.toml").is_file() {
-            return Ok(dir);
+            return Ok(Some(dir));
         }
         match dir.parent() {
             Some(parent) => dir = parent.to_path_buf(),
-            None => {
-                return Err(Error::invalid(
-                    "no gy.toml found; pass -C <dir> to name the repository\n\
-                     to start one, write gy.toml with a single line `[scopes.<name>]`; your first write makes the ledger",
-                ));
-            }
+            None => return Ok(None),
         }
     }
+}
+
+/// The directory that holds `gy.toml`, starting at `start` (or the current
+/// directory) and walking up.
+pub fn root(start: Option<&Path>) -> Result<PathBuf> {
+    find_root(start)?.ok_or_else(|| {
+        Error::invalid(
+            "no gy.toml found; pass -C <dir> to name the repository,\n\
+             or run gy init <scope> to start one",
+        )
+    })
 }
 
 /// Open the ledger at `ledger` for reading. A missing ledger is an error and

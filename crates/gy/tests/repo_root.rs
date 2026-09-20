@@ -1,5 +1,5 @@
-//! A missing gy.toml says how to start one (n-1de7): the failure names the
-//! directory to pass and the one line that begins a repository.
+//! A missing gy.toml says how to start one (n-1de7, n-29b3): the failure names
+//! the directory to pass and the `gy init` that begins a repository.
 mod common;
 
 use common::{fixture, stderr};
@@ -13,5 +13,5 @@ fn a_missing_gy_toml_says_how_to_start_one() {
     let text = stderr(&out);
     assert!(text.contains("no gy.toml"), "{text}");
     assert!(text.contains("-C"), "{text}");
-    assert!(text.contains("[scopes."), "{text}");
+    assert!(text.contains("gy init"), "{text}");
 }

@@ -23,6 +23,11 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Command {
+    /// Start a repository here: write gy.toml with one scope (idempotent).
+    Init {
+        #[arg(value_name = "NAME")]
+        name: String,
+    },
     /// Show one or more nodes by id, alias, or outward reference.
     Show {
         #[arg(required = true, value_name = "ID")]

@@ -182,6 +182,20 @@ fn the_cli_surface_and_the_documents_agree() {
         }
         println!("{name}: {} commands matched", found.len());
     }
+    // Every leaf command (one with no subcommands) must appear as a row in all
+    // three documents (n-29b3). A parent like `need` is a name, not an
+    // operation, so it is not required.
+    for (name, path) in docs {
+        let found = rows(&read(path), &paths);
+        for command in &paths {
+            let parent = paths
+                .iter()
+                .any(|other| other.starts_with(&format!("{command} ")));
+            if !parent && !found.contains_key(command) {
+                failures.push(format!("{name} has no row for {command}"));
+            }
+        }
+    }
     println!("the surface, {} commands:", paths.len());
     for (path, options) in &surface {
         if !path.is_empty() {

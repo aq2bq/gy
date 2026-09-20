@@ -19,9 +19,18 @@ use write::Written;
 
 fn main() {
     let cli = Cli::parse();
-    if let Err(error) = run(&cli) {
+    if let Err(error) = dispatch(&cli) {
         report(cli.json, &error);
         std::process::exit(2);
+    }
+}
+
+/// `init` makes the gy.toml the others need, so it runs before the root is
+/// resolved and touches no ledger (n-29b3). Everything else goes to `run`.
+fn dispatch(cli: &Cli) -> Result<()> {
+    match &cli.command {
+        Command::Init { name } => writes::init(cli, name),
+        _ => run(cli),
     }
 }
 
@@ -58,7 +67,7 @@ fn run(cli: &Cli) -> Result<()> {
         }
         Command::Serve => reads::serve(&root, &ledger, tab_name(&root)),
         Command::Sync => reads::sync_command(cli, &root, &ledger),
-        Command::Share { .. } | Command::Join => unreachable!("before reconcile_copy"),
+        Command::Init { .. } | Command::Share { .. } | Command::Join => unreachable!("early"),
         Command::Need { action } => write_need(cli, &root, &ledger, action),
         Command::Question { action } => write_question(cli, &root, &ledger, action),
         Command::Criterion { action } => write_criterion(cli, &root, &ledger, action),

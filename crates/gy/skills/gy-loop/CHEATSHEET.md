@@ -2,6 +2,9 @@ gy keeps the state of work, up to the point a requirement is confirmed, as a gra
 
 A write that creates a node (`need add` / `question add` / `criterion add` / `decide` / `req add`) prints `id: <ID>` first. Other writes answer with the ID you already know. A flag shown with `...` takes one value each time: repeat the flag (`--targets A --targets B`).
 
+Starting a repository:
+  gy init <scope>                                      write gy.toml with one scope here; a gy.toml already here is reported, not touched
+
 Starting a session:
   gy handover
   gy next

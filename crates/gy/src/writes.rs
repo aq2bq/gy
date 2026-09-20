@@ -14,6 +14,24 @@ use gy_ledger::{
 use std::path::Path;
 use std::sync::Arc;
 
+/// `gy init <name>`: start a repository here, or report the one already here
+/// (n-29b3). It runs before the root is resolved, so it never opens the ledger,
+/// reconciles a copy, or syncs.
+pub fn init(cli: &Cli, name: &str) -> Result<()> {
+    config::check_scope_name(name)?;
+    match repo::find_root(cli.directory.as_deref())? {
+        Some(root) => {
+            let settings = config::read(&root)?;
+            emit(cli.json, &config::Init::existing(&root, &settings))
+        }
+        None => {
+            let root = repo::init_dir(cli.directory.as_deref())?;
+            config::init(&root, name)?;
+            emit(cli.json, &config::Init::created(&root, name))
+        }
+    }
+}
+
 /// `gy join`: check everything, then take the copy and say who writes
 /// (n-57c5, ac-545c). The gy.toml remote is required; the automatic clone is
 /// for the other commands.
