@@ -51,6 +51,7 @@ fn index(req: &Request, name: &str) -> Response {
             /* The fixed word first, the name last: a name cannot be caught by
             a later replacement (a directory named `%LANG%` stays itself). */
             .replace("%LANG%", if ja { "ja" } else { "en" })
+            .replace("%REPO%", env!("CARGO_PKG_REPOSITORY"))
             .replace("%NAME%", &title),
     )
 }

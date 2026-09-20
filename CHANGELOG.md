@@ -209,6 +209,11 @@ brings the new one along.
   directory kept in a dotfiles repository, say) gy makes a nested
   repository of its own. Before any commit or push the copy's `origin`
   must equal the recorded remote, else gy refuses to touch the directory.
+- **The sidebar leads to the repository** (n-b380, d-4f17): the foot of
+  every `gy serve` page carries the GitHub mark, opening the gy
+  repository in a new tab. The raw assets hold no URL — the server writes
+  it in — so the pages stay self-contained while a reader still knows
+  where gy lives. Its name follows the language switch without a reload.
 
 ### Changed
 

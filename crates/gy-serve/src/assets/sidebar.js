@@ -78,6 +78,12 @@
     });
     const logo = el.querySelector('.wordmark .logo');
     if (logo) logo.classList.toggle('off', !state.live);
+    const repo = el.querySelector('[data-testid="repo"]');
+    if (repo) {
+      const name = ui.t('repoLabel');
+      repo.setAttribute('aria-label', name);
+      repo.setAttribute('title', name);
+    }
     drawEyes(state, el, ui);
     drawNav(state, el, ui);
     drawClock(state, el, ui);
