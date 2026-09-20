@@ -153,7 +153,7 @@ remote = "https://github.com/you/yourproject-ledger.git"
 
 ## チームで使う（experimental）
 
-記録は、それ専用の git repo 1 つを canonical にして共有します。手続きは 2 つで、どちらも gy が次の一手を言います。
+記録は、それ専用の git repo 1 つを canonical にして共有します。構成員は人で、各自が自分のマシンと記録の複製を持ちます。始める人は `gy share` を、招かれた人は `gy join` を本人が打ち、エージェントはその人の複製に今までどおり書くだけです。同じマシンの複数エージェントは元々ローカル記録を共有していて remote は要りません。手続きは 2 つで、どちらも gy が次の一手を言います。
 
 **共有を始める（単独で使っていた人）**。GitHub に空の private repo を 1 つ作り、プロジェクトの checkout で打ちます。
 

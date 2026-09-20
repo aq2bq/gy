@@ -17,6 +17,8 @@ How to work (restore, pick one, advance, ask, stop, satisfy) is in `gy-loop`. Th
 
 ## A team's ledger (a `remote` in gy.toml)
 
+The team is people, each with their own machine and their own copy; `gy share` and `gy join` are the person's steps (the README's "Working as a team"), and an agent does not join. Agents on one machine already share the local ledger and need no remote.
+
 - Write as before. The push happens in the background, and `gy sync` does it on request. `handover` starts with the number of writes not yet pushed and the last sync.
 - `notice: your write seq … did not land` on stderr means the other side changed the same node first and your write was not placed. Read the ledger again and redo it if it still applies.
 - `undo` takes back only your own write.

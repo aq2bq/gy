@@ -153,7 +153,7 @@ Reads cover every scope. A write needs a scope only when the file names more tha
 
 ## Working as a team (experimental)
 
-A team shares one ledger through a ledger-only git repository. There are two procedures, and in both gy says what to do next.
+A team shares one ledger through a ledger-only git repository. The members are people, each on their own machine and with their own copy of the ledger: the person starts it with `gy share` and another joins with `gy join`, and each person's agent writes to that person's copy. Two agents on one machine already share the local ledger and need no remote. There are two procedures, and in both gy says what to do next.
 
 **Start sharing (the one who used gy alone).** Create an empty private repository on GitHub and run, in a checkout of the project:
 
