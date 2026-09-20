@@ -30,7 +30,7 @@ Atomicity comes from an append that writes one line and its newline in a single 
 
 `snapshot.json` is derived and holds the current nodes and `seq`. It only makes opening faster; if it is deleted, the log alone gives the same result. The `format` file holds the format version, and a ledger has this version from the moment it is born. Opening a version this build does not support is an error. A migration that raises the version does not rewrite the log, advances one step at a time, and leaves the file as it was before the change at `<name>.<version>.bak`. In version 3 (0.9.0) the reader reads a date-only value as the instant `T00:00:00Z` and rebuilds the snapshot. Version 4 (1.0.0) changes no data: it exists because an older build does not know the requirement rule and would write around it, so the step only keeps `format.3.bak` and writes the version.
 
-The canonical store is located at `$XDG_DATA_HOME/gy/<hash of the repository root>/`. The only thing placed in the repository is `gy.toml`.
+The canonical store is located at `$XDG_DATA_HOME/gy/<hash of the repository root>/`. The only thing placed in the repository is `gy.toml`. `gy init <scope>` writes that file and nothing else, before any root has been resolved and without opening a ledger; the store still appears with the first write (n-29b3, d-0f6d). It searches upward first and reports the root above rather than start a second store under it, because one repository has one canonical store (d-4221). Its output is where a first-time agent learns what to read and type next, since the `gy-loop` skill only fires where a `gy.toml` already exists.
 
 ## ID generation and collisions
 
@@ -52,6 +52,7 @@ Some values are not stored and are computed from the graph every time.
 - Whether it can be started (the condition of `next`): it is `open`, its `depends-on` needs are `closed` or `done`, and what it `waits-on` is settled (a question is closed; a requirement is `done` or `cancelled`).
 - `bearer_count`: the number of needs that have that acceptance criterion in their `targets`.
 - Requirements in progress: requirements that are `filed` or `approved`.
+- A decision's retraction (n-0c6f, d-bde9): which newer decisions `narrow` or `supersede` it, and, from each `mark`, which passage of its body or scope note stops applying. It is derived whether or not `--full` is asked for, from one pass over the graph per invocation, and it is the one judgement every read path shows: `show` and serve render it and decide nothing of their own. A `narrows` wraps the passage where it stands (`[[retracted by <id>: <mark>]]`) so a reader meets it in the text rather than having to connect a line elsewhere; a `supersedes` covers the whole decision and only names itself above the body. A decision whose mark falls outside the `## Decision` section shows its whole body rather than hide the mark. The marking is a projection: the stored body is what `--json` and `publish` carry, and the marked text rides beside it.
 
 ## What handover and next judge
 

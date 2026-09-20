@@ -98,6 +98,26 @@ brings the new one along.
 
 ### Added
 
+- **`gy init <scope>`** (n-29b3, d-0f6d): a brand-new project has a way in.
+  It writes a `gy.toml` holding that one scope and nothing else; the ledger
+  still appears with your first write. A `gy.toml` already there is reported,
+  not touched, and running it in a subdirectory reports the root above rather
+  than splitting the ledger in two. Because the `gy-loop` skill only fires
+  where a `gy.toml` already exists, `init`'s own output is what leads a
+  first-time agent onward: it names the skill and the first command to type.
+  `no gy.toml found` now names `gy init` instead of telling you to write the
+  file by hand. Scope names take a TOML bare key (`A-Za-z0-9_-`).
+- **A decision says where it was retracted** (n-0c6f, d-bde9): when a newer
+  decision `narrows` or `supersedes` an older one, the passage the `mark`
+  names is shown as retracted — in the default `gy show`, which until now
+  printed none of a node's edges, and on the node page, which drew the
+  relation's name on the map while the mark reached no one. The passage in
+  the body or the scope note is wrapped as `[[retracted by <id>: <mark>]]`,
+  with a line above naming the decision that retracted it, so no reader has
+  to connect something elsewhere to the text under their eyes. A decision
+  whose mark falls outside the `## Decision` section shows its whole body
+  rather than hide the mark. The record is untouched: `--json` and `publish`
+  still carry the stored text.
 - **`gy share <URL>` and `gy join`** (n-57c5, d-b1d4): the two procedures
   of sharing a ledger have names. `share` checks the remote (empty or
   ledger-only, pushable), writes `remote` into `gy.toml`, uploads the
