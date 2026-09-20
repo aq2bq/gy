@@ -32,6 +32,9 @@
       list: { filter: 'open' },
       history: { actor: null, since: null },
       graph: { cam: { x: 0, y: 0, k: 1 }, target: null, selected: null, hover: null },
+      /* The node page's connections map: its own camera, so the graph page's
+         and the node's never move each other (n-9ca9). */
+      ego: { cam: { x: 0, y: 0, k: 1 } },
       palette: { open: false, query: '', selected: 0 },
       shell: null,
       now: null,
@@ -74,7 +77,13 @@
         const trail = route.name === 'node' && route.arg && route.arg !== last
           ? [...state.trail, route.arg].slice(-20)
           : state.trail;
-        return { ...state, route, trail, page: null, list: route.name === 'list' ? { ...state.list, filter: 'open' } : state.list };
+        /* Another node opens at the whole figure; the same node keeps its
+           camera through a redraw (n-9ca9). */
+        const ego = route.name === 'node' && route.arg !== state.route.arg
+          ? { cam: { x: 0, y: 0, k: 1 } }
+          : state.ego;
+        const list = route.name === 'list' ? { ...state.list, filter: 'open' } : state.list;
+        return { ...state, route, trail, ego, page: null, list };
       }
       case 'setWide':
         return { ...state, wide: intent.value };
@@ -88,6 +97,8 @@
         return { ...state, graph: { ...state.graph, cam: intent.value } };
       case 'graphTarget':
         return { ...state, graph: { ...state.graph, target: intent.value } };
+      case 'mapCam':
+        return { ...state, ego: { ...state.ego, cam: intent.value } };
       case 'graphSelect':
         return { ...state, graph: { ...state.graph, selected: intent.value }, page: null };
       case 'graphHover':

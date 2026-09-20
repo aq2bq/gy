@@ -19,7 +19,9 @@
 .body .bt{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--paper-3);text-transform:uppercase}
 .body pre{white-space:pre-wrap;font-family:var(--sans);color:var(--paper-2);font-size:14px;border-left:1px solid var(--line);padding-left:18px;margin:12px 0 0}
 .map{border:1px solid var(--line-soft);border-radius:12px;background:var(--ink-2);padding:10px;overflow-x:auto}
-.map svg{display:block;width:100%;height:auto}
+.map svg{display:block;width:100%;height:auto;cursor:grab}
+.map svg.grab{cursor:grabbing}
+.map a,.map a text{cursor:pointer}
 .map text{font-family:var(--sans);font-size:13px;fill:var(--paper)}
 .map text.rel{font-family:var(--sans);font-size:11px;fill:var(--paper-2)}
 .map text.al{font-family:var(--mono);font-size:10px;fill:var(--paper-3)}

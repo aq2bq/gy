@@ -46,8 +46,8 @@
     else if (act === 'paletteGo') goHit(api, Number(arg));
   }
 
-  /* One key: the palette's own keys first, then the band's arrows and the
-     graph's two zoom keys. */
+  /* One key: the palette's own keys first, then the band's arrows and the two
+     zoom keys of whichever figure is on the page (n-9ca9). */
   function keys(api, event) {
     if (api.composing(event)) return;
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
@@ -67,13 +67,13 @@
     if (event.key === 'ArrowLeft') api.setAt(head - 1);
     if (event.key === 'ArrowRight') api.setAt(head + 1);
     const canvas = document.getElementById('g');
-    if (!canvas || typing || event.metaKey || event.ctrlKey || event.altKey) return;
-    if (event.key === '+' || event.key === '=') {
+    const map = document.getElementById('ego');
+    if ((!canvas && !map) || typing || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.key === '+' || event.key === '=' || event.key === '-' || event.key === '_') {
       event.preventDefault();
-      api.run({ type: 'graphCam', value: window.GyGraph.zoomAt(state, canvas, 1.4) });
-    } else if (event.key === '-' || event.key === '_') {
-      event.preventDefault();
-      api.run({ type: 'graphCam', value: window.GyGraph.zoomAt(state, canvas, 1 / 1.4) });
+      const ratio = event.key === '+' || event.key === '=' ? 1.4 : 1 / 1.4;
+      if (canvas) api.run({ type: 'graphCam', value: window.GyGraph.zoomAt(state, canvas, ratio) });
+      else mapZoom(api, map, ratio);
     }
   }
 
@@ -124,9 +124,16 @@
     track.addEventListener('pointerup', () => { down = false; });
   }
 
-  /* The graph's pointer and wheel: the canvas keeps the pointer while a drag is
-     on; a still pointer over a node changes the hover; the geometry is pure. */
+  /* The graph's pointer and wheel, and the node map's own: the canvas keeps the
+     pointer while a drag is on; a still pointer over a node changes the hover;
+     the geometry is pure. */
   function graph(api) {
+    document.addEventListener('wheel', event => wheelZoom(api, event), { passive: false });
+    graphPointer(api);
+    mapPointer(api);
+  }
+
+  function graphPointer(api) {
     let down = null, clicked = -Infinity;
     document.addEventListener('pointerdown', event => {
       if (event.target.id !== 'g') return;
@@ -159,18 +166,84 @@
       if (wasDrag || event.target.id !== 'g') return;
       clicked = graphClick(api, event.target, event, clicked);
     });
-    document.addEventListener('wheel', event => wheelZoom(api, event), { passive: false });
   }
 
-  /* The wheel over the canvas: one notch is one zoom about the pointer. */
+  /* The node map's camera: the pointer and the drag arrive in screen px, so the
+     svg's box turns them into the units the map is drawn in; the pure math is
+     the graph's, shared (n-9ca9). */
+  function mapScale(svg) {
+    const box = svg.getBoundingClientRect();
+    const view = svg.viewBox.baseVal;
+    return { sx: view.width / box.width, sy: view.height / box.height, box };
+  }
+
+  function mapZoom(api, svg, ratio, clientX, clientY) {
+    const { sx, sy, box } = mapScale(svg);
+    const px = clientX === undefined ? (box.width / 2) * sx : (clientX - box.left) * sx;
+    const py = clientY === undefined ? (box.height / 2) * sy : (clientY - box.top) * sy;
+    api.run({ type: 'mapCam', value: window.GyGraph.zoomCam(api.state().ego.cam, ratio, px, py) });
+  }
+
+  function mapPan(api, svg, dx, dy) {
+    const { sx, sy } = mapScale(svg);
+    api.run({ type: 'mapCam', value: window.GyGraph.panCam(api.state().ego.cam, dx * sx, dy * sy) });
+  }
+
+  /* The node map's pointer: a drag pans it. No capture, so a plain press still
+     reaches a box's anchor (n-9ca9). */
+  function mapPointer(api) {
+    let down = null, swallow = false;
+    /* A drag that began on a box would otherwise let the press through as a
+       click and follow the anchor; consume that one click (n-9ca9). */
+    document.addEventListener('click', event => {
+      if (!swallow) return;
+      swallow = false;
+      event.preventDefault();
+    }, true);
+    document.addEventListener('pointerdown', event => {
+      const svg = document.getElementById('ego');
+      swallow = false;
+      if (!svg || !svg.contains(event.target)) return;
+      down = { x: event.clientX, y: event.clientY, moved: false };
+      svg.classList.add('grab');
+    });
+    document.addEventListener('pointermove', event => {
+      const svg = document.getElementById('ego');
+      if (!down || !svg) return;
+      const dx = event.clientX - down.x, dy = event.clientY - down.y;
+      if (!down.moved && Math.hypot(dx, dy) > 3) down.moved = true;
+      if (!down.moved) return;
+      down.x = event.clientX; down.y = event.clientY;
+      mapPan(api, svg, dx, dy);
+    });
+    document.addEventListener('pointerup', () => {
+      const svg = document.getElementById('ego');
+      if (svg) svg.classList.remove('grab');
+      swallow = !!down && down.moved;
+      down = null;
+    });
+  }
+
+  /* The wheel over a figure: one notch is one zoom about the pointer, on the
+     graph's canvas or the node's map (n-9ca9). */
   function wheelZoom(api, event) {
-    if (event.target.id !== 'g') return;
+    const canvas = document.getElementById('g');
+    const map = document.getElementById('ego');
+    const onCanvas = canvas && event.target.id === 'g';
+    const onMap = map && map.contains(event.target);
+    if (!onCanvas && !onMap) return;
     event.preventDefault();
     /* A line is 16 px and a page 400, so the same gesture moves the same way. */
     const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1;
     const factor = event.ctrlKey ? 0.01 : 0.0045;
     const ratio = Math.max(0.5, Math.min(2, Math.exp(-event.deltaY * unit * factor)));
-    api.run({ type: 'graphCam', value: window.GyGraph.zoomAt(api.state(), event.target, ratio, event.clientX, event.clientY) });
+    const state = api.state();
+    if (onCanvas) {
+      const value = window.GyGraph.zoomAt(state, canvas, ratio, event.clientX, event.clientY);
+      api.run({ type: 'graphCam', value });
+      return;
+    }
+    mapZoom(api, map, ratio, event.clientX, event.clientY);
   }
 
   /* One click on the canvas: a node, a bubble, or nothing. The second click on

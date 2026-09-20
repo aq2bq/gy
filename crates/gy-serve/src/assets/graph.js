@@ -87,19 +87,29 @@
     return window.GyDraw.pickBubble(makeView(state), clientX - box.left, clientY - box.top);
   }
 
-  /* The camera zoomed about a canvas point (the middle when none is given). */
-  function zoomAt(state, c, ratio, clientX, clientY) {
-    const cam = state.graph.cam;
-    const box = c.getBoundingClientRect();
-    const px = clientX === undefined ? box.width / 2 : clientX - box.left;
-    const py = clientY === undefined ? box.height / 2 : clientY - box.top;
+  /* The camera zoomed about a point, the graph page's screen px or the node
+     map's own user units. The two limits are one pair for both (n-9ca9). */
+  function zoomCam(cam, ratio, px, py) {
     const k = Math.max(MIN_K, Math.min(MAX_K, cam.k * ratio));
     const applied = k / cam.k;
     return { k, x: px - (px - cam.x) * applied, y: py - (py - cam.y) * applied };
   }
 
+  /* The camera moved by a step, in the units of the caller. */
+  function panCam(cam, dx, dy) {
+    return { k: cam.k, x: cam.x + dx, y: cam.y + dy };
+  }
+
+  /* The camera zoomed about a canvas point (the middle when none is given). */
+  function zoomAt(state, c, ratio, clientX, clientY) {
+    const box = c.getBoundingClientRect();
+    const px = clientX === undefined ? box.width / 2 : clientX - box.left;
+    const py = clientY === undefined ? box.height / 2 : clientY - box.top;
+    return zoomCam(state.graph.cam, ratio, px, py);
+  }
+
   function panBy(state, dx, dy) {
-    return { k: state.graph.cam.k, x: state.graph.cam.x + dx, y: state.graph.cam.y + dy };
+    return panCam(state.graph.cam, dx, dy);
   }
 
   /* Where the camera goes to show a node or a scope; everything when neither. */
@@ -142,7 +152,7 @@
   }
 
   window.GyGraph = {
-    render, hit, bubbleAt, zoomAt, panBy, fitTo, eased,
+    render, hit, bubbleAt, zoomAt, panBy, zoomCam, panCam, fitTo, eased,
     /* The one handle e2e still needs: a world point's place on the canvas. The
        canvas is drawn, so a node's position is nowhere in the DOM; every other
        reading comes from data-settled and the screen. It goes when 第 4 段's

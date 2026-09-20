@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **The node page's connections map has the graph page's camera** (n-9ca9):
+  the wheel zooms about the pointer, a drag pans, and `+` / `-` zoom in
+  steps, all within the graph page's own limits. The camera is screen
+  state, so a redraw keeps it and another node opens at the whole figure.
+  A peer's text, not only its rectangle, now shows the pointer cursor and
+  opens the peer's page.
+
 ## 1.0.0 - 2026-09-20
 
 ### Updating

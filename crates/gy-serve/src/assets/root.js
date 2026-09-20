@@ -124,6 +124,9 @@
     if (intent.type === 'graphTarget') { ease.start(intent.value); return; }
     if (intent.type === 'copied') { scheduleCopy(); paint(); return; }
     if (intent.type === 'graphCam' || intent.type === 'graphHover') { paintPage(); return; }
+    /* The node map's camera moves like the graph's: the page alone is redrawn,
+       so a drag stays light (n-9ca9). */
+    if (intent.type === 'mapCam') { paintPage(); return; }
     if (intent.type === 'paletteOpen') {
       paintPalette();
       focusPalette();

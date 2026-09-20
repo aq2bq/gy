@@ -9,6 +9,8 @@
   let lang = 'en';
   let tag = () => '';
   let copy = () => '';
+  /* The map's camera, the state's one, kept here for the draw (n-9ca9). */
+  let cam = { x: 0, y: 0, k: 1 };
   /* The nodes this tab has opened, for the "came from" mark (n-...). */
   let trail = [];
 
@@ -39,18 +41,24 @@
      there (a null answer) shows its id and says so. */
   function render(state, el, ui) {
     if (!el) return;
+    /* The node the element still shows: the mark is read before the draw
+       replaces it, so a redraw of one node keeps the reader's place and a
+       fresh page or another node opens at the top (n-9ca9). */
+    const shown = el.querySelector('[data-shown]');
     t = ui.t;
     lang = state.lang;
     tag = ui.scopeTag;
     copy = text => window.GyCopy.tag(text, state, ui);
     node = state.page;
+    cam = (state.ego && state.ego.cam) || { x: 0, y: 0, k: 1 };
     trail = state.trail || [];
     if (!node) {
       el.innerHTML = `<div class="hero"><h1>${esc(state.route.arg)} — ${t('notFound')}</h1></div>`;
       return;
     }
-    el.innerHTML = `<div class="node"><div>${left()}</div><div>${right()}</div></div>`;
-    window.scrollTo(0, 0);
+    const moved = !shown || shown.dataset.shown !== node.id;
+    el.innerHTML = `<div class="node" data-shown="${esc(node.id)}"><div>${left()}</div><div>${right()}</div></div>`;
+    if (moved) window.scrollTo(0, 0);
   }
 
   function left() {
@@ -194,10 +202,16 @@
     return item.id === root ? `<g>${inner}</g>` : `<a href="#/n/${esc(item.id)}"><g>${inner}</g></a>`;
   }
 
+  /* The camera drawn: one transform inside the svg. Events turns a pointer and a
+     drag into the camera; the region only draws what it is handed (n-9ca9). */
+  const camAttrs = () => `data-k="${cam.k}" data-x="${cam.x}" data-y="${cam.y}"`;
+  const camOpen = () => `<g id="mapcam" transform="translate(${cam.x} ${cam.y}) scale(${cam.k})">`;
+
   function map() {
     const hood = node.neighborhood;
     if (!hood || !hood.nodes || hood.nodes.length <= 1) {
-      return `<svg viewBox="0 0 640 110"><text class="rel" x="320" y="60" text-anchor="middle">${t('noConn')}</text></svg>`;
+      const open = `<svg id="ego" data-testid="ego" viewBox="0 0 640 110" ${camAttrs()}>${camOpen()}`;
+      return `${open}<text class="rel" x="320" y="60" text-anchor="middle">${t('noConn')}</text></g></svg>`;
     }
     const from = (referrer() || {}).id || null;
     const { at, width, height } = ringPositions(hood);
@@ -210,7 +224,8 @@
       .join('');
     const boxes = hood.nodes.map(item => egoBox(item, at.get(item.id), hood.root, from)).join('');
     const more = hood.truncated > 0 ? `<text class="rel" x="${width / 2}" y="${height - 14}" text-anchor="middle">+${hood.truncated}</text>` : '';
-    return `<svg viewBox="0 0 ${width} ${height}">${edges}${boxes}${more}</svg>`;
+    const open = `<svg id="ego" data-testid="ego" viewBox="0 0 ${width} ${height}" ${camAttrs()}>${camOpen()}`;
+    return `${open}${edges}${boxes}${more}</g></svg>`;
   }
 
   window.GyNode = { render };

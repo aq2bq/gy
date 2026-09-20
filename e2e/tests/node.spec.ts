@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Locator } from '@playwright/test';
 import { start, type Ledger } from '../fixtures/ledger';
 
 let gy: Ledger;
@@ -13,6 +13,26 @@ test.afterAll(async () => {
 
 /// The name a box on the map shows for an edge's peer.
 const named = (edge: { alias?: string; to: string }) => edge.alias || edge.to;
+
+/// The decision the node scenes open: it has edges, so its map has peers.
+const closes = async (request: APIRequestContext) => {
+  const rows = (await (await request.get(`${gy.url}api/list?kind=Decision`)).json()).rows;
+  return rows.find((row: { title: string }) => row.title.startsWith('closes'));
+};
+
+/// The camera the map's svg carries, as the one place e2e reads it (n-9ca9).
+const camera = async (map: Locator) => ({
+  k: Number(await map.getAttribute('data-k')),
+  x: Number(await map.getAttribute('data-x')),
+  y: Number(await map.getAttribute('data-y')),
+});
+
+/// The middle of the map, where the pointer goes for a wheel or a drag.
+const middle = async (map: Locator) => {
+  const box = await map.boundingBox();
+  if (!box) throw new Error('the map has no box');
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+};
 
 test('the decision page matches /api/node', async ({ page, request }) => {
   const decisions = (await (await request.get(`${gy.url}api/list?kind=Decision`)).json()).rows;
@@ -98,4 +118,155 @@ test('the map rings two hops deep and marks the click it came from', async ({ pa
   } finally {
     await chain.stop();
   }
+});
+
+test('the map zooms with the wheel and the keys, and stops at the limits', async ({ page, request }) => {
+  const decision = await closes(request);
+  await page.goto(`${gy.url}#/n/${decision.id}`);
+  const map = page.getByTestId('main').getByTestId('ego');
+  await expect(map).toHaveAttribute('data-k', '1');
+  const at = await middle(map);
+
+  // The wheel zooms about the pointer.
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.wheel(0, -240);
+  await expect.poll(async () => (await camera(map)).k).toBeGreaterThan(1);
+
+  // `+` zooms a step further; `-` a step back.
+  const afterWheel = (await camera(map)).k;
+  await page.keyboard.press('+');
+  await expect.poll(async () => (await camera(map)).k).toBeGreaterThan(afterWheel);
+  const afterKey = (await camera(map)).k;
+  await page.keyboard.press('-');
+  await expect.poll(async () => (await camera(map)).k).toBeLessThan(afterKey);
+
+  // Neither direction goes past the graph page's own limits.
+  for (let step = 0; step < 20; step++) await page.keyboard.press('+');
+  await expect.poll(async () => (await camera(map)).k).toBe(12);
+  for (let step = 0; step < 40; step++) await page.keyboard.press('-');
+  await expect.poll(async () => (await camera(map)).k).toBe(0.15);
+});
+
+test('the map pans with a drag and the drag opens no page', async ({ page, request }) => {
+  const decision = await closes(request);
+  const node = await (await request.get(`${gy.url}api/node/${decision.id}`)).json();
+  await page.goto(`${gy.url}#/n/${decision.id}`);
+  const main = page.getByTestId('main');
+  const map = main.getByTestId('ego');
+  const at = await middle(map);
+  const before = await camera(map);
+
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.down();
+  await page.mouse.move(at.x + 80, at.y + 50, { steps: 8 });
+  await page.mouse.up();
+
+  await expect.poll(async () => (await camera(map)).x).not.toBe(before.x);
+  await expect.poll(async () => (await camera(map)).y).not.toBe(before.y);
+  // The drag is not a press on a box: the page stays where it was.
+  await expect(main.getByRole('heading', { level: 1 })).toHaveText(node.title);
+});
+
+test('a drag begun on a box pans without opening its page', async ({ page, request }) => {
+  const decision = await closes(request);
+  const node = await (await request.get(`${gy.url}api/node/${decision.id}`)).json();
+  const peer = node.edges[0];
+  await page.goto(`${gy.url}#/n/${decision.id}`);
+  const main = page.getByTestId('main');
+  const map = main.getByTestId('ego');
+  const box = main.locator('svg a').filter({ hasText: named(peer) }).first();
+  const start = await box.boundingBox();
+  if (!start) throw new Error('the peer has no box');
+  const at = { x: start.x + start.width / 2, y: start.y + start.height / 2 };
+  const before = await camera(map);
+
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.down();
+  await page.mouse.move(at.x + 70, at.y + 40, { steps: 8 });
+  await page.mouse.up();
+
+  await expect.poll(async () => (await camera(map)).x).not.toBe(before.x);
+  await expect.poll(async () => (await camera(map)).y).not.toBe(before.y);
+  // The press began on the anchor and the pan carried it along; it is not a click.
+  await expect(main.getByRole('heading', { level: 1 })).toHaveText(node.title);
+});
+
+test('a box answers a press on its text', async ({ page, request }) => {
+  const decision = await closes(request);
+  const node = await (await request.get(`${gy.url}api/node/${decision.id}`)).json();
+  const peer = node.edges[0];
+  await page.goto(`${gy.url}#/n/${decision.id}`);
+  const main = page.getByTestId('main');
+  const text = main.locator('svg a text').filter({ hasText: named(peer) }).first();
+  await expect(text).toBeVisible();
+
+  await text.click();
+  await expect(main.getByRole('heading', { level: 1 })).not.toHaveText(node.title);
+});
+
+test('the camera is kept on a redraw and reset on another node', async ({ page, request }) => {
+  const decision = await closes(request);
+  const node = await (await request.get(`${gy.url}api/node/${decision.id}`)).json();
+  const peer = node.edges[0];
+  await page.goto(`${gy.url}#/n/${decision.id}`);
+  const map = page.getByTestId('main').getByTestId('ego');
+  const at = await middle(map);
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.wheel(0, -240);
+  await expect.poll(async () => (await camera(map)).k).toBeGreaterThan(1);
+  const zoomed = await camera(map);
+
+  // A language switch redraws the same node: the camera holds.
+  await page.getByTestId('sidebar').getByRole('button', { name: '日本語' }).click();
+  await expect(map).toHaveAttribute('data-k', String(zoomed.k));
+  await expect(map).toHaveAttribute('data-x', String(zoomed.x));
+
+  // Another node opens at the whole figure.
+  await page.evaluate(id => { location.hash = `#/n/${id}`; }, peer.to);
+  await expect.poll(async () => (await camera(map)).k).toBe(1);
+  await expect.poll(async () => (await camera(map)).x).toBe(0);
+});
+
+test('a zoom from a scrolled page keeps the page where it was', async ({ page, request }) => {
+  const decision = await closes(request);
+  // A short window, so the page scrolls and the map can still be seen.
+  await page.setViewportSize({ width: 1280, height: 420 });
+  await page.goto(`${gy.url}#/n/${decision.id}`);
+  const map = page.getByTestId('main').getByTestId('ego');
+  await expect(map).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 220));
+  const box = await map.boundingBox();
+  if (!box) throw new Error('the map has no box');
+  // The point sits in the part of the map the short window shows.
+  const top = Math.max(box.y, 0);
+  const bottom = Math.min(box.y + box.height, 420);
+  expect(bottom).toBeGreaterThan(top);
+  const at = { x: box.x + box.width / 2, y: (top + bottom) / 2 };
+  const before = await page.evaluate(() => window.scrollY);
+  expect(before).toBeGreaterThan(0);
+
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.wheel(0, -240);
+  await expect.poll(async () => (await camera(map)).k).toBeGreaterThan(1);
+
+  // The zoom does not jump the page back to its top.
+  expect(await page.evaluate(() => window.scrollY)).toBe(before);
+});
+
+test('a node opened again after another page starts at the top', async ({ page, request }) => {
+  const decision = await closes(request);
+  await page.setViewportSize({ width: 1280, height: 420 });
+  await page.goto(`${gy.url}#/n/${decision.id}`);
+  const map = page.getByTestId('main').getByTestId('ego');
+  await expect(map).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 220));
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+
+  // Another page carries no mark of the node that was shown.
+  await page.evaluate(() => { location.hash = '#/list/Need'; });
+  await expect(page.getByTestId('main').getByRole('heading', { level: 1 })).toBeVisible();
+
+  await page.evaluate(id => { location.hash = `#/n/${id}`; }, decision.id);
+  await expect(map).toBeVisible();
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
 });
