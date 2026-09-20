@@ -26,6 +26,9 @@
       at: null,
       route: env.route,
       wide: env.wide,
+      /* The nodes this tab has opened, for the "came from" mark (n-...). The
+         first page counts, so the second one can name it. */
+      trail: env.route.name === 'node' && env.route.arg ? [env.route.arg] : [],
       list: { filter: 'open' },
       history: { actor: null, since: null },
       graph: { cam: { x: 0, y: 0, k: 1 }, target: null, selected: null, hover: null },
@@ -65,8 +68,14 @@
         return { ...state, scope: intent.value, shell: null, now: null, map: null, labels: null, page: null, rail: null, graph: { ...state.graph, target: null, selected: null, hover: null } };
       case 'setAt':
         return { ...state, at: intent.value, shell: null, now: null, map: null, labels: null, page: null, rail: null, graph: { ...state.graph, target: null, selected: null, hover: null } };
-      case 'go':
-        return { ...state, route: intent.value, page: null, list: intent.value.name === 'list' ? { ...state.list, filter: 'open' } : state.list };
+      case 'go': {
+        const route = intent.value;
+        const last = state.trail[state.trail.length - 1];
+        const trail = route.name === 'node' && route.arg && route.arg !== last
+          ? [...state.trail, route.arg].slice(-20)
+          : state.trail;
+        return { ...state, route, trail, page: null, list: route.name === 'list' ? { ...state.list, filter: 'open' } : state.list };
+      }
       case 'setWide':
         return { ...state, wide: intent.value };
       case 'listFilter':

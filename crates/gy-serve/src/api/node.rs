@@ -2,8 +2,8 @@
 //! peer named and the node's own writes (n-bd52). No judgement here.
 use crate::http::Response;
 use gy_ledger::{
-    EdgeLine, Filter, Listing, LogRow, NodeData, NodeKind, Repository, Retraction, Store, list,
-    show,
+    EdgeLine, Ego, Filter, Listing, LogRow, NodeData, NodeKind, Repository, Retraction, Store, ego,
+    list, show,
 };
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -51,6 +51,8 @@ struct Node {
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     attributes: BTreeMap<String, String>,
     edges: Vec<Edge>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    neighborhood: Option<Ego>,
     history: Vec<LogRow>,
 }
 
@@ -61,6 +63,7 @@ pub fn node<S: Store>(repo: &Repository<S>, id: &str) -> Response {
         Err(_) => return Response::text(404, "not found"),
     };
     let edges = shown.edges.iter().map(|edge| named(repo, edge)).collect();
+    let neighborhood = ego(repo, &shown.id, 2).ok();
     let history = history(repo, &shown.id);
     Response::json(&Node {
         id: shown.id,
@@ -78,6 +81,7 @@ pub fn node<S: Store>(repo: &Repository<S>, id: &str) -> Response {
         missing: shown.missing,
         attributes: shown.attributes,
         edges,
+        neighborhood,
         history,
     })
 }

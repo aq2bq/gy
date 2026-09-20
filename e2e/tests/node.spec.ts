@@ -25,8 +25,8 @@ test('the decision page matches /api/node', async ({ page, request }) => {
   await expect(main.getByRole('heading', { level: 1 })).toHaveText(node.title);
   await expect(main.getByText(node.data.Decision.scope.text)).toBeVisible();
   await expect(main.getByRole('list', { name: /History/ }).getByRole('listitem')).toHaveCount(node.history.length);
-  // Every edge is a box, plus the node itself in the middle.
-  await expect(main.locator('svg rect')).toHaveCount(node.edges.length + 1);
+  // Every node of the neighbourhood is a box, the focus included (n-...).
+  await expect(main.locator('svg rect')).toHaveCount(node.neighborhood.nodes.length);
 
   // The body is open from the start, with no fold to open (n-d9a6).
   await expect(main.locator('summary')).toHaveCount(0);
@@ -61,4 +61,41 @@ test('the decision names the question it closed', async ({ page, request }) => {
   await box.click();
   await expect(main.getByRole('heading', { level: 1 })).toHaveText(question.title);
   await expect(main.getByRole('list', { name: /History/ }).getByRole('listitem')).toHaveCount(question.history.length);
+});
+
+test('the map rings two hops deep and marks the click it came from', async ({ page }) => {
+  let first = '', middle = '';
+  const chain = await start({
+    build: gy => {
+      const measure = JSON.parse(gy(['--scope', 'a', 'criterion', 'add', 'the measure'])).id as string;
+      const need = (title: string) => JSON.parse(gy(['--scope', 'a', 'need', 'add', title, '--targets', measure])).id as string;
+      first = need('the first need');
+      middle = need('the middle need');
+      const far = need('the far need');
+      gy(['--scope', 'a', 'link', first, 'depends-on', middle]);
+      gy(['--scope', 'a', 'link', middle, 'depends-on', far]);
+    },
+  });
+  try {
+    const main = page.getByTestId('main');
+    const answer = await (await page.request.get(`${chain.url}api/node/${first}`)).json();
+    const far = answer.neighborhood.nodes.filter((node: { hop: number }) => node.hop === 2);
+
+    // Every node of the two rings is a box, the far ring marked apart.
+    await page.goto(`${chain.url}#/n/${first}`);
+    await expect(main.locator('svg rect')).toHaveCount(answer.neighborhood.nodes.length);
+    await expect(main.locator('svg rect[data-hop="2"]')).toHaveCount(far.length);
+    expect(far.length).toBeGreaterThan(0);
+    const labels = await main.locator('svg text').evaluateAll(nodes => nodes.map(node => node.textContent));
+    expect(labels.join(' ')).toMatch(/depends/);
+
+    // Opening a box keeps the step it came from: a back chip names it and its
+    // own box wears the "from" mark.
+    await main.locator('svg a').filter({ hasText: middle }).click();
+    await expect(main.getByRole('heading', { level: 1 })).toHaveText('the middle need');
+    await expect(main.locator('h3 a')).toHaveText(new RegExp(first));
+    await expect(main.locator('svg rect[data-from]')).toHaveCount(1);
+  } finally {
+    await chain.stop();
+  }
 });

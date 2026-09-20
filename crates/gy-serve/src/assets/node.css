@@ -24,6 +24,8 @@
 .map text.rel{font-family:var(--sans);font-size:11px;fill:var(--paper-2)}
 .map text.al{font-family:var(--mono);font-size:10px;fill:var(--paper-3)}
 .map .box{fill:var(--ink-3);stroke-width:1.2;cursor:pointer} .map .box:hover{fill:#243050}
+.map .box.far{stroke-dasharray:3 3;opacity:.72}
+.map .box.from{stroke-width:2.6;filter:drop-shadow(0 0 5px rgba(226,232,255,.55))}
 .map .edge{fill:none;stroke:var(--line);stroke-width:1.2}
 .map .center{fill:var(--ink);stroke-width:2}
 .hist{display:flex;flex-direction:column}

@@ -165,6 +165,21 @@ fn node_names_its_edges_and_history() {
     assert!(history.iter().all(|row| row["node"] == "n-0001"));
     assert!(history[0]["seq"].as_u64().unwrap() > history[1]["seq"].as_u64().unwrap());
 
+    // The neighbourhood: the focus and its direct peer, with the edge between.
+    let hood = &json["neighborhood"];
+    assert_eq!(hood["root"], "n-0001");
+    assert_eq!(hood["truncated"], 0);
+    let reached: Vec<(&str, u64)> = hood["nodes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|node| (node["id"].as_str().unwrap(), node["hop"].as_u64().unwrap()))
+        .collect();
+    assert_eq!(reached, vec![("n-0001", 0), ("r-0006", 1)]);
+    assert_eq!(hood["edges"][0]["from"], "n-0001");
+    assert_eq!(hood["edges"][0]["to"], "r-0006");
+    assert_eq!(hood["edges"][0]["name"], "filed-as");
+
     let aliased = answer(&repo, "/api/node/D-85", None);
     assert_eq!(aliased["id"], "d-0005");
     assert_eq!(aliased["aliases"][0], "D-85");

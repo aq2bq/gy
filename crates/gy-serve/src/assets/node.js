@@ -2,7 +2,6 @@
    node, its connections, and its own writes. It draws inside #main from the
    state the root read; the facts come from the typed data in the answer. */
 (function () {
-  const SIDE = { 'spawned-by': 'L', 'spawns': 'R', 'depends-on': 'L', 'depended-on-by': 'R', 'targets': 'R', 'targeted-by': 'L', 'closes': 'R', 'closed-by': 'L', 'narrows': 'L', 'narrowed-by': 'R', 'supersedes': 'L', 'superseded-by': 'R', 'widens': 'L', 'widened-by': 'R', 'completes': 'L', 'completed-by': 'R', 'relies-on': 'L', 'relied-on-by': 'R', 'filed-as': 'R', 'filed-from': 'L', 'raised': 'R', 'raised-by': 'L', 'waits-on': 'R', 'waited-on-by': 'L', 'awaited-by': 'L', 'files': 'L' };
   const COLOUR = { Need: 'need', Question: 'question', Decision: 'decision', Requirement: 'requirement', Criterion: 'criterion' };
 
   let node = null;
@@ -10,11 +9,12 @@
   let lang = 'en';
   let tag = () => '';
   let copy = () => '';
+  /* The nodes this tab has opened, for the "came from" mark (n-...). */
+  let trail = [];
 
   const esc = text => String(text ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
   const fill = (text, values) => text.replace(/\{(\w+)\}/g, (all, key) => (key in values ? values[key] : all));
   const card = (heading, body) => `<div class="card"><h3>${heading}</h3>${body}</div>`;
-  const rel = edge => t(`rel.${edge.name}`);
 
   /* The state word the meta and the cards print, from the typed data. */
   function condition() {
@@ -44,6 +44,7 @@
     tag = ui.scopeTag;
     copy = text => window.GyCopy.tag(text, state, ui);
     node = state.page;
+    trail = state.trail || [];
     if (!node) {
       el.innerHTML = `<div class="hero"><h1>${esc(state.route.arg)} — ${t('notFound')}</h1></div>`;
       return;
@@ -138,46 +139,78 @@
     const history = rows.length
       ? rows.map(entry => `<div class="hi" role="listitem"><span class="when">${window.GyTime.dateTime(entry.at, lang)} · ${entry.seq}</span><span class="who">${esc(entry.actor)}</span><span><div class="src">${esc(entry.source)}</div><div class="why">${esc(entry.why)}</div></span></div>`).join('')
       : `<div class="empty">${t('migrated')}</div>`;
-    return `<div class="card" style="margin-top:0"><h3>${t('connections')}</h3><div class="map">${map()}</div></div>` +
+    const from = referrer();
+    const heading = `${t('connections')}${from ? `<a href="#/n/${esc(from.id)}">◂ ${esc(from.name)}</a>` : ''}`;
+    return `<div class="card" style="margin-top:0"><h3>${heading}</h3><div class="map">${map()}</div></div>` +
       card(fill(t('hist'), { n: rows.length }), `<div class="hist" role="list" aria-label="${esc(t('histTitle'))}">${history}</div>`);
   }
 
-  /* The ego map: what points here on the left, what this points at on the
-     right, from the edges the answer names (the prototype's egoSvg). The
-     columns are narrow enough to leave a gap beside the middle box, and each
-     relation's name sits in that gap, so no name lands on a box (n-6f69). */
+  /* The node this tab came from: the step before this one in the visit trail,
+     so the card can name it and mark its box (n-...). */
+  function referrer() {
+    let at = trail.length - 1;
+    while (at >= 0 && trail[at] === node.id) at--;
+    if (at < 0) return null;
+    const id = trail[at];
+    const known = ((node.neighborhood || {}).nodes || []).find(item => item.id === id);
+    return { id, name: (known && (known.alias || known.id)) || id };
+  }
+
+  /* The ego map (n-...): the focus at the centre, its direct peers on the inner
+     ring, and their peers on the outer ring. The answer's neighbourhood fixes
+     what is drawn; an edge among the drawn nodes is one line, and only the
+     focus's own edges carry a relation name so the picture stays readable. */
+  const BW = 116, BH = 40, R1 = 140, R2 = 236;
+  const short = text => (text && text.length > 12 ? `${text.slice(0, 12)}…` : text || '');
+
+  /* The two rings' positions: the focus at the centre, hop 1 and hop 2 around. */
+  function ringPositions(hood) {
+    const width = 660, height = 560, cx = width / 2, cy = height / 2;
+    const at = new Map([[hood.root, { x: cx, y: cy }]]);
+    const ring = (list, radius) => list.forEach((item, index) => {
+      const angle = -Math.PI / 2 + (2 * Math.PI * index) / Math.max(list.length, 1);
+      at.set(item.id, { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius });
+    });
+    ring(hood.nodes.filter(item => item.hop === 1), R1);
+    ring(hood.nodes.filter(item => item.hop === 2), R2);
+    return { at, width, height };
+  }
+
+  function edgeLine(a, b, label) {
+    if (!a || !b) return '';
+    const mx = (a.x + b.x) / 2;
+    const text = label ? `<text class="rel" x="${mx}" y="${(a.y + b.y) / 2 - 6}" text-anchor="middle">${esc(label)}</text>` : '';
+    return `<path class="edge" d="M${a.x},${a.y} C${mx},${a.y} ${mx},${b.y} ${b.x},${b.y}"/>${text}`;
+  }
+
+  /* One box of the map: the focus is a plain mark, a peer opens its page. */
+  function egoBox(item, p, root, from) {
+    const cls = ['box', item.hop === 2 ? 'far' : '', item.id === root ? 'center' : '', item.id === from ? 'from' : ''].filter(Boolean).join(' ');
+    const stroke = item.kind ? ` stroke="var(--${COLOUR[item.kind] || 'paper'})"` : '';
+    const label = item.id === root
+      ? `${esc(item.alias || item.id)} · ${esc(t(item.kind))}`
+      : `${esc(item.alias || item.id)}${item.kind ? ` · ${esc(t(item.kind))}` : ''}`;
+    const inner = `<rect class="${cls}" data-hop="${item.hop}"${item.id === from ? ' data-from="1"' : ''} x="${p.x - BW / 2}" y="${p.y - BH / 2}" width="${BW}" height="${BH}" rx="7"${stroke}/><text class="al" x="${p.x - BW / 2 + 8}" y="${p.y - 5}">${label}</text><text x="${p.x - BW / 2 + 8}" y="${p.y + 13}">${esc(short(item.title))}</text>`;
+    return item.id === root ? `<g>${inner}</g>` : `<a href="#/n/${esc(item.id)}"><g>${inner}</g></a>`;
+  }
+
   function map() {
-    const left = [];
-    const right = [];
-    (node.edges || []).forEach(edge => {
-      (SIDE[edge.name] === 'L' ? left : right).push(edge);
-    });
-    const rows = Math.max(left.length, right.length, 1);
-    const rh = 72, width = 640, height = Math.max(200, rows * rh + 48);
-    const cx = width / 2, cy = height / 2, bw = 130, bh = 48;
-    const lx = 16 + bw / 2, rx = width - 16 - bw / 2;
-    const short = text => (text.length > 14 ? `${text.slice(0, 14)}…` : text);
-    const box = (edge, x, y) => `<a href="#/n/${edge.to}"><g transform="translate(${x - bw / 2},${y - bh / 2})"><rect class="box" width="${bw}" height="${bh}" rx="7" stroke="var(--${COLOUR[edge.kind] || 'paper'})"/><text class="al" x="10" y="17">${esc(edge.alias || edge.to)}${edge.kind ? ` · ${t(edge.kind)}` : ''}</text><text x="10" y="36">${esc(short(edge.title || edge.to))}</text></g></a>`;
-    /* The line runs from a box's edge to the middle box's edge; the name sits
-       on the curve's middle, in the gap the boxes leave between them. */
-    const line = (x1, y1, x2, y2, label) => {
-      const mx = (x1 + x2) / 2;
-      return `<path class="edge" d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}"/><text class="rel" x="${mx}" y="${(y1 + y2) / 2 - 6}" text-anchor="middle">${esc(label)}</text>`;
-    };
-    let svg = '';
-    left.forEach((edge, index) => {
-      const y = cy + (index - (left.length - 1) / 2) * rh;
-      svg += line(lx + bw / 2, y, cx - bw / 2, cy, rel(edge)) + box(edge, lx, y);
-    });
-    right.forEach((edge, index) => {
-      const y = cy + (index - (right.length - 1) / 2) * rh;
-      svg += line(cx + bw / 2, cy, rx - bw / 2, y, rel(edge)) + box(edge, rx, y);
-    });
-    svg += `<g transform="translate(${cx - bw / 2},${cy - bh / 2})"><rect class="box center" width="${bw}" height="${bh}" rx="7" stroke="var(--${COLOUR[node.kind]})"/><text class="al" x="10" y="17">${esc((node.aliases || [])[0] || node.id)} · ${t(node.kind)}</text><text x="10" y="36">${esc(short(node.title))}</text></g>`;
-    if (!left.length && !right.length) {
-      svg += `<text class="rel" x="${cx}" y="${height - 14}" text-anchor="middle">${t('noConn')}</text>`;
+    const hood = node.neighborhood;
+    if (!hood || !hood.nodes || hood.nodes.length <= 1) {
+      return `<svg viewBox="0 0 640 110"><text class="rel" x="320" y="60" text-anchor="middle">${t('noConn')}</text></svg>`;
     }
-    return `<svg viewBox="0 0 ${width} ${height}">${svg}</svg>`;
+    const from = (referrer() || {}).id || null;
+    const { at, width, height } = ringPositions(hood);
+    const edges = (hood.edges || [])
+      .map(edge => {
+        const touches = edge.from === hood.root || edge.to === hood.root;
+        const name = edge.from === hood.root ? edge.name : edge.inverse;
+        return edgeLine(at.get(edge.from), at.get(edge.to), touches ? t(`rel.${name}`) : '');
+      })
+      .join('');
+    const boxes = hood.nodes.map(item => egoBox(item, at.get(item.id), hood.root, from)).join('');
+    const more = hood.truncated > 0 ? `<text class="rel" x="${width / 2}" y="${height - 14}" text-anchor="middle">+${hood.truncated}</text>` : '';
+    return `<svg viewBox="0 0 ${width} ${height}">${edges}${boxes}${more}</svg>`;
   }
 
   window.GyNode = { render };

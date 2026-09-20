@@ -38,7 +38,8 @@ pub use store::{
 #[doc(hidden)]
 pub use store::{Gate, Open, remote::sync_with};
 pub use views::{
-    EdgeLine, Filter, Handover, Listing, LogRow, Narrowed, NeedState, NextRow, NodeRow, Now,
-    ProgressRow, Publication, Ready, RequirementLine, Resume, Retraction, Row, Shown, SyncRow,
-    Waiting, Warning, handover, list, next, now, publish, requirement_in_progress, show,
+    EGO_LIMIT, EdgeLine, Ego, EgoEdge, EgoNode, Filter, Handover, Listing, LogRow, Narrowed,
+    NeedState, NextRow, NodeRow, Now, ProgressRow, Publication, Ready, RequirementLine, Resume,
+    Retraction, Row, Shown, SyncRow, Waiting, Warning, ego, handover, list, next, now, publish,
+    requirement_in_progress, show,
 };
