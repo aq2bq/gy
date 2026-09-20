@@ -165,13 +165,13 @@ This step is yours, not your agent's. `gy share` uploads the whole ledger to tha
 gy join
 ```
 
-It checks what you need in one go (git, credentials that can read the repository, `git config user.name` and `user.email`) and, if something is missing, lists each with the fix and stops. When all is there it fetches your copy, says who you will write as (`user.name / GY_ACTOR`) and what to do next (`gy handover`). Running it again is harmless. Starting with `gy handover` instead also fetches the copy and prints the same "joined" line.
+It checks what you need in one go (git, credentials that can read the repository, and a name to write under — `git config user.name` and `user.email`, or `GIT_AUTHOR_NAME` and `GIT_AUTHOR_EMAIL`) and, if something is missing, lists each with the fix and stops. When all is there it fetches your copy, says who you will write as (`user.name / GY_ACTOR`) and what to do next (`gy handover`). Running it again is harmless. Starting with `gy handover` instead also fetches the copy and prints the same "joined" line.
 
 **From then on, use gy as before.**
 
 - A write lands in your copy at once and is pushed in the background (right after the write, and every ten seconds while `gy serve` runs). `gy sync` syncs explicitly. While the remote is unreachable, reads and writes keep working, and what piled up is pushed when it is back.
 - If the remote moved ahead, your unpushed writes are re-seated after it. Only a write to a node the other side changed first is rejected, and only you are told: on stderr at your next gy command and in `handover`. Whether to redo it is your call.
-- A writer is recorded and shown as `user.name / GY_ACTOR`; the same agent name under two humans is two writers.
+- A writer is recorded and shown as `user.name / GY_ACTOR`; the same agent name under two humans is two writers. The name is the one git signs your commits with, resolved git's way — `GIT_AUTHOR_NAME` first, then `git config user.name` — so the ledger and the git history never name two people for one write.
 - The remote is written by gy alone: one write is one commit, and a history changed outside gy is refused with the way back. A repository holding anything but a ledger is refused.
 - Remove the `remote` line from `gy.toml` and the copy is local again (the next command says so once). Reconnecting after both sides moved is refused: there is no merge.
 

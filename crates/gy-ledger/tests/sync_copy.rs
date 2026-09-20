@@ -98,20 +98,36 @@ fn an_unmarked_copy_records_no_human() {
     assert!(!text.contains("\"by\""), "{text}");
 }
 
+/// The author environment alone names the writer: git signs the commit with
+/// it, so the ledger records the same name (d-a4f6). `hermetic` set it.
 #[test]
-fn a_marked_copy_without_a_name_refuses_the_write() {
+fn the_environment_alone_names_the_writer() {
     hermetic();
     let temp = tempfile::tempdir().unwrap();
     let dir = copy(temp.path(), Some("file:///example/ledger.git"));
-    git(&dir, &["config", "user.email", "piko@example.com"]);
 
-    let error = write(&dir).unwrap_err();
-    assert!(
-        error.message.contains("user.name is not set"),
-        "{}",
-        error.message
-    );
-    assert!(log::read(&dir).unwrap().0.is_empty());
+    write(&dir).unwrap();
+    let events = log::read(&dir).unwrap().0;
+    let event = events.first().expect("one write");
+    assert_eq!(event.by.as_deref(), Some("piko"));
+    assert_eq!(event.by_mail.as_deref(), Some("piko@example.com"));
+}
+
+/// git prefers the environment over the config for the author, so gy does
+/// too: the two never name a different person for one write (d-a4f6).
+#[test]
+fn the_environment_wins_over_the_configured_name() {
+    hermetic();
+    let temp = tempfile::tempdir().unwrap();
+    let dir = copy(temp.path(), Some("file:///example/ledger.git"));
+    git(&dir, &["config", "user.name", "alice"]);
+    git(&dir, &["config", "user.email", "alice@example.com"]);
+
+    write(&dir).unwrap();
+    let events = log::read(&dir).unwrap().0;
+    let event = events.first().expect("one write");
+    assert_eq!(event.by.as_deref(), Some("piko"));
+    assert_eq!(event.by_mail.as_deref(), Some("piko@example.com"));
 }
 
 #[test]

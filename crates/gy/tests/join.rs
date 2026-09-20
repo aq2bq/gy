@@ -64,6 +64,10 @@ fn join(
         .env("GIT_CONFIG_GLOBAL", config)
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .env("GIT_CONFIG_NOSYSTEM", "1")
+        // The author environment names the writer too (d-a4f6), so the config
+        // decides only when nothing here does.
+        .env_remove("GIT_AUTHOR_NAME")
+        .env_remove("GIT_AUTHOR_EMAIL")
         .args(args);
     match actor {
         Some(actor) => command.env("GY_ACTOR", actor),

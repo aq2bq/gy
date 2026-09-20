@@ -114,9 +114,31 @@ pub fn remote_refs(dir: &Path, url: &str) -> Result<(Option<String>, Vec<String>
     Ok((head, heads))
 }
 
-/// The configured human: git's `user.name` and `user.email`, in one call. An
-/// unset pair is `(None, None)`; a missing git is an error.
+/// The human git will put on the commit, resolved in git's own order: the
+/// author environment first, then the configured `user.name` / `user.email`
+/// (d-a4f6). Reading only the config let the ledger record one name while the
+/// commit carried another. An unset pair is `(None, None)`; a missing git is
+/// an error. What git derives from the account is not a name anyone chose, so
+/// it is not read here and the caller still refuses.
 pub fn user(dir: &Path) -> Result<(Option<String>, Option<String>)> {
+    let (name, mail) = configured(dir)?;
+    Ok((
+        resolved("GIT_AUTHOR_NAME", name),
+        resolved("GIT_AUTHOR_EMAIL", mail),
+    ))
+}
+
+/// One half of the identity. A variable that is set but blank is git's error,
+/// not a fall-through to the config, so it stays empty here too.
+fn resolved(variable: &str, configured: Option<String>) -> Option<String> {
+    match std::env::var(variable) {
+        Ok(value) => Some(value).filter(|value| !value.trim().is_empty()),
+        Err(_) => configured,
+    }
+}
+
+/// git's `user.name` and `user.email`, in one call.
+fn configured(dir: &Path) -> Result<(Option<String>, Option<String>)> {
     let output = spawn(dir, &["config", "--get-regexp", r"^user\.(name|email)$"])?;
     if !output.status.success() {
         return Ok((None, None));

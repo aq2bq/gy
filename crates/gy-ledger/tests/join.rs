@@ -10,8 +10,9 @@ fn url(dir: &Path) -> String {
     format!("file://{}", dir.display())
 }
 
-/// No user.name for the copy (a deterministic `(no git user.name yet)`), while
-/// git commits still have an identity. Process-wide, once.
+/// One name, given the way git gives it, and no per-user config to argue with
+/// it: the notice names the same writer the commits carry (d-a4f6). The copy
+/// with no name at all is in `join_no_name.rs`. Process-wide, once.
 fn isolate() {
     static ONCE: std::sync::Once = std::sync::Once::new();
     ONCE.call_once(|| unsafe {
@@ -120,11 +121,9 @@ fn notice_names_the_writer_count() {
     let target = temp.path().join("target");
     join_run(&target, &url(&remote), Some("myagent")).unwrap();
 
+    // The name git signs with, which here is the author environment's.
     assert_eq!(
         join_notice(&target, &url(&remote)),
-        format!(
-            "joined {} as (no git user.name yet) (1 writes by 1 writers)",
-            url(&remote)
-        )
+        format!("joined {} as piko (1 writes by 1 writers)", url(&remote))
     );
 }

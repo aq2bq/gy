@@ -72,9 +72,13 @@ For an agent driving gy on a ledger that a team shares (a `remote` in
   remote changed a node your write touched first; read the node again and
   redo the write if it still applies. The notice goes away when you next
   write to that node.
-- **Name yourself.** A write on a shared ledger needs `git config
-  user.name` (and `user.email`); without a name it is refused. Writers are
-  shown as `<user.name> / <GY_ACTOR>`, and `list --actor` matches either.
+- **Name yourself.** A write on a shared ledger needs a name to write
+  under; without one it is refused. gy takes the name git would sign the
+  commit with, in git's own order: `GIT_AUTHOR_NAME` and
+  `GIT_AUTHOR_EMAIL` first, then `git config user.name` and `user.email`.
+  What git derives from your account is not a name you chose, so it is not
+  used. Writers are shown as `<name> / <GY_ACTOR>`, and `list --actor`
+  matches either.
 - **`undo` is your own.** Undoing another writer's last write is refused.
 - **Name a point in time by `seq` or an id**, not by a date; dates print
   in each reader's own time zone.

@@ -115,8 +115,9 @@ impl FileStore {
         snapshot::write(&self.dir, self.seq, &self.nodes)?;
         Ok(())
     }
-    /// The human a shared copy records: git's configured name and email, read
-    /// once per write. A copy with the marker but no name is refused (n-8a52).
+    /// The human a shared copy records: the name git will sign the commit
+    /// with, read once per write (d-a4f6). A copy with the marker but no name
+    /// is refused (n-8a52).
     fn human(&self) -> Result<(Option<String>, Option<String>)> {
         if self.remote.is_none() {
             return Ok((None, None));
@@ -124,7 +125,7 @@ impl FileStore {
         let (name, mail) = super::super::remote::git::user(&self.dir)?;
         if name.is_none() {
             return Err(Error::invalid(
-                "git config user.name is not set; a shared ledger records who wrote",
+                "no name to write under: set git config user.name (or GIT_AUTHOR_NAME); a shared ledger records who wrote",
             ));
         }
         Ok((name, mail))
