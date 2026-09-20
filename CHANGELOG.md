@@ -217,6 +217,15 @@ brings the new one along.
 
 ### Changed
 
+- **Every write prints a fifth line, `unresolved:`** (n-847d, d-8f76). When
+  `gy edit` changes a decision that a later `narrows` or `supersedes` cites
+  by a mark, the edit is still applied, but a mark that named a passage
+  before and no longer does is named on this line — `<decision> <relation>:
+  "<mark>"`, comma-separated like the lines above it, empty otherwise. A
+  mark that never resolved stays silent, so an edit does not repeat the
+  migration's old marks. `--json` carries `unresolved` beside the other
+  fields. `link` and `decide` still refuse a mark that is not in the older
+  decision's body or scope note.
 - **A failure says what to type next** (n-1de7). A first-time agent given
   only the bundled skills and the README failed 14 gy calls in three
   sessions; each of these now names the fix in its own output:

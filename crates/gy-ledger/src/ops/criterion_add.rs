@@ -26,6 +26,7 @@ impl<S: Store> Operation<S> for CriterionAdd {
             changed: vec!["created".into()],
             missing,
             next,
+            unresolved: Vec::new(),
             value: id,
         })
     }

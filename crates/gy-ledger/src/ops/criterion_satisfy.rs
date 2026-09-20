@@ -31,6 +31,7 @@ impl<S: Store> Operation<S> for CriterionSatisfy {
             changed: vec!["satisfied".into()],
             missing,
             next,
+            unresolved: Vec::new(),
             value: self.id,
         })
     }

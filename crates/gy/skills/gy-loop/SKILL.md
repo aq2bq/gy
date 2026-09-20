@@ -5,7 +5,7 @@ description: "Use first whenever you start work, resume work, or decide what to 
 
 # The gy loop
 
-A person cannot escape the critical decisions. gy frees them from everything else. The person you work for does not operate gy: you read the ledger, put one problem in front of them, and write down what was judged. The shape of every command is in `CHEATSHEET.md` beside this file, and each write answers with what the node still lacks (`missing`) and what you could type next (`next`).
+A person cannot escape the critical decisions. gy frees them from everything else. The person you work for does not operate gy: you read the ledger, put one problem in front of them, and write down what was judged. The shape of every command is in `CHEATSHEET.md` beside this file, and each write answers with what the node still lacks (`missing`), what you could type next (`next`), and, when an edit leaves a retraction's mark without its passage, which mark that was (`unresolved`).
 
 ## Part 1. Agree once on how to work
 

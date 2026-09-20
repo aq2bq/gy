@@ -9,6 +9,20 @@ pub fn required(relation: Relation) -> bool {
     matches!(relation, Relation::Narrows | Relation::Supersedes)
 }
 
+/// Whether `mark` names a passage still present in the older decision's body or
+/// applicability conditions. The one definition `check` and `edit` share.
+pub fn resolves(older: &Node, mark: &str) -> bool {
+    let mark = mark.trim();
+    if mark.is_empty() {
+        return false;
+    }
+    let scope = match older.data() {
+        NodeData::Decision(decision) => decision.scope.text(),
+        _ => "",
+    };
+    older.body().contains(mark) || scope.contains(mark)
+}
+
 pub fn check(older: &Node, mark: Option<&str>, required: bool) -> Result<()> {
     let Some(mark) = mark.map(str::trim).filter(|mark| !mark.is_empty()) else {
         return if required {
@@ -19,11 +33,7 @@ pub fn check(older: &Node, mark: Option<&str>, required: bool) -> Result<()> {
             Ok(())
         };
     };
-    let scope = match older.data() {
-        NodeData::Decision(decision) => decision.scope.text(),
-        _ => "",
-    };
-    if older.body().contains(mark) || scope.contains(mark) {
+    if resolves(older, mark) {
         Ok(())
     } else {
         Err(Error::invalid(format!(

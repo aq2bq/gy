@@ -44,6 +44,7 @@ impl<S: Store> Operation<S> for NeedClose {
             changed: vec!["closed".into()],
             missing,
             next,
+            unresolved: Vec::new(),
             value: id,
         })
     }

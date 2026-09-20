@@ -56,13 +56,15 @@ pub fn node_of<S: Store>(repo: &Repository<S>, id: &NodeId, kind: NodeKind) -> R
 }
 
 /// What an operation produced: the node it touched, what it changed, what is
-/// missing, and what could follow (N-39).
+/// missing, what could follow (N-39), and the marks the write left unresolved
+/// (n-847d). Every write carries all five, empty where it has nothing to say.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Outcome<T> {
     pub id: Option<NodeId>,
     pub changed: Vec<String>,
     pub missing: Vec<String>,
     pub next: Vec<String>,
+    pub unresolved: Vec<String>,
     pub value: T,
 }
 

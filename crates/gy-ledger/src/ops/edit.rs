@@ -4,8 +4,8 @@
 //! to a scope gy.toml declares (n-1aad); `--set decision_scope=<text>` fills a
 //! decision's unrecorded scope once, and `--set key=` drops a free attribute
 //! (n-79fb).
-use super::{Operation, Outcome, Repository};
-use crate::model::{DecisionScope, Node, NodeData, NodeId};
+use super::{Operation, Outcome, Repository, marks};
+use crate::model::{DecisionScope, Edge, Node, NodeData, NodeId};
 use crate::store::{Error, Result, Store};
 
 #[derive(Clone)]
@@ -42,7 +42,9 @@ impl<S: Store> Operation<S> for Edit {
         let mut node = repo
             .get(&self.id)?
             .ok_or_else(|| Error::invalid(format!("{} does not exist", self.id)))?;
+        let watched = watched(&node, repo.incoming(&self.id)?);
         let changed = apply(&mut node, &self, repo.scopes())?;
+        let unresolved = unresolved_names(watched, &node);
         let why = format!("edit {}", self.id);
         repo.transaction(&why, &self.reason, |repo| repo.put(&node))?;
         Ok(Outcome {
@@ -50,9 +52,34 @@ impl<S: Store> Operation<S> for Edit {
             changed,
             missing: Vec::new(),
             next: Vec::new(),
+            unresolved,
             value: self.id,
         })
     }
+}
+
+/// The incoming `narrows` / `supersedes` marks that resolve in `older` as it
+/// stands before the edit: the passages an edit could leave unresolved. One
+/// pass over the graph gives them all (n-847d).
+fn watched(older: &Node, incoming: Vec<Edge>) -> Vec<(String, &'static str, String)> {
+    incoming
+        .into_iter()
+        .filter(|edge| marks::required(edge.label))
+        .filter_map(|edge| {
+            let mark = edge.mark?;
+            marks::resolves(older, &mark).then_some((edge.to.to_string(), edge.label.name(), mark))
+        })
+        .collect()
+}
+
+/// The watched marks that no longer resolve in the edited node, named for the
+/// writer: `<decision> <relation>: "<mark>"`.
+fn unresolved_names(watched: Vec<(String, &'static str, String)>, node: &Node) -> Vec<String> {
+    watched
+        .into_iter()
+        .filter(|(_, _, mark)| !marks::resolves(node, mark))
+        .map(|(by, relation, mark)| format!("{by} {relation}: {mark:?}"))
+        .collect()
 }
 
 fn apply(node: &mut Node, edit: &Edit, scopes: &[String]) -> Result<Vec<String>> {

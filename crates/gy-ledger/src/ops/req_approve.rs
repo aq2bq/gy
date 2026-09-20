@@ -40,6 +40,7 @@ impl<S: Store> Operation<S> for ReqApprove {
             changed: vec!["approved".into()],
             missing,
             next,
+            unresolved: Vec::new(),
             value: self.id,
         })
     }

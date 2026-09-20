@@ -1,6 +1,6 @@
 gy keeps the state of work, up to the point a requirement is confirmed, as a graph. Every write is appended as one transaction, and an invalid write is refused when it is made.
 
-A write that creates a node (`need add` / `question add` / `criterion add` / `decide` / `req add`) prints `id: <ID>` first. Other writes answer with the ID you already know. A flag shown with `...` takes one value each time: repeat the flag (`--targets A --targets B`).
+A write that creates a node (`need add` / `question add` / `criterion add` / `decide` / `req add`) prints `id: <ID>` first. Other writes answer with the ID you already know. A flag shown with `...` takes one value each time: repeat the flag (`--targets A --targets B`). Every write then prints `changed:`, `missing:`, `next:` and `unresolved:`, empty where it has nothing to say; `unresolved` names a `narrows` / `supersedes` mark an edit left without its passage.
 
 Starting a repository:
   gy init <scope>                                      write gy.toml with one scope here; a gy.toml already here is reported, not touched
@@ -40,6 +40,7 @@ Writes:
   gy edit <ID> --reason <text> [--title] [--body-file] [--set k=v] [--append k=v]
         free attributes are strings. --set overwrites, --set k= removes, --append adds one line
         --set scope=<name> moves the node to a scope in gy.toml. --set decision_scope=<text> records a missing scope note, once
+        the edit is applied; a later decision's mark that stops resolving is named on unresolved:
   gy scope rename <old> <new>
         moves every node of the old scope to the new name and rewrites gy.toml, keeping comments and order
   gy undo --reason <text>

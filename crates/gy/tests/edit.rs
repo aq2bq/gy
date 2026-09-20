@@ -70,6 +70,27 @@ fn edit_help_shows_the_repeated_attribute_forms() {
 }
 
 #[test]
+fn edit_prints_the_fifth_line_and_the_json_field() {
+    let fx = fixture();
+    fx.seed(&[need("0001", "a need")]);
+
+    let out = fx.run(&[
+        "edit", "n-0001", "--reason", "clarify", "--title", "renamed",
+    ]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    let text = stdout(&out);
+    assert!(text.contains("missing: \nnext: \n"), "{text}");
+    assert!(text.ends_with("unresolved: \n"), "{text}");
+
+    let json = fx.run(&[
+        "--json", "edit", "n-0001", "--reason", "clarify", "--title", "again",
+    ]);
+    assert!(json.status.success(), "{}", stderr(&json));
+    let value: serde_json::Value = serde_json::from_str(stdout(&json).trim()).unwrap();
+    assert_eq!(value["unresolved"], serde_json::json!([]));
+}
+
+#[test]
 fn edit_errors() {
     let fx = fixture();
     fx.seed(&[need("0002", "a need")]);

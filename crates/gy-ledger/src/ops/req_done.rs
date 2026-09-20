@@ -27,6 +27,7 @@ impl<S: Store> Operation<S> for ReqDone {
             changed: vec!["done".into()],
             missing,
             next,
+            unresolved: Vec::new(),
             value: self.id,
         })
     }

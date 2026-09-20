@@ -37,6 +37,7 @@ impl<S: Store> Operation<S> for QuestionAdd {
             changed: vec!["created".into(), "decider".into(), "options".into()],
             missing,
             next,
+            unresolved: Vec::new(),
             value: id,
         })
     }

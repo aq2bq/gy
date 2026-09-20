@@ -48,6 +48,7 @@ impl<S: Store> Operation<S> for ReqAdd {
             changed: vec!["created".into(), "needs".into()],
             missing,
             next,
+            unresolved: Vec::new(),
             value: id,
         })
     }

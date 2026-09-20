@@ -50,6 +50,7 @@ impl<S: Store> Operation<S> for Link {
             changed: vec![if self.remove { "unlinked" } else { "linked" }.into()],
             missing: Vec::new(),
             next: Vec::new(),
+            unresolved: Vec::new(),
             value: self.from,
         })
     }

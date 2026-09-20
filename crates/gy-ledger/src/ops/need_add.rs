@@ -47,6 +47,7 @@ impl<S: Store> Operation<S> for NeedAdd {
             changed,
             missing,
             next,
+            unresolved: Vec::new(),
             value: id,
         })
     }

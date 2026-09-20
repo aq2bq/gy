@@ -33,6 +33,7 @@ impl<S: Store> Operation<S> for ReqRevise {
             changed: vec!["revised".into()],
             missing,
             next,
+            unresolved: Vec::new(),
             value: self.id,
         })
     }

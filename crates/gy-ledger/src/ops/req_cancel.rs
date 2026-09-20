@@ -33,6 +33,7 @@ impl<S: Store> Operation<S> for ReqCancel {
             changed: vec!["cancelled".into()],
             missing,
             next,
+            unresolved: Vec::new(),
             value: self.id,
         })
     }

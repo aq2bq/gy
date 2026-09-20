@@ -8,7 +8,8 @@ use serde::Serialize;
 use std::fmt::{self, Display};
 use std::path::Path;
 
-/// What a write prints: the id, and what it changed, is missing, and can follow.
+/// What a write prints: the id, and what it changed, is missing, can follow,
+/// and left unresolved.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Written {
     pub id: Option<String>,
@@ -20,6 +21,7 @@ pub struct Written {
     pub changed: Vec<String>,
     pub missing: Vec<String>,
     pub next: Vec<String>,
+    pub unresolved: Vec<String>,
 }
 impl Written {
     pub fn of<T>(outcome: &Outcome<T>) -> Self {
@@ -30,6 +32,7 @@ impl Written {
             changed: outcome.changed.clone(),
             missing: outcome.missing.clone(),
             next: outcome.next.clone(),
+            unresolved: outcome.unresolved.clone(),
         }
     }
     /// A creating write names its id line; the others return an id the caller
@@ -55,7 +58,8 @@ impl Display for Written {
         }
         writeln!(f, "changed: {}", self.changed.join(", "))?;
         writeln!(f, "missing: {}", self.missing.join(", "))?;
-        writeln!(f, "next: {}", self.next.join(", "))
+        writeln!(f, "next: {}", self.next.join(", "))?;
+        writeln!(f, "unresolved: {}", self.unresolved.join(", "))
     }
 }
 

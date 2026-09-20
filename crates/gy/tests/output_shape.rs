@@ -1,7 +1,8 @@
 //! A write's output shape is a contract (n-8a28, ac-27e6): a creating write
 //! prints `id: <ID>` first, a write that returns an id the caller knows keeps it
-//! bare, and either is followed by `changed:` / `missing:` / `next:` in that
-//! order. `--json` carries the same fields as top-level keys.
+//! bare, and either is followed by `changed:` / `missing:` / `next:` /
+//! `unresolved:` in that order. `--json` carries the same fields as top-level
+//! keys.
 mod common;
 
 use common::fixture;
@@ -20,12 +21,12 @@ fn ok(output: &Output) -> Vec<String> {
     common::stdout(output).lines().map(str::to_string).collect()
 }
 
-/// Check the four-line body every write shares and return the id line.
-fn four(output: &Output) -> String {
+/// Check the five-line body every write shares and return the id line.
+fn five(output: &Output) -> String {
     let lines = ok(output);
     assert!(
-        lines.len() == 4,
-        "{}: a write prints 4 lines, got {}: {:?}",
+        lines.len() == 5,
+        "{}: a write prints 5 lines, got {}: {:?}",
         SHAPE,
         lines.len(),
         lines
@@ -48,6 +49,12 @@ fn four(output: &Output) -> String {
         SHAPE,
         lines[3]
     );
+    assert!(
+        lines[4].starts_with("unresolved: "),
+        "{}: line 5 must start with `unresolved: `, got {:?}",
+        SHAPE,
+        lines[4]
+    );
     lines[0].clone()
 }
 
@@ -60,7 +67,7 @@ fn first_id(line: &str) -> String {
 
 /// A creating write: `id: <ID>`, or `id: <ID> (<ref>)` for a requirement.
 fn creating(output: &Output) -> String {
-    let line = four(output);
+    let line = five(output);
     let rest = line.strip_prefix("id: ").unwrap_or_else(|| {
         panic!(
             "{}: a creating write must print `id: <ID>` first, got {line:?}",
@@ -77,7 +84,7 @@ fn creating(output: &Output) -> String {
 
 /// A write that returns an id the caller knows: the bare id, no `id: ` label.
 fn bare(output: &Output) -> String {
-    let line = four(output);
+    let line = five(output);
     assert!(
         !line.starts_with("id: "),
         "{}: a non-creating write must keep the bare id, got {line:?}",
@@ -113,7 +120,7 @@ fn json_keys(output: &Output, extra: &[&str]) {
         .unwrap_or_else(|| panic!("{}: --json is not an object: {text:?}", SHAPE));
     let mut keys: Vec<&str> = object.keys().map(String::as_str).collect();
     keys.sort_unstable();
-    let mut expected = vec!["changed", "id", "missing", "next"];
+    let mut expected = vec!["changed", "id", "missing", "next", "unresolved"];
     expected.extend_from_slice(extra);
     expected.sort_unstable();
     assert_eq!(

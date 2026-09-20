@@ -43,6 +43,7 @@ impl<S: Store> Operation<S> for Decide {
             changed: changed(&self.closes, &self.relates),
             missing,
             next,
+            unresolved: Vec::new(),
             value: id,
         })
     }

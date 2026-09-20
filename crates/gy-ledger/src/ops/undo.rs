@@ -25,6 +25,7 @@ impl<S: Store> Operation<S> for Undo {
             changed: vec!["undone".into()],
             missing: Vec::new(),
             next,
+            unresolved: Vec::new(),
             value: (),
         })
     }

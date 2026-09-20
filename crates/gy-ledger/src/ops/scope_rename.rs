@@ -24,6 +24,7 @@ impl<S: Store> Operation<S> for ScopeRename {
             )],
             missing: Vec::new(),
             next: Vec::new(),
+            unresolved: Vec::new(),
             value: nodes,
         })
     }

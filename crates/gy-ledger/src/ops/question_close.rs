@@ -35,6 +35,7 @@ impl<S: Store> Operation<S> for QuestionClose {
             changed: vec!["closed".into()],
             missing,
             next,
+            unresolved: Vec::new(),
             value: self.id,
         })
     }
