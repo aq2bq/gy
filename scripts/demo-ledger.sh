@@ -6,7 +6,7 @@
 set -euo pipefail
 
 dir=$(mktemp -d "${TMPDIR:-/tmp}/gy-demo.XXXXXX")
-repo="$dir/repo"
+repo="$dir/orchard"
 data="$dir/data"
 mkdir -p "$repo" "$data" "$dir/bodies"
 printf 'output = "pub"\n\n[scopes.orchard]\n[scopes.billing]\n' > "$repo/gy.toml"
@@ -43,9 +43,6 @@ c3=$(oid criterion add "An import keeps the folder each bookmark came from")
 c4=$(oid criterion add "Deleting a list removes its shared links")
 c5=$(bid criterion add "An invoice shows the item count it charged for")
 c6=$(bid criterion add "A retry never charges the same list twice")
-oid criterion satisfy "$c1" --evidence "p95 241 ms over 50 runs on the CI machine" >/dev/null
-bid criterion satisfy "$c6" --evidence "the retry ledger shows one charge for each list id" >/dev/null
-
 # Questions: two for the master stay open, one closes by a decision, one for lead.
 q1=$(oid question add "Should a shared list be editable by the recipient?" --decider master \
   --options "Read only" --options "Edit by anyone with the link" \
@@ -86,16 +83,9 @@ n5=$(bid need add "Retry a failed charge safely" --targets "$c6" --spawned-by "$
 n6=$(bid need add "Charge for lists over 50 items" --targets "$c5" --targets "$c6")
 b need close "$n6" --by fact --evidence "the 50-item cap shipped and the invoice shows the count" >/dev/null
 
-# Requirements: one waits for the master, one is approved.
-r1=$(oid req add "Ship share-by-link for the beta" --need "$n1" \
-  --relies-on "$d1" --relies-on "$d3" --targets "$c1" --targets "$c2" \
-  --ref "https://example.com/orchard/issues/12")
-r2=$(bid req add "Bill for lists over 50 items" --need "$n4" --relies-on "$d2" \
-  --targets "$c5" --ref "https://example.com/orchard/issues/31")
-b req approve "$r2" --design "The count on the invoice is the number of shared lists at issue time." \
-  --heard-by "master" --evidence "approved in the billing review" >/dev/null
-
-# The why and the story, so the node pages read well.
+# The why and the story, so the node pages read well. Written before the
+# requirements: an approved requirement freezes its criteria (I2), so their
+# bodies must land first.
 body "$c1" "Measure the time to first render of a 1,000-item list on the CI machine."
 body "$c2" "Issue a token today and check it fails after seven days and works before."
 body "$c3" "Import a bookmark file and compare each folder with the source tree."
@@ -116,6 +106,19 @@ body "$n3" "Deleting a list must not leave a working share link behind."
 body "$n4" "The invoice is the only place a customer sees what they were charged for."
 body "$n5" "A timed-out charge must be safe to retry without a second charge."
 body "$n6" "Lists above the free limit are billed per shared list."
+
+# Requirements: one waits for the master, one is approved.
+r1=$(oid req add "Ship share-by-link for the beta" --need "$n1" \
+  --relies-on "$d1" --relies-on "$d3" --targets "$c1" --targets "$c2" \
+  --ref "https://example.com/orchard/issues/12")
+r2=$(bid req add "Bill for lists over 50 items" --need "$n4" --relies-on "$d2" \
+  --targets "$c5" --targets "$c6" --ref "https://example.com/orchard/issues/31")
+b req approve "$r2" --design "The count on the invoice is the number of shared lists at issue time." \
+  --heard-by "master" --evidence "approved in the billing review" >/dev/null
+# The two billing criteria r2 targets are met. Only an approved requirement's
+# criteria may be satisfied, so this waits for the approve above.
+b criterion satisfy "$c5" --evidence "the invoice lists every shared list at issue time" >/dev/null
+b criterion satisfy "$c6" --evidence "the retry ledger shows one charge for each list id" >/dev/null
 
 echo "ledger: $repo"
 echo "try: gy -C $repo serve"
