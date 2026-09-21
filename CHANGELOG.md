@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **The README opens for the person who decides to use gy** (n-8b94): two
+  sections now come before the reference, "What changes for you" (no
+  re-onboarding after a reset, any agent can be reset, a correction is one
+  sentence wide, and deciding stays with you) and "Try it" (one request to
+  your agent, and one line in `CLAUDE.md` or `AGENTS.md` that names the
+  `gy-loop` skill). The screenshots follow them. Both languages.
+
+### Fixed
+
+- **Three sentences in the README match 1.0.1** (n-8b94): gy makes network
+  calls only when a ledger is shared with a team, through git; `handover`
+  reports records that no longer fit together and does not judge whether
+  two decisions contradict in meaning; and the operations table says what
+  counts as a write and what as a read.
+
 ## 1.0.1 - 2026-09-21
 
 ### Added

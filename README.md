@@ -4,9 +4,34 @@
 
 English | [日本語](README.ja.md)
 
-gy records the state before a requirement is confirmed. It holds the needs, questions, decisions, requirements, and acceptance criteria that a piece of work rests on, as a graph of nodes and edges, with one way to use it and almost nothing to configure. Agents write it as they work, and `publish` writes the record to a file that is committed and read back later. The canonical ledger lives outside the repository, and gy makes no network calls.
+gy records the state before a requirement is confirmed. It holds the needs, questions, decisions, requirements, and acceptance criteria that a piece of work rests on, as a graph of nodes and edges, with one way to use it and almost nothing to configure. Agents write it as they work, and `publish` writes the record to a file that is committed and read back later. The canonical ledger lives outside the repository. gy makes no network calls unless you share the ledger with a team (experimental), and sharing goes through git.
 
-The screenshots show a demo ledger built by `scripts/demo-ledger.sh`; run it and `gy serve` to try the same.
+## What changes for you
+
+You do not operate gy; your agent does. What you get is the work that stops being yours.
+
+- **No re-onboarding.** After a reset you no longer type "here is the issue we are on, the process is in this file, last time we finished that PR, next is X". The agent starts from `gy handover` and `gy next`.
+- **Reset any agent at any time.** A lead, a requirements agent and an implementer can each be cleared without a handoff note, because none of them was holding the state.
+- **A correction is one sentence wide.** When you change your mind, or ask for something that contradicts what you said earlier, the new decision has to quote the passage of the old one that loses effect. The rest stays in force, and every later session sees that passage marked as retracted. gy does not find the contradiction for you: the agent meets the old decision because the work it picks up is linked to it.
+- **What stays with you is deciding.** Goals, needs, and the questions the agent brings back with options and a recommendation. The entry skill, `gy-loop`, opens with the same sentence: "A person cannot escape the critical decisions. gy frees them from everything else."
+
+This is the author's experience of daily use, not a guarantee. gy checks the record, not the work outside it.
+
+## Try it
+
+Two steps, both done by talking to your agent.
+
+1. Tell your agent once:
+
+   > Install gy with `cargo install gy --locked`, then copy the skills under the installed crate's `skills/` directory to where you read skills (Claude Code: `~/.claude/skills/`). "Install" and "Where the skills go" in gy's README have the paths.
+
+2. Add one line to the project's `CLAUDE.md` or `AGENTS.md`:
+
+   > This project tracks its progress in **gy**. Before you start or resume anything, read the `gy-loop` skill and follow the record.
+
+Then ask for work as you always do. The first time, the agent runs `gy init` and asks you two things once: whether you want to read and approve requirements yourself, and whether it should ask or go on when a need is unclear. After any reset it resumes from the record.
+
+To look at the record yourself, run `gy serve`. The screenshots show a demo ledger built by `scripts/demo-ledger.sh`; run it and `gy serve` to see one before you have your own.
 
 The now page
 
@@ -26,7 +51,7 @@ Work handed to an agent does not need to be read while it goes well. Because it 
 
 It shows at the end. A requirement has to be declared complete. A decision that earlier work relied on has been replaced without anyone noticing. Leftover work has to go somewhere. And the one person accountable is holding several projects at once and cannot read them all. None of the four happens while things go well. When one does, nobody remembers what the work was based on.
 
-gy exists for that end. It holds no plan and no schedule. It records what each piece of work rests on and what must hold before the work can be called done, and it reports where those records contradict each other. There is no `lint` pass to run later: an invalid write is refused when it is made, and what needs attention is counted by `handover`.
+gy exists for that end. It holds no plan and no schedule. It records what each piece of work rests on and what must hold before the work can be called done, and it reports where those records no longer fit together: a criterion left unmet after every need has closed, a question nobody waits on. It does not judge whether two decisions contradict in meaning. There is no `lint` pass to run later: an invalid write is refused when it is made, and what needs attention is counted by `handover`.
 
 ## The five nodes and twelve edges
 
@@ -78,6 +103,8 @@ The canonical ledger is an append-only event log outside the repository, under `
 `undo --reason <text>` inverts the last transaction as a new one, so the history keeps both the mistake and the correction. It undoes one transaction only; a second undo undoes the first undo (a redo). The log is the ledger; a snapshot file alongside it only speeds up opening and can be deleted.
 
 ## The twenty-six operations
+
+A write adds a transaction of your own to the ledger. Everything else is listed as a read, including the three that carry the ledger to and from a remote.
 
 Before the first write (1):
 
