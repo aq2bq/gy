@@ -227,7 +227,7 @@ The agent skills (`gy-loop`, the entry point, with the cheat sheet beside it; `g
 # from a checkout
 cp -R crates/gy/skills/gy-* ~/.agents/skills/
 # from the registry copy (match the version)
-cp -R ~/.cargo/registry/src/*/gy-1.0.0/skills/gy-* ~/.agents/skills/
+cp -R ~/.cargo/registry/src/*/gy-1.0.1/skills/gy-* ~/.agents/skills/
 ```
 
 A release that changed the skills says so under Updating in the changelog; copy them again when you move to that release, and check that your agent lists every gy skill afterwards: where an agent reads skills through per-skill links (for example `~/.claude/skills/gy-ledger` → `~/.agents/skills/gy-ledger`), a new skill needs a link of its own. When the ledger format moves up, gy prints one line to stderr right after the migration, pointing at the changelog's Updating section.

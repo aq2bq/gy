@@ -227,7 +227,7 @@ cargo install gy --locked
 # チェックアウトから
 cp -R crates/gy/skills/gy-* ~/.agents/skills/
 # レジストリの写しから（版を合わせる）
-cp -R ~/.cargo/registry/src/*/gy-1.0.0/skills/gy-* ~/.agents/skills/
+cp -R ~/.cargo/registry/src/*/gy-1.0.1/skills/gy-* ~/.agents/skills/
 ```
 
 スキルが変わった版は CHANGELOG の Updating にそう書いてあります。その版に上げたら写し直し、エージェントから gy のスキルが全部見えることを確かめてください。スキルごとのリンク（例: `~/.claude/skills/gy-ledger` → `~/.agents/skills/gy-ledger`）で読ませている場合は、増えたスキルのリンクを足す必要があります。記録の形式の版が上がったときは、gy が移行の直後に標準エラーへ 1 行で知らせ、CHANGELOG の Updating を指します。

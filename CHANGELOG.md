@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.1 - 2026-09-21
 
 ### Added
 
@@ -27,6 +27,15 @@
   same column and size as the other three entries' marks, and the ledger
   name beside the wordmark is a badge of its own, so it is noticed without
   being read as a scope or a kind.
+
+### Fixed
+
+- **The demo ledger builds with the current gy** (n-58c9):
+  `scripts/demo-ledger.sh`, the ledger the README's screenshots come from,
+  no longer stops on the rule that a criterion is met only through an
+  approved requirement. Its bodies and its approvals now come in an order
+  that rule allows, its root is `orchard`, and the README's screenshots
+  show the current interface.
 
 ## 1.0.0 - 2026-09-20
 
