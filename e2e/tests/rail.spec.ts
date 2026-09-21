@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import { start, type Ledger } from '../fixtures/ledger';
 
 let gy: Ledger;
@@ -28,6 +28,32 @@ test('the rail shows the ten newest writes, and only on a wide screen', async ({
   // Dragging the window back follows: the rows return.
   await page.setViewportSize({ width: 1600, height: 900 });
   await expect(rows).toHaveCount(10);
+});
+
+test('the four entries line up their marks and their labels', async ({ page }) => {
+  await page.goto(gy.url);
+  const marks = page.getByTestId('navMark');
+  const labels = page.getByTestId('navLabel');
+  await expect(marks).toHaveCount(4);
+  await expect(labels).toHaveCount(4);
+  const box = async (loc: Locator) => {
+    const found = await loc.boundingBox();
+    if (!found) throw new Error('the element has no box');
+    return found;
+  };
+
+  const mark = await box(marks.first());
+  const label = await box(labels.first());
+  for (let at = 1; at < 4; at++) {
+    expect(Math.abs((await box(marks.nth(at))).x - mark.x)).toBeLessThan(1);
+    expect(Math.abs((await box(labels.nth(at))).x - label.x)).toBeLessThan(1);
+    // The same size, measured at the box: the glyphs keep their own widths.
+    expect(Math.abs((await box(marks.nth(at))).width - mark.width)).toBeLessThan(1);
+  }
+
+  // The search's mark is for the eye only; the other three keep their names.
+  await expect(page.getByTestId('searchEntry').getByTestId('navMark')).toHaveAttribute('aria-hidden', 'true');
+  await expect(marks.first()).not.toHaveAttribute('aria-hidden', 'true');
 });
 
 test('the search entry lives in the sidebar, at every width', async ({ page }) => {

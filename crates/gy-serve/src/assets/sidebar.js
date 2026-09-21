@@ -3,6 +3,12 @@
    only the state it is handed. */
 (function () {
   const ENTRIES = [['#/', 'now', '◉'], ['#/graph', 'graph', '✦'], ['#/history', 'history', '≡']];
+  /* The search's magnifier (n-c795b1): an inline SVG, since the glyph is not in
+     every font; it sits in the same fixed mark box as the three above. */
+  const SEARCH_MARK =
+    '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">' +
+    '<circle cx="6.6" cy="6.6" r="4.6" fill="none" stroke="currentColor" stroke-width="1.6"/>' +
+    '<path d="M10.2 10.2 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
   const KINDS = ['Need', 'Question', 'Decision', 'Requirement', 'Criterion'];
   const EYE_COLOR = { wait: 'requirement', next: 'need', resume: 'decision' };
   const EYE_WORD = { wait: 'eyeWait', next: 'eyeNext', resume: 'eyeResume' };
@@ -38,7 +44,9 @@
     const route = state.route;
     const entry = ([href, key, mark]) => {
       const on = route.name === key;
-      return `<a href="${href}" class="${on ? 'on' : ''}">${mark} ${ui.t(key)}</a>`;
+      return `<a href="${href}" class="${on ? 'on' : ''}">` +
+        `<span class="m" data-testid="navMark">${mark}</span>` +
+        `<span class="l" data-testid="navLabel">${ui.t(key)}</span></a>`;
     };
     const kind = name => {
       const on = route.name === 'list' && route.arg === name;
@@ -49,7 +57,9 @@
     const nodes = (shell.scopes || []).reduce((sum, item) => sum + item.count, 0);
     el.querySelector('#nav').innerHTML =
       ENTRIES.map(entry).join('') +
-      `<button data-act="paletteOpen" data-testid="searchEntry">${ui.t('search')}` +
+      `<button data-act="paletteOpen" data-testid="searchEntry">` +
+      `<span class="m" data-testid="navMark" aria-hidden="true">${SEARCH_MARK}</span>` +
+      `<span class="l" data-testid="navLabel">${ui.t('search')}</span>` +
       `<span class="kbs"><kbd>⌘K</kbd><kbd>/</kbd></span></button>` +
       `<div class="h">${ui.t('nodes')}</div>` +
       KINDS.map(kind).join('') +

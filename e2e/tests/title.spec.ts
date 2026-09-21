@@ -29,11 +29,26 @@ test('the sidebar names the ledger on every page', async ({ page, request }) => 
   }
 });
 
-test('the ledger name still shows in a narrow window', async ({ page }) => {
-  await page.setViewportSize({ width: 900, height: 720 });
-  await page.goto(gy.url);
-  await expect(page.getByTestId('ledger')).toBeVisible();
-  await expect(page.getByTestId('ledger')).toHaveText(basename(gy.dir));
+test('the ledger name is a badge, at both widths', async ({ page }) => {
+  for (const width of [1600, 900]) {
+    await page.setViewportSize({ width, height: 720 });
+    await page.goto(gy.url);
+    const name = page.getByTestId('ledger');
+    await expect(name).toBeVisible();
+    await expect(name).toHaveText(basename(gy.dir));
+    await expect(page).toHaveTitle(`gy - ${basename(gy.dir)}`);
+
+    // A badge of its own: its own ground and edge, and neither a scope's pill
+    // nor a kind's badge (n-c795b1).
+    const style = await name.evaluate(el => {
+      const said = getComputedStyle(el);
+      return { border: said.borderTopWidth, background: said.backgroundColor, cls: el.className };
+    });
+    expect(style.border).not.toBe('0px');
+    expect(style.background).not.toBe('rgba(0, 0, 0, 0)');
+    expect(style.cls).not.toContain('sb');
+    expect(style.cls).not.toContain('k');
+  }
 });
 
 test('two ledgers name themselves apart', async ({ page }) => {

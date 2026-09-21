@@ -22,6 +22,11 @@
   the rail and the top bar is gone. The sidebar carries a single Search
   entry showing `⌘K` and `/`; pressing it opens the same palette as
   before, unchanged in its keys and its `/api/search`.
+- **The search entry wears a mark, and the ledger name a badge**
+  (n-c795b1): the sidebar's Search entry now carries a magnifier in the
+  same column and size as the other three entries' marks, and the ledger
+  name beside the wordmark is a badge of its own, so it is noticed without
+  being read as a scope or a kind.
 
 ## 1.0.0 - 2026-09-20
 
