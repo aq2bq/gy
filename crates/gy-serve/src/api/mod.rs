@@ -41,19 +41,43 @@ fn index(req: &Request, name: &str) -> Response {
     let ja = req
         .header("accept-language")
         .is_some_and(|value| value.trim_start().starts_with("ja"));
+    let ledger = escape_html(name);
     let title = if name.is_empty() {
         "gy".to_string()
     } else {
-        format!("gy - {}", escape_html(name))
+        format!("gy - {}", ledger)
     };
-    Response::html(
-        assets::index()
-            /* The fixed word first, the name last: a name cannot be caught by
-            a later replacement (a directory named `%LANG%` stays itself). */
-            .replace("%LANG%", if ja { "ja" } else { "en" })
-            .replace("%REPO%", env!("CARGO_PKG_REPOSITORY"))
-            .replace("%NAME%", &title),
-    )
+    /* The fixed words first, the name last: a name cannot be caught by a later
+    replacement (a directory named `%LANG%` stays itself). Both name slots
+    are filled in one pass (n-f500). */
+    let html = assets::index()
+        .replace("%LANG%", if ja { "ja" } else { "en" })
+        .replace("%REPO%", env!("CARGO_PKG_REPOSITORY"));
+    Response::html(fill_names(&html, &ledger, &title))
+}
+
+/// The sidebar's name (`%LEDGER%`) and the tab's (`%NAME%`) in one pass over
+/// the source: text just inserted is never read again, so a name may spell
+/// either placeholder and still show itself (n-f500).
+fn fill_names(html: &str, ledger: &str, title: &str) -> String {
+    let mut out = String::with_capacity(html.len());
+    let mut rest = html;
+    while let Some(at) = rest.find('%') {
+        out.push_str(&rest[..at]);
+        let tail = &rest[at..];
+        if let Some(after) = tail.strip_prefix("%LEDGER%") {
+            out.push_str(ledger);
+            rest = after;
+        } else if let Some(after) = tail.strip_prefix("%NAME%") {
+            out.push_str(title);
+            rest = after;
+        } else {
+            out.push('%');
+            rest = &tail[1..];
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
 /// What a name may not carry into the `<title>`: the four characters that could

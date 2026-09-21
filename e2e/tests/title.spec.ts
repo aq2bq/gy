@@ -16,3 +16,37 @@ test('the tab names the ledger directory', async ({ page }) => {
   await page.goto(gy.url);
   await expect(page).toHaveTitle(`gy - ${basename(gy.dir)}`);
 });
+
+test('the sidebar names the ledger on every page', async ({ page, request }) => {
+  const rows = (await (await request.get(`${gy.url}api/list?kind=Need`)).json()).rows;
+  const id = rows[0].id;
+  const title = `gy - ${basename(gy.dir)}`;
+  for (const route of ['#/', '#/list/Need', '#/graph', '#/history', `#/n/${id}`, '#/eye/wait']) {
+    await page.goto(`${gy.url}${route}`);
+    await expect(page).toHaveTitle(title);
+    // The visible name is the one the title carries, not another derivation.
+    await expect(page.getByTestId('ledger')).toHaveText(title.replace(/^gy - /, ''));
+  }
+});
+
+test('the ledger name still shows in a narrow window', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 720 });
+  await page.goto(gy.url);
+  await expect(page.getByTestId('ledger')).toBeVisible();
+  await expect(page.getByTestId('ledger')).toHaveText(basename(gy.dir));
+});
+
+test('two ledgers name themselves apart', async ({ page }) => {
+  const other = await start();
+  try {
+    await page.goto(gy.url);
+    const first = await page.getByTestId('ledger').innerText();
+    await page.goto(other.url);
+    const second = await page.getByTestId('ledger').innerText();
+    expect(first).toBe(basename(gy.dir));
+    expect(second).toBe(basename(other.dir));
+    expect(second).not.toBe(first);
+  } finally {
+    await other.stop();
+  }
+});

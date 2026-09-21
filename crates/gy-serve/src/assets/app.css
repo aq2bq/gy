@@ -33,7 +33,9 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .rail{display:none;position:sticky;top:0;height:100vh;overflow:auto;border-left:1px solid var(--line-soft);padding:22px 18px 110px}
 @media (min-width:1560px){.app{grid-template-columns:var(--side) minmax(0,1fr) var(--rail)}.rail{display:block}}
 .wordmark{font-family:var(--sans);font-weight:600;font-size:26px;letter-spacing:.06em;line-height:1;display:flex;align-items:baseline;gap:10px}
-.wordmark small{font-family:var(--mono);font-size:10px;color:var(--paper-3);letter-spacing:.12em}
+.wordmark small{font-family:var(--mono);font-size:12px;color:var(--paper-2);letter-spacing:.02em;
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wordmark small:empty{display:none}
 /* The three counts under the wordmark (d-3e8f). Each wears the colour of the
    now page's same column: waiting, next, in progress (n-4e5a). */
 .side .eyes3{display:flex;gap:6px;margin:2px 0 10px}

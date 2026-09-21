@@ -10,6 +10,11 @@
   state, so a redraw keeps it and another node opens at the whole figure.
   A peer's text, not only its rectangle, now shows the pointer cursor and
   opens the peer's page.
+- **The sidebar names the ledger it is showing** (n-f500): the directory
+  name in the tab's title now stands beside the wordmark on every page, so
+  two open ledgers are told apart on the screen and not only by their
+  tabs. It is the same name, escaped, and it is left out when there is
+  none.
 
 ## 1.0.0 - 2026-09-20
 
