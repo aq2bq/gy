@@ -215,14 +215,11 @@
     if (window.GyBand) window.GyBand.render(state, document.querySelector('.scrub'), ui);
   }
 
-  /* What the regions may use; read-only helpers and the elements palette needs
-     to place the search (it owns the frame, not its holders). */
+  /* What the regions may use: the read-only helpers and whether a copy mark is
+     possible. The elements themselves belong to the regions' own holders. */
   const ui = {
     t: word, plural, scopeTag, tickAt, when, day,
     canCopy: !!navigator.clipboard,
-    search: document.getElementById('searchbtn'),
-    railSearch: document.getElementById('railSearch'),
-    topbar: document.querySelector('.topbar'),
   };
 
   /* The camera's ease: the root's clock, the graph's curve (n-88b2). */

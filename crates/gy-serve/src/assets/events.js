@@ -43,6 +43,7 @@
     else if (act === 'listFilter') api.run({ type: 'listFilter', value: arg });
     else if (act === 'historyActor') api.run({ type: 'historyActor', value: arg || null });
     else if (act === 'copy') copy(api, arg);
+    else if (act === 'paletteOpen') api.run({ type: 'paletteOpen' });
     else if (act === 'paletteGo') goHit(api, Number(arg));
   }
 

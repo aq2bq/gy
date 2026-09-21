@@ -1,6 +1,6 @@
 /* The rail region (d-03ca, 第 2 段; was n-b963): the ten newest writes, drawn
-   inside #railBody from the state root read. The search beside it belongs to
-   the palette. */
+   inside #railBody from the state root read. The search lives in the sidebar
+   now (n-d0cc). */
 (function () {
   const FLASH = 1400;
 

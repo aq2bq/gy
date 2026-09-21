@@ -49,6 +49,8 @@
     const nodes = (shell.scopes || []).reduce((sum, item) => sum + item.count, 0);
     el.querySelector('#nav').innerHTML =
       ENTRIES.map(entry).join('') +
+      `<button data-act="paletteOpen" data-testid="searchEntry">${ui.t('search')}` +
+      `<span class="kbs"><kbd>⌘K</kbd><kbd>/</kbd></span></button>` +
       `<div class="h">${ui.t('nodes')}</div>` +
       KINDS.map(kind).join('') +
       `<div data-testid="scopes"><div class="h">${ui.t('scopes')}</div>` +

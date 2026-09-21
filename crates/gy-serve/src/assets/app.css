@@ -71,9 +71,9 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .live.off{background:var(--paper-3);box-shadow:none;animation:none}
 @media (prefers-reduced-motion: reduce){.live{animation:none}}
 .topbar{display:flex;align-items:center;gap:16px;padding:18px 32px 10px;position:sticky;top:0;z-index:5;background:linear-gradient(var(--ink) 75%,transparent)}
-.search{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:8px;padding:6px 12px;color:var(--paper-3);min-width:340px;cursor:text;font-size:14px}
-.topbar .search{margin-left:auto}
-.search kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 5px;margin-left:auto}
+/* The sidebar's search entry (n-d0cc): the one way in, with both shortcuts. */
+.nav .kbs{margin-left:auto;display:inline-flex;gap:4px;color:var(--paper-3)}
+.nav .kbs kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 5px}
 .crumb{font-family:var(--mono);font-size:12px;color:var(--paper-3);display:flex;gap:10px;align-items:center}
 .crumb a:hover{color:var(--paper)}
 main{padding:0 32px 150px;max-width:1280px}
@@ -82,5 +82,5 @@ main{padding:0 32px 150px;max-width:1280px}
 .cpb{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;padding:0;border:1px solid var(--line);border-radius:5px;background:transparent;color:var(--paper-3);font:inherit;font-size:11px;line-height:1;cursor:pointer;flex:none}
 .cpb:hover{color:var(--paper);border-color:var(--paper-3)}
 .cpb.on{color:var(--decision);border-color:var(--decision)}
-@media (max-width:900px){.app{grid-template-columns:1fr}.side{position:static;height:auto}.search{min-width:0;width:100%}}
+@media (max-width:900px){.app{grid-template-columns:1fr}.side{position:static;height:auto}}
 .pushmark{font-family:var(--mono);font-size:9px;font-style:normal;color:var(--criterion);margin-left:3px}

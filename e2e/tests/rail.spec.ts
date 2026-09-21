@@ -30,47 +30,46 @@ test('the rail shows the ten newest writes, and only on a wide screen', async ({
   await expect(rows).toHaveCount(10);
 });
 
-test('the search lives in the rail when wide and in the top bar when narrow', async ({ page }) => {
-  await page.setViewportSize({ width: 1600, height: 900 });
-  await page.goto(gy.url);
-  await expect(page.getByTestId('rail').getByTestId('search')).toHaveCount(1);
-  await expect(page.getByTestId('topbar').getByTestId('search')).toHaveCount(0);
-  await page.keyboard.press('Control+k');
-  await expect(page.getByTestId('palette')).toBeVisible();
-  await page.keyboard.press('Escape');
+test('the search entry lives in the sidebar, at every width', async ({ page }) => {
+  for (const width of [1600, 1152, 900]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(gy.url);
+    const entry = page.getByTestId('searchEntry');
+    await expect(entry).toBeVisible();
+    // The dead frames are gone from both the rail and the top bar.
+    await expect(page.getByTestId('search')).toHaveCount(0);
+    await expect(page.getByTestId('rail').getByTestId('search')).toHaveCount(0);
+    await expect(page.getByTestId('topbar').getByTestId('search')).toHaveCount(0);
+    await expect(entry).toContainText('⌘K');
+    await expect(entry).toContainText('/');
 
-  await page.setViewportSize({ width: 1152, height: 720 });
-  await expect(page.getByTestId('topbar').getByTestId('search')).toHaveCount(1);
-  await expect(page.getByTestId('rail').getByTestId('search')).toHaveCount(0);
-  await page.keyboard.press('Control+k');
-  await expect(page.getByTestId('palette')).toBeVisible();
-  await page.keyboard.press('Escape');
-
-  // One element moves: it is never doubled or dropped on the way.
-  await page.setViewportSize({ width: 1600, height: 900 });
-  await expect(page.getByTestId('search')).toHaveCount(1);
-  await expect(page.getByTestId('rail').getByTestId('search')).toHaveCount(1);
+    await entry.click();
+    await expect(page.getByTestId('palette')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('palette')).toBeHidden();
+  }
 });
 
-test('the search outlives the panel redraws a scope switch causes', async ({ page, request }) => {
+test('the search entry outlives the panel redraws a scope switch causes', async ({ page, request }) => {
   const errors: Error[] = [];
   page.on('pageerror', error => errors.push(error));
 
   await page.setViewportSize({ width: 1600, height: 900 });
   await page.goto(gy.url);
-  await expect(page.getByTestId('rail').getByTestId('search')).toHaveCount(1);
+  const entry = page.getByTestId('searchEntry');
+  await expect(entry).toHaveCount(1);
 
-  // Two switches: the panel is rewritten each time, and the fault only shows
-  // on the second one (n-1d12).
+  // Two switches: the nav is rewritten each time, and the fault used to show
+  // only on the second one (n-1d12).
   const shell = await (await request.get(`${gy.url}api/shell`)).json();
   const names: string[] = shell.scopes.map((item: { name: string }) => item.name);
   const scopes = page.getByTestId('scopes');
   await scopes.getByRole('button', { name: new RegExp(`^${names[0]}`) }).click();
-  await expect(page.getByTestId('search')).toHaveCount(1);
-  await expect(page.getByTestId('rail').getByTestId('search')).toHaveCount(1);
+  await expect(entry).toHaveCount(1);
   await scopes.getByRole('button', { name: new RegExp(`^${names[1]}`) }).click();
-  await expect(page.getByTestId('search')).toHaveCount(1);
-  await expect(page.getByTestId('rail').getByTestId('search')).toHaveCount(1);
+  await expect(entry).toHaveCount(1);
+  await entry.click();
+  await expect(page.getByTestId('palette')).toBeVisible();
   await expect(page.getByTestId('rail').getByText(/Live/)).toHaveCount(1);
 
   expect(errors).toEqual([]);

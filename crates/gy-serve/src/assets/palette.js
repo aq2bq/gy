@@ -1,28 +1,17 @@
-/* The palette region (d-03ca, 第 2 段; was n-5ca6): the search frame
-   (#searchbtn) and the overlay (#pal). It decides where the frame lives from
-   state.wide, moving the one element and never copying it. Keys arrive as
-   intents from the root. */
+/* The palette region (d-03ca, 第 2 段; was n-5ca6): the search overlay (#pal),
+   opened from the sidebar's one entry (n-d0cc). Keys arrive as intents from
+   the root. */
 (function () {
   const esc = text => String(text ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 
   function render(state, el, ui) {
-    if (!el || !ui.search) return;
-    place(state, ui);
-    const label = ui.search.querySelector('#searchlbl');
-    if (label) label.textContent = ui.t('searchLbl');
-
+    if (!el) return;
     el.classList.toggle('on', state.palette.open);
     const query = el.querySelector('#palq');
     if (query.value !== state.palette.query) query.value = state.palette.query;
     query.placeholder = ui.t('palPh');
     el.querySelector('#palhint').textContent = ui.t('palHint');
     el.querySelector('#palres').innerHTML = results(state, ui);
-  }
-
-  /* One element, moved to the rail's holder when wide, else the top bar. */
-  function place(state, ui) {
-    const holder = state.wide ? ui.railSearch : ui.topbar;
-    if (holder && ui.search.parentElement !== holder) holder.appendChild(ui.search);
   }
 
   function results(state, ui) {

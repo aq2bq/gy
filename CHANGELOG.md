@@ -16,6 +16,13 @@
   tabs. It is the same name, escaped, and it is left out when there is
   none.
 
+### Changed
+
+- **One search entry, in the sidebar** (n-d0cc): the dead search frame in
+  the rail and the top bar is gone. The sidebar carries a single Search
+  entry showing `⌘K` and `/`; pressing it opens the same palette as
+  before, unchanged in its keys and its `/api/search`.
+
 ## 1.0.0 - 2026-09-20
 
 ### Updating
