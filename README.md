@@ -104,7 +104,7 @@ The canonical ledger is an append-only event log outside the repository, under `
 
 ## The twenty-six operations
 
-A write adds a transaction of your own to the ledger. Everything else is listed as a read, including the three that carry the ledger to and from a remote.
+A write adds a transaction of your own to the ledger: it names who wrote and why, and `undo` applies to it. A read leaves the ledger as it is. Three operations are neither; they decide where the ledger lives.
 
 Before the first write (1):
 
@@ -112,7 +112,7 @@ Before the first write (1):
 | --- | --- |
 | `init <scope>` | Start a repository here: write `gy.toml` with one scope, then name the skill to read and the first node to file. A `gy.toml` already here is reported, not touched |
 
-Reads (9):
+Reads (6):
 
 | Operation | Result |
 | --- | --- |
@@ -121,10 +121,17 @@ Reads (9):
 | `next` | The needs whose prerequisites are settled |
 | `handover` | In-progress requirements and the counts a session needs to resume |
 | `publish [--scope] [--since] [--out]` | Write the record at a point and range into a directory: one file per node and a scope index |
+| `serve` | Read the ledger in a browser, on 127.0.0.1 (GET only, no write path), until stopped. It opens the browser when started from a terminal |
+
+Where the ledger lives (3, experimental):
+
+These exist only for sharing with a team. With no `remote` in `gy.toml`, none of them is ever used and gy stays local. They change things outside the ledger's own history: `share` writes `gy.toml` and uploads the ledger, and `sync` pushes commits.
+
+| Operation | Result |
+| --- | --- |
 | `share <URL>` | Start sharing (experimental): check the remote, write `remote` into `gy.toml`, upload the ledger, print the protection and the invitation |
 | `join` | Join (experimental): check what you need with the fixes, fetch the copy, say who you write as and what is next; harmless to repeat |
 | `sync` | Sync with the remote (experimental): fetch a missing copy, push unpushed writes one commit each, take in a remote that moved ahead and re-seat your writes; on failure, say why and what to do |
-| `serve` | Read the ledger in a browser, on 127.0.0.1 (GET only, no write path), until stopped. It opens the browser when started from a terminal |
 
 Writes (16):
 

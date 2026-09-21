@@ -19,6 +19,20 @@
   two decisions contradict in meaning; and the operations table says what
   counts as a write and what as a read.
 
+- **`share`, `join` and `sync` are no longer listed as reads** (n-5a85,
+  reported by a reader): the operation tables in both READMEs and the
+  cheat sheet now have a group of their own for them, "Where the ledger
+  lives". They are neither reads nor writes of the ledger: `share` writes
+  `gy.toml` and uploads the ledger, and `sync` pushes commits. With no
+  `remote` in `gy.toml`, none of the three is ever used and gy stays
+  local. The operations themselves are unchanged, and there are still
+  twenty-six.
+
+### Updating
+
+The cheat sheet beside the `gy-loop` skill changed (the grouping above).
+Copy the bundled skills again after you install this release.
+
 ## 1.0.1 - 2026-09-21
 
 ### Added
