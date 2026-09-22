@@ -4,54 +4,101 @@
 
 English | [日本語](README.ja.md)
 
-gy records the state before a requirement is confirmed. It holds the needs, questions, decisions, requirements, and acceptance criteria that a piece of work rests on, as a graph of nodes and edges, with one way to use it and almost nothing to configure. Agents write it as they work, and `publish` writes the record to a file that is committed and read back later. The canonical ledger lives outside the repository. gy makes no network calls unless you share the ledger with a team (experimental), and sharing goes through git.
+## What is gy?
 
-## What changes for you
+gy aims to free you from the chores of "telling the AI the context it needs, and organizing that context so it gets across", so that you finish your work sooner and go home earlier.
+Concretely, it takes the large amount of context that arises "after the need, before the deliverable" and holds it, together with strict invariants, as a graph of the following nodes and edges.
 
-You do not operate gy; your agent does. What you get is the work that stops being yours.
+```mermaid
+flowchart LR
+  N[Need]
+  Q[Question]
+  D[Decision]
+  R[Requirement]
+  AC[Acceptance criterion]
+  N -- spawned-by --> D
+  N -- filed-as --> R
+  N -- waits-on --> Q
+  N -- waits-on --> R
+  N -- depends-on --> N
+  N -- targets --> AC
+  R -- targets --> AC
+  R -- relies-on --> D
+  R -- raised --> Q
+  Q -- closes --> D
+  D -- "narrows /<br> widens /<br> supersedes /<br> completes" --> D
+```
 
-- **No re-onboarding.** After a reset you no longer type "here is the issue we are on, the process is in this file, last time we finished that PR, next is X". The agent starts from `gy handover` and `gy next`.
-- **Reset any agent at any time.** A lead, a requirements agent and an implementer can each be cleared without a handoff note, because none of them was holding the state.
-- **A correction is one sentence wide.** When you change your mind, or ask for something that contradicts what you said earlier, the new decision has to quote the passage of the old one that loses effect. The rest stays in force, and every later session sees that passage marked as retracted. gy does not find the contradiction for you: the agent meets the old decision because the work it picks up is linked to it.
-- **What stays with you is deciding.** Goals, needs, and the questions the agent brings back with options and a recommendation. The entry skill, `gy-loop`, opens with the same sentence: "A person cannot escape the critical decisions. gy frees them from everything else."
+Using it is simple:
 
-This is the author's experience of daily use, not a guarantee. gy checks the record, not the work outside it.
+1. Make the AI aware of gy
+   (a skill named `gy-loop` is bundled, so telling it "from today, let's work along gy-loop" is enough)
+2. Tell it what you want to do and why it is needed
 
-## Try it
+That is all. From then on, even in a new session, ask the AI "what's next?" and it tells you what to do next.
+Details come later, but the moment gy helps most is when you overturn one of your own past decisions.
 
-Two steps, both done by talking to your agent.
+## How to use
 
-1. Tell your agent once:
+### Install
 
-   > Install gy with `cargo install gy --locked`, then copy the skills under the installed crate's `skills/` directory to where you read skills (Claude Code: `~/.claude/skills/`). "Install" and "Where the skills go" in gy's README have the paths.
+```sh
+cargo install gy
 
-2. Add one line to the project's `CLAUDE.md` or `AGENTS.md`:
+# optional (the quick way to tell the AI about `gy`)
+npx skills add aq2bq/gy
+```
 
-   > This project tracks its progress in **gy**. Before you start or resume anything, read the `gy-loop` skill and follow the record.
+### Telling the AI about gy
 
-Then ask for work as you always do. The first time, the agent runs `gy init` and asks you two things once: whether you want to read and approve requirements yourself, and whether it should ask or go on when a need is unclear. After any reset it resumes from the record.
+Put a sentence like the following in a prompt or in AGENTS.md / CLAUDE.md so it gets across, and the AI agent resumes from `gy handover` and `gy next` every time.
 
-To look at the record yourself, run `gy serve`. The screenshots show a demo ledger built by `scripts/demo-ledger.sh`; run it and `gy serve` to see one before you have your own.
+```
+This project tracks its progress in gy. Before you start or resume anything, read the gy-loop skill and follow the record.
+```
 
-The now page
+### Where the record itself lives
+
+The record itself is saved by default under `$XDG_DATA_HOME/gy/<hash of the repository root>/`. Unless you set up team sharing (described below), gy never goes out to the network. Putting it inside the project's repository is not recommended, because the cycle of changes "after the need, before the deliverable" and the cycle of changes to the deliverable are completely different.
+
+### [EXPERIMENTAL] Using gy as a team / putting the record on a remote
+
+Still experimental, but
+
+```shell
+gy share https://github.com/you/yourproject-gy.git
+```
+
+sets a remote repository, and from then on `gy sync` is called in the background to keep it in sync. To share gy with other members, share the repository and have them run `gy join`. That is all.
+
+#### About EXPERIMENTAL
+
+- I built this feature over a holiday week, so the author has not used it with a team
+- More than whether the sync mechanism works, I expect it will not go well without some discipline that gy cannot cover
+
+## Mental model: "leave the project's context to gy, and face the decisions yourself"
+
+- The explanation at every resume goes away. After resetting a session you no longer write "we are at this issue, the process is in this file, last time we finished this PR, next is X". The agent starts from `gy handover` and `gy next`.
+- On "how much, and what, to tell the AI" when conveying a need: telling it in detail leads to the questions and the acceptance criteria being on the table early, and telling it "a rough fantasy for now" leads to a way of working where the necessary decisions are postponed. In the end, the number of decisions needed does not change.
+- When you overturn a past decision, the new decision cannot be written without quoting which part of the old decision loses effect. The mark goes on the quoted passage only, and the rest stays in force. gy does not find the contradiction for you. Because the work being picked up is connected to that decision node by edges, the AI can understand which decisions are in force.
+
+What remains for the human is deciding, and only deciding. Goals and needs, and answers to the questions and options the AI presents. The first line of `gy-loop` says the same: "A person cannot escape the critical decisions. gy frees them from everything else."
+
+## The view for humans: gy serve
+
+To look at the record yourself, use `gy serve`. The screenshots show a demo ledger built by `scripts/demo-ledger.sh`. Before you have a record of your own, run it and `gy serve` to see the same.
+
+### Now
 
 <img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-now-en.png" alt="The now page" width="100%">
 
-The fractal graph
+### Graph
 
 <img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-graph-en.png" alt="The fractal graph" width="100%">
 
-One node
+### Node detail
 
 <img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-node-en.png" alt="One node" width="100%">
-
-## What gy is for
-
-Work handed to an agent does not need to be read while it goes well. Because it is not read, it stops being read. How far the work gets then depends on how much fits in the context window, how large the target is, and how strong the model is, and none of that shows while things go well.
-
-It shows at the end. A requirement has to be declared complete. A decision that earlier work relied on has been replaced without anyone noticing. Leftover work has to go somewhere. And the one person accountable is holding several projects at once and cannot read them all. None of the four happens while things go well. When one does, nobody remembers what the work was based on.
-
-gy exists for that end. It holds no plan and no schedule. It records what each piece of work rests on and what must hold before the work can be called done, and it reports where those records no longer fit together: a criterion left unmet after every need has closed, a question nobody waits on. It does not judge whether two decisions contradict in meaning. There is no `lint` pass to run later: an invalid write is refused when it is made, and what needs attention is counted by `handover`.
 
 ## The five nodes and twelve edges
 
@@ -98,7 +145,7 @@ gy holds nothing about the work after approval except these four records. Where 
 
 ## Where the ledger lives
 
-The canonical ledger is an append-only event log outside the repository, under `$XDG_DATA_HOME/gy/<hash of the repository root>/`. The repository itself holds only `gy.toml`. Every write is one transaction appended to the log with the sequence number, time, actor, reason, and source; nothing is edited in place.
+The canonical ledger is an append-only event log. The repository itself holds only `gy.toml`. Every write is one transaction appended to the log with the sequence number, time, actor, reason, and source; nothing is edited in place.
 
 `undo --reason <text>` inverts the last transaction as a new one, so the history keeps both the mistake and the correction. It undoes one transaction only; a second undo undoes the first undo (a redo). The log is the ledger; a snapshot file alongside it only speeds up opening and can be deleted.
 
@@ -162,7 +209,7 @@ A node's `created`, a criterion's `satisfied_at` and a requirement's recorded da
 
 ## Resuming a session
 
-A new session starts with three commands. `handover` shows the in-progress requirements with their references, the number of open questions, the number of ready needs, and the errors and warning counts. `next` lists the needs whose prerequisites are settled, and the agent presents one of them to the person it works for. `show` reads one node in full.
+A new session starts with three commands. `handover` shows the in-progress requirements with their references, the number of open questions, the number of ready needs, and the errors and warning counts. `next` lists the needs whose prerequisites are settled, and the agent presents one of them to the person it works for. `show` reads one node in full. There is no `lint` pass to run later: an invalid write is refused when it is made, and what needs attention is counted by `handover`.
 
 ```sh
 gy handover
@@ -242,29 +289,6 @@ A node file holds the id with its old aliases and reference, the title, scope, c
 The index holds the generated time, the log sequence, the scope and range, the writer, and the canonical location; a short "how to read" section; a per-kind list with a link and state for each node; the write history; and the diagnostics.
 
 `--out` names the output directory, `gy.toml`'s `output` names a default, and without either publish is an error. Only the target scopes' directories are removed and rewritten; other files under `--out` and other scope directories are left alone.
-
-## Install
-
-```sh
-cargo install gy --locked
-```
-
-From a checkout, run `cargo install --path crates/gy --locked`. The binary is `gy`.
-
-Coming from 0.4, move the ledger once; [docs/migration-0.5.md](docs/migration-0.5.md) has the command and what cannot be carried over.
-
-## Where the skills go
-
-The agent skills (`gy-loop`, the entry point, with the cheat sheet beside it; `gy-ledger`, `gy-question`, `gy-decide`) ship inside the crate under `skills/`, but `cargo install` does not place them. Copy them to where your agent reads skills (for example `~/.agents/skills`).
-
-```sh
-# from a checkout
-cp -R crates/gy/skills/gy-* ~/.agents/skills/
-# from the registry copy (match the version)
-cp -R ~/.cargo/registry/src/*/gy-1.0.1/skills/gy-* ~/.agents/skills/
-```
-
-A release that changed the skills says so under Updating in the changelog; copy them again when you move to that release, and check that your agent lists every gy skill afterwards: where an agent reads skills through per-skill links (for example `~/.claude/skills/gy-ledger` → `~/.agents/skills/gy-ledger`), a new skill needs a link of its own. When the ledger format moves up, gy prints one line to stderr right after the migration, pointing at the changelog's Updating section.
 
 ## Development
 

@@ -4,12 +4,16 @@
 
 ### Changed
 
-- **The README opens for the person who decides to use gy** (n-8b94): two
-  sections now come before the reference, "What changes for you" (no
-  re-onboarding after a reset, any agent can be reset, a correction is one
-  sentence wide, and deciding stays with you) and "Try it" (one request to
-  your agent, and one line in `CLAUDE.md` or `AGENTS.md` that names the
-  `gy-loop` skill). The screenshots follow them. Both languages.
+- **The README opens with the author's own words** (n-8b94, n-a7a1): the
+  sections before the reference are now written by the author in Japanese
+  and translated into English: what gy is for, how to use it (`cargo
+  install gy`, `npx skills add aq2bq/gy`, and one line in `CLAUDE.md` or
+  `AGENTS.md` that names the `gy-loop` skill), the mental model, and the
+  viewer. A mermaid flowchart shows the five nodes and twelve edges. The
+  sections "What gy is for", "Install" and "Where the skills go" are gone;
+  their facts moved into the sections above or into "Resuming a session".
+  The Japanese README now says エッジ, タイトル, 適用範囲, and 立てる /
+  提出済み where it said 辺, 題, 成立範囲, and 起票.
 
 ### Fixed
 
