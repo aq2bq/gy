@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.0 - 2026-09-22
 
 ### Added
 
@@ -69,16 +69,20 @@
 
 ### Updating
 
-The cheat sheet and the skills beside `gy-loop` changed (the grouping above,
-and the `remote` group). Copy the bundled skills again after you install this
-release. The old top-level names `share`, `join` and `sync` still work but are
-deprecated; use `gy remote set`, `gy remote join` and `gy remote sync`.
+Nothing has to be done to a ledger: the storage format, `gy.toml` and every
+command's behaviour are unchanged.
+
+The bundled skills and the cheat sheet changed, so copy them again after you
+install this release (see "Where the skills go" in the README). They name the
+`remote` group and the wiki.
+
+The old top-level `share`, `join` and `sync` still work and print one line on
+stderr saying what to use instead; they are gone from `--help` and will be
+removed in a later version. `publish --since` is accepted and has no effect.
 
 The output of `publish` changed shape (see Added and Changed). There is no
 migration: the next `publish` rewrites each target scope's directory, so a
 publication kept under version control shows the whole change in one diff.
-Copy the bundled skills again after you install this release, since the cheat
-sheet names the wiki.
 
 ## 1.0.1 - 2026-09-21
 
