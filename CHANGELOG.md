@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **The documents say what a creating write prints** (n-d159): `req add` with
+  a `--ref` prints `id: <ID> (<ref>)`, which the READMEs and the cheat sheet
+  did not say; they said only `id: <ID>`. They now also say to read an id from
+  `--json` rather than from that line. The output itself is unchanged.
+
 ## 1.1.0 - 2026-09-22
 
 ### Added

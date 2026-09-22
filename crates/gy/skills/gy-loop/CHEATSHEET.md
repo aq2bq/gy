@@ -1,6 +1,6 @@
 gy keeps the state of work, up to the point a requirement is confirmed, as a graph. Every write is appended as one transaction, and an invalid write is refused when it is made.
 
-A write that creates a node (`need add` / `question add` / `criterion add` / `decide` / `req add`) prints `id: <ID>` first. Other writes answer with the ID you already know. A flag shown with `...` takes one value each time: repeat the flag (`--targets A --targets B`). Every write then prints `changed:`, `missing:`, `next:` and `unresolved:`, empty where it has nothing to say; `unresolved` names a `narrows` / `supersedes` mark an edit left without its passage.
+A write that creates a node (`need add` / `question add` / `criterion add` / `decide` / `req add`) prints `id: <ID>` first, and `req add` with a `--ref` prints `id: <ID> (<ref>)`. Read the id from `--json` rather than from that line. Other writes answer with the ID you already know. A flag shown with `...` takes one value each time: repeat the flag (`--targets A --targets B`). Every write then prints `changed:`, `missing:`, `next:` and `unresolved:`, empty where it has nothing to say; `unresolved` names a `narrows` / `supersedes` mark an edit left without its passage.
 
 Starting a repository:
   gy init <scope>                                      write gy.toml with one scope here; a gy.toml already here is reported, not touched
