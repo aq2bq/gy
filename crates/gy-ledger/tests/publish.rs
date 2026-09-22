@@ -81,7 +81,7 @@ fn wiki() -> Publication {
         &mut repo,
         &[built, loose, need, requirement, raised, decision],
     );
-    publish(&repo, Some(SCOPE)).unwrap()
+    publish(&repo, Some(SCOPE), None, "", "").unwrap()
 }
 
 fn paths(publication: &Publication) -> Vec<String> {
@@ -106,18 +106,13 @@ fn file<'a>(publication: &'a Publication, path: &str) -> &'a str {
 }
 
 #[test]
-fn only_needs_and_decisions_get_pages() {
+fn every_node_of_the_scope_is_readable_in_full() {
     let publication = wiki();
     assert_eq!(
         paths(&publication),
-        ["d-0006.md", "loose.md", "n-0003.md"],
-        "no per-kind directories, one page per vertex"
+        ["README.md", "d-0006.md", "loose.md", "n-0003.md"],
+        "the entry, one page per vertex, and the loose nodes"
     );
-}
-
-#[test]
-fn every_node_of_the_scope_is_readable_in_full() {
-    let publication = wiki();
     let text: String = publication
         .scopes
         .iter()
@@ -136,28 +131,24 @@ fn a_need_page_carries_front_matter_and_expands_what_it_reaches() {
     assert!(
         page.starts_with(
             "---\nid: n-0003\nkind: need\nstate: open\nscope: a\ncreated: 2026-09-15\n\
-             targets: [ac-0001]\nfiled_as: [r-0004]\nspawned_by: [d-0006]\n---\n\n# a need\n\n"
+             targets: [ac-0001]\nfiled_as: [r-0004]\nspawned_by: [d-0006]\n---\n\n# a need\n\n\
+             [← All of it](README.md)\n\n"
         ),
         "{page}"
     );
-    assert!(page.contains("## What it comes from"), "{page}");
-    assert!(page.contains("## What must hold"), "{page}");
-    assert!(
-        page.contains("#### <a id=\"ac0001\"></a>Criterion `ac-0001` — a criterion"),
-        "{page}"
-    );
-    assert!(page.contains("- Not met yet"), "{page}");
-    assert!(page.contains("## What was built"), "{page}");
-    assert!(
-        page.contains("#### <a id=\"r0004\"></a>Requirement `r-0004` — a requirement"),
-        "{page}"
-    );
-    assert!(page.contains("- State: **filed**"), "{page}");
-    assert!(page.contains("## What it raised"), "{page}");
-    assert!(
-        page.contains("#### <a id=\"q0005\"></a>Question `q-0005` — a raised question"),
-        "{page}"
-    );
+    for marker in [
+        "## What it comes from",
+        "## What must hold",
+        "#### <a id=\"ac0001\"></a>Criterion `ac-0001` — a criterion",
+        "- Not met yet",
+        "## What was built",
+        "#### <a id=\"r0004\"></a>Requirement `r-0004` — a requirement",
+        "- State: **filed**",
+        "## What it raised",
+        "#### <a id=\"q0005\"></a>Question `q-0005` — a raised question",
+    ] {
+        assert!(page.contains(marker), "missing {marker}:\n{page}");
+    }
 }
 
 #[test]
@@ -182,7 +173,7 @@ fn two_vertices_sharing_a_node_both_show_it_and_say_so() {
     second.link(link(&second, Relation::Targets, &shared));
     seed(&mut repo, &[shared, first, second]);
 
-    let publication = publish(&repo, Some(SCOPE)).unwrap();
+    let publication = publish(&repo, Some(SCOPE), None, "", "").unwrap();
     let first_page = file(&publication, "n-0002.md");
     let second_page = file(&publication, "n-0003.md");
     assert!(first_page.contains("ac-0001"), "{first_page}");
@@ -209,24 +200,15 @@ fn a_node_no_page_reaches_goes_to_loose() {
 #[test]
 fn a_narrowed_passage_is_marked_for_markdown() {
     let mut repo = repo();
-    let old = Node::decision(
-        id(NodeKind::Decision, "0007"),
-        SCOPE,
-        DATE,
-        "the old decision",
-        DecisionScope::recorded("the read scope and an expiry").unwrap(),
-    )
-    .unwrap();
+    let old = decision("0007", "the old decision");
     let mut new = decision("0008", "the new decision");
-    new.link(
-        link(&new, Relation::Narrows, &old).with_mark(Some("the read scope and an expiry".into())),
-    );
+    new.link(link(&new, Relation::Narrows, &old).with_mark(Some("applies at dawn".into())));
     seed(&mut repo, &[old, new]);
 
-    let publication = publish(&repo, Some(SCOPE)).unwrap();
+    let publication = publish(&repo, Some(SCOPE), None, "", "").unwrap();
     let page = file(&publication, "d-0007.md");
     assert!(
-        page.contains("~~the read scope and an expiry~~ *(retracted by d-0008)*"),
+        page.contains("~~applies at dawn~~ *(retracted by d-0008)*"),
         "{page}"
     );
     assert!(page.contains("- Narrowed by"), "{page}");
@@ -240,8 +222,8 @@ fn another_scope_is_plain_text_not_a_link() {
     need.link(link(&need, Relation::DependsOn, &elsewhere));
     seed(&mut repo, &[elsewhere, need]);
 
-    let publication = publish(&repo, Some(SCOPE)).unwrap();
-    assert_eq!(paths(&publication), ["n-0002.md"]);
+    let publication = publish(&repo, Some(SCOPE), None, "", "").unwrap();
+    assert_eq!(paths(&publication), ["README.md", "n-0002.md"]);
     let page = file(&publication, "n-0002.md");
     assert!(page.contains("*(in b)*"), "{page}");
     assert!(!page.contains("](n-0001.md)"), "{page}");
@@ -254,5 +236,63 @@ fn two_runs_are_byte_identical() {
     assert_eq!(paths(&first), paths(&second));
     for path in paths(&first) {
         assert_eq!(file(&first, &path), file(&second, &path), "{path}");
+    }
+}
+
+#[test]
+fn the_entry_names_the_counts_the_seq_and_the_lists() {
+    let publication = wiki();
+    let readme = file(&publication, "README.md");
+    assert!(readme.starts_with("# a\n\n"), "{readme}");
+    assert!(readme.contains("6 nodes, read as 2 pages"), "{readme}");
+    assert!(readme.contains("seq: 1\n"), "{readme}");
+    for marker in [
+        "## Undecided",
+        "## Being built",
+        "## Latest",
+        "## Decisions (1)",
+        "## Needs (1)",
+    ] {
+        assert!(readme.contains(marker), "missing {marker}:\n{readme}");
+    }
+    for bullet in [
+        "- [`q-0005` a raised question](n-0003.md#q0005)",
+        "- [`r-0004` a requirement](n-0003.md#r0004)",
+        "- [`d-0006` a decision](d-0006.md)",
+        "- 2026-09-15 — [`n-0003` a need](n-0003.md)",
+        "- [On their own](loose.md)",
+    ] {
+        assert!(
+            readme.contains(&format!("\n{bullet}")),
+            "not a list item: {bullet}"
+        );
+    }
+    for absent in ["How to read", "## History", "## Diagnostics"] {
+        assert!(
+            !readme.contains(absent),
+            "{absent} is in the entry:\n{readme}"
+        );
+    }
+}
+
+#[test]
+fn every_page_links_back_to_the_entry() {
+    let publication = wiki();
+    for file in publication.scopes.iter().flat_map(|scope| &scope.files) {
+        if file.path == "README.md" {
+            continue;
+        }
+        assert!(
+            file.text.contains("[← All of it](README.md)"),
+            "{} has no way back",
+            file.path
+        );
+    }
+    for (path, title) in [("n-0003.md", "# a need"), ("loose.md", "# On their own")] {
+        let text = file(&publication, path);
+        assert!(
+            text.contains(&format!("{title}\n\n[← All of it](README.md)\n")),
+            "{path} does not link back after its title:\n{text}"
+        );
     }
 }

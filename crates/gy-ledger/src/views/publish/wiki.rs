@@ -1,9 +1,5 @@
-//! The wiki's context (n-b6c9, d-d82b): every node's projection, and, per
-//! scope, which page shows which node. The owner of a node is the vertex whose
-//! page expands it in full — a need's targets / filed-as / raised / waits-on,
-//! or a decision's closed-by. A relation that only refers (a requirement's
-//! relies-on, the reverse of spawned-by) does not make a page its owner, so a
-//! node left over falls to `loose.md` and never goes missing.
+//! The wiki's context (n-b6c9, d-d82b): every node's projection and, per scope,
+//! the vertex whose page expands it in full; a leftover node falls to `loose.md`.
 use super::super::retraction::{Narrowed, Retraction};
 use super::super::show::{EdgeLine, Shown};
 use super::{FileEntry, is_inline, is_vertex};
@@ -29,10 +25,15 @@ impl Wiki {
     pub(super) fn get(&self, id: &str) -> Option<&Shown> {
         self.nodes.get(id)
     }
-    /// The files of one scope: one page per need and decision, then `loose.md`.
-    pub(super) fn files(&self, name: &str) -> Vec<FileEntry> {
+    /// The files of one scope: the entry README, a page per need and decision,
+    /// then `loose.md`.
+    pub(super) fn files(&self, name: &str, seq: u64) -> Vec<FileEntry> {
         let scope = Scope::new(self, name);
-        let mut files = Vec::new();
+        let loose = super::loose::loose_page(&scope);
+        let mut files = vec![FileEntry {
+            path: "README.md".to_string(),
+            text: super::home::readme(&scope, seq, loose.is_some()),
+        }];
         for vertex in &scope.order {
             let node = self.get(vertex).expect("a vertex is a node");
             let text = match node.kind {
@@ -45,7 +46,7 @@ impl Wiki {
                 text,
             });
         }
-        if let Some(text) = super::loose::loose_page(&scope) {
+        if let Some(text) = loose {
             files.push(FileEntry {
                 path: "loose.md".to_string(),
                 text,
@@ -97,6 +98,10 @@ impl<'a> Scope<'a> {
     pub(super) fn all_ids(&self) -> &[String] {
         &self.wiki.order
     }
+    /// The vertices that have pages, in repository order.
+    pub(super) fn vertices(&self) -> &[String] {
+        &self.order
+    }
     /// The edges of one node that carry a given name, both directions.
     pub(super) fn edges(&self, id: &str, name: &str) -> Vec<&EdgeLine> {
         self.wiki.get(id).map_or_else(Vec::new, |node| {
@@ -146,9 +151,13 @@ impl<'a> Scope<'a> {
             Some(page) => format!("[`{id}` {title}]({page}{})", anchor(self.wiki.get(id))),
         }
     }
-    /// A page's opening: the front matter, then the title.
+    /// A page's opening: the front matter, the title, then the way back.
     pub(super) fn page_head(&self, node: &Shown) -> String {
-        format!("{}# {}\n\n", front_matter(node), node.title)
+        format!(
+            "{}# {}\n\n[← All of it](README.md)\n\n",
+            front_matter(node),
+            node.title
+        )
     }
     /// The text with its narrowed passages marked the Markdown way (d-bde9).
     pub(super) fn marked(&self, node: &Shown, text: &str) -> String {
@@ -197,7 +206,7 @@ fn edge_ids(wiki: &Wiki, id: &str, name: &str) -> Vec<String> {
 }
 
 /// The anchor a link to an inline node uses; a vertex page needs none.
-fn anchor(node: Option<&Shown>) -> String {
+pub(super) fn anchor(node: Option<&Shown>) -> String {
     match node {
         Some(node) if !is_vertex(node.kind) => format!("#{}", node.id.replace('-', "")),
         _ => String::new(),

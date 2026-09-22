@@ -2,7 +2,27 @@
 
 ## Unreleased
 
+### Added
+
+- **`publish` writes a Markdown wiki** (n-b6c9, n-a391, d-90a1, d-50d1): the
+  record is now reading matter for the person on GitHub, not a development
+  artifact. One directory per scope with an entry `README.md` and a page per
+  need and per decision; the criteria, requirements and questions each vertex
+  reaches are shown in full on its page, and the nodes no need and no decision
+  reaches go to `loose.md`. The entry lists the open questions, the work being
+  built, the newest vertices, and every decision and need as links, and carries
+  the record's `seq`. Every page links back to the entry, and a second run
+  writes the same files byte for byte.
+
 ### Changed
+
+- **`publish`'s old shape is gone** (n-b6c9, n-a391, supersedes d-7c64): the
+  per-node files under `<out>/<scope>/<kind>/`, the scope index with its "how to
+  read", its history and its diagnostics, and the generated time are removed.
+  `publish` no longer writes the stored values as they are: a page's front
+  matter gives `created` as `YYYY-MM-DD`, and a narrowed passage is written
+  `~~…~~ *(retracted by d-…)` instead of the stored body. There is no migration;
+  the next `publish` rewrites the scope directory.
 
 - **The README opens with the author's own words** (n-8b94, n-a7a1): the
   sections before the reference are now written by the author in Japanese
@@ -22,6 +42,13 @@
   still do the same work and print one line on stderr saying what to use;
   they no longer appear in `gy --help`. Nothing else changed: the same
   output and the same exit code.
+
+### Deprecated
+
+- **`gy publish --since`** (n-a391, d-3c54): the wiki always shows the record
+  as it is now, so `--since` has no effect. It is still accepted, prints one
+  line on standard error, and no longer appears in `gy publish --help`.
+  `gy list --since` is unchanged.
 
 ### Fixed
 
@@ -46,6 +73,12 @@ The cheat sheet and the skills beside `gy-loop` changed (the grouping above,
 and the `remote` group). Copy the bundled skills again after you install this
 release. The old top-level names `share`, `join` and `sync` still work but are
 deprecated; use `gy remote set`, `gy remote join` and `gy remote sync`.
+
+The output of `publish` changed shape (see Added and Changed). There is no
+migration: the next `publish` rewrites each target scope's directory, so a
+publication kept under version control shows the whole change in one diff.
+Copy the bundled skills again after you install this release, since the cheat
+sheet names the wiki.
 
 ## 1.0.1 - 2026-09-21
 

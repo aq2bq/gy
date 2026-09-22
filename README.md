@@ -167,7 +167,7 @@ Reads (6):
 | `list [--type] [--status] [--targets] [--grep] [--actor] [--since]` | Node rows, or write units when `--actor` or `--since` is given. The type and status words ignore case, and `--since` takes a sequence or a date (`YYYY-MM-DD`, from that day's start in your own place) |
 | `next` | The needs whose prerequisites are settled |
 | `handover` | In-progress requirements and the counts a session needs to resume |
-| `publish [--scope] [--since] [--out]` | Write the record at a point and range into a directory: one file per node and a scope index |
+| `publish [--scope] [--out]` | Write the record as a Markdown wiki: an entry `README.md` per scope and a page per need and decision |
 | `serve` | Read the ledger in a browser, on 127.0.0.1 (GET only, no write path), until stopped. It opens the browser when started from a terminal |
 
 Where the ledger lives (3, experimental):
@@ -205,7 +205,7 @@ Every write prints what it changed, what the node still lacks, and the shape of 
 
 ## Dates and times
 
-A node's `created`, a criterion's `satisfied_at` and a requirement's recorded dates are stored as UTC instants; `show` and `list` print them in your own time zone (`TZ`) as `YYYY-MM-DD HH:MM`, while `--json` and `publish` keep the stored value (`2026-09-18T07:28:56Z`). To name a point in time to another agent, use the write sequence or a node id, not a date.
+A node's `created`, a criterion's `satisfied_at` and a requirement's recorded dates are stored as UTC instants; `show` and `list` print them in your own time zone (`TZ`) as `YYYY-MM-DD HH:MM`, while `--json` keeps the stored value (`2026-09-18T07:28:56Z`). To name a point in time to another agent, use the write sequence or a node id, not a date.
 
 ## Resuming a session
 
@@ -282,13 +282,13 @@ An existing ledger keeps its old IDs as aliases, so `show D-164` and `show '#602
 
 ## publish
 
-`publish` writes the record at a point and range into a directory to commit: one file per node under `<out>/<scope>/<kind>/`, and a scope index at `<out>/<scope>/README.md`. It is a development artifact: later, an agent reads it to review what was decided and why, and diffs one publication against the next. It is not reading matter for the person the agents work for, and gy adds no human-facing output format.
+`publish` writes the record as a Markdown wiki to read on GitHub: one directory per scope under the output directory, with an entry `README.md` and one page per need and per decision. The nodes each vertex reaches — its criteria, requirements and questions — are shown in full on that page, and the nodes no need and no decision reaches go to `loose.md`, so every node of the scope is readable in full.
 
-A node file holds the id with its old aliases and reference, the title, scope, creation date, state, scope note (where it holds), the body, both edge directions with the other side's id, alias, title, and mark, the closure and evidence, the requirement records, and the free attributes. Every reference carries the target's title, so each file stands on its own. A decision file puts its lineage relations first.
+A page opens with front matter (`id`, `kind`, `state` for a need and a requirement, `scope`, `created`, and its edges by relation), the title, a link back to the entry, then the sections. A narrowed passage is struck through where it stands and names the decision that retracted it. Another scope's node is plain text with its scope named, not a link.
 
-The index holds the generated time, the log sequence, the scope and range, the writer, and the canonical location; a short "how to read" section; a per-kind list with a link and state for each node; the write history; and the diagnostics.
+The entry lists the open questions, the requirements being built, the newest vertices, and every decision and need, each as a link to the page that shows it. It carries no legend, no history and no diagnostics. A second run writes the same files byte for byte.
 
-`--out` names the output directory, `gy.toml`'s `output` names a default, and without either publish is an error. Only the target scopes' directories are removed and rewritten; other files under `--out` and other scope directories are left alone.
+`publish` always shows the record as it is now: `--since` is accepted for compatibility, has no effect, and says so on standard error once. `--out` names the output directory, `gy.toml`'s `output` names a default, and without either publish is an error. Only the target scopes' directories are removed and rewritten; other files under `--out` and other scope directories are left alone.
 
 ## Development
 

@@ -15,7 +15,7 @@ Reads:
   gy list [--type] [--status] [--targets] [--grep] [--actor] [--since]   list nodes; with --actor / --since, list write units. Spelling ignores case. --since takes a seq or a date (YYYY-MM-DD, from midnight where you are)
   gy next                                              the needs whose prerequisites are settled
   gy handover                                          requirements in progress and the counts a session needs to resume
-  gy publish [--scope] [--since] [--out]                the publication: every node in range verbatim, the history, the diagnostics. Commit it to look back later
+  gy publish [--scope] [--out]                          the wiki a person reads on GitHub: one entry README per scope and a page per need and decision, the nodes each reaches in full, and loose.md for the rest
   gy serve                                              read the ledger in a browser: 127.0.0.1, GET only, no path that writes, until stopped. Opens the browser when started from a terminal
 
 Where the ledger lives (experimental; only for sharing with a team. With no remote in gy.toml none of these is ever used and gy stays local. remote set is the person's step, not yours: it writes gy.toml and uploads the ledger. The old names share / join / sync still work but are deprecated):

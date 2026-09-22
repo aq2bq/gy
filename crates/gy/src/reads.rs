@@ -161,17 +161,29 @@ fn empty() -> Opened {
 
 /// The publication goes under `--out`, else gy.toml's `output` (an error when
 /// neither is given). Each target scope's directory is removed and rewritten.
-/// The wiki always shows the record as it is now, so `--since` is ignored until
-/// n-a391 removes it from the CLI (n-b6c9, d-d82b).
+/// The wiki always shows the record as it is now, so `--since` is accepted for
+/// compatibility and named once on stderr (n-a391, d-3c54).
 pub fn write_publish(
     cli: &Cli,
     root: &Path,
     ledger: &Path,
-    _since: Option<u64>,
+    since: Option<u64>,
     out: Option<&Path>,
 ) -> Result<()> {
+    if since.is_some() {
+        eprintln!("--since has no effect on the wiki and will be removed in a later version");
+    }
     let repository = repo::open(ledger)?;
-    let publication = publish(&repository, cli.scope.as_deref())?;
+    let writer = Actor::from_env()
+        .map(|actor| actor.name().to_string())
+        .unwrap_or_default();
+    let publication = publish(
+        &repository,
+        cli.scope.as_deref(),
+        since,
+        &writer,
+        &ledger.display().to_string(),
+    )?;
     let out = match out {
         Some(path) => path.to_path_buf(),
         None => output_path(root)?

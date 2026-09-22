@@ -3,6 +3,7 @@
 //! nodes each reaches shown in place; the nodes no page reaches go to
 //! `loose.md`. This need builds the pages, the front matter, the inlines, the
 //! sharing and `loose.md`; the entry README comes with n-a391 (d-d82b).
+mod home;
 mod inline;
 mod loose;
 mod page;
@@ -29,14 +30,27 @@ pub struct FileEntry {
     pub text: String,
 }
 
-/// The wiki for the named scope, or for every scope the ledger holds.
-pub fn publish<S: Store>(repository: &Repository<S>, scope: Option<&str>) -> Result<Publication> {
+/// The wiki for the named scope, or for every scope the ledger holds. `since`,
+/// `writer` and `location` are accepted for the 1.0.1 API and not used
+/// (d-3c54): the wiki always shows the record as it is now.
+pub fn publish<S: Store>(
+    repository: &Repository<S>,
+    scope: Option<&str>,
+    _since: Option<u64>,
+    _writer: &str,
+    _location: &str,
+) -> Result<Publication> {
     let all = repository.all()?;
     let ids: Vec<String> = all.iter().map(|node| node.id().to_string()).collect();
     let wiki = wiki::Wiki::new(show(repository, &ids, true)?);
+    let seq = repository
+        .store()
+        .history()
+        .last()
+        .map_or(0, |entry| entry.seq);
     let mut scopes = Vec::new();
     for name in scope_names(&all, scope) {
-        let files = wiki.files(&name);
+        let files = wiki.files(&name, seq);
         scopes.push(ScopeFiles { name, files });
     }
     Ok(Publication { scopes })

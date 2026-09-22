@@ -112,7 +112,7 @@ fn the_readings_never_call_the_gate() {
     let repo = gated(dir, Arc::new(Count(calls.clone())));
     let _ = show(&repo, std::slice::from_ref(&text), false).unwrap();
     let _ = list(&repo, &Filter::default()).unwrap();
-    let _ = publish(&repo, None).unwrap();
+    let _ = publish(&repo, None, None, "", "").unwrap();
 
     let as_of = file::open_at(dir, 1, |_| Some("piko".into())).unwrap();
     let as_of = Repository::with_gate(as_of, Arc::new(Count(calls.clone())));

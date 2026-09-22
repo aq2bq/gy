@@ -21,8 +21,9 @@ pub(super) fn loose_page(scope: &Scope) -> Option<String> {
     }
     loose.sort_by(|a, b| a.created.cmp(&b.created));
     let mut out = String::from(
-        "# On their own\n\nNodes no need and no decision reaches. A question nobody \
-         waits on, a criterion nothing targets, a requirement filed without a need.\n\n",
+        "# On their own\n\n[← All of it](README.md)\n\nNodes no need and no decision \
+         reaches. A question nobody waits on, a criterion nothing targets, a \
+         requirement filed without a need.\n\n",
     );
     for node in loose {
         out += &inline::block(scope, node, "loose.md");

@@ -57,10 +57,10 @@ pub enum Command {
     Next,
     /// What a session needs to resume: in-progress requirements and counts.
     Handover,
-    /// Write the publication: one file per node under a scope directory.
+    /// Write the record as a Markdown wiki: a page per need and decision.
     Publish {
-        /// Include the changes after this write sequence.
-        #[arg(long, value_name = "SEQ")]
+        /// Accepted for compatibility; the wiki shows the record as it is now.
+        #[arg(long, value_name = "SEQ", hide = true)]
         since: Option<u64>,
         /// The output directory; defaults to gy.toml's output.
         #[arg(long, value_name = "DIR")]
