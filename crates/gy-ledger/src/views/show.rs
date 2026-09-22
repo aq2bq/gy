@@ -4,7 +4,7 @@ use super::derive::need_state;
 use super::open_or_closed;
 use super::retraction::{Retraction, retracted, retractions_by_node, scope_marked};
 use crate::model::{Criterion, Edge, Node, NodeData, NodeKind};
-use crate::ops::repository::{Error, Repository, Result, Store};
+use crate::ops::repository::{Error, Repository, Result, Snapshot, Store};
 use crate::ops::{advice, local_time};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -193,24 +193,33 @@ impl fmt::Display for Shown {
     }
 }
 
-/// Project the named texts in order. Resolving any one of them is an error
-/// that names the candidates when several refs match (proposal-v3 11).
+/// Project the named texts in order; several matches is an error (proposal-v3 11).
 pub fn show<S: Store>(repo: &Repository<S>, texts: &[String], full: bool) -> Result<Vec<Shown>> {
-    let all = repo.all()?;
-    let retractions = retractions_by_node(&all);
+    show_with(&repo.snapshot()?, texts, full)
+}
+
+/// Every node, from one store pass (n-2e03); for publish, which reads them all.
+pub(crate) fn show_all<S: Store>(repo: &Repository<S>, full: bool) -> Result<Vec<Shown>> {
+    let snapshot = repo.snapshot()?;
+    let texts: Vec<String> = snapshot
+        .nodes()
+        .iter()
+        .map(|node| node.id().to_string())
+        .collect();
+    show_with(&snapshot, &texts, full)
+}
+fn show_with(snapshot: &Snapshot, texts: &[String], full: bool) -> Result<Vec<Shown>> {
+    let all = snapshot.nodes();
+    let retractions = retractions_by_node(all);
     let mut out = Vec::new();
     for text in texts {
-        let id = repo.resolve(text)?;
-        let node = repo
-            .get(&id)?
+        let id = snapshot.resolve(text)?;
+        let node = snapshot
+            .get(&id)
             .ok_or_else(|| Error::invalid(format!("{id} does not exist")))?;
-        let incoming = if full {
-            repo.incoming(&id)?
-        } else {
-            Vec::new()
-        };
+        let incoming = snapshot.incoming(&id);
         let cancellation = retractions.get(&id.to_string()).cloned();
-        out.push(Shown::new(&node, &incoming, cancellation, &all, full));
+        out.push(Shown::new(node, incoming, cancellation, all, full));
     }
     Ok(out)
 }

@@ -1,8 +1,10 @@
 //! Typed node access over a store: get, all, put, remove, id resolution, and
 //! one intent per transaction (D-69, D-75).
-use crate::model::{Edge, Node, NodeData, NodeId, NodeKind};
+use crate::model::{Edge, Node, NodeId, NodeKind};
 // Re-exported so a view can use `Repository` without reaching into the store
 // layer (D-76): the trait bound and its result are part of this API.
+pub(crate) use super::snapshot::Snapshot;
+use super::snapshot::{incoming_in, resolve_in};
 use crate::store::Gate;
 pub use crate::store::{Error, Result, Store, SyncStatus};
 use std::sync::Arc;
@@ -78,21 +80,13 @@ impl<S: Store> Repository<S> {
     /// The reverse of every edge that points at `id`, derived from the from
     /// side's stored links (D-76: one place per edge).
     pub fn incoming(&self, id: &NodeId) -> Result<Vec<Edge>> {
-        let mut edges = Vec::new();
-        for node in self.all()? {
-            for edge in node.links() {
-                if &edge.to == id {
-                    edges.push(Edge {
-                        from: id.clone(),
-                        label: edge.label,
-                        reversed: true,
-                        mark: edge.mark.clone(),
-                        to: edge.from.clone(),
-                    });
-                }
-            }
-        }
-        Ok(edges)
+        Ok(incoming_in(&self.all()?, id))
+    }
+    /// Every node, its id index, and its reverse edges, from one pass over the
+    /// store (n-2e03). A caller that reads many nodes takes this once instead of
+    /// scanning per node.
+    pub(crate) fn snapshot(&self) -> Result<Snapshot> {
+        Ok(super::snapshot::build(self.all()?))
     }
     pub fn put(&mut self, node: &Node) -> Result<()> {
         let bytes = encode(node)?;
@@ -125,37 +119,7 @@ impl<S: Store> Repository<S> {
     /// id wins, and the zero-padding is only among aliases, never a hash id. An
     /// unknown text is an error, and an ambiguous one lists the candidates.
     pub fn resolve(&self, text: &str) -> Result<NodeId> {
-        let wanted = text.to_lowercase();
-        let old = normalize(text);
-        let (mut by_id, mut by_alias, mut by_ref) = (Vec::new(), Vec::new(), Vec::new());
-        for key in self.store.keys() {
-            let Some(node) = self.load(&key)? else {
-                continue;
-            };
-            if key.to_lowercase() == wanted {
-                by_id.push(node.id().clone());
-            } else if node
-                .aliases()
-                .iter()
-                .any(|alias| normalize(&alias.0) == old)
-            {
-                by_alias.push(node.id().clone());
-            } else if referenced(&node).is_some_and(|ref_| ref_ == text || ref_.ends_with(text)) {
-                by_ref.push(node.id().clone());
-            }
-        }
-        if by_id.is_empty() {
-            choose(
-                text,
-                if by_alias.is_empty() {
-                    by_ref
-                } else {
-                    by_alias
-                },
-            )
-        } else {
-            choose(text, by_id)
-        }
+        resolve_in(&self.all()?, text)
     }
     /// Run `f` as one transaction with the given why and source. A failed
     /// commit rolls back, so nothing is written (AC-45).
@@ -195,47 +159,4 @@ impl<S: Store> Repository<S> {
 
 fn encode(node: &Node) -> Result<Vec<u8>> {
     serde_json::to_vec(node).map_err(|error| Error::invalid(error.to_string()))
-}
-
-fn names(matches: &[NodeId]) -> String {
-    matches
-        .iter()
-        .map(|id| id.to_string())
-        .collect::<Vec<_>>()
-        .join(", ")
-}
-
-/// A requirement's outward reference, if any.
-fn referenced(node: &Node) -> Option<&str> {
-    match node.data() {
-        NodeData::Requirement(requirement) => requirement.reference.as_ref().map(|r| r.0.as_str()),
-        _ => None,
-    }
-}
-
-fn choose(text: &str, mut matches: Vec<NodeId>) -> Result<NodeId> {
-    match matches.len() {
-        0 => Err(Error::invalid(format!("no node matches {text}"))),
-        1 => Ok(matches.remove(0)),
-        _ => Err(Error::invalid(format!(
-            "{text} matches several nodes: {}",
-            names(&matches)
-        ))),
-    }
-}
-
-/// Lowercase the kind and drop leading zeros from an all-digit suffix, so
-/// `D-06` and `d-6` name the same old id.
-fn normalize(text: &str) -> String {
-    match text.rsplit_once('-') {
-        Some((kind, suffix)) if suffix.bytes().all(|byte| byte.is_ascii_digit()) => {
-            let digits = suffix.trim_start_matches('0');
-            format!(
-                "{}-{}",
-                kind.to_lowercase(),
-                if digits.is_empty() { "0" } else { digits }
-            )
-        }
-        _ => text.to_lowercase(),
-    }
 }

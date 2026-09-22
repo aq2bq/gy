@@ -4,6 +4,13 @@
 
 ### Fixed
 
+- **`publish` reads the store once** (n-2e03, reported by the implementer):
+  it asked the store for every node once per node — an index of the reverse
+  edges is now built in one pass and shared. On a 692-node ledger the run goes
+  from 5.4s to 0.11s, and the files it writes are byte for byte the same.
+  `show` takes the same path, so reading many nodes at once is no longer
+  quadratic either.
+
 - **The documents say what a creating write prints** (n-d159): `req add` with
   a `--ref` prints `id: <ID> (<ref>)`, which the READMEs and the cheat sheet
   did not say; they said only `id: <ID>`. They now also say to read an id from

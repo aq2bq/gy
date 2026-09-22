@@ -9,8 +9,8 @@ mod loose;
 mod page;
 mod wiki;
 
-use super::show::show;
-use crate::model::{Node, NodeKind};
+use super::show::{Shown, show_all};
+use crate::model::NodeKind;
 use crate::ops::repository::{Repository, Result, Store};
 
 /// The files to write: one group per scope, each holding that scope's pages.
@@ -40,16 +40,16 @@ pub fn publish<S: Store>(
     _writer: &str,
     _location: &str,
 ) -> Result<Publication> {
-    let all = repository.all()?;
-    let ids: Vec<String> = all.iter().map(|node| node.id().to_string()).collect();
-    let wiki = wiki::Wiki::new(show(repository, &ids, true)?);
+    let shown = show_all(repository, true)?;
+    let names = scope_names(&shown, scope);
+    let wiki = wiki::Wiki::new(shown);
     let seq = repository
         .store()
         .history()
         .last()
         .map_or(0, |entry| entry.seq);
     let mut scopes = Vec::new();
-    for name in scope_names(&all, scope) {
+    for name in names {
         let files = wiki.files(&name, seq);
         scopes.push(ScopeFiles { name, files });
     }
@@ -57,11 +57,12 @@ pub fn publish<S: Store>(
 }
 
 /// The scopes to publish, in a fixed order.
-fn scope_names(all: &[Node], scope: Option<&str>) -> Vec<String> {
+fn scope_names(shown: &[Shown], scope: Option<&str>) -> Vec<String> {
     match scope {
         Some(name) => vec![name.to_string()],
         None => {
-            let mut names: Vec<String> = all.iter().map(|node| node.scope().to_string()).collect();
+            let mut names: Vec<String> =
+                shown.iter().filter_map(|node| node.scope.clone()).collect();
             names.sort();
             names.dedup();
             names

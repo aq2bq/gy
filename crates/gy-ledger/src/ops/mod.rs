@@ -19,6 +19,7 @@ pub mod req_cancel;
 pub mod req_done;
 pub mod req_revise;
 pub mod scope_rename;
+mod snapshot;
 pub mod undo;
 
 pub use criterion_add::CriterionAdd;
