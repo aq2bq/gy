@@ -1,16 +1,18 @@
-//! publish: the record written as one file per node under a scope directory,
-//! with a scope index (d-7c64, d-edb0). It is a development artifact to review
-//! later, not a reading for a person.
-mod diagnostics;
-mod history;
-mod index;
-mod nodes;
+//! publish: the record written as a Markdown wiki a person reads on GitHub
+//! (n-b6c9, d-90a1, d-50d1). One page per need and per decision, with the
+//! nodes each reaches shown in place; the nodes no page reaches go to
+//! `loose.md`. This need builds the pages, the front matter, the inlines, the
+//! sharing and `loose.md`; the entry README comes with n-a391 (d-d82b).
+mod inline;
+mod loose;
+mod page;
+mod wiki;
 
+use super::show::show;
 use crate::model::{Node, NodeKind};
 use crate::ops::repository::{Repository, Result, Store};
 
-/// The files to write: one group per scope, each holding its node files and
-/// the scope index.
+/// The files to write: one group per scope, each holding that scope's pages.
 pub struct Publication {
     pub scopes: Vec<ScopeFiles>,
 }
@@ -27,34 +29,17 @@ pub struct FileEntry {
     pub text: String,
 }
 
-/// The publication for the named scope, or for every scope the ledger holds.
-pub fn publish<S: Store>(
-    repository: &Repository<S>,
-    scope: Option<&str>,
-    since: Option<u64>,
-    writer: &str,
-    location: &str,
-) -> Result<Publication> {
+/// The wiki for the named scope, or for every scope the ledger holds.
+pub fn publish<S: Store>(repository: &Repository<S>, scope: Option<&str>) -> Result<Publication> {
     let all = repository.all()?;
-    let seq = log_seq(repository);
+    let ids: Vec<String> = all.iter().map(|node| node.id().to_string()).collect();
+    let wiki = wiki::Wiki::new(show(repository, &ids, true)?);
     let mut scopes = Vec::new();
     for name in scope_names(&all, scope) {
-        let mut files = nodes::files(repository, &all, &name, since)?;
-        files.push(index::index(
-            repository, &all, &name, since, seq, writer, location,
-        )?);
+        let files = wiki.files(&name);
         scopes.push(ScopeFiles { name, files });
     }
     Ok(Publication { scopes })
-}
-
-/// The last write sequence, the publication's point in time.
-fn log_seq<S: Store>(repository: &Repository<S>) -> u64 {
-    repository
-        .store()
-        .history()
-        .last()
-        .map_or(0, |entry| entry.seq)
 }
 
 /// The scopes to publish, in a fixed order.
@@ -70,53 +55,15 @@ fn scope_names(all: &[Node], scope: Option<&str>) -> Vec<String> {
     }
 }
 
-/// A node as another line refers to it: new ID, old alias, and title (d-edb0).
-pub(super) fn reference(node: &Node) -> String {
-    match node.aliases().first() {
-        Some(alias) => format!("{} ({}) {}", node.id(), alias.0, node.title()),
-        None => format!("{} {}", node.id(), node.title()),
-    }
+/// Whether a kind gets a page of its own: the two vertices of the wiki.
+pub(super) fn is_vertex(kind: NodeKind) -> bool {
+    matches!(kind, NodeKind::Need | NodeKind::Decision)
 }
 
-/// The directory a kind's files live in.
-pub(super) fn plural(kind: NodeKind) -> &'static str {
-    match kind {
-        NodeKind::Need => "needs",
-        NodeKind::Question => "questions",
-        NodeKind::Decision => "decisions",
-        NodeKind::Requirement => "requirements",
-        NodeKind::Criterion => "criteria",
-    }
-}
-
-/// The relative path of a node's file.
-pub(super) fn path(node: &Node) -> String {
-    format!(
-        "{}/{}-{}.md",
-        plural(node.kind()),
-        node.id(),
-        safe_title(node.title())
+/// Whether a kind is shown in full inside a vertex's page.
+pub(super) fn is_inline(kind: NodeKind) -> bool {
+    matches!(
+        kind,
+        NodeKind::Criterion | NodeKind::Requirement | NodeKind::Question
     )
-}
-
-/// A title as a file name: only letters, digits, `-`, and `_` survive; the rest
-/// becomes `-`, and the name stops at 40 characters.
-fn safe_title(title: &str) -> String {
-    let mut out = String::new();
-    for ch in title.chars() {
-        if out.chars().count() >= 40 {
-            break;
-        }
-        if ch.is_alphanumeric() || ch == '-' || ch == '_' {
-            out.push(ch);
-        } else if !out.ends_with('-') {
-            out.push('-');
-        }
-    }
-    let trimmed = out.trim_matches('-');
-    if trimmed.is_empty() {
-        "untitled".to_string()
-    } else {
-        trimmed.to_string()
-    }
 }
