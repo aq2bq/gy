@@ -1,4 +1,4 @@
-//! `gy share` at the command line (n-57c5, ac-efd7): the prefixes, the exit
+//! `gy remote set` at the command line (n-57c5, ac-efd7): the prefixes, the exit
 //! codes, and the gy.toml state. Local `file://` remotes only; no network.
 mod common;
 use common::{fixture, stderr, stdout};
@@ -29,7 +29,7 @@ fn git_output(cwd: &Path, args: &[&str]) -> String {
     String::from_utf8_lossy(&out.stdout).into_owned()
 }
 
-/// Run `gy share` with the git identity a first commit needs.
+/// Run `gy remote set` with the git identity a first commit needs.
 fn share(fx: &common::Fixture, url: &str) -> std::process::Output {
     Command::new(env!("CARGO_BIN_EXE_gy"))
         .current_dir(&fx.root)
@@ -39,7 +39,7 @@ fn share(fx: &common::Fixture, url: &str) -> std::process::Output {
         .env("GIT_AUTHOR_EMAIL", "piko@example.com")
         .env("GIT_COMMITTER_NAME", "piko")
         .env("GIT_COMMITTER_EMAIL", "piko@example.com")
-        .args(["share", url])
+        .args(["remote", "set", url])
         .output()
         .unwrap()
 }
@@ -92,7 +92,7 @@ fn share_checks_writes_and_uploads() {
 fn share_refuses_a_remote_it_cannot_use() {
     let fx = fixture();
     write_toml(&fx, "file:///one/ledger.git");
-    let different = fx.run(&["share", "file:///two/ledger.git"]);
+    let different = fx.run(&["remote", "set", "file:///two/ledger.git"]);
     assert_eq!(different.status.code(), Some(2));
     assert!(
         stderr(&different).contains("does not switch remotes"),
@@ -100,10 +100,10 @@ fn share_refuses_a_remote_it_cannot_use() {
         stderr(&different)
     );
 
-    let no_copy = fx.run(&["share", "file:///one/ledger.git"]);
+    let no_copy = fx.run(&["remote", "set", "file:///one/ledger.git"]);
     assert_eq!(no_copy.status.code(), Some(2));
     assert!(
-        stderr(&no_copy).contains("run gy join"),
+        stderr(&no_copy).contains("run gy remote join"),
         "{}",
         stderr(&no_copy)
     );

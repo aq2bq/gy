@@ -32,19 +32,19 @@ pub fn init(cli: &Cli, name: &str) -> Result<()> {
     }
 }
 
-/// `gy join`: check everything, then take the copy and say who writes
+/// `gy remote join`: check everything, then take the copy and say who writes
 /// (n-57c5, ac-545c). The gy.toml remote is required; the automatic clone is
 /// for the other commands.
 pub fn join(cli: &Cli, root: &Path, ledger: &Path) -> Result<()> {
     let remote = config::read(root)?.remote.ok_or_else(|| {
-        Error::invalid("this project is not shared; the owner runs gy share <URL>")
+        Error::invalid("this project is not shared; the owner runs gy remote set <URL>")
     })?;
     join_check(root, &remote)?;
     let actor = std::env::var("GY_ACTOR").ok();
     emit(cli.json, &join_run(ledger, &remote, actor.as_deref())?)
 }
 
-/// `gy share <URL>`: check the remote, write gy.toml, upload the ledger
+/// `gy remote set <URL>`: check the remote, write gy.toml, upload the ledger
 /// (n-57c5, ac-efd7). The order lives here: the checks and the words are in
 /// `gy-ledger`, the gy.toml write in `ops::config`, and store cannot call ops.
 pub fn share(cli: &Cli, root: &Path, ledger: &Path, url: &str) -> Result<()> {
@@ -53,7 +53,7 @@ pub fn share(cli: &Cli, root: &Path, ledger: &Path, url: &str) -> Result<()> {
             if ledger.join("remote").is_file() {
                 return emit(cli.json, &Share::already(url));
             }
-            return Err(Error::invalid("this project is shared; run gy join"));
+            return Err(Error::invalid("this project is shared; run gy remote join"));
         }
         Some(existing) => {
             return Err(Error::invalid(format!(

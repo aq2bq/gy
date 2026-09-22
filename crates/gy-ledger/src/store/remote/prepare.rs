@@ -51,7 +51,7 @@ pub fn reconcile(ledger: &Path, remote: Option<&str>) -> Result<Option<String>> 
 }
 
 /// Clone the remote's ledger when this machine has no copy yet. A local
-/// ledger, or an empty remote, is left to `gy sync` and to open (n-8a52).
+/// ledger, or an empty remote, is left to `gy remote sync` and to open (n-8a52).
 fn acquire(ledger: &Path, remote: &str) -> Result<()> {
     if git::is_repo(ledger) || ledger.join(log::FILE).is_file() {
         return Ok(());

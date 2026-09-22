@@ -16,7 +16,7 @@ pub use model::{
     Question, Ref, Relation, Requirement, RequirementState, Revision, bearer_count, free_attribute,
 };
 /// This build's rule as a gate, for a caller that owns the order such as
-/// `gy share` (n-f921). Not part of the public reading surface.
+/// `gy remote set` (n-f921). Not part of the public reading surface.
 #[doc(hidden)]
 pub use ops::Rules;
 pub use ops::{

@@ -51,7 +51,7 @@ fn failure_lines(child: &mut std::process::Child, deadline: Duration) -> String 
     seen
 }
 
-/// The first sync: it makes the copy and pushes the seed, as `gy sync` does.
+/// The first sync: it makes the copy and pushes the seed, as `gy remote sync` does.
 fn front_sync(fx: &common::Fixture) {
     let out = Command::new(env!("CARGO_BIN_EXE_gy"))
         .current_dir(&fx.root)
@@ -61,6 +61,7 @@ fn front_sync(fx: &common::Fixture) {
         .env("GIT_AUTHOR_EMAIL", "piko@example.com")
         .env("GIT_COMMITTER_NAME", "piko")
         .env("GIT_COMMITTER_EMAIL", "piko@example.com")
+        .arg("remote")
         .arg("sync")
         .output()
         .unwrap();

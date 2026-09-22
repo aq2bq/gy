@@ -66,10 +66,10 @@ npx skills add aq2bq/gy
 まだ実験的機能ですが
 
 ```shell
-gy share https://github.com/you/yourproject-gy.git
+gy remote set https://github.com/you/yourproject-gy.git
 ```
 
-でリモートリポジトリが設定され、以降はバックグラウンドで`gy sync`が呼ばれ同期されます。他のメンバーとgyを共有する場合はリポジトリを共有し、相手に`gy join`を実行してもらうだけです。
+でリモートリポジトリが設定され、以降はバックグラウンドで`gy remote sync`が呼ばれ同期されます。他のメンバーとgyを共有する場合はリポジトリを共有し、相手に`gy remote join`を実行してもらうだけです。
 
 #### EXPERIMENTALについて
 
@@ -172,13 +172,13 @@ canonical は追記専用のイベントログです。リポジトリに置く�
 
 記録の置き場所 (3、experimental):
 
-チームで共有するときだけの操作です。`gy.toml` に `remote` を書かなければ 3 つとも使わず、gy は手元だけで動きます。変えるのは記録の履歴の外にあるもので、`share` は `gy.toml` を書いて記録を上げ、`sync` は commit を push します。
+チームで共有するときだけの操作です。`gy.toml` に `remote` を書かなければ 3 つとも使わず、gy は手元だけで動きます。変えるのは記録の履歴の外にあるもので、`remote set` は `gy.toml` を書いて記録を上げ、`remote sync` は commit を push します。旧名の `share` / `join` / `sync` も動きますが deprecated です。`remote` の群を使ってください。
 
 | 操作 | 結果 |
 | --- | --- |
-| `share <URL>` | 共有を始める（experimental）: remote を検査し、`gy.toml` に `remote` を書き、今の記録を上げ、守りと招待の文を出す |
-| `join` | 参加する（experimental）: 要るものを確かめて直し方を並べ、複製を取り、誰として書くかと次の一手を言う。何度打っても同じ |
-| `sync` | remote と同期する（experimental）。複製が無ければ取り、未 push の書きを 1 行 1 commit で push し、remote が先なら取り込んで載せ直す。異常時は原因と手段を出す |
+| `remote set <URL>` | 共有を始める（experimental）: remote を検査し、`gy.toml` に `remote` を書き、今の記録を上げ、守りと招待の文を出す |
+| `remote join` | 参加する（experimental）: 要るものを確かめて直し方を並べ、複製を取り、誰として書くかと次の一手を言う。何度打っても同じ |
+| `remote sync` | remote と同期する（experimental）。複製が無ければ取り、未 push の書きを 1 行 1 commit で push し、remote が先なら取り込んで載せ直す。異常時は原因と手段を出す |
 
 書き (16):
 
@@ -234,29 +234,29 @@ remote = "https://github.com/you/yourproject-ledger.git"
 
 ## チームで使う（experimental）
 
-記録は、それ専用の git repo 1 つを canonical にして共有します。構成員は人で、各自が自分のマシンと記録の複製を持ちます。始める人は `gy share` を、招かれた人は `gy join` を本人が打ち、エージェントはその人の複製に今までどおり書くだけです。同じマシンの複数エージェントは元々ローカル記録を共有していて remote は要りません。手続きは 2 つで、どちらも gy が次の一手を言います。
+記録は、それ専用の git repo 1 つを canonical にして共有します。構成員は人で、各自が自分のマシンと記録の複製を持ちます。始める人は `gy remote set` を、招かれた人は `gy remote join` を本人が打ち、エージェントはその人の複製に今までどおり書くだけです。同じマシンの複数エージェントは元々ローカル記録を共有していて remote は要りません。手続きは 2 つで、どちらも gy が次の一手を言います。
 
 **共有を始める（単独で使っていた人）**。GitHub に空の private repo を 1 つ作り、プロジェクトの checkout で打ちます。
 
 ```sh
-gy share https://github.com/you/yourproject-ledger.git
+gy remote set https://github.com/you/yourproject-ledger.git
 ```
 
 remote を検査し（空か記録専用か、push できるか）、`gy.toml` に `remote` を書き、今の記録をそのまま上げ、branch protection の付け方（linear history の必須、force push の禁止。gy は設定を変えません）と、メンバーへの招待の文を出します。`gy.toml` はプロジェクトと一緒にコミットします。
 
-この一歩はエージェントではなく、あなたの作業です。`gy share` は記録の全体をその repo へ上げます。エージェントの実行環境はこれを外部への送信と見なして拒むことがあり、エージェントは自分にその許可を与えられません。repo を作るのと branch を守るのがあなたの作業であるのと同じく、`gy share` もあなたが一度だけ打つか、エージェントの設定で `gy share` と `gy sync` をあなたが許可してください。その後は、エージェントは今までどおり書き、push は背景で行われます。
+この一歩はエージェントではなく、あなたの作業です。`gy remote set` は記録の全体をその repo へ上げます。エージェントの実行環境はこれを外部への送信と見なして拒むことがあり、エージェントは自分にその許可を与えられません。repo を作るのと branch を守るのがあなたの作業であるのと同じく、`gy remote set` もあなたが一度だけ打つか、エージェントの設定で `gy remote set` と `gy remote sync` をあなたが許可してください。その後は、エージェントは今までどおり書き、push は背景で行われます。
 
 **参加する（招待された人）**。記録の repo の write の権限をもらい、プロジェクトを clone して打ちます。
 
 ```sh
-gy join
+gy remote join
 ```
 
-要るもの（git、repo を読める資格、名乗る名前 — `git config user.name` と `user.email`、または `GIT_AUTHOR_NAME` と `GIT_AUTHOR_EMAIL`）を一度に確かめ、足りなければ直し方を並べて止まります。揃っていれば複製を取り、誰として書くことになるか（`user.name / GY_ACTOR`）と次の一手（`gy handover`）を言います。何度打っても同じ状態に落ち着きます。`gy join` を打たずに `gy handover` から入っても最初のコマンドが複製を取り、同じ「joined」の 1 行を出します。
+要るもの（git、repo を読める資格、名乗る名前 — `git config user.name` と `user.email`、または `GIT_AUTHOR_NAME` と `GIT_AUTHOR_EMAIL`）を一度に確かめ、足りなければ直し方を並べて止まります。揃っていれば複製を取り、誰として書くことになるか（`user.name / GY_ACTOR`）と次の一手（`gy handover`）を言います。何度打っても同じ状態に落ち着きます。`gy remote join` を打たずに `gy handover` から入っても最初のコマンドが複製を取り、同じ「joined」の 1 行を出します。
 
 **それからの使い方は今までと同じです。**
 
-- 書きは手元に即座に載り、push は背景で行われます（書きの直後と、`gy serve` の起動中は 10 秒ごと）。`gy sync` で明示にも同期できます。remote に届かない間も読み書きは通り、戻れば溜まった分がまとめて push されます。
+- 書きは手元に即座に載り、push は背景で行われます（書きの直後と、`gy serve` の起動中は 10 秒ごと）。`gy remote sync` で明示にも同期できます。remote に届かない間も読み書きは通り、戻れば溜まった分がまとめて push されます。
 - remote が先に進んでいたら、自分の未 push の書きはその後ろに載せ直されます。同じノードを相手が先に変えていた書きだけが拒まれ、次の gy コマンドの標準エラーと `handover` で本人にだけ知らされます。やり直すかどうかはあなたが決めます。
 - 書き手は `user.name / GY_ACTOR` で記録され、`list` と画面にそう出ます。同じエージェント名でも人間が違えば別の書き手です。名前は git がコミットに署名するのと同じもので、git と同じ順（`GIT_AUTHOR_NAME` が先、無ければ `git config user.name`）で決まります。1 回の書きを記録と git の履歴が別々の人の名前で指すことはありません。
 - remote は gy だけが書く場所です。1 書き = 1 commit で、履歴が gy 以外に変えられていれば同期が拒んで戻し方を示します。記録以外の内容がある repo は拒みます。

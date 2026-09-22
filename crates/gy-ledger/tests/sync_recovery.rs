@@ -117,7 +117,7 @@ fn an_unterminated_tail_is_not_damage() {
     log::append(&one, &event(2, vec![created(&criterion("0002"))])).unwrap();
 
     // An unterminated tail is normal; a writer drops it under the lock
-    // (n-6b71), so gy sync still runs.
+    // (n-6b71), so gy remote sync still runs.
     let path = one.join(log::FILE);
     let bytes = std::fs::read(&path).unwrap();
     std::fs::write(&path, &bytes[..bytes.len() - 5]).unwrap();

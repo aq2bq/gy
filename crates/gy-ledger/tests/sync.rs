@@ -1,4 +1,4 @@
-//! gy sync A1 (n-6f47, ac-fd1b): the first sync, clone, and fast-forward on
+//! gy remote sync A1 (n-6f47, ac-fd1b): the first sync, clone, and fast-forward on
 //! local `file://` remotes. No network.
 use gy_ledger::{
     CriterionAdd, FileStore, FormatVersion, NeedAdd, Operation, Pulled, Range, Repository, format,
@@ -194,7 +194,7 @@ fn sync_pushes_each_write_as_its_own_commit() {
             .to_string()
     };
 
-    // A write stays local until gy sync.
+    // A write stays local until gy remote sync.
     let mut repo = Repository::new(FileStore::open_with(&ledger, |_| Some("piko".into())).unwrap());
     CriterionAdd {
         scope: "a".into(),

@@ -1,4 +1,4 @@
-//! `gy share <URL>`: check a remote, then the first upload (n-57c5, ac-efd7).
+//! `gy remote set <URL>`: check a remote, then the first upload (n-57c5, ac-efd7).
 //! The gy.toml write and the order of the three live in the CLI; this module
 //! knows git and the words. Nothing here changes a remote: the push check is a
 //! dry run in a throwaway repository.
@@ -19,7 +19,7 @@ pub struct Checked {
     pub branch: String,
 }
 
-/// What `gy share` prints, in order, one line per prefix (ac-efd7).
+/// What `gy remote set` prints, in order, one line per prefix (ac-efd7).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Share {
     pub lines: Vec<String>,
@@ -37,7 +37,7 @@ impl Share {
                 .map(|line| format!("protect: {line}")),
         );
         lines.push(
-            "invite: ask a member to get write access, then run `gy join` in their checkout"
+            "invite: ask a member to get write access, then run `gy remote join` in their checkout"
                 .to_string(),
         );
         Self { lines }
@@ -96,13 +96,13 @@ pub fn check(root: &Path, url: &str) -> Result<Checked> {
 pub fn upload(ledger: &Path, url: &str, branch: &str, gate: Arc<dyn Gate>) -> Result<Vec<String>> {
     if !ledger.join(log::FILE).is_file() {
         return Ok(vec![
-            "uploaded: no ledger yet; the first write will start it, then gy sync uploads it"
+            "uploaded: no ledger yet; the first write will start it, then gy remote sync uploads it"
                 .to_string(),
         ]);
     }
     let report = sync_with(ledger, url, gate).map_err(|error| {
         Error::invalid(format!(
-            "the upload failed: {}\nthe remote stays in gy.toml; fix the access and run gy sync",
+            "the upload failed: {}\nthe remote stays in gy.toml; fix the access and run gy remote sync",
             error.message
         ))
     })?;
@@ -164,7 +164,7 @@ fn probe_commit(dir: &Path) -> Result<()> {
             "-q",
             "--allow-empty",
             "-m",
-            "gy share check",
+            "gy remote set check",
         ],
     )
     .map(|_| ())

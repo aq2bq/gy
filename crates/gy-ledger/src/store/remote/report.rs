@@ -1,4 +1,4 @@
-//! What one `gy sync` reports (n-6f47, n-ecbf): the sequences pulled and
+//! What one `gy remote sync` reports (n-6f47, n-ecbf): the sequences pulled and
 //! pushed, the one-time guard, and the copy's sequence after it.
 use serde::Serialize;
 use std::fmt;

@@ -1,4 +1,4 @@
-//! `gy join` at the command line (n-57c5, ac-545c): the checks, the prefixes,
+//! `gy remote join` at the command line (n-57c5, ac-545c): the checks, the prefixes,
 //! the exit codes, and the automatic clone's one line. Local `file://`.
 mod common;
 use common::{fixture, stderr, stdout};
@@ -30,6 +30,7 @@ fn populated_remote(temp: &Path) -> String {
         .env("GIT_AUTHOR_EMAIL", "piko@example.com")
         .env("GIT_COMMITTER_NAME", "piko")
         .env("GIT_COMMITTER_EMAIL", "piko@example.com")
+        .arg("remote")
         .arg("sync")
         .output()
         .unwrap();
@@ -80,7 +81,7 @@ fn join(
 fn join_without_a_remote_says_not_shared() {
     let fx = fixture();
     let config = config_file(&fx.root, true);
-    let out = join(&fx, &["join"], &config, Some("piko"));
+    let out = join(&fx, &["remote", "join"], &config, Some("piko"));
     assert_eq!(out.status.code(), Some(2));
     assert!(stderr(&out).contains("not shared"), "{}", stderr(&out));
 }
@@ -97,7 +98,7 @@ fn join_lists_every_missing_item_and_fetches_nothing() {
     .unwrap();
     let config = config_file(temp.path(), false);
 
-    let out = join(&fx, &["join"], &config, None);
+    let out = join(&fx, &["remote", "join"], &config, None);
     assert_eq!(out.status.code(), Some(2));
     let err = stderr(&out);
     assert!(
@@ -123,7 +124,7 @@ fn join_fetches_the_copy_and_says_who_writes() {
     .unwrap();
     let config = config_file(temp.path(), true);
 
-    let out = join(&fx, &["join"], &config, Some("myagent"));
+    let out = join(&fx, &["remote", "join"], &config, Some("myagent"));
     assert!(out.status.success(), "{}", stderr(&out));
     let text = stdout(&out);
     assert!(
@@ -141,7 +142,7 @@ fn join_fetches_the_copy_and_says_who_writes() {
     assert!(text.contains("joined. next: gy handover"), "{text}");
     assert!(fx.ledger().join("remote").is_file());
 
-    let again = join(&fx, &["join"], &config, Some("myagent"));
+    let again = join(&fx, &["remote", "join"], &config, Some("myagent"));
     assert!(again.status.success(), "{}", stderr(&again));
     assert!(
         stdout(&again).starts_with(&format!("already joined {url} (seq 1)")),

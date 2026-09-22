@@ -226,7 +226,7 @@ pub fn push_ff(dir: &Path, branch: &str) -> Result<()> {
         )));
     }
     Err(Error::invalid(format!(
-        "git push origin {branch}: {text}\ncheck the remote URL and your credentials, then run gy sync again"
+        "git push origin {branch}: {text}\ncheck the remote URL and your credentials, then run gy remote sync again"
     )))
 }
 

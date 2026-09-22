@@ -43,7 +43,7 @@ pub fn initial_message(seq: u64) -> String {
     } else {
         format!("1-{seq}")
     };
-    format!("gy sync: initial copy\n\nGy-Seq: {range}\n")
+    format!("gy remote sync: initial copy\n\nGy-Seq: {range}\n")
 }
 
 /// Whether a remote's tracked files are only what gy puts there (or nothing).

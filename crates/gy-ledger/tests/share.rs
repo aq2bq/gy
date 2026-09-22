@@ -1,4 +1,4 @@
-//! `gy share`'s remote check and first upload (n-57c5, ac-efd7). Local
+//! `gy remote set`'s remote check and first upload (n-57c5, ac-efd7). Local
 //! `file://` remotes only; no network.
 use gy_ledger::{
     CriterionAdd, FileStore, FormatVersion, Operation, Repository, Rules, Share, config, format,
@@ -139,7 +139,7 @@ fn upload_failure_keeps_the_remote_and_names_the_way_out() {
         Arc::new(Rules),
     )
     .unwrap_err();
-    let wanted = "the remote stays in gy.toml; fix the access and run gy sync";
+    let wanted = "the remote stays in gy.toml; fix the access and run gy remote sync";
     assert!(error.message.contains(wanted), "{}", error.message);
 }
 

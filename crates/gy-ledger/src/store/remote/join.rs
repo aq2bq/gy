@@ -1,4 +1,4 @@
-//! `gy join`: what a member needs, the copy, and who they write as (n-57c5,
+//! `gy remote join`: what a member needs, the copy, and who they write as (n-57c5,
 //! ac-545c). The checks all run before anything is fetched, and a second run
 //! is harmless.
 use super::super::{Error, Result, log};
@@ -8,7 +8,7 @@ use serde::Serialize;
 use std::fmt;
 use std::path::Path;
 
-/// What `gy join` prints, one line per prefix.
+/// What `gy remote join` prints, one line per prefix.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Join {
     pub lines: Vec<String>,

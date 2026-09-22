@@ -1,6 +1,7 @@
 //! The command line's surface (n-4ce6): the clap definitions in one place. The
 //! words here are the words a reader sees in `--help`, so they belong together;
 //! main.rs only wires what they name to the views and the ops.
+use crate::remote_cli::RemoteAction;
 use crate::write;
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
@@ -67,14 +68,19 @@ pub enum Command {
     },
     /// Read the ledger in a browser, on 127.0.0.1 until stopped.
     Serve,
-    /// Sync this copy with the remote named in gy.toml.
+    /// Where the ledger lives: set the remote, join a shared project, or sync.
+    Remote {
+        #[command(subcommand)]
+        action: RemoteAction,
+    },
+    #[command(hide = true)]
     Sync,
-    /// Start sharing: check the remote, write gy.toml, upload the ledger.
+    #[command(hide = true)]
     Share {
         #[arg(value_name = "URL")]
         url: String,
     },
-    /// Join a shared project: check what you need, take the copy, say who you write as.
+    #[command(hide = true)]
     Join,
     /// File or close a need.
     Need {

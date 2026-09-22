@@ -15,6 +15,14 @@
   The Japanese README now says エッジ, タイトル, 適用範囲, and 立てる /
   提出済み where it said 辺, 題, 成立範囲, and 起票.
 
+- **`share`, `join` and `sync` moved under `gy remote`** (n-8d0e): the
+  operations that decide where the record lives now read `gy remote set
+  <URL>`, `gy remote join` and `gy remote sync`, matching the "Where the
+  ledger lives" group the READMEs already have. The old top-level names
+  still do the same work and print one line on stderr saying what to use;
+  they no longer appear in `gy --help`. Nothing else changed: the same
+  output and the same exit code.
+
 ### Fixed
 
 - **Three sentences in the README match 1.0.1** (n-8b94): gy makes network
@@ -34,8 +42,10 @@
 
 ### Updating
 
-The cheat sheet beside the `gy-loop` skill changed (the grouping above).
-Copy the bundled skills again after you install this release.
+The cheat sheet and the skills beside `gy-loop` changed (the grouping above,
+and the `remote` group). Copy the bundled skills again after you install this
+release. The old top-level names `share`, `join` and `sync` still work but are
+deprecated; use `gy remote set`, `gy remote join` and `gy remote sync`.
 
 ## 1.0.1 - 2026-09-21
 

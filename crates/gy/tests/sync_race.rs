@@ -51,6 +51,7 @@ fn front_sync(fx: &common::Fixture) {
         .env("GIT_AUTHOR_EMAIL", "piko@example.com")
         .env("GIT_COMMITTER_NAME", "piko")
         .env("GIT_COMMITTER_EMAIL", "piko@example.com")
+        .arg("remote")
         .arg("sync")
         .output()
         .unwrap();

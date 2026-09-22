@@ -40,6 +40,7 @@ fn front_sync(fx: &common::Fixture) {
         .env("GIT_AUTHOR_EMAIL", "piko@example.com")
         .env("GIT_COMMITTER_NAME", "piko")
         .env("GIT_COMMITTER_EMAIL", "piko@example.com")
+        .arg("remote")
         .arg("sync")
         .output()
         .unwrap();
@@ -198,6 +199,7 @@ fn sync_without_git_says_git_is_required() {
         .env("XDG_DATA_HOME", &fx.data)
         .env("GY_ACTOR", "piko")
         .env("PATH", "")
+        .arg("remote")
         .arg("sync")
         .output()
         .unwrap();
@@ -235,6 +237,7 @@ fn the_first_read_clones_the_copy() {
         .env("GIT_AUTHOR_EMAIL", "piko@example.com")
         .env("GIT_COMMITTER_NAME", "piko")
         .env("GIT_COMMITTER_EMAIL", "piko@example.com")
+        .arg("remote")
         .arg("sync")
         .output()
         .unwrap();

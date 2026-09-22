@@ -20,7 +20,7 @@ impl Gate for Rules {
     }
 }
 
-/// `gy sync`'s body after n-557f: the store's sync with this build's rule.
+/// `gy remote sync`'s body after n-557f: the store's sync with this build's rule.
 /// `gy_ledger::sync` keeps its name and shape through the re-export in lib.rs.
 pub fn sync(ledger: &Path, remote: &str) -> Result<crate::store::remote::Sync> {
     crate::store::remote::sync_with(ledger, remote, Arc::new(Rules))

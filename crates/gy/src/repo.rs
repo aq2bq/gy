@@ -86,7 +86,7 @@ fn announce_migration(store: &FileStore) {
     );
 }
 
-/// Start a detached `gy sync` after a write to a shared copy, unless one is
+/// Start a detached `gy remote sync` after a write to a shared copy, unless one is
 /// already running (n-ecbf). Its output goes to the copy's `sync.log`, so the
 /// write stays as fast as before.
 pub fn background_sync(root: &Path, ledger: &Path) -> Result<()> {
@@ -105,6 +105,7 @@ pub fn background_sync(root: &Path, ledger: &Path) -> Result<()> {
     command
         .arg("-C")
         .arg(root)
+        .arg("remote")
         .arg("sync")
         .env("GY_SYNC_BACKGROUND", "1")
         .env("GIT_TERMINAL_PROMPT", "0")
@@ -129,7 +130,7 @@ pub fn announce_rejected(ledger: &Path) {
     }
 }
 
-/// Reach the remote before handover: run `gy sync` and give it five seconds,
+/// Reach the remote before handover: run `gy remote sync` and give it five seconds,
 /// then keep the copy as it stands (n-ecbf 2B2).
 pub fn refresh(root: &Path, ledger: &Path) -> Result<()> {
     if !ledger.join("remote").is_file() {
@@ -139,6 +140,7 @@ pub fn refresh(root: &Path, ledger: &Path) -> Result<()> {
     command
         .arg("-C")
         .arg(root)
+        .arg("remote")
         .arg("sync")
         .env("GIT_TERMINAL_PROMPT", "0")
         .stdin(Stdio::null())
@@ -177,7 +179,7 @@ pub enum Tick {
     Skipped,
 }
 
-/// One sync for `gy serve`: a child `gy sync` with a ten second cap, its
+/// One sync for `gy serve`: a child `gy remote sync` with a ten second cap, its
 /// stdout read for the first line (n-94bb). A background sync already running
 /// skips the tick.
 pub fn sync_tick(root: &Path, ledger: &Path) -> Tick {
@@ -185,7 +187,7 @@ pub fn sync_tick(root: &Path, ledger: &Path) -> Tick {
         return Tick::Skipped;
     }
     let Some(mut child) = spawn_sync(root) else {
-        return Tick::Failed("could not start gy sync".to_string());
+        return Tick::Failed("could not start gy remote sync".to_string());
     };
     let _ = std::fs::write(ledger.join("sync.pid"), child.id().to_string());
     if !wait_capped(&mut child, ledger) {
@@ -210,12 +212,13 @@ pub fn sync_tick(root: &Path, ledger: &Path) -> Tick {
     }
 }
 
-/// The child `gy sync` serve waits for, with its output on a pipe.
+/// The child `gy remote sync` serve waits for, with its output on a pipe.
 fn spawn_sync(root: &Path) -> Option<std::process::Child> {
     let mut command = Command::new(std::env::current_exe().ok()?);
     command
         .arg("-C")
         .arg(root)
+        .arg("remote")
         .arg("sync")
         .env("GY_SYNC_BACKGROUND", "1")
         .env("GIT_TERMINAL_PROMPT", "0")

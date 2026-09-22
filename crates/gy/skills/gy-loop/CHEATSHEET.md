@@ -18,10 +18,10 @@ Reads:
   gy publish [--scope] [--since] [--out]                the publication: every node in range verbatim, the history, the diagnostics. Commit it to look back later
   gy serve                                              read the ledger in a browser: 127.0.0.1, GET only, no path that writes, until stopped. Opens the browser when started from a terminal
 
-Where the ledger lives (experimental; only for sharing with a team. With no remote in gy.toml none of these is ever used and gy stays local. share is the person's step, not yours: it writes gy.toml and uploads the ledger):
-  gy share <URL>                                       start sharing (experimental): checks the remote, writes remote into gy.toml, uploads the ledger, says how to protect it and how to invite
-  gy join                                               join (experimental): what is needed and how to fix it, fetches the copy, says who you write as and what comes next. Idempotent
-  gy sync                                               sync with the remote (experimental): fetch the copy, push what is not pushed, pull and rebase. On trouble, the cause and the way out
+Where the ledger lives (experimental; only for sharing with a team. With no remote in gy.toml none of these is ever used and gy stays local. remote set is the person's step, not yours: it writes gy.toml and uploads the ledger. The old names share / join / sync still work but are deprecated):
+  gy remote set <URL>                                  start sharing (experimental): checks the remote, writes remote into gy.toml, uploads the ledger, says how to protect it and how to invite
+  gy remote join                                       join (experimental): what is needed and how to fix it, fetches the copy, says who you write as and what comes next. Idempotent
+  gy remote sync                                       sync with the remote (experimental): fetch the copy, push what is not pushed, pull and rebase. On trouble, the cause and the way out
 
 Writes:
   gy need add "<title>" --targets <AC>... [--spawned-by <D>] [--body-file <path>]

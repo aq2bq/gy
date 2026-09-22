@@ -1,4 +1,4 @@
-//! `gy join`'s copy and words (n-57c5, ac-545c). Local `file://` remotes.
+//! `gy remote join`'s copy and words (n-57c5, ac-545c). Local `file://` remotes.
 use gy_ledger::{
     CriterionAdd, FileStore, FormatVersion, Operation, Repository, format, join_notice, join_run,
     sync,

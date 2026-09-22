@@ -41,13 +41,13 @@ pub fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
     emit(cli.json, &list(&repository, &filter)?)
 }
 
-/// `gy sync`: the explicit step that prepares the copy and pulls (n-6f47,
+/// `gy remote sync`: the explicit step that prepares the copy and pulls (n-6f47,
 /// d-39f6). It needs `remote` in gy.toml; a remote-less ledger is never
 /// touched, and reading it back is an error instead of a change.
 pub fn sync_command(cli: &Cli, root: &Path, ledger: &Path) -> Result<()> {
     watchdog(ledger);
     let remote = config::read(root)?.remote.ok_or_else(|| {
-        Error::invalid("gy.toml has no remote; gy sync needs one (add `remote = \"…\"`)")
+        Error::invalid("gy.toml has no remote; gy remote sync needs one (add `remote = \"…\"`)")
     })?;
     emit(cli.json, &gy_ledger::sync(ledger, &remote)?)
 }

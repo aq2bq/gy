@@ -55,7 +55,7 @@ test('a write with an unreachable remote is marked not pushed', async ({ page })
   };
 
   gy(['--scope', 'a', 'criterion', 'add', 'the first']);
-  gy(['sync']);
+  gy(['remote', 'sync']);
   rmSync(remote, { recursive: true, force: true });
   gy(['--scope', 'a', 'criterion', 'add', 'the offline one']);
 

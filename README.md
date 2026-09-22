@@ -66,10 +66,10 @@ The record itself is saved by default under `$XDG_DATA_HOME/gy/<hash of the repo
 Still experimental, but
 
 ```shell
-gy share https://github.com/you/yourproject-gy.git
+gy remote set https://github.com/you/yourproject-gy.git
 ```
 
-sets a remote repository, and from then on `gy sync` is called in the background to keep it in sync. To share gy with other members, share the repository and have them run `gy join`. That is all.
+sets a remote repository, and from then on `gy remote sync` is called in the background to keep it in sync. To share gy with other members, share the repository and have them run `gy remote join`. That is all.
 
 #### About EXPERIMENTAL
 
@@ -172,13 +172,13 @@ Reads (6):
 
 Where the ledger lives (3, experimental):
 
-These exist only for sharing with a team. With no `remote` in `gy.toml`, none of them is ever used and gy stays local. They change things outside the ledger's own history: `share` writes `gy.toml` and uploads the ledger, and `sync` pushes commits.
+These exist only for sharing with a team. With no `remote` in `gy.toml`, none of them is ever used and gy stays local. They change things outside the ledger's own history: `remote set` writes `gy.toml` and uploads the ledger, and `remote sync` pushes commits. The old top-level names `share`, `join` and `sync` still work but are deprecated; use the `remote` group.
 
 | Operation | Result |
 | --- | --- |
-| `share <URL>` | Start sharing (experimental): check the remote, write `remote` into `gy.toml`, upload the ledger, print the protection and the invitation |
-| `join` | Join (experimental): check what you need with the fixes, fetch the copy, say who you write as and what is next; harmless to repeat |
-| `sync` | Sync with the remote (experimental): fetch a missing copy, push unpushed writes one commit each, take in a remote that moved ahead and re-seat your writes; on failure, say why and what to do |
+| `remote set <URL>` | Start sharing (experimental): check the remote, write `remote` into `gy.toml`, upload the ledger, print the protection and the invitation |
+| `remote join` | Join (experimental): check what you need with the fixes, fetch the copy, say who you write as and what is next; harmless to repeat |
+| `remote sync` | Sync with the remote (experimental): fetch a missing copy, push unpushed writes one commit each, take in a remote that moved ahead and re-seat your writes; on failure, say why and what to do |
 
 Writes (16):
 
@@ -234,29 +234,29 @@ Reads cover every scope. A write needs a scope only when the file names more tha
 
 ## Working as a team (experimental)
 
-A team shares one ledger through a ledger-only git repository. The members are people, each on their own machine and with their own copy of the ledger: the person starts it with `gy share` and another joins with `gy join`, and each person's agent writes to that person's copy. Two agents on one machine already share the local ledger and need no remote. There are two procedures, and in both gy says what to do next.
+A team shares one ledger through a ledger-only git repository. The members are people, each on their own machine and with their own copy of the ledger: the person starts it with `gy remote set` and another joins with `gy remote join`, and each person's agent writes to that person's copy. Two agents on one machine already share the local ledger and need no remote. There are two procedures, and in both gy says what to do next.
 
 **Start sharing (the one who used gy alone).** Create an empty private repository on GitHub and run, in a checkout of the project:
 
 ```sh
-gy share https://github.com/you/yourproject-ledger.git
+gy remote set https://github.com/you/yourproject-ledger.git
 ```
 
 It checks the remote (empty or ledger-only, and that you can push), writes `remote` into `gy.toml`, uploads the ledger you have as it is, and prints how to protect the branch (require linear history, block force pushes; gy changes no settings) and the invitation to send a member. Commit `gy.toml` with the project.
 
-This step is yours, not your agent's. `gy share` uploads the whole ledger to that repository; an agent's runtime may treat the upload as sending data out and refuse it, and an agent cannot grant itself the permission. Run `gy share` yourself, once, as you create the repository and protect its branch yourself, or allow `gy share` and `gy sync` in the agent's settings yourself. After that the agent writes as before and the pushes happen in the background.
+This step is yours, not your agent's. `gy remote set` uploads the whole ledger to that repository; an agent's runtime may treat the upload as sending data out and refuse it, and an agent cannot grant itself the permission. Run `gy remote set` yourself, once, as you create the repository and protect its branch yourself, or allow `gy remote set` and `gy remote sync` in the agent's settings yourself. After that the agent writes as before and the pushes happen in the background.
 
 **Join (the one invited).** Get write access to the ledger repository, clone the project, and run:
 
 ```sh
-gy join
+gy remote join
 ```
 
 It checks what you need in one go (git, credentials that can read the repository, and a name to write under — `git config user.name` and `user.email`, or `GIT_AUTHOR_NAME` and `GIT_AUTHOR_EMAIL`) and, if something is missing, lists each with the fix and stops. When all is there it fetches your copy, says who you will write as (`user.name / GY_ACTOR`) and what to do next (`gy handover`). Running it again is harmless. Starting with `gy handover` instead also fetches the copy and prints the same "joined" line.
 
 **From then on, use gy as before.**
 
-- A write lands in your copy at once and is pushed in the background (right after the write, and every ten seconds while `gy serve` runs). `gy sync` syncs explicitly. While the remote is unreachable, reads and writes keep working, and what piled up is pushed when it is back.
+- A write lands in your copy at once and is pushed in the background (right after the write, and every ten seconds while `gy serve` runs). `gy remote sync` syncs explicitly. While the remote is unreachable, reads and writes keep working, and what piled up is pushed when it is back.
 - If the remote moved ahead, your unpushed writes are re-seated after it. Only a write to a node the other side changed first is rejected, and only you are told: on stderr at your next gy command and in `handover`. Whether to redo it is your call.
 - A writer is recorded and shown as `user.name / GY_ACTOR`; the same agent name under two humans is two writers. The name is the one git signs your commits with, resolved git's way — `GIT_AUTHOR_NAME` first, then `git config user.name` — so the ledger and the git history never name two people for one write.
 - The remote is written by gy alone: one write is one commit, and a history changed outside gy is refused with the way back. A repository holding anything but a ledger is refused.

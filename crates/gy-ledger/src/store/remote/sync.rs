@@ -1,4 +1,4 @@
-//! `gy sync` (n-6f47, d-39f6, d-1e50): prepare the copy, fetch, pull, and
+//! `gy remote sync` (n-6f47, d-39f6, d-1e50): prepare the copy, fetch, pull, and
 //! push each local write as one commit.
 use super::super::{Error, Gate, Result, SNAPSHOT_FILE, file::FileStore, log};
 use super::push::{first_push, push, push_writes, raise_format, raise_target};

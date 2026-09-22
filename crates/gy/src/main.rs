@@ -3,6 +3,7 @@
 mod cli;
 mod output;
 mod reads;
+mod remote_cli;
 mod repo;
 mod write;
 mod writes;
@@ -14,6 +15,7 @@ use gy_ledger::{
     location, next, reconcile, retry, show,
 };
 use output::{emit, emit_list, report};
+use remote_cli::RemoteAction;
 use std::path::Path;
 use write::Written;
 
@@ -27,11 +29,26 @@ fn main() {
 
 /// `init` makes the gy.toml the others need, so it runs before the root is
 /// resolved and touches no ledger (n-29b3). Everything else goes to `run`.
+/// The old top-level names (`share` / `join` / `sync`) still work and say once,
+/// on stderr, to use the `remote` group (n-8d0e); the check comes first, so the
+/// warning is the first line even when the command later fails.
 fn dispatch(cli: &Cli) -> Result<()> {
+    deprecation(&cli.command);
     match &cli.command {
         Command::Init { name } => writes::init(cli, name),
         _ => run(cli),
     }
+}
+
+/// The one line an old name prints before it does the same work (n-8d0e).
+fn deprecation(command: &Command) {
+    let message = match command {
+        Command::Share { .. } => "gy share is deprecated; use gy remote set <URL>",
+        Command::Join => "gy join is deprecated; use gy remote join",
+        Command::Sync => "gy sync is deprecated; use gy remote sync",
+        _ => return,
+    };
+    eprintln!("{message}");
 }
 
 /// The ledger directory's own name, for the browser tab (n-07f0). A root with
@@ -49,8 +66,7 @@ fn run(cli: &Cli) -> Result<()> {
     if let Some(outcome) = before_reconcile(cli, &root, &ledger) {
         return outcome;
     }
-    reconcile_copy(&root, &ledger)?;
-    repo::announce_rejected(&ledger);
+    prepare(&root, &ledger)?;
     let outcome = match &cli.command {
         Command::Show { ids, full } => {
             let repository = repo::open(&ledger)?;
@@ -67,6 +83,7 @@ fn run(cli: &Cli) -> Result<()> {
         }
         Command::Serve => reads::serve(&root, &ledger, tab_name(&root)),
         Command::Sync => reads::sync_command(cli, &root, &ledger),
+        Command::Remote { action } => remote(cli, &root, &ledger, action),
         Command::Init { .. } | Command::Share { .. } | Command::Join => unreachable!("early"),
         Command::Need { action } => write_need(cli, &root, &ledger, action),
         Command::Question { action } => write_question(cli, &root, &ledger, action),
@@ -90,7 +107,28 @@ fn before_reconcile(cli: &Cli, root: &Path, ledger: &Path) -> Option<Result<()>>
     match &cli.command {
         Command::Share { url } => Some(writes::share(cli, root, ledger, url)),
         Command::Join => Some(writes::join(cli, root, ledger)),
+        Command::Remote { action } => match action {
+            RemoteAction::Set { url } => Some(writes::share(cli, root, ledger, url)),
+            RemoteAction::Join => Some(writes::join(cli, root, ledger)),
+            RemoteAction::Sync => None,
+        },
         _ => None,
+    }
+}
+
+/// Reconcile the copy's marker and announce refused writes, in one step.
+fn prepare(root: &Path, ledger: &Path) -> Result<()> {
+    reconcile_copy(root, ledger)?;
+    repo::announce_rejected(ledger);
+    Ok(())
+}
+
+/// Route the `remote` group (n-8d0e): `set` and `join` run before the clone, so
+/// only `sync` arrives here.
+fn remote(cli: &Cli, root: &Path, ledger: &Path, action: &RemoteAction) -> Result<()> {
+    match action {
+        RemoteAction::Sync => reads::sync_command(cli, root, ledger),
+        RemoteAction::Set { .. } | RemoteAction::Join => unreachable!("early"),
     }
 }
 
@@ -114,7 +152,7 @@ fn reconcile_copy(root: &Path, ledger: &Path) -> Result<()> {
     Ok(())
 }
 
-/// A write to a shared copy starts a detached `gy sync` (n-ecbf).
+/// A write to a shared copy starts a detached `gy remote sync` (n-ecbf).
 fn after_write(cli: &Cli, root: &Path, ledger: &Path, outcome: &Result<()>) {
     if outcome.is_ok() && writes(&cli.command) {
         // A write on a node a refused write touched clears that notice
