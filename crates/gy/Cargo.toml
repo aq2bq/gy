@@ -14,8 +14,8 @@ name = "gy"
 path = "src/main.rs"
 
 [dependencies]
-gy-ledger = { path = "../gy-ledger", version = "1.1.0" }
-gy-serve = { path = "../gy-serve", version = "1.1.0" }
+gy-ledger = { path = "../gy-ledger", version = "1.1.1" }
+gy-serve = { path = "../gy-serve", version = "1.1.1" }
 serde.workspace = true
 serde_json.workspace = true
 clap.workspace = true

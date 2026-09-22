@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.1 - 2026-09-22
 
 ### Fixed
 
@@ -15,6 +15,12 @@
   a `--ref` prints `id: <ID> (<ref>)`, which the READMEs and the cheat sheet
   did not say; they said only `id: <ID>`. They now also say to read an id from
   `--json` rather than from that line. The output itself is unchanged.
+
+### Updating
+
+Nothing has to be done: the storage format, `gy.toml`, every command's
+behaviour and the files `publish` writes are unchanged. The bundled cheat
+sheet gained one sentence, so copy the skills again when convenient.
 
 ## 1.1.0 - 2026-09-22
 
