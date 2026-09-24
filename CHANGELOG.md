@@ -23,6 +23,16 @@
   ledger still never reads `git config`. A sync no longer pushes a line
   without `by`: it keeps it in the copy and says why and what to do.
 
+- **A rebase no longer refuses a write for its own node, nor lets a ghost
+  in** (n-ef56, reported from a second machine): an unpushed write that
+  creates a node and points at it in the same line — `req add --need` does
+  — was refused on every rebase as "it points at …, which is not in the
+  ledger". And a later write that only changed a node a refused write had
+  created went through, leaving a node with no creation behind. A line now
+  counts the nodes it creates as held, and a line that changes a node the
+  ledger does not hold is refused ("it changes …, which a refused write
+  created" or "… which is not in the ledger").
+
 - **`gy serve` says why the sync stopped**: a failure before the sync itself
   (`gy.toml` has no `remote`, a refused copy) was logged as the bare
   "sync failed", and a refusal of the copy came with advice about the remote

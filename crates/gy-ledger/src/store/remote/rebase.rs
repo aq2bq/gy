@@ -211,6 +211,45 @@ fn rejection(
         by,
     })
 }
+/// The nodes this row itself creates (n-ef56).
+fn created_in(event: &log::Event) -> BTreeSet<String> {
+    let mut out = BTreeSet::new();
+    for change in &event.changes {
+        if let log::Change::Created { node, .. } = change {
+            out.insert(node.clone());
+        }
+    }
+    out
+}
+
+/// A row against the ledger, as one rule (n-ef56): a duplicate creation is
+/// refused, and a touch without a creation must find its node.
+fn refused_shape(
+    nodes: &BTreeMap<String, Value>,
+    rejected_created: &BTreeSet<String>,
+    created_here: &BTreeSet<String>,
+    event: &log::Event,
+) -> Option<String> {
+    for change in &event.changes {
+        match change {
+            log::Change::Created { node, .. } if nodes.contains_key(node) => {
+                return Some(format!("{node} already exists in the remote's ledger"));
+            }
+            log::Change::Updated { node, .. } | log::Change::Deleted { node, .. }
+                if !created_here.contains(node) && !nodes.contains_key(node) =>
+            {
+                let whose = if rejected_created.contains(node) {
+                    "a refused write created"
+                } else {
+                    "is not in the ledger"
+                };
+                return Some(format!("it changes {node}, which {whose}"));
+            }
+            _ => {}
+        }
+    }
+    None
+}
 fn judge(
     nodes: &BTreeMap<String, Value>,
     changed: &BTreeSet<String>,
@@ -219,6 +258,7 @@ fn judge(
     event: &log::Event,
     touched: &[String],
 ) -> Option<String> {
+    let created_here = created_in(event);
     for node in touched {
         if removed.contains(node) {
             return Some(format!("the remote deleted {node}"));
@@ -227,12 +267,20 @@ fn judge(
             return Some(format!("the remote changed {node}"));
         }
     }
+    if let Some(reason) = refused_shape(nodes, rejected_created, &created_here, event) {
+        return Some(reason);
+    }
+    missing_target(nodes, rejected_created, &created_here, event)
+}
+
+/// An edge target is in the ledger or made by the same row (n-ef56).
+fn missing_target(
+    nodes: &BTreeMap<String, Value>,
+    rejected_created: &BTreeSet<String>,
+    created_here: &BTreeSet<String>,
+    event: &log::Event,
+) -> Option<String> {
     for change in &event.changes {
-        if let log::Change::Created { node, .. } = change {
-            if nodes.contains_key(node) {
-                return Some(format!("{node} already exists in the remote's ledger"));
-            }
-        }
         let value = match change {
             log::Change::Created { value, .. } | log::Change::Updated { value, .. } => value,
             _ => continue,
@@ -243,7 +291,7 @@ fn judge(
                     "it points at {target}, which a refused write created"
                 ));
             }
-            if !nodes.contains_key(&target) {
+            if !nodes.contains_key(&target) && !created_here.contains(&target) {
                 return Some(format!("it points at {target}, which is not in the ledger"));
             }
         }
