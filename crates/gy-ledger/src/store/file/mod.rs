@@ -95,12 +95,15 @@ impl FileStore {
     /// Undo only the writer's own last transaction (n-ecbf 2B2, ac-6f67). A
     /// shared copy compares the human too; a local ledger the actor only.
     pub(super) fn own_write(&self, last: &log::Event) -> Result<()> {
-        let human = if self.remote.is_some() {
+        // A once-shared copy counts as shared even while the marker is away
+        // (n-9f9d); the check runs only then, never on a plain read.
+        let shared = self.remote.is_some() || super::remote::shared_copy(&self.dir);
+        let human = if shared {
             super::remote::git::user(&self.dir)?.0
         } else {
             None
         };
-        let mine = if self.remote.is_some() {
+        let mine = if shared {
             last.actor == self.actor.name() && last.by == human
         } else {
             last.actor == self.actor.name()

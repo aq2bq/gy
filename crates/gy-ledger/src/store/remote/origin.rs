@@ -10,6 +10,19 @@ use std::path::Path;
 /// it never travels to the remote.
 const REMOTE_FILE: &str = "remote";
 
+/// Whether this copy was ever shared: it is its own git repository with an
+/// `origin` (n-9f9d, d-dc39). The marker may be gone while gy.toml's remote
+/// is away; writes in that window still record their human. A never-shared
+/// ledger is not a git repository, so it stays local (n-8a52). Without a
+/// `.git` entry there is nothing to ask: git would otherwise walk up and
+/// report a parent repository's origin (n-6d6c).
+pub fn shared_copy(dir: &Path) -> bool {
+    if !dir.join(".git").exists() {
+        return false;
+    }
+    git::is_repo(dir) && git::origin(dir).is_some()
+}
+
 /// Refuse an operation that would change a repository this copy does not own.
 /// The copy's `remote` marker binds it to `gy.toml`, which gy's command layer
 /// keeps equal before every command; `origin` must name that same URL, and a

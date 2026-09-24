@@ -81,6 +81,19 @@ pub fn sync_error(ledger: &Path) -> Option<(String, Option<String>)> {
     Some((first, advice))
 }
 
+/// Record a failure that happened before the sync body ran (n-9f9d): a missing
+/// remote in gy.toml, or a refused marker. The next serve tick reads this
+/// instead of falling back to the bare `sync failed`.
+pub fn record_error(ledger: &Path, message: &str) {
+    if !git::is_repo(ledger) {
+        return;
+    }
+    let mut state = read_state(ledger);
+    state.last_error = Some(message.to_string());
+    state.last_error_at = Some(now());
+    let _ = write_state(ledger, &state);
+}
+
 /// Record a give-up after `secs` seconds, named for the caller (n-ecbf). When
 /// the child left a stage, the message names it (n-08ae). A process that was
 /// only waiting for the lock does not write: its timeout is not a failure, and

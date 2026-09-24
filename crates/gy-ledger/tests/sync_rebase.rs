@@ -48,8 +48,10 @@ fn event(seq: u64, changes: Vec<log::Change>) -> log::Event {
         why: "test".to_string(),
         source: "test".to_string(),
         retries: 0,
-        by: None,
-        by_mail: None,
+        // Well-formed like a real write: this file is about the rebase,
+        // and writer-less rows no longer reach a remote (n-64be).
+        by: Some("piko".to_string()),
+        by_mail: Some("piko@example.com".to_string()),
         changes,
     }
 }

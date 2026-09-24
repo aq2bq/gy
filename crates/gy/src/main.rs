@@ -137,7 +137,15 @@ fn remote(cli: &Cli, root: &Path, ledger: &Path, action: &RemoteAction) -> Resul
 fn reconcile_copy(root: &Path, ledger: &Path) -> Result<()> {
     let had = ledger.join("remote").is_file();
     let remote = config::read(root)?.remote;
-    if let Some(url) = reconcile(ledger, remote.as_deref())? {
+    let stopped = match reconcile(ledger, remote.as_deref()) {
+        // A refusal before the sync body still reaches serve's log (n-9f9d).
+        Err(error) => {
+            gy_ledger::record_error(ledger, &error.message);
+            return Err(error);
+        }
+        Ok(stopped) => stopped,
+    };
+    if let Some(url) = stopped {
         eprintln!(
             "stopped syncing with {url}; this copy is local from here on and other members' writes will not arrive"
         );

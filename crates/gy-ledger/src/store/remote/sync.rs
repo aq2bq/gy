@@ -1,9 +1,9 @@
 //! `gy remote sync` (n-6f47, d-39f6, d-1e50): prepare the copy, fetch, pull, and
 //! push each local write as one commit.
 use super::super::{Error, Gate, Result, SNAPSHOT_FILE, file::FileStore, log};
-use super::push::{first_push, push, push_writes, raise_format, raise_target};
+use super::push::{first_push, push, push_writes, raise_format, raise_target, refuse_writerless};
 use super::report::{Pulled, Sync};
-use super::{git, guard, prepare, rebase, recovery, rules, state};
+use super::{git, guard, origin, prepare, rebase, recovery, rules, state};
 use fs2::FileExt;
 use std::path::Path;
 use std::sync::Arc;
@@ -43,21 +43,29 @@ fn sync_inner(ledger: &Path, remote: &str, gate: &dyn Gate) -> Result<Sync> {
         report.seq = seq;
     }
     // Communication is outside the lock: a write is not blocked by a fetch.
-    state::set_step(ledger, "fetch");
-    git::fetch(ledger).map_err(|error| {
-        rules::advice(
-            error,
-            "check the remote URL and your git credentials (git remote -v, then git fetch), and that this machine is online",
-        )
-    })?;
+    fetch(ledger)?;
     let branch = git::head_branch(ledger)?;
     let upstream = format!("origin/{branch}");
+    refuse_writerless(ledger, &upstream)?;
     let remote_format = rules::check_remote_format(ledger, &upstream)?;
     let raise = raise_target(rules::local_format(ledger), remote_format);
     state::set_step(ledger, "push");
     first_push(ledger, remote, &branch, &mut report)?;
     reconcile(ledger, branch.as_str(), &upstream, &mut report, gate, raise)?;
     Ok(report)
+}
+
+/// Fetch the remote. The ownership refusal stays bare; only a real fetch
+/// failure names the URL and the credentials (n-9f9d).
+fn fetch(ledger: &Path) -> Result<()> {
+    state::set_step(ledger, "fetch");
+    origin::ensure(ledger)?;
+    git::fetch(ledger).map_err(|error| {
+        rules::advice(
+            error,
+            "check the remote URL and your git credentials (git remote -v, then git fetch), and that this machine is online",
+        )
+    })
 }
 
 /// Take the copy's exclusive lock only around a change, so a fetch or a push

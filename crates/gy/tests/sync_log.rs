@@ -78,15 +78,19 @@ fn serve_logs_the_failure_and_its_way_out() {
     fx.seed(&[common::criterion("0001", "an ac")]);
     front_sync(&fx);
 
-    // Break the copy's origin so the next round fails fast and offline.
+    // Point the whole copy at a dead remote so the next round fails fast and
+    // offline with its way out. Only the origin is not enough: a copy whose
+    // origin disagrees with its marker is refused without URL advice (n-9f9d).
+    let dead = "file:///nonexistent/ledger.git";
+    std::fs::write(
+        fx.root.join("gy.toml"),
+        format!("remote = \"{dead}\"\n\n[scopes.a]\n"),
+    )
+    .unwrap();
+    std::fs::write(fx.ledger().join("remote"), dead).unwrap();
     let out = Command::new("git")
         .current_dir(fx.ledger())
-        .args([
-            "remote",
-            "set-url",
-            "origin",
-            "file:///nonexistent/ledger.git",
-        ])
+        .args(["remote", "set-url", "origin", dead])
         .output()
         .unwrap();
     assert!(out.status.success());
@@ -112,4 +116,69 @@ fn serve_logs_the_failure_and_its_way_out() {
         err.contains("  → "),
         "the way out is on the next line: {err}"
     );
+}
+
+/// A sync that fails before its body still leaves its reason in `sync.state`,
+/// so serve logs the reason instead of the bare `sync failed` (n-9f9d).
+#[test]
+fn remote_sync_without_remote_records_reason_in_state() {
+    let temp = tempfile::tempdir().unwrap();
+    let remote = temp.path().join("remote.git");
+    init_remote(&remote);
+    let fx = fixture();
+    write_toml(&fx, &format!("file://{}", remote.display()));
+    fx.seed(&[common::criterion("0001", "an ac")]);
+    front_sync(&fx);
+
+    std::fs::write(fx.root.join("gy.toml"), "[scopes.a]\n").unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_gy"))
+        .current_dir(&fx.root)
+        .env("XDG_DATA_HOME", &fx.data)
+        .env("GY_ACTOR", "piko")
+        .arg("remote")
+        .arg("sync")
+        .output()
+        .unwrap();
+    assert!(!out.status.success());
+    assert!(
+        stderr(&out).contains("gy.toml has no remote"),
+        "{}",
+        stderr(&out)
+    );
+    let state = std::fs::read_to_string(fx.ledger().join("sync.state")).unwrap();
+    assert!(state.contains("gy.toml has no remote"), "{state}");
+}
+
+/// Serve starts its sync thread from gy.toml's remote (n-9f9d): with the
+/// marker gone but gy.toml's remote back, the first tick rebinds the copy.
+#[test]
+fn serve_rebinds_a_markerless_copy_from_toml_remote() {
+    let temp = tempfile::tempdir().unwrap();
+    let remote = temp.path().join("remote.git");
+    init_remote(&remote);
+    let fx = fixture();
+    write_toml(&fx, &format!("file://{}", remote.display()));
+    fx.seed(&[common::criterion("0001", "an ac")]);
+    front_sync(&fx);
+    std::fs::remove_file(fx.ledger().join("remote")).unwrap();
+
+    let mut child = Command::new(env!("CARGO_BIN_EXE_gy"))
+        .current_dir(&fx.root)
+        .env("XDG_DATA_HOME", &fx.data)
+        .env("GY_ACTOR", "piko")
+        .arg("serve")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let started = std::time::Instant::now();
+    while !fx.ledger().join("remote").is_file() {
+        assert!(
+            started.elapsed() < Duration::from_secs(20),
+            "serve never rebound the copy"
+        );
+        std::thread::sleep(Duration::from_millis(200));
+    }
+    let _ = child.kill();
+    let _ = child.wait();
 }

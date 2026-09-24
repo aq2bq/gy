@@ -18,10 +18,11 @@ mod state;
 pub mod sync;
 
 pub use join::{Join, check as join_check, notice as join_notice, run as join_run};
+pub use origin::shared_copy;
 pub use prepare::reconcile;
 pub use rejected::{clear_rejected, rejected_notices};
 pub use report::{Pulled, Range, Sync};
 pub use rounds::Rounds;
 pub use share::{Share, check as share_check, upload as share_upload};
-pub use state::{record_timeout, record_timeout_after, sync_error};
+pub use state::{record_error, record_timeout, record_timeout_after, sync_error};
 pub use sync::sync_with;

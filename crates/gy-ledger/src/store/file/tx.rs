@@ -117,9 +117,10 @@ impl FileStore {
     }
     /// The human a shared copy records: the name git will sign the commit
     /// with, read once per write (d-a4f6). A copy with the marker but no name
-    /// is refused (n-8a52).
+    /// is refused (n-8a52). A once-shared copy counts as shared even while
+    /// the marker is away; the check runs only then (n-9f9d).
     fn human(&self) -> Result<(Option<String>, Option<String>)> {
-        if self.remote.is_none() {
+        if self.remote.is_none() && !super::super::remote::shared_copy(&self.dir) {
             return Ok((None, None));
         }
         let (name, mail) = super::super::remote::git::user(&self.dir)?;

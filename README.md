@@ -260,7 +260,7 @@ It checks what you need in one go (git, credentials that can read the repository
 - If the remote moved ahead, your unpushed writes are re-seated after it. Only a write to a node the other side changed first is rejected, and only you are told: on stderr at your next gy command and in `handover`. Whether to redo it is your call.
 - A writer is recorded and shown as `user.name / GY_ACTOR`; the same agent name under two humans is two writers. The name is the one git signs your commits with, resolved git's way — `GIT_AUTHOR_NAME` first, then `git config user.name` — so the ledger and the git history never name two people for one write.
 - The remote is written by gy alone: one write is one commit, and a history changed outside gy is refused with the way back. A repository holding anything but a ledger is refused.
-- Remove the `remote` line from `gy.toml` and the copy is local again (the next command says so once). Reconnecting after both sides moved is refused: there is no merge.
+- Remove the `remote` line from `gy.toml` and the copy is local again (the next command says so once). Put the same line back — checking out an older commit and returning does just that — and the copy carries on where it stopped; what you wrote meanwhile is pushed as usual. A different remote, or a separate ledger, is refused: there is no merge.
 
 A ledger holds the exchanges behind decisions. Putting it on a remote means that record is on GitHub.
 

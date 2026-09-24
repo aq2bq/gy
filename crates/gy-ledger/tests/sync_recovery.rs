@@ -169,15 +169,11 @@ fn an_unreachable_remote_names_the_way_out() {
     ident();
     let temp = tempfile::tempdir().unwrap();
     let (one, remote) = synced(temp.path());
-    git(
-        &one,
-        &[
-            "remote",
-            "set-url",
-            "origin",
-            "file:///nonexistent/ledger.git",
-        ],
-    );
+    // A dead remote the whole copy agrees on: disagreeing with the marker is
+    // refused without URL advice instead (n-9f9d).
+    let dead = "file:///nonexistent/ledger.git";
+    std::fs::write(one.join("remote"), dead).unwrap();
+    git(&one, &["remote", "set-url", "origin", dead]);
 
     let error = sync(&one, &url(&remote)).unwrap_err();
     assert!(error.message.lines().count() >= 2, "{}", error.message);

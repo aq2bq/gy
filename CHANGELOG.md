@@ -1,5 +1,34 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **A shared copy no longer stops syncing for good after a checkout**
+  (n-9f9d, d-dc39, reported from a second machine): `gy.toml` lives in the
+  project's git, so checking out a commit from before `remote` was added
+  removes the line, and the next gy command (a `gy serve` tick is enough)
+  took the copy local. Coming back restored the line but not the copy, and
+  every sync after that failed with "this copy has no remote marker" until
+  the marker was written back by hand. Now, when the same `remote` returns
+  and the copy's origin still names it, the copy is bound again and what was
+  written meanwhile is pushed as usual. A copy whose origin differs is still
+  refused. `gy serve` also starts syncing from `gy.toml`, so a restart in the
+  meantime does not leave the copy unbound.
+
+- **Writes in that window keep their human** (n-64be): while the copy was
+  local its writes carried no `by`, and the rebind pushed them to the shared
+  record that way. A copy that is its own git repository with an origin now
+  records `by` and `by_mail` even while its marker is away; a never-shared
+  ledger still never reads `git config`. A sync no longer pushes a line
+  without `by`: it keeps it in the copy and says why and what to do.
+
+- **`gy serve` says why the sync stopped**: a failure before the sync itself
+  (`gy.toml` has no `remote`, a refused copy) was logged as the bare
+  "sync failed", and a refusal of the copy came with advice about the remote
+  URL and the credentials, which did not apply. The log now carries the
+  reason, and that advice is given only for a failed fetch.
+
 ## 1.1.1 - 2026-09-22
 
 ### Fixed

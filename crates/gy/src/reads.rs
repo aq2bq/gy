@@ -46,9 +46,15 @@ pub fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
 /// touched, and reading it back is an error instead of a change.
 pub fn sync_command(cli: &Cli, root: &Path, ledger: &Path) -> Result<()> {
     watchdog(ledger);
-    let remote = config::read(root)?.remote.ok_or_else(|| {
-        Error::invalid("gy.toml has no remote; gy remote sync needs one (add `remote = \"…\"`)")
-    })?;
+    let Some(remote) = config::read(root)?.remote else {
+        let error = Error::invalid(
+            "gy.toml has no remote; gy remote sync needs one (add `remote = \"…\"`)",
+        );
+        // The sync body never ran, so its state write never happens: leave
+        // the reason where serve's next tick reads it (n-9f9d).
+        gy_ledger::record_error(ledger, &error.message);
+        return Err(error);
+    };
     emit(cli.json, &gy_ledger::sync(ledger, &remote)?)
 }
 
@@ -83,7 +89,9 @@ pub fn handover(cli: &Cli, root: &Path, ledger: &Path) -> Result<()> {
 /// sequence, which opens the ledger as it stood then (n-10e1).
 pub fn serve(root: &Path, ledger: &Path, name: String) -> Result<()> {
     let remote = config::read(root)?.remote;
-    if ledger.join("remote").is_file() {
+    // The marker may be gone while gy.toml's remote is back (n-9f9d): the
+    // thread rebinds the copy on its first tick.
+    if remote.is_some() {
         let (root, ledger) = (root.to_path_buf(), ledger.to_path_buf());
         std::thread::spawn(move || sync_log(&root, &ledger));
     }

@@ -120,6 +120,31 @@ pub(super) fn push_writes(
     Ok(())
 }
 
+/// Refuse to push writer-less rows (n-64be, ac-1e24): every uncommitted row
+/// carries `by`. Only rows this sync would newly place on the remote count;
+/// committed rows stay for the rewrite refusal (n-f4cd). The first push to
+/// an empty remote is exempt: it establishes the ledger. Held rows stay
+/// local, so the next sync says the same.
+pub(super) fn refuse_writerless(ledger: &Path, upstream: &str) -> Result<()> {
+    if git::rev(ledger, upstream).is_none() {
+        return Ok(());
+    }
+    let committed = seq_at(ledger, "HEAD")?;
+    let missing: Vec<String> = log::read(ledger)?
+        .0
+        .into_iter()
+        .filter(|event| event.seq > committed && event.by.is_none())
+        .map(|event| event.seq.to_string())
+        .collect();
+    if missing.is_empty() {
+        return Ok(());
+    }
+    Err(Error::invalid(format!(
+        "writes {} have no writer (by): an older gy wrote them while this copy was not syncing. They stay in this copy, and nothing is pushed or pulled until they are gone. Keep this copy local (remove `remote` from gy.toml), or note what they say (gy show), remove the copy, run gy remote join, and write them again",
+        missing.join(", ")
+    )))
+}
+
 /// The first push owed when an empty remote has a committed copy; this also
 /// recovers a first sync whose push failed before landing.
 pub(super) fn first_push(

@@ -51,9 +51,15 @@ pub fn reconcile(ledger: &Path, remote: Option<&str>) -> Result<Option<String>> 
 }
 
 /// Clone the remote's ledger when this machine has no copy yet. A local
-/// ledger, or an empty remote, is left to `gy remote sync` and to open (n-8a52).
+/// ledger, or an empty remote, is left to `gy remote sync` and to open
+/// (n-8a52). A copy that already is the remote's repository gets its marker
+/// back when its origin still names the remote (n-9f9d, d-dc39).
 fn acquire(ledger: &Path, remote: &str) -> Result<()> {
-    if git::is_repo(ledger) || ledger.join(log::FILE).is_file() {
+    if git::is_repo(ledger) {
+        rebind(ledger, remote)?;
+        return Ok(());
+    }
+    if ledger.join(log::FILE).is_file() {
         return Ok(());
     }
     std::fs::create_dir_all(ledger)?;
@@ -61,6 +67,16 @@ fn acquire(ledger: &Path, remote: &str) -> Result<()> {
         return Ok(());
     };
     clone(ledger, remote, &branch)
+}
+
+/// Write the marker back when the copy still is the remote's repository. A
+/// different origin, or none, stays unbound so `origin::ensure` keeps
+/// refusing (ac-ad40).
+fn rebind(ledger: &Path, remote: &str) -> Result<()> {
+    if git::origin(ledger).as_deref() == Some(remote) {
+        std::fs::write(ledger.join("remote"), remote)?;
+    }
+    Ok(())
 }
 
 /// The remote's one ledger branch, or `None` when it has no branch yet. Two
