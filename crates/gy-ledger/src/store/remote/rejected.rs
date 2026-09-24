@@ -63,8 +63,10 @@ pub fn clear_rejected(ledger: &Path, event: &log::Event) -> Result<()> {
     for line in text.lines() {
         match serde_json::from_str::<Rejected>(line) {
             Ok(rejected)
+                // The writer is the actor alone (r-58c1): one copy has one
+                // machine's human, so a differing `by` is the same person
+                // in a changed state, never another writer.
                 if rejected.event.actor == event.actor
-                    && rejected.event.by == event.by
                     && named_nodes(&rejected.event)
                         .iter()
                         .any(|node| mine.contains(node)) =>

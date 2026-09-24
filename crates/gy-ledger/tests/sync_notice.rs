@@ -129,6 +129,55 @@ fn a_write_on_a_touched_node_clears_the_notice() {
     assert!(rejected_notices(dir).is_empty());
 }
 
+/// A writer-less refusal clears when the same actor writes from a shared
+/// copy (ac-7f72, n-f7b7): the legacy record has no human to match.
+#[test]
+fn a_writerless_refusal_clears_on_the_same_actor_rewrite() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    ledger(dir);
+    add_rejected(
+        dir,
+        &rejected_line(2, "piko", None, "ac-0001", "the remote changed ac-0001"),
+    );
+
+    // Another actor's rewrite, even with a human, keeps it.
+    clear_rejected(dir, &event(10, "other", Some("human"), "ac-0001")).unwrap();
+    assert_eq!(rejected_notices(dir).len(), 1);
+
+    // The same actor's rewrite from a shared copy clears it.
+    clear_rejected(dir, &event(11, "piko", Some("human"), "ac-0001")).unwrap();
+    assert!(rejected_notices(dir).is_empty());
+}
+
+/// The human does not matter (r-58c1, 追記 2): a refusal with a human is
+/// cleared by the same actor's rewrite, whatever human it carries. Only a
+/// different actor keeps it.
+#[test]
+fn a_refusal_clears_whatever_human_the_rewrite_carries() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path();
+    ledger(dir);
+    add_rejected(
+        dir,
+        &rejected_line(
+            2,
+            "piko",
+            Some("human"),
+            "ac-0001",
+            "the remote changed ac-0001",
+        ),
+    );
+
+    // A different actor keeps it, whatever the human.
+    clear_rejected(dir, &event(10, "other", Some("human"), "ac-0001")).unwrap();
+    assert_eq!(rejected_notices(dir).len(), 1);
+
+    // The same actor clears it, whatever the human.
+    clear_rejected(dir, &event(11, "piko", Some("other"), "ac-0001")).unwrap();
+    assert!(rejected_notices(dir).is_empty());
+}
+
 #[test]
 fn undo_only_your_own_last_write() {
     let temp = tempfile::tempdir().unwrap();

@@ -33,6 +33,14 @@
   ledger does not hold is refused ("it changes …, which a refused write
   created" or "… which is not in the ledger").
 
+- **A refused write's notice goes away when you redo it** (n-f7b7): a write
+  refused while the copy was not syncing carries no `by`, and the notice was
+  cleared only by a write with the same `actor` and the same `by`, so a redo
+  never cleared it and the only way out was to empty `rejected.jsonl` by
+  hand. The file belongs to one copy on one machine, so `by` told nothing
+  apart there; a notice is now cleared by the same `actor` writing to a node
+  the refused write touched.
+
 - **`gy serve` says why the sync stopped**: a failure before the sync itself
   (`gy.toml` has no `remote`, a refused copy) was logged as the bare
   "sync failed", and a refusal of the copy came with advice about the remote
