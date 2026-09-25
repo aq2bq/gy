@@ -3,6 +3,7 @@
 mod cli;
 mod output;
 mod reads;
+mod release_check;
 mod remote_cli;
 mod repo;
 mod write;
@@ -74,6 +75,7 @@ fn run(cli: &Cli) -> Result<()> {
         }
         Command::List { .. } => reads::read_list(cli, &ledger),
         Command::Next => {
+            release_check::poll();
             let repository = repo::open(&ledger)?;
             emit_list(cli.json, &next(&repository, cli.scope.as_deref())?)
         }

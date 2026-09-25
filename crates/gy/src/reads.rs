@@ -76,6 +76,7 @@ fn watchdog(ledger: &Path) {
 /// gets five seconds, then the view is built from the copy as it stands
 /// (n-ecbf 2B2).
 pub fn handover(cli: &Cli, root: &Path, ledger: &Path) -> Result<()> {
+    crate::release_check::poll();
     repo::refresh(root, ledger)?;
     let repository = repo::open(ledger)?;
     emit(

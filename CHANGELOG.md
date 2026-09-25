@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Added
+
+- **gy tells you when a newer release is out** (n-670a, d-1f57): `handover`
+  and `next` print one line on stderr — the new version and
+  `cargo install gy --locked` — when crates.io has a newer gy than the one
+  running. The answer comes from `cargo info gy`, run at most once a day in
+  the background from gy's data directory; a command only reads a small
+  cache file there and never waits for it (measured: `gy next` takes the
+  same time as in 1.1.1). No cargo, no network or an answer that cannot be
+  read keeps it silent until the next day. `--json` output is unchanged, and
+  there is no setting.
+
 ### Fixed
 
 - **A shared copy no longer stops syncing for good after a checkout**
