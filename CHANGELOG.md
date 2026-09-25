@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.0 - 2026-09-25
 
 ### Added
 
@@ -65,6 +65,21 @@
   "sync failed", and a refusal of the copy came with advice about the remote
   URL and the credentials, which did not apply. The log now carries the
   reason, and that advice is given only for a failed fetch.
+
+### Updating
+
+Install the new release with `cargo install gy --locked`. The storage format,
+`gy.toml` and the set of commands are unchanged, and a 1.2.0 copy and a 1.1.1
+copy can share one ledger. The skills are unchanged.
+
+- From now on gy runs `cargo info gy` once a day in the background, from its
+  data directory, to learn the newest release. Nothing else leaves your
+  machine unless you share a ledger.
+- If a copy stopped syncing with "this copy has no remote marker" after a
+  checkout, the next command binds it again; nothing needs to be done.
+- If a copy still holds writes that 1.1.1 made without a writer (`by`) while
+  it was not syncing, `gy remote sync` stops and says which writes and what
+  to do. Writes made from 1.2.0 on always carry their writer.
 
 ## 1.1.1 - 2026-09-22
 
