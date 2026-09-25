@@ -4,6 +4,7 @@ use super::super::{Error, Gate, Result, SNAPSHOT_FILE, file::FileStore, log};
 use super::push::{first_push, push, push_writes, raise_format, raise_target, refuse_writerless};
 use super::report::{Pulled, Sync};
 use super::{git, guard, origin, prepare, rebase, recovery, rules, state};
+use crate::versions::max_version;
 use fs2::FileExt;
 use std::path::Path;
 use std::sync::Arc;
@@ -46,13 +47,33 @@ fn sync_inner(ledger: &Path, remote: &str, gate: &dyn Gate) -> Result<Sync> {
     fetch(ledger)?;
     let branch = git::head_branch(ledger)?;
     let upstream = format!("origin/{branch}");
+    let peer_version = peer_versions(ledger, &incoming_range(&cloned, &upstream));
     refuse_writerless(ledger, &upstream)?;
     let remote_format = rules::check_remote_format(ledger, &upstream)?;
     let raise = raise_target(rules::local_format(ledger), remote_format);
     state::set_step(ledger, "push");
     first_push(ledger, remote, &branch, &mut report)?;
     reconcile(ledger, branch.as_str(), &upstream, &mut report, gate, raise)?;
+    report.peer_version = peer_version;
     Ok(report)
+}
+
+/// What this sync takes in, for the peer notice (n-670a B): a fresh clone
+/// takes in the whole branch, otherwise only what is new.
+fn incoming_range(cloned: &Option<u64>, upstream: &str) -> String {
+    if cloned.is_some() {
+        upstream.to_string()
+    } else {
+        format!("HEAD..{upstream}")
+    }
+}
+
+/// The greatest `Gy-Version` trailer in `range`, when any (n-670a B). One git
+/// call whatever the count of commits; a range the remote does not have
+/// simply has none.
+fn peer_versions(ledger: &Path, range: &str) -> Option<String> {
+    let versions = git::versions_in(ledger, range).ok()?;
+    max_version(versions.iter().map(String::as_str))
 }
 
 /// Fetch the remote. The ownership refusal stays bare; only a real fetch

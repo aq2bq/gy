@@ -14,6 +14,13 @@
   read keeps it silent until the next day. `--json` output is unchanged, and
   there is no setting.
 
+- **A shared ledger tells you when a teammate runs a newer gy** (n-670a,
+  d-1f57): each commit a sync pushes now carries the writing gy's release as
+  a `Gy-Version:` line. When a sync pulls one newer than yours, `gy remote
+  sync`, `handover` and the `gy serve` log say so once, with the command to
+  update. The storage format is unchanged, and an older gy reads these
+  commits as before.
+
 ### Fixed
 
 - **A shared copy no longer stops syncing for good after a checkout**

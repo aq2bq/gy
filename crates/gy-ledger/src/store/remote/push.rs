@@ -170,7 +170,8 @@ pub(super) fn first_push(
 }
 
 /// The commit message of one write: its why, the actor, the human when the
-/// copy records one, and the sequence.
+/// copy records one, the writing gy's release, and the sequence (n-670a B).
+/// A format-only commit keeps its own message.
 fn write_message(event: &log::Event) -> String {
     let mut message = format!("{}\n\nactor: {}\n", event.why, event.actor);
     if let Some(by) = &event.by {
@@ -179,6 +180,7 @@ fn write_message(event: &log::Event) -> String {
             message.push_str(&format!("by_mail: {mail}\n"));
         }
     }
+    message.push_str(&format!("Gy-Version: {}\n", env!("CARGO_PKG_VERSION")));
     message.push_str(&format!("Gy-Seq: {}\n", event.seq));
     message
 }

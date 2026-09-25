@@ -42,12 +42,44 @@ pub fn poll() {
     }
     if let Some(latest) = read_cache(&dir).latest {
         let own = env!("CARGO_PKG_VERSION");
-        if newer(own, &latest) {
+        if gy_ledger::newer_than(own, &latest) {
             eprintln!(
                 "gy {latest} is available (you have {own}); update with: cargo install gy --locked"
             );
         }
     }
+}
+
+/// The peer release worth noticing: what `sync.state` knows above this
+/// build, if anything (n-670a B).
+pub fn peer_newer(ledger: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(ledger.join("sync.state")).ok()?;
+    let state: gy_ledger::SyncStatus = serde_json::from_str(&text).ok()?;
+    let peer = state.peer_version?;
+    if gy_ledger::newer_than(env!("CARGO_PKG_VERSION"), &peer) {
+        Some(peer)
+    } else {
+        None
+    }
+}
+
+/// One line per peer version for the serve log (n-670a B): the line when the
+/// version changed since the last tick, nothing otherwise.
+pub fn peer_notice(last: &mut Option<String>, current: Option<String>) -> Option<String> {
+    if current == *last {
+        return None;
+    }
+    *last = current.clone();
+    current.map(|version| peer_line(&version))
+}
+
+/// The peer notice itself, shared by sync, handover, and serve (n-670a B).
+/// gy speaks English, next to the release notice above.
+pub fn peer_line(peer: &str) -> String {
+    let own = env!("CARGO_PKG_VERSION");
+    format!(
+        "someone sharing this ledger writes with gy {peer} (you have {own}); update with: cargo install gy --locked"
+    )
 }
 
 /// The cache is missing, unreadable, or older than a day.
@@ -159,37 +191,12 @@ fn spawn(dir: &Path) {
 fn parse_version(text: &str) -> Option<String> {
     text.lines().find_map(|line| {
         let rest = line.trim().strip_prefix("version:")?.trim();
-        let parts: Vec<&str> = rest.split('.').collect();
-        if parts.len() == 3
-            && parts
-                .iter()
-                .all(|part| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit()))
-        {
+        if gy_ledger::triple(rest).is_some() {
             Some(rest.to_string())
         } else {
             None
         }
     })
-}
-
-/// True when `latest` is strictly newer than `own`, numerically.
-fn newer(own: &str, latest: &str) -> bool {
-    match (triple(own), triple(latest)) {
-        (Some(own), Some(latest)) => latest > own,
-        _ => false,
-    }
-}
-
-fn triple(text: &str) -> Option<(u64, u64, u64)> {
-    let parts: Vec<&str> = text.split('.').collect();
-    if parts.len() != 3 {
-        return None;
-    }
-    let numbers: Vec<u64> = parts.iter().filter_map(|part| part.parse().ok()).collect();
-    if numbers.len() != 3 {
-        return None;
-    }
-    Some((numbers[0], numbers[1], numbers[2]))
 }
 
 fn read_cache(dir: &Path) -> Cache {
@@ -237,4 +244,29 @@ fn now() -> u64 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::peer_notice;
+
+    #[test]
+    fn peer_notice_speaks_once_per_version() {
+        use super::peer_line;
+        let mut last = None;
+        assert!(peer_notice(&mut last, None).is_none());
+        assert_eq!(
+            peer_line("9.9.9"),
+            format!(
+                "someone sharing this ledger writes with gy 9.9.9 (you have {}); update with: cargo install gy --locked",
+                env!("CARGO_PKG_VERSION")
+            )
+        );
+        let line = peer_notice(&mut last, Some("9.9.9".to_string())).unwrap();
+        assert!(line.contains("9.9.9"), "{line}");
+        assert!(peer_notice(&mut last, Some("9.9.9".to_string())).is_none());
+        assert!(peer_notice(&mut last, Some("9.9.10".to_string())).is_some());
+        assert!(peer_notice(&mut last, None).is_none());
+        assert_eq!(last, None);
+    }
 }

@@ -145,6 +145,10 @@ pub(super) fn record_state(ledger: &Path, outcome: &Result<Sync>) {
             state.last_ok_seq = Some(report.seq);
             state.last_error = None;
             state.last_error_at = None;
+            // A newer peer stays noticed until the upgrade (n-670a B).
+            if report.peer_version.is_some() {
+                state.peer_version = report.peer_version.clone();
+            }
         }
         Err(error) => {
             state.last_error = Some(error.message.clone());

@@ -55,7 +55,21 @@ pub fn sync_command(cli: &Cli, root: &Path, ledger: &Path) -> Result<()> {
         gy_ledger::record_error(ledger, &error.message);
         return Err(error);
     };
-    emit(cli.json, &gy_ledger::sync(ledger, &remote)?)
+    let report = gy_ledger::sync(ledger, &remote)?;
+    emit(cli.json, &report)?;
+    // A peer on a newer release reads after the report (n-670a B). Standard
+    // output in text, standard error with --json.
+    if let Some(peer) = report.peer_version.as_deref() {
+        if gy_ledger::newer_than(env!("CARGO_PKG_VERSION"), peer) {
+            let line = crate::release_check::peer_line(peer);
+            if cli.json {
+                eprintln!("{line}");
+            } else {
+                println!("{line}");
+            }
+        }
+    }
+    Ok(())
 }
 
 /// A background sync gives up after 30 seconds and records why (n-ecbf). The
@@ -78,6 +92,12 @@ fn watchdog(ledger: &Path) {
 pub fn handover(cli: &Cli, root: &Path, ledger: &Path) -> Result<()> {
     crate::release_check::poll();
     repo::refresh(root, ledger)?;
+    // A peer on a newer release, for a copy still shared (n-670a B).
+    if ledger.join("remote").is_file() {
+        if let Some(peer) = crate::release_check::peer_newer(ledger) {
+            eprintln!("{}", crate::release_check::peer_line(&peer));
+        }
+    }
     let repository = repo::open(ledger)?;
     emit(
         cli.json,
@@ -126,8 +146,16 @@ pub fn serve(root: &Path, ledger: &Path, name: String) -> Result<()> {
 /// next; a recovery shows once.
 fn sync_log(root: &Path, ledger: &Path) {
     let mut rounds = gy_ledger::Rounds::new();
+    let mut peer_seen: Option<String> = None;
     loop {
         let at = clock();
+        // A peer on a newer release, once per release (n-670a B).
+        if let Some(line) = crate::release_check::peer_notice(
+            &mut peer_seen,
+            crate::release_check::peer_newer(ledger),
+        ) {
+            eprintln!("{at} {line}");
+        }
         match repo::sync_tick(root, ledger) {
             repo::Tick::Out(line) => {
                 for note in rounds.recovered(&at) {

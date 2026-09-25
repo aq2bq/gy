@@ -8,6 +8,7 @@
 mod model;
 mod ops;
 mod store;
+mod versions;
 mod views;
 
 pub use model::{
@@ -37,6 +38,7 @@ pub use store::{
 /// (n-557f). Not part of the public reading surface.
 #[doc(hidden)]
 pub use store::{Gate, Open, remote::sync_with};
+pub use versions::{max_version, newer_than, triple};
 pub use views::{
     EGO_LIMIT, EdgeLine, Ego, EgoEdge, EgoNode, Filter, Handover, Listing, LogRow, Narrowed,
     NeedState, NextRow, NodeRow, Now, ProgressRow, Publication, Ready, RequirementLine, Resume,

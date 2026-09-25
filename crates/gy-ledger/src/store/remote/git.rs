@@ -296,6 +296,17 @@ pub fn message(dir: &Path, revision: &str) -> Result<String> {
     run(dir, &["log", "-1", "--format=%B", revision])
 }
 
+/// Every `Gy-Version:` line in `range`'s commit messages, in one git call
+/// (n-670a B). The count of commits does not matter.
+pub fn versions_in(dir: &Path, range: &str) -> Result<Vec<String>> {
+    run(dir, &["log", "--format=%B", range]).map(|text| {
+        text.lines()
+            .filter_map(|line| line.strip_prefix("Gy-Version:").map(str::trim))
+            .map(str::to_string)
+            .collect()
+    })
+}
+
 /// A commit's author name.
 pub fn author(dir: &Path, revision: &str) -> Result<String> {
     run(dir, &["log", "-1", "--format=%an", revision]).map(|text| text.trim().to_string())

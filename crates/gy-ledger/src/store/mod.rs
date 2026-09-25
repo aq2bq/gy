@@ -32,6 +32,10 @@ pub struct SyncStatus {
     pub last_error: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_error_at: Option<u64>,
+    /// The greatest peer `Gy-Version` pulled so far, when any (n-670a B).
+    /// Old files without it still read.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub peer_version: Option<String>,
 }
 
 /// The kind an error is: a broken invariant, or a lost race with another

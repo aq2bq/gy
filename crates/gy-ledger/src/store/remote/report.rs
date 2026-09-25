@@ -39,6 +39,10 @@ pub struct Sync {
     pub reuploaded: bool,
     #[serde(skip)]
     pub seq: u64,
+    /// The greatest `Gy-Version` trailer pulled by this sync, when any
+    /// (n-670a B). The binary compares it with its own release.
+    #[serde(skip)]
+    pub peer_version: Option<String>,
 }
 impl fmt::Display for Sync {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
