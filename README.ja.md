@@ -49,6 +49,8 @@ cargo install gy
 npx skills add aq2bq/gy
 ```
 
+gy は 1 日 1 回、裏で `cargo info gy` を打ち、crates.io の最新版を調べます。手元より新しければ、`gy handover` と `gy next` が標準エラーに 1 行、更新のコマンドと一緒に知らせます。記録を共有しないかぎり、これ以外の通信はしません。
+
 ### gyについて伝える
 
 以下のような文をプロンプトやAGENTS.md/CLAUDE.mdへ書くなりして伝わるようにしておくと、毎回AIエージェントは `gy handover` と `gy next` から続きを再開します。

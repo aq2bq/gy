@@ -49,6 +49,8 @@ cargo install gy
 npx skills add aq2bq/gy
 ```
 
+Once a day, in the background, gy runs `cargo info gy` to learn the newest release on crates.io. When it is newer than yours, `gy handover` and `gy next` say so in one line on stderr, with the command to update. No other request leaves your machine unless you share a ledger.
+
 ### Telling the AI about gy
 
 Put a sentence like the following in a prompt or in AGENTS.md / CLAUDE.md so it gets across, and the AI agent resumes from `gy handover` and `gy next` every time.
