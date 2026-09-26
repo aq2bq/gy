@@ -25,12 +25,17 @@ pub fn init_dir(start: Option<&Path>) -> Result<PathBuf> {
 }
 
 /// The nearest ancestor of `start` (or the current directory) that holds
-/// `gy.toml`, or `None` when there is none (n-29b3).
+/// `gy.toml`, or `None` when there is none (n-29b3). A `.git` entry (a
+/// directory, or a file for a worktree or submodule) bounds the search: below
+/// one repository's gy.toml is never used (d-0a47).
 pub fn find_root(start: Option<&Path>) -> Result<Option<PathBuf>> {
     let mut dir = here(start)?;
     loop {
         if dir.join("gy.toml").is_file() {
             return Ok(Some(dir));
+        }
+        if std::fs::symlink_metadata(dir.join(".git")).is_ok() {
+            return Ok(None);
         }
         match dir.parent() {
             Some(parent) => dir = parent.to_path_buf(),

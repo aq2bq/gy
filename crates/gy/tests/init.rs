@@ -4,7 +4,9 @@
 mod common;
 
 use common::{fixture, stderr, stdout};
-use gy_ledger::format;
+use gy_ledger::{format, location};
+use std::path::PathBuf;
+use std::process::{Command, Output};
 
 /// A repository root whose gy.toml has been removed, so init has work to do.
 fn no_toml() -> common::Fixture {
@@ -124,4 +126,142 @@ fn init_json_reports_the_same() {
     assert_eq!(value["created"], true);
     assert_eq!(value["scopes"][0], "myproject");
     assert!(value["remote"].is_null(), "{value}");
+}
+
+/// A nested git layout (d-0a47): `outer/gy.toml` sits above `D`, and `D`
+/// carries a `.git` boundary (a directory, or a one-line file for a worktree
+/// or submodule). The target is `D` itself or `D/sub`.
+struct Nested {
+    _temp: tempfile::TempDir,
+    outer: PathBuf,
+    target: PathBuf,
+    data: PathBuf,
+    upper_toml: String,
+}
+
+fn nested(git_file: bool, at_sub: bool) -> Nested {
+    let temp = tempfile::tempdir().unwrap();
+    let outer = temp.path().join("outer");
+    let inner = outer.join("D");
+    let target = if at_sub {
+        inner.join("sub")
+    } else {
+        inner.clone()
+    };
+    std::fs::create_dir_all(&target).unwrap();
+    let upper_toml = "[scopes.upper]\n".to_string();
+    std::fs::write(outer.join("gy.toml"), &upper_toml).unwrap();
+    if git_file {
+        std::fs::write(inner.join(".git"), "gitdir: ../real.git\n").unwrap();
+    } else {
+        std::fs::create_dir_all(inner.join(".git")).unwrap();
+    }
+    let data = temp.path().join("data");
+    std::fs::create_dir_all(&data).unwrap();
+    Nested {
+        _temp: temp,
+        outer,
+        target,
+        data,
+        upper_toml,
+    }
+}
+
+impl Nested {
+    fn run(&self, args: &[&str]) -> Output {
+        Command::new(env!("CARGO_BIN_EXE_gy"))
+            .current_dir(&self.target)
+            .env("XDG_DATA_HOME", &self.data)
+            .env("GY_ACTOR", "piko")
+            .args(args)
+            .output()
+            .unwrap()
+    }
+
+    fn dir(&self) -> String {
+        self.target.to_str().unwrap().to_string()
+    }
+}
+
+#[test]
+fn init_stops_at_a_git_dir_and_writes_here() {
+    let fx = nested(false, true);
+    let target = fx.target.clone();
+    let out = fx.run(&["-C", &fx.dir(), "init", "x"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    assert_eq!(
+        std::fs::read_to_string(target.join("gy.toml")).unwrap(),
+        "[scopes.x]\n"
+    );
+    let text = stdout(&out);
+    assert!(text.contains("written"), "{text}");
+    assert_eq!(
+        std::fs::read_to_string(fx.outer.join("gy.toml")).unwrap(),
+        fx.upper_toml
+    );
+}
+
+#[test]
+fn next_stops_at_a_git_dir_and_opens_nothing_above() {
+    let fx = nested(false, true);
+    let target = fx.target.clone();
+    let out = fx.run(&["-C", target.to_str().unwrap(), "next"]);
+    assert!(!out.status.success(), "next crossed the .git boundary");
+    assert!(
+        stderr(&out).contains("no gy.toml found"),
+        "{}",
+        stderr(&out)
+    );
+    assert!(
+        !location::dir_in(&fx.data, &fx.outer).exists(),
+        "opened the record above"
+    );
+}
+
+#[test]
+fn init_stops_at_a_git_file_and_writes_here() {
+    let fx = nested(true, true);
+    let target = fx.target.clone();
+    let out = fx.run(&["-C", &fx.dir(), "init", "x"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    assert_eq!(
+        std::fs::read_to_string(target.join("gy.toml")).unwrap(),
+        "[scopes.x]\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(fx.outer.join("gy.toml")).unwrap(),
+        fx.upper_toml
+    );
+}
+
+#[test]
+fn git_and_toml_in_the_same_dir_is_the_root() {
+    let temp = tempfile::tempdir().unwrap();
+    let inner = temp.path().join("D");
+    std::fs::create_dir_all(inner.join(".git")).unwrap();
+    let toml = "[scopes.inner]\n".to_string();
+    std::fs::write(inner.join("gy.toml"), &toml).unwrap();
+    let sub = inner.join("sub");
+    std::fs::create_dir_all(&sub).unwrap();
+    let data = temp.path().join("data");
+    std::fs::create_dir_all(&data).unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_gy"))
+        .current_dir(&sub)
+        .env("XDG_DATA_HOME", &data)
+        .env("GY_ACTOR", "piko")
+        .args(["-C", sub.to_str().unwrap(), "init", "x"])
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{}", stderr(&out));
+    assert!(!sub.join("gy.toml").exists(), "init wrote below the root");
+    let text = stdout(&out);
+    assert!(text.contains("already here"), "{text}");
+    assert!(
+        text.contains(&inner.canonicalize().unwrap().display().to_string()),
+        "{text}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(inner.join("gy.toml")).unwrap(),
+        toml
+    );
 }

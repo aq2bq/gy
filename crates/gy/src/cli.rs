@@ -12,7 +12,7 @@ pub struct Cli {
     /// Print the result as JSON (diagnostics go to stderr).
     #[arg(long, global = true)]
     pub json: bool,
-    /// The directory whose gy.toml names the repository (searched upward).
+    /// The directory whose gy.toml names the repository (searched upward to the nearest .git).
     #[arg(short = 'C', global = true, value_name = "DIR")]
     pub directory: Option<PathBuf>,
     /// The scope a write uses; required when gy.toml has more than one.
