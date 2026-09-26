@@ -223,6 +223,8 @@ gy show n-3f9a
 
 The only configuration is a scope name and, if wanted, an output path for `publish`. Anything else is refused when the file is read.
 
+Put `gy.toml` at the root of the project's git repository. gy looks for it from the current directory upward and stops at the nearest `.git`, so a repository nested inside another one never uses the outer one's ledger.
+
 ```toml
 # Optional. publish writes here when --out is not given.
 output = "docs/publication"
