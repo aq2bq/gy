@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.2.1 - 2026-09-26
+
+### Fixed
+
+- **A repository nested inside another one no longer uses that one's
+  ledger** (n-2f71, d-0a47): the search for `gy.toml` went up to `/`, so
+  with a `gy.toml` in a home directory kept as a git repository (dotfiles),
+  every project below it was taken as part of it. `gy init` reported the
+  root above and wrote nothing, and `next`, `need add` and the other
+  commands read and wrote the ledger above without a word. The search now
+  stops at the nearest `.git` (a directory, or the file of a worktree or a
+  submodule). Within one repository, a subdirectory still finds the
+  `gy.toml` at its root.
+
+### Updating
+
+Install the new release with `cargo install gy --locked`. The storage format,
+`gy.toml` and the set of commands are unchanged. A project whose `gy.toml`
+sits at its git root finds the same root as before. A project that kept its
+`gy.toml` above its git root is no longer found from inside that repository:
+move `gy.toml` to the git root, or pass `-C`. The bundled cheat sheet gained
+one clause, so copy the skills again when convenient (see "Where the skills
+go" in the README).
+
 ## 1.2.0 - 2026-09-25
 
 ### Added
