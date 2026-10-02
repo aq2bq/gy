@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.2 - unreleased
+## 1.2.2 - 2026-10-02
 
 This release answers a report from a team that ran several agent teams on one
 repository: one team took another team's work for its own. Of its five
