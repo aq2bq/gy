@@ -1,5 +1,102 @@
 # Changelog
 
+## 1.2.2 - unreleased
+
+This release answers a report from a team that ran several agent teams on one
+repository: one team took another team's work for its own. Of its five
+points, one changes what gy prints (`decide`), three change only the help,
+the cheat sheet, the README and the gy-loop skill, because gy already did
+what was needed and did not say so, and one is kept on purpose, with the way
+to work with it.
+
+### Changed
+
+- **`decide` no longer reports "a question it closes" as missing** (n-5d6a,
+  d-43f624): every decision that closed no question printed `missing: a
+  question it closes`. Recording a judgement as a decision without a
+  question first is the normal way to work, so the line appeared on almost
+  every `decide` and hid the gaps that are real. It is gone from the text
+  and from the `missing` array of the `--json` output; the array is still
+  there, holding the other gaps (such as a missing body) or empty (`[]`)
+  when there are none. A question still asks for the decision that closes
+  it on its own `missing`. What you do: nothing, unless a script of yours
+  looked for that line.
+
+### Clarified (gy behaves as before; the guidance and the help say more)
+
+- **Choose a writer name no other team uses** (n-5d6a, d-43f624): the writer
+  of each write is recorded as `<git author> / <GY_ACTOR>`. When one person
+  runs two teams, the git author is the same for both, so only `GY_ACTOR`
+  can tell them apart; when both teams name themselves after a role (say
+  `lead`), their writes look the same and nobody can tell from the ledger
+  which team wrote what. gy does not check names. The gy-loop skill now says
+  to choose a name no other team or session is using at the same time, and
+  to include the team name. What you do: before your next write, set
+  `GY_ACTOR` to a name that carries your team, for example
+  `export GY_ACTOR=mytype-lead` instead of `lead`, and agree on the names
+  within the team. Two sessions running at once take different names, even
+  in one team (`mytype-lead`, `mytype-impl`); a session that takes over
+  another's work keeps that session's name. Writes made before this keep the name they were written
+  under, so the ledger still cannot say which team made them; settle those
+  among the teams, outside gy.
+- **`next` and `handover` can be limited to one scope, and now say so**
+  (n-5d6a, d-43f624): `--scope <name>` is one option for both sides. On a
+  write it chooses the scope the write goes to, as before; on `next`,
+  `handover` and `publish` it shows only that scope, and it always did,
+  but `--help` described it only as "the scope a write uses" and the cheat
+  sheet did not list it on `next` or `handover`. So a session resuming work
+  saw every project's ready needs and in-progress requirements side by side
+  and could take another team's work for its turn. `--help`, the cheat sheet
+  (including "Starting a session") and the README now show it. There is no
+  default scope for reads: without `--scope`, `next` and `handover` show
+  every scope, whatever `gy.toml` holds. `list`, `show` and `serve` are not
+  limited by `--scope`. What you do: when other teams share the repository,
+  resume with `gy handover --scope <your scope>` and
+  `gy next --scope <your scope>`; to see only your team's writes, add
+  `--actor <your GY_ACTOR>` to `gy list --since`.
+- **`list --since <seq>` says that it excludes that sequence** (n-5d6a,
+  d-43f624): `--since 1288` lists the writes after 1288, not 1288 itself.
+  This has not changed, but it was not written anywhere, and a reader who
+  passed the sequence of the last write they wanted to see got an empty
+  list and took it for "nothing written yet". `--help`, the cheat sheet
+  and the README now say so. A date (`--since 2026-10-01`) is different: it
+  includes that whole day, from midnight in your own time zone. What you
+  do: to see the writes from sequence N onwards, including N, pass
+  `--since N-1` (for 1288 and after, `--since 1287`); to see what came after
+  the last write you read, pass that write's sequence as it is;
+  `--since 0` lists every write.
+
+### Kept as it is
+
+- **An approved requirement still needs `req revise` and a new approval for
+  any change to its title, body, targets or relies-on edges** (d-713b).
+  This guard keeps what was approved and what gets built from drifting
+  apart. gy cannot tell a cosmetic change, such as taking a number out of a
+  title, from a change of content, so titles are not exempt, and there is
+  no way around the revise for them. Adding a `relies-on` edge to a newer
+  decision changes what the approval rested on, so it is refused too. What
+  you do: if a newer decision does not change what the requirement rests
+  on, link it from the newer decision to a decision the requirement already
+  relies on: `gy link <new> completes <older>` when it adds to the older one,
+  `gy link <new> widens <older>` when it extends where the older one holds,
+  and `gy link <new> narrows <older> --mark <text>` when it limits it (the
+  mark is the exact text in the older decision that stops applying). The edge is written on the newer decision, so the requirement
+  and its approval stay as they are, and a reader still reaches the newer
+  decision from it through the older one (`gy show <older> --full` lists
+  it, for example as `completed-by <new>`). If the newer decision does change
+  what the requirement rests on, `req revise` it and approve it again.
+
+### Updating
+
+Install the new release with `cargo install gy --locked`. The storage format,
+`gy.toml`, the set of commands and their options are unchanged; apart from
+`--help`, the only change in output is the `decide` line above. The bundled
+gy-loop skill and its cheat sheet changed, so copy the skills again: run
+`npx skills add aq2bq/gy` again, or copy `crates/gy/skills/` from this
+release over the copy your agents read (see "Install" in the README). Then
+give each team a `GY_ACTOR` that carries its name, and add `--scope` to the
+way your sessions resume.
+
 ## 1.2.1 - 2026-09-26
 
 ### Fixed

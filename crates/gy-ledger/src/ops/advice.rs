@@ -18,7 +18,7 @@ pub fn missing(node: &Node, all: &[Node]) -> Vec<String> {
             }
         }
         NodeData::Question(data) if data.closure.is_none() => question_missing(node, all),
-        NodeData::Decision(_) => decision_missing(node, all),
+        NodeData::Decision(_) => decision_missing(node),
         NodeData::Requirement(data) if pre_approval(data) => requirement_missing(node),
         NodeData::Criterion(data) if !data.satisfied => criterion_missing(node, all),
         _ => Vec::new(),
@@ -134,15 +134,10 @@ pub fn unwaited(node: &Node, all: &[Node]) -> bool {
         })
 }
 
-fn decision_missing(node: &Node, all: &[Node]) -> Vec<String> {
-    let mut out: Vec<String> = body_gap(node).into_iter().collect();
-    let closes = all
-        .iter()
-        .any(|other| linked(other, Relation::Closes).contains(node.id()));
-    if !closes {
-        out.push("a question it closes".to_string());
-    }
-    out
+/// A decision's gaps: its body. A decision that closes no question is the
+/// normal shape (d-43f624); the question side asks for its closer.
+fn decision_missing(node: &Node) -> Vec<String> {
+    body_gap(node).into_iter().collect()
 }
 
 fn requirement_missing(node: &Node) -> Vec<String> {

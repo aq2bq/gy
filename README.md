@@ -166,9 +166,9 @@ Reads (6):
 | Operation | Result |
 | --- | --- |
 | `show <ID\|ref>... [--full]` | One or more nodes by ID, alias, or reference, with what each still lacks |
-| `list [--type] [--status] [--targets] [--grep] [--actor] [--since]` | Node rows, or write units when `--actor` or `--since` is given. The type and status words ignore case, and `--since` takes a sequence or a date (`YYYY-MM-DD`, from that day's start in your own place) |
-| `next` | The needs whose prerequisites are settled |
-| `handover` | In-progress requirements and the counts a session needs to resume |
+| `list [--type] [--status] [--targets] [--grep] [--actor] [--since]` | Node rows, or write units when `--actor` or `--since` is given. The type and status words ignore case, and `--since` takes a sequence (writes after it, not including it) or a date (`YYYY-MM-DD`, from that day's start in your own place) |
+| `next [--scope]` | The needs whose prerequisites are settled; with `--scope`, only that scope |
+| `handover [--scope]` | In-progress requirements and the counts a session needs to resume; with `--scope`, only that scope |
 | `publish [--scope] [--out]` | Write the record as a Markdown wiki: an entry `README.md` per scope and a page per need and decision |
 | `serve` | Read the ledger in a browser, on 127.0.0.1 (GET only, no write path), until stopped. It opens the browser when started from a terminal |
 
@@ -234,7 +234,7 @@ remote = "https://github.com/you/yourproject-ledger.git"
 [scopes.myproject]
 ```
 
-Reads cover every scope. A write needs a scope only when the file names more than one; pass `--scope <name>` to choose. The first write creates the ledger, and reads never do.
+Reads cover every scope; `next`, `handover`, and `publish` take `--scope` to read one scope only. A write needs a scope only when the file names more than one; pass `--scope <name>` to choose. The first write creates the ledger, and reads never do.
 
 ## Working as a team (experimental)
 

@@ -6,15 +6,15 @@ Starting a repository:
   gy init <scope>                                      write gy.toml with one scope here; a gy.toml already here is reported, not touched; the upward search stops at .git
 
 Starting a session:
-  gy handover
-  gy next
+  gy handover [--scope]
+  gy next [--scope]
   gy show <ID>
 
 Reads:
   gy show <ID|ref>... [--full]                         show nodes, with what each still lacks
-  gy list [--type] [--status] [--targets] [--grep] [--actor] [--since]   list nodes; with --actor / --since, list write units. Spelling ignores case. --since takes a seq or a date (YYYY-MM-DD, from midnight where you are)
-  gy next                                              the needs whose prerequisites are settled
-  gy handover                                          requirements in progress and the counts a session needs to resume
+  gy list [--type] [--status] [--targets] [--grep] [--actor] [--since]   list nodes; with --actor / --since, list write units. Spelling ignores case. --since takes a seq (the writes after it, not including it) or a date (YYYY-MM-DD, from midnight where you are)
+  gy next [--scope]                                    the needs whose prerequisites are settled, limited to the scope when given
+  gy handover [--scope]                                requirements in progress and the counts a session needs to resume, limited to the scope when given
   gy publish [--scope] [--out]                          the wiki a person reads on GitHub: one entry README per scope and a page per need and decision, the nodes each reaches in full, and loose.md for the rest
   gy serve                                              read the ledger in a browser: 127.0.0.1, GET only, no path that writes, until stopped. Opens the browser when started from a terminal
 

@@ -212,7 +212,9 @@ fn decide_reports_missing_and_suggests_a_link() {
     seed(&mut repo, &[old, question]);
 
     let bare = decide(None, Vec::new(), Vec::new()).run(&mut repo).unwrap();
-    assert_eq!(bare.missing, ["a body", "a question it closes"]);
+    // d-43f624: a decision that closes no question is the normal shape, so it
+    // is not reported as missing.
+    assert_eq!(bare.missing, ["a body"]);
     let bare_id = bare.id.clone().unwrap();
     assert_eq!(
         bare.next,

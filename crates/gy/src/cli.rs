@@ -15,7 +15,7 @@ pub struct Cli {
     /// The directory whose gy.toml names the repository (searched upward to the nearest .git).
     #[arg(short = 'C', global = true, value_name = "DIR")]
     pub directory: Option<PathBuf>,
-    /// The scope a write uses; required when gy.toml has more than one.
+    /// The scope a write uses (required when gy.toml names more than one); next, handover, and publish read only this scope.
     #[arg(long, global = true, value_name = "NAME")]
     pub scope: Option<String>,
     #[command(subcommand)]
@@ -49,7 +49,7 @@ pub enum Command {
         grep: Option<String>,
         #[arg(long, value_name = "NAME")]
         actor: Option<String>,
-        /// A write sequence, or a date (YYYY-MM-DD, in your own time zone): that day's start onwards.
+        /// Writes after a sequence (the sequence itself is not included), or since a date (YYYY-MM-DD, in your own time zone): that day's start onwards.
         #[arg(long, value_name = "SEQ|DATE")]
         since: Option<String>,
     },
