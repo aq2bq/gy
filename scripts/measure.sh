@@ -72,7 +72,7 @@ key_count=$(wc -l < "$tmp/keys" | tr -d ' ')
 
 # 5. test files
 tests_total=0
-for f in $(find "$tests" -maxdepth 1 -name '*.rs' 2>/dev/null | sort); do
+for f in $(find "$tests" -name '*.rs' 2>/dev/null | sort); do
   n=$(wc -l < "$f" | tr -d ' ')
   tests_total=$((tests_total + 1))
   [ "$n" -gt "$TEST_MAX" ] && printf '%s:%s\n' "$f" "$n" >> "$tmp/test_over"
