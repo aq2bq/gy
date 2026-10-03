@@ -141,6 +141,25 @@ impl MemoryStore {
         }
         out
     }
+    /// Apply the staged writes and return each key's value before them, once
+    /// per key. A transaction may write the same key twice (`req add --need N
+    /// --need N` files the same need twice), and the frame must carry the
+    /// value before the transaction, never an intermediate one (n-baa3).
+    fn take_staged(&mut self) -> Vec<(String, Option<Vec<u8>>)> {
+        let mut before = Vec::new();
+        let mut recorded = BTreeSet::new();
+        for (key, value) in self.staged.drain(..) {
+            if recorded.insert(key.clone()) {
+                before.push((key.clone(), self.committed.get(&key).cloned()));
+            }
+            if value.is_empty() {
+                self.committed.remove(&key);
+            } else {
+                self.committed.insert(key, value);
+            }
+        }
+        before
+    }
 }
 impl Store for MemoryStore {
     fn version(&self) -> FormatVersion {
@@ -179,15 +198,7 @@ impl Store for MemoryStore {
     }
     fn commit(&mut self) -> Result<()> {
         self.judged()?;
-        let mut before = Vec::new();
-        for (key, value) in self.staged.drain(..) {
-            before.push((key.clone(), self.committed.get(&key).cloned()));
-            if value.is_empty() {
-                self.committed.remove(&key);
-            } else {
-                self.committed.insert(key, value);
-            }
-        }
+        let before = self.take_staged();
         if !before.is_empty() {
             self.undo_stack.push(before);
             self.seq += 1;

@@ -40,6 +40,31 @@ fn a_committed_transaction_is_visible() {
 }
 
 #[test]
+fn undoing_a_transaction_that_wrote_a_key_twice_restores_the_earlier_value() {
+    let mut store = store();
+    store
+        .transaction(|staged| {
+            staged.stage("n-0001", "one");
+            Ok(())
+        })
+        .unwrap();
+    // One transaction writes the same key twice, as `req add --need N --need N`
+    // files the same need twice: the second write builds on the first. Undo
+    // must return the key to the value before the transaction, never to the
+    // intermediate value (n-baa3).
+    store
+        .transaction(|staged| {
+            staged.stage("n-0001", "two");
+            staged.stage("n-0001", "three");
+            Ok(())
+        })
+        .unwrap();
+    assert_eq!(store.get("n-0001").as_deref(), Some(&b"three"[..]));
+    store.undo("revert", "conversation").unwrap();
+    assert_eq!(store.get("n-0001").as_deref(), Some(&b"one"[..]));
+}
+
+#[test]
 fn ids_carry_the_kind_prefix_and_a_short_hash() {
     let mut store = store();
     let id = NodeId::mint(NodeKind::Need, &mut store).unwrap();
