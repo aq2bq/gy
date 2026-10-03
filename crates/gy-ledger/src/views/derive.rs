@@ -51,7 +51,9 @@ pub(super) fn question_open(node: &Node) -> bool {
     matches!(node.data(), NodeData::Question(data) if data.closure.is_none())
 }
 
-/// The derived state of one need, looking up its filed requirements in `all`.
+/// The derived state of one need, looking up its filed requirements and
+/// targeted criteria in `all`. Done needs every filed requirement done (at
+/// least one) and every criterion it targets satisfied (n-f60a, d-85c6).
 pub fn need_state(need: &Node, all: &[Node]) -> NeedState {
     if let NodeData::Need(data) = need.data() {
         if data.closed.is_some() {
@@ -63,12 +65,25 @@ pub fn need_state(need: &Node, all: &[Node]) -> NeedState {
         && filed.iter().all(|id| {
             find(all, id)
                 .is_some_and(|node| requirement_state(node) == Some(RequirementState::Done))
-        });
+        })
+        && criteria_satisfied(need, all);
     if done {
         NeedState::Done
     } else {
         NeedState::Open
     }
+}
+
+/// Whether every criterion the need targets is satisfied. No targets is
+/// vacuously true, so a need that points at none derives as before.
+fn criteria_satisfied(need: &Node, all: &[Node]) -> bool {
+    edges(need, Relation::Targets)
+        .iter()
+        .all(|id| find(all, id).is_some_and(criterion_satisfied))
+}
+
+fn criterion_satisfied(node: &Node) -> bool {
+    matches!(node.data(), NodeData::Criterion(data) if data.satisfied)
 }
 
 /// Whether a need is ready to work (the `next` condition): open, every

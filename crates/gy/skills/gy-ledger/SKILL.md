@@ -12,7 +12,7 @@ How to work (restore, pick one, advance, ask, stop, satisfy) is in `gy-loop`. Th
 - A need points at its acceptance criteria with `targets`. `need add` prints `id: <ID>` first, and `next` shows the command that could follow. The body goes in with `--body-file` at creation.
 - A requirement is filed with `req add` and tied to the needs it serves (`--need`), the decisions it relies on (`--relies-on`) and the criteria it targets (`--targets`).
 - What must come first is an edge: `depends-on` and `waits-on`. `next` reads them.
-- A need becomes `done` by derivation when its `filed-as` requirement is done. Closing a need with `need close` does not satisfy its criteria: the close lists the unmet ones under `missing`, so satisfy them with evidence (`criterion satisfy`) or drop them (`link --remove <need> targets <ac>`).
+- A need becomes `done` by derivation when all of its `filed-as` requirements are `done` and every acceptance criterion it `targets` is satisfied. A targeted criterion that no requirement still being built (`filed` or `approved`) covers shows as `unmet criterion <id>` under `missing`, with the command that would cover it under `next`. Closing a need with `need close` does not satisfy its criteria: the close lists the unmet ones under `missing`, so satisfy them with evidence (`criterion satisfy`) or drop them (`link --remove <need> targets <ac>`).
 - Dates print in your local time. When you tell another writer a point in time, use the `seq` or an ID, not a date.
 
 ## A team's ledger (a `remote` in gy.toml)

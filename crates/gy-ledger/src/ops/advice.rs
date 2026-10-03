@@ -1,6 +1,9 @@
 //! What a node still lacks and which command could follow (N-39). One
 //! derivation from the typed model, shared by every write's outcome and by
 //! show, so the two cannot drift.
+mod need;
+
+use self::need::{need_missing, unmet_criteria};
 use crate::model::{
     Criterion, Node, NodeData, NodeId, NodeKind, Relation, Requirement, RequirementState, covered,
     filed_target,
@@ -12,7 +15,7 @@ pub fn missing(node: &Node, all: &[Node]) -> Vec<String> {
     match node.data() {
         NodeData::Need(data) => {
             if data.closed.is_none() {
-                need_missing(node)
+                need_missing(node, all)
             } else {
                 closed_need_missing(node, all)
             }
@@ -32,7 +35,15 @@ pub fn next(node: &Node, all: &[Node]) -> Vec<String> {
     let mut out = match node.data() {
         NodeData::Need(data) => {
             if data.closed.is_none() {
-                vec![format!("req add \"<title>\" --need {id} …")]
+                let mut out = vec![format!("req add \"<title>\" --need {id} …")];
+                if !linked(node, Relation::FiledAs).is_empty() {
+                    out.extend(
+                        unmet_criteria(node, all)
+                            .into_iter()
+                            .flat_map(|criterion| satisfy_step(criterion, all)),
+                    );
+                }
+                out
             } else {
                 closed_need_next(node, all)
             }
@@ -51,14 +62,6 @@ pub fn next(node: &Node, all: &[Node]) -> Vec<String> {
     // reports it, the edit that would fill it leads what else could follow.
     if body_gap(node).is_some() {
         out.insert(0, format!("edit {id} --body-file … --reason …"));
-    }
-    out
-}
-
-fn need_missing(node: &Node) -> Vec<String> {
-    let mut out: Vec<String> = body_gap(node).into_iter().collect();
-    if linked(node, Relation::FiledAs).is_empty() {
-        out.push("a filed-as requirement".to_string());
     }
     out
 }
