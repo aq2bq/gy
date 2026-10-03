@@ -1,5 +1,43 @@
 # Changelog
 
+## 1.2.3 - 2026-10-03
+
+### Fixed
+
+- **A need is done only when every criterion it targets is satisfied**
+  (n-f60a, d-85c6): a need became `done` as soon as every requirement filed
+  as it was done, even when a criterion it `targets` was still unmet. A
+  requirement that covers only part of a need's criteria therefore marked
+  the whole need done, and `handover` and `next` read it as finished. A team
+  saw its top-level need turn done three times while all four of its
+  criteria were unmet. A need is now `done` when every `filed-as`
+  requirement is done and every criterion it targets is satisfied, and
+  `open` otherwise. `depends-on` stays a matter of order, not of
+  completion. An open need that has a requirement now lists, under
+  `missing`, each targeted criterion that is unmet and that no `filed` or
+  `approved` requirement covers (`unmet criterion <id>`), with the command
+  that would cover it under `next`. Revoking a criterion's satisfaction
+  turns its needs back to open.
+- `gy_ledger::advice_for` is exported (a compatible addition to the Rust
+  API).
+
+### Updating
+
+Install the new release with `cargo install gy --locked`. The storage format,
+`gy.toml`, the set of commands and their options are unchanged. Nothing is
+rewritten: the state of a need is derived each time it is read, so the new
+rule applies to the whole history at once, and installing again is safe.
+
+Some needs that read `done` before may now read `open`. Find them with
+`gy list --type need --status open` and `gy show <id>`: an unmet criterion
+appears under `missing`. For each one, either file a requirement that
+targets the criterion (`req add … --targets <criterion>`) and satisfy it, or,
+if the need really ended, close it with `need close`. In the three ledgers
+measured before the release, 4 needs of one ledger changed and none of the
+other two did. The bundled gy-loop and gy-ledger skills changed by one
+sentence each, so copy the skills again (see "Telling the AI about gy" in
+the README).
+
 ## 1.2.2 - 2026-10-02
 
 This release answers a report from a team that ran several agent teams on one
