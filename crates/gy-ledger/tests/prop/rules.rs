@@ -2,7 +2,7 @@
 //! pair of snapshots for an accepted step. E1's table is copied here on
 //! purpose, so a change to the implementation table shows up as a failure.
 use crate::prop::State;
-use gy_ledger::{Edge, Node, NodeId, NodeKind, Relation};
+use gy_ledger::{Edge, Node, NodeData, NodeId, NodeKind, Relation, RequirementState};
 use std::collections::BTreeMap;
 
 /// The (from kind, relation, to kind) pairs of `model/links.rs:ALLOWED`.
@@ -44,6 +44,14 @@ pub fn find<'a>(nodes: &'a [Node], id: &NodeId) -> Option<&'a Node> {
 /// The forward edges of a node: the from side is the only side stored.
 pub fn fwd(node: &Node) -> impl Iterator<Item = &Edge> {
     node.links().iter().filter(|edge| !edge.reversed)
+}
+
+pub fn is_approved(node: &Node) -> bool {
+    node.state() == Some(RequirementState::Approved)
+}
+
+pub fn is_closed_need(node: &Node) -> bool {
+    matches!(node.data(), NodeData::Need(data) if data.closed.is_some())
 }
 
 fn key(edge: &Edge) -> (String, &'static str, String) {

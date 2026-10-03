@@ -157,6 +157,14 @@ There are two forms, and a property test checks each in its own way:
 | E2 | `prop_p1a::e2_edges_stored_forward` |
 | E3 | `prop_p1a::e3_duplicate_edge` |
 | E4 | `prop_p1a::e4_target_exists` |
+| E5 | `prop_p1b::e5_marks_resolve` |
+| E6 | `prop_p1b::e6_closes_from_decision` |
+| E7 | `prop_p1b::e7_graphs_acyclic` |
+| E8 | `prop_p1b::e8_closed_need_filed_as` |
+| R5 | `prop_p1b::r5_approved_frozen` |
+| C1 | `prop_p1b::c1_covered_satisfy` |
+| C2 | `prop_p1b::c2_evidence_once` |
+| T5 | `prop_p1b::t5_gate_every_path`, `gate_edges_rebase::*`, `gate_cycle_rebase::*`, `gate_closed_need_rebase::*`, `freeze_rebase::*` |
 
 ## What handover and next judge
 

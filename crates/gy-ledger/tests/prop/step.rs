@@ -1,10 +1,11 @@
-//! Running one generated write against the ledger (n-99c6): resolve the
-//! operands from the nodes created so far, then call the operation.
-use super::rules;
+//! Running one generated write against the ledger (n-99c6, n-a006): resolve
+//! the operands from the nodes created so far, then call the operation.
+use super::rules::{self, is_approved, is_closed_need};
 use super::{Kind, Op};
 use gy_ledger::{
-    CriterionAdd, Decide, DecisionScope, MemoryStore, NeedAdd, NodeId, NodeKind, Operation,
-    QuestionAdd, Relation, Repository, ReqAdd, Undo, link,
+    ClosedBy, CriterionAdd, CriterionSatisfy, Decide, DecisionScope, Edit, MemoryStore, NeedAdd,
+    NeedClose, Node, NodeId, NodeKind, Operation, QuestionAdd, Relation, Repository, ReqAdd,
+    ReqApprove, Undo, link,
 };
 
 /// Run one write against the nodes it read. `None` skips a write whose operand
@@ -52,10 +53,10 @@ pub(super) fn run(
             title: "r".into(),
             needs: vec![
                 pick(created, repo, NodeKind::Need, op.a)?,
-                pick(created, repo, NodeKind::Need, op.b)?,
+                need(created, repo, op.b, op.flag)?,
             ],
             relies_on: vec![],
-            targets: vec![],
+            targets: vec![pick(created, repo, NodeKind::Criterion, op.rel)?],
             reference: None,
             body: Some("body".into()),
         }
@@ -75,8 +76,13 @@ pub(super) fn run(
         Kind::Link => {
             let (relation, from_kind, to_kind) =
                 rules::ALLOWED[op.rel as usize % rules::ALLOWED.len()];
+            let from = if op.flag && relation == Relation::FiledAs {
+                closed_need(created, repo, op.a)?
+            } else {
+                pick(created, repo, from_kind, op.a)?
+            };
             link::Link {
-                from: pick(created, repo, from_kind, op.a)?,
+                from,
                 relation,
                 to: pick(created, repo, to_kind, op.b)?,
                 mark: mark(op.mark),
@@ -106,6 +112,38 @@ pub(super) fn run(
             .run(repo)
             .map(|outcome| outcome.id)
         }
+        Kind::Satisfy => CriterionSatisfy {
+            id: pick(created, repo, NodeKind::Criterion, op.a)?,
+            evidence: if op.flag { String::new() } else { "e".into() },
+            revoke: false,
+        }
+        .run(repo)
+        .map(|outcome| outcome.id),
+        Kind::NeedClose => NeedClose {
+            id: pick(created, repo, NodeKind::Need, op.a)?,
+            by: ClosedBy::Fact,
+            evidence: "e".into(),
+        }
+        .run(repo)
+        .map(|outcome| outcome.id),
+        Kind::Approve => ReqApprove {
+            id: pick(created, repo, NodeKind::Requirement, op.a)?,
+            design: "d".into(),
+            heard_by: "h".into(),
+            evidence: "e".into(),
+        }
+        .run(repo)
+        .map(|outcome| outcome.id),
+        Kind::Edit => Edit {
+            id: approved_requirement(created, repo, op.a)?,
+            reason: "e".into(),
+            title: Some("t".into()),
+            body: op.flag.then(|| "b".into()),
+            set: vec![],
+            append: vec![],
+        }
+        .run(repo)
+        .map(|outcome| outcome.id),
         Kind::Undo => Undo { reason: "u".into() }
             .run(repo)
             .map(|outcome| outcome.id),
@@ -132,9 +170,52 @@ fn pick(
     if n >= 8 {
         return NodeId::from_hash(kind, format!("zz{n}")).ok();
     }
+    nth_matching(created, repo, kind, n, |_| true)
+}
+
+/// A need that is filed-as a closed requirement (E8), in creation order.
+fn closed_need(created: &[NodeId], repo: &Repository<MemoryStore>, n: u8) -> Option<NodeId> {
+    if n >= 8 {
+        return NodeId::from_hash(NodeKind::Need, format!("zz{n}")).ok();
+    }
+    nth_matching(created, repo, NodeKind::Need, n, is_closed_need)
+}
+
+/// An approved requirement (R5), in creation order.
+fn approved_requirement(
+    created: &[NodeId],
+    repo: &Repository<MemoryStore>,
+    n: u8,
+) -> Option<NodeId> {
+    if n >= 8 {
+        return NodeId::from_hash(NodeKind::Requirement, format!("zz{n}")).ok();
+    }
+    nth_matching(created, repo, NodeKind::Requirement, n, is_approved)
+}
+
+fn need(created: &[NodeId], repo: &Repository<MemoryStore>, n: u8, closed: bool) -> Option<NodeId> {
+    if closed {
+        closed_need(created, repo, n)
+    } else {
+        pick(created, repo, NodeKind::Need, n)
+    }
+}
+
+fn nth_matching(
+    created: &[NodeId],
+    repo: &Repository<MemoryStore>,
+    kind: NodeKind,
+    n: u8,
+    keep: fn(&Node) -> bool,
+) -> Option<NodeId> {
     let alive: Vec<&NodeId> = created
         .iter()
-        .filter(|id| id.kind() == kind && repo.get(id).is_ok_and(|node| node.is_some()))
+        .filter(|id| {
+            id.kind() == kind
+                && repo
+                    .get(id)
+                    .is_ok_and(|node| node.is_some_and(|node| keep(&node)))
+        })
         .collect();
     nth(&alive, n)
 }

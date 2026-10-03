@@ -1,7 +1,7 @@
-//! The shared generator and replay for the invariant property tests (n-99c6).
-//! A plan is one random sequence of writes; replay records what every step saw
-//! and did. P1b, P2 and P3 read this module with `mod prop;`.
-use gy_ledger::{Actor, FormatVersion, MemoryStore, Node, NodeId, Repository, Store};
+//! The shared generator and replay for the invariant property tests (n-99c6,
+//! n-a006). A plan is one random sequence of writes; replay records what every
+//! step saw and did. P1a, P1b, P2 and P3 read this module with `mod prop;`.
+use gy_ledger::{Actor, FormatVersion, MemoryStore, Node, NodeId, Relation, Repository, Store};
 use proptest::prelude::*;
 use std::collections::BTreeSet;
 
@@ -12,19 +12,26 @@ use step::{creates, run};
 pub const CASES: u32 = 96;
 pub const MAX_OPS: usize = 24;
 
-/// A rule that can refuse a write among E1–E4. E2 is a state invariant: no
-/// write is refused for it.
+/// A rule that can refuse a write. E2 and T5 are state invariants: no write is
+/// refused for them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Rule {
     E1,
     E3,
     E4,
+    E5,
+    E6,
+    E7,
+    E8,
+    R5,
+    C1,
+    C2,
 }
 
 /// A write the generator can make. `a` and `b` pick an operand by position in
 /// the order the nodes were created (8 or more means an id that does not
-/// exist, E4); `rel` indexes `rules::ALLOWED`; `mark` 0 is no mark; `flag`
-/// selects a variant.
+/// exist, E4); `rel` indexes `rules::ALLOWED` for `Link` and `Relation::ALL`
+/// for `Stray`; `mark` 0 is no mark; `flag` selects a variant.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
     CriterionAdd,
@@ -35,6 +42,10 @@ pub enum Kind {
     Link,
     Stray,
     Repeat,
+    Satisfy,
+    NeedClose,
+    Approve,
+    Edit,
     Undo,
 }
 
@@ -60,6 +71,7 @@ pub struct State {
 pub struct Step {
     pub before: State,
     pub after: State,
+    pub kind: Kind,
     pub accepted: bool,
     pub hits: BTreeSet<Rule>,
 }
@@ -78,8 +90,10 @@ pub fn plan() -> impl Strategy<Value = Vec<Op>> {
     })
 }
 
-/// The state the rules need: criteria, needs, a filed requirement, a question
-/// and a decision, so an operation has targets and an edge to repeat.
+/// The state the rules need: criteria, questions, needs, a filed and approved
+/// requirement, a closed need and a question closed by decision, so an
+/// operation has targets, an edge to repeat, and the states E5–E8, R5, C1 and
+/// C2 judge.
 fn prologue() -> Vec<Op> {
     let op = |kind, a, b| Op {
         kind,
@@ -92,10 +106,15 @@ fn prologue() -> Vec<Op> {
     vec![
         op(Kind::CriterionAdd, 0, 0),
         op(Kind::CriterionAdd, 0, 0),
+        op(Kind::CriterionAdd, 0, 0),
+        op(Kind::QuestionAdd, 0, 0),
         op(Kind::QuestionAdd, 0, 0),
         op(Kind::NeedAdd, 0, 1),
-        op(Kind::NeedAdd, 1, 0),
+        op(Kind::NeedAdd, 2, 0),
+        op(Kind::NeedAdd, 1, 2),
         op(Kind::ReqAdd, 0, 1),
+        op(Kind::Approve, 0, 0),
+        op(Kind::NeedClose, 1, 0),
         op(Kind::Decide, 0, 0),
     ]
 }
@@ -110,6 +129,10 @@ fn op() -> impl Strategy<Value = Op> {
         4 => Just(Kind::Link),
         4 => Just(Kind::Stray),
         4 => Just(Kind::Repeat),
+        2 => Just(Kind::Satisfy),
+        2 => Just(Kind::NeedClose),
+        2 => Just(Kind::Approve),
+        2 => Just(Kind::Edit),
         2 => Just(Kind::Undo),
     ];
     let fields = (
@@ -154,6 +177,7 @@ pub fn replay(plan: &[Op]) -> Trace {
         steps.push(Step {
             before,
             after: snapshot(&repo),
+            kind: op.kind,
             accepted: result.is_ok(),
             hits,
         });
@@ -175,8 +199,8 @@ fn snapshot(repo: &Repository<MemoryStore>) -> State {
     }
 }
 
-/// The rule a write is in the domain of, from its kind alone: enough to see
-/// that an item was exercised (a count of zero fails the item).
+/// The rules a write is in the domain of, from its kind and relation alone:
+/// enough to see that an item was exercised (a count of zero fails the item).
 pub fn hits(op: &Op) -> BTreeSet<Rule> {
     let mut set = BTreeSet::new();
     match op.kind {
@@ -186,10 +210,46 @@ pub fn hits(op: &Op) -> BTreeSet<Rule> {
         Kind::Repeat => {
             set.insert(Rule::E3);
         }
+        Kind::Satisfy => {
+            set.insert(Rule::C1);
+            set.insert(Rule::C2);
+        }
+        Kind::Edit => {
+            set.insert(Rule::R5);
+        }
+        Kind::ReqAdd if op.flag => {
+            set.insert(Rule::E8);
+        }
         _ => {}
     }
     if op.a >= 8 || op.b >= 8 {
         set.insert(Rule::E4);
     }
+    match relation_of(op) {
+        Some(Relation::Narrows | Relation::Supersedes) => {
+            set.insert(Rule::E5);
+            set.insert(Rule::E7);
+        }
+        Some(Relation::Closes) => {
+            set.insert(Rule::E6);
+        }
+        Some(Relation::DependsOn | Relation::Widens | Relation::Completes) => {
+            set.insert(Rule::E7);
+        }
+        Some(Relation::FiledAs) => {
+            set.insert(Rule::E8);
+        }
+        _ => {}
+    }
     set
+}
+
+/// The relation an edge write would use, or `None` for a write that makes no
+/// edge (a `Repeat`'s edge is resolved when it runs).
+fn relation_of(op: &Op) -> Option<Relation> {
+    match op.kind {
+        Kind::Link => Some(rules::ALLOWED[op.rel as usize % rules::ALLOWED.len()].0),
+        Kind::Stray => Some(Relation::ALL[op.rel as usize % 12]),
+        _ => None,
+    }
 }
