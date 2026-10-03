@@ -33,6 +33,15 @@
   `--by non-decision`) used to store `closes D` beside a closure that says no
   decision closed it. It is now refused, and the message asks you to name the
   decision in `--evidence` instead.
+- **A cancelled requirement no longer keeps its need open forever** (n-5b94,
+  d-bf90): a need stayed `open` while any requirement filed as it was
+  cancelled, even after another requirement was done and every criterion was
+  satisfied, and nothing said why; only `need close` ended it. A cancelled
+  requirement now counts neither way: a need is `done` when at least one of
+  its requirements is done, none is still `filed` or `approved`, and every
+  criterion it targets is satisfied. A need whose only requirements are
+  cancelled asks for a new one under `missing` (`a filed-as requirement`). In
+  the three ledgers measured, no need changes state.
 
 ### Updating
 

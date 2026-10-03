@@ -52,19 +52,26 @@ pub(super) fn question_open(node: &Node) -> bool {
 }
 
 /// The derived state of one need, looking up its filed requirements and
-/// targeted criteria in `all`. Done needs every filed requirement done (at
-/// least one) and every criterion it targets satisfied (n-f60a, d-85c6).
+/// targeted criteria in `all`. Done needs at least one filed requirement done,
+/// no filed requirement still `filed` or `approved`, and every criterion it
+/// targets satisfied; a `cancelled` requirement counts on neither side
+/// (n-f60a, d-85c6, d-bf90).
 pub fn need_state(need: &Node, all: &[Node]) -> NeedState {
     if let NodeData::Need(data) = need.data() {
         if data.closed.is_some() {
             return NeedState::Closed;
         }
     }
-    let filed = edges(need, Relation::FiledAs);
-    let done = !filed.is_empty()
-        && filed.iter().all(|id| {
-            find(all, id)
-                .is_some_and(|node| requirement_state(node) == Some(RequirementState::Done))
+    let states: Vec<Option<RequirementState>> = edges(need, Relation::FiledAs)
+        .iter()
+        .map(|id| find(all, id).and_then(requirement_state))
+        .collect();
+    let done = states.contains(&Some(RequirementState::Done))
+        && !states.iter().any(|state| {
+            matches!(
+                state,
+                Some(RequirementState::Filed | RequirementState::Approved)
+            )
         })
         && criteria_satisfied(need, all);
     if done {

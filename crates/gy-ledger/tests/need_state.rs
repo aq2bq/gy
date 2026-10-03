@@ -2,7 +2,7 @@
 //! and the criteria left behind by closed requirements show as gaps.
 use gy_ledger::{
     Actor, CriterionSatisfy, FormatVersion, MemoryStore, NeedAdd, Node, NodeId, NodeKind,
-    Operation, Repository, ReqAdd, ReqApprove, ReqDone, Store, advice_for, show,
+    Operation, Repository, ReqAdd, ReqApprove, ReqCancel, ReqDone, Store, advice_for, show,
 };
 
 const SCOPE: &str = "a";
@@ -82,6 +82,16 @@ fn done(repo: &mut Repository<MemoryStore>, requirement: &NodeId) {
     ReqDone {
         id: requirement.clone(),
         evidence: "shipped".into(),
+    }
+    .run(repo)
+    .unwrap();
+}
+
+fn cancel(repo: &mut Repository<MemoryStore>, requirement: &NodeId) {
+    ReqCancel {
+        id: requirement.clone(),
+        reason: "dropped".into(),
+        source: "conversation".into(),
     }
     .run(repo)
     .unwrap();
@@ -170,4 +180,51 @@ fn a_need_without_a_filed_as_reports_no_unmet_criterion() {
     // A new need says it lacks a requirement, not that the criterion is left.
     assert_eq!(missing, ["a filed-as requirement"]);
     assert_eq!(next, [format!("req add \"<title>\" --need {parent} …")]);
+}
+
+#[test]
+fn a_cancelled_requirement_does_not_block_done() {
+    let mut repo = repo();
+    let ac = seed_criterion(&mut repo, "0001");
+    let parent = add_need(&mut repo, std::slice::from_ref(&ac));
+    let dropped = add_request(&mut repo, &parent, std::slice::from_ref(&ac));
+    cancel(&mut repo, &dropped);
+    let shipped = add_request(&mut repo, &parent, std::slice::from_ref(&ac));
+    approve(&mut repo, &shipped);
+    satisfy(&mut repo, &ac, false);
+    done(&mut repo, &shipped);
+    // ac-276b: the cancelled requirement counts on neither side, so done.
+    assert_eq!(state_of(&repo, &parent), Some("done"));
+}
+
+#[test]
+fn a_need_whose_only_requirement_is_cancelled_asks_for_one() {
+    let mut repo = repo();
+    let ac = seed_criterion(&mut repo, "0001");
+    let parent = add_need(&mut repo, std::slice::from_ref(&ac));
+    let dropped = add_request(&mut repo, &parent, &[ac]);
+    cancel(&mut repo, &dropped);
+
+    assert_eq!(state_of(&repo, &parent), Some("open"));
+    let (missing, _) = advice(&repo, &parent);
+    // ac-276b: the cancelled requirement is not one to count, so ask for one.
+    assert!(
+        missing.contains(&"a filed-as requirement".to_string()),
+        "{missing:?}"
+    );
+}
+
+#[test]
+fn a_need_still_in_progress_stays_open() {
+    let mut repo = repo();
+    let ac = seed_criterion(&mut repo, "0001");
+    let parent = add_need(&mut repo, std::slice::from_ref(&ac));
+    let shipped = add_request(&mut repo, &parent, std::slice::from_ref(&ac));
+    let building = add_request(&mut repo, &parent, std::slice::from_ref(&ac));
+    approve(&mut repo, &shipped);
+    approve(&mut repo, &building);
+    satisfy(&mut repo, &ac, false);
+    done(&mut repo, &shipped);
+    // ac-276b: a requirement still in progress holds the need open.
+    assert_eq!(state_of(&repo, &parent), Some("open"));
 }

@@ -48,7 +48,7 @@ The relations are a closed set of 12 values, and the reverse names are derived. 
 
 Some values are not stored and are computed from the graph every time.
 
-- The state of a need: `closed` if it is closed, `done` if all of its `filed-as` requirements are `done` and every acceptance criterion it `targets` is satisfied, and `open` otherwise.
+- The state of a need: `closed` if it is closed, `done` if at least one of its `filed-as` requirements is `done`, none of them is `filed` or `approved`, and every acceptance criterion it `targets` is satisfied, and `open` otherwise. A `cancelled` requirement counts on neither side, so it neither completes the need nor holds it open (d-bf90).
 - Whether it can be started (the condition of `next`): it is `open`, its `depends-on` needs are `closed` or `done`, and what it `waits-on` is settled (a question is closed; a requirement is `done` or `cancelled`).
 - `bearer_count`: the number of needs that have that acceptance criterion in their `targets`.
 - Requirements in progress: requirements that are `filed` or `approved`.
