@@ -54,6 +54,106 @@ Some values are not stored and are computed from the graph every time.
 - Requirements in progress: requirements that are `filed` or `approved`.
 - A decision's retraction (n-0c6f, d-bde9): which newer decisions `narrow` or `supersede` it, and, from each `mark`, which passage of its body or scope note stops applying. It is derived whether or not `--full` is asked for, from one pass over the graph per invocation, and it is the one judgement every read path shows: `show` and serve render it and decide nothing of their own. A `narrows` wraps the passage where it stands (`[[retracted by <id>: <mark>]]`) so a reader meets it in the text rather than having to connect a line elsewhere; a `supersedes` covers the whole decision and only names itself above the body. A decision whose mark falls outside the `## Decision` section shows its whole body rather than hide the mark. The marking is a projection: the stored body is what `--json` carries, and the marked text rides beside it; `publish` writes the marked text. A mark is refused where an edge is made (`link`, `decide`) when it is not in the older decision's body or scope note; an `edit` is never refused this way, since it cannot tell a passage that follows its retraction from one that misses it. It applies the edit and names, on the write's `unresolved` line, each incoming `narrows` / `supersedes` mark that named a passage before and does not after, from one pass over the graph; a mark that never resolved stays silent (n-847d, d-8f76).
 
+## Invariants of the nodes and edges
+
+This section lists what gy holds true of the five nodes and the twelve edges (n-1a61, reviewed three times by a second reader, ac-3e58). Each item gets a property test in `crates/gy-ledger/tests/` (n-1a61); the table at the end of the section maps an item to its test as the tests land.
+
+Each item says where it is held: **W** refused by the operation at write time; **G** refused by the gate, so on every path a write takes (an ordinary write, `undo` and redo, and the rebase of a shared ledger); **D** derived on read.
+
+There are two forms, and a property test checks each in its own way:
+
+- A **rule** judges a change: "a write that does X is refused". It looks only at what the write changes, so what a ledger already holds stays valid, and replaying the log never runs a rule (d-b0d0).
+- A **state invariant** holds of every ledger that started empty and was written only through this build's operations: "starting from a ledger where it holds, it still holds after any sequence of operations". A ledger written by an older build may break it; such a ledger still opens and reads.
+
+"Through its own operation" means the operation that names the change (`need close`, `req done`, …). `undo` is not one of them: it takes back the last transaction as a whole and restores the previous values, and it passes the gate like any write (T4).
+
+### Every node
+
+- **N1** An ID is the kind's prefix (`n`, `q`, `d`, `r`, `ac`) and a nonempty hash, unique in a ledger; a node's ID never changes, including across a rebase. W — `model/kind.rs`, ID minting in `store`.
+- **N2** The scope is nonempty; a write puts a node only in a scope named in `gy.toml`. W — `model/node.rs:build`, scope checks in `ops`.
+- **N3** The title is nonempty. W — `model/node.rs:build`.
+- **N4** `created` is a UTC instant `YYYY-MM-DDTHH:MM:SSZ` and never changes. Every other stored instant (`satisfied_at`, the `at` of an approval, a revision, a completion and a cancellation) has the same form. W — `model/node.rs:valid_created`, `model/state.rs:valid_instant`.
+- **N5** `edit` changes only: the title, the body, the scope (to a scope in `gy.toml`), free attributes, and a decision's scope note once while it is the unrecorded marker. Every other typed field (requirement state, reference, approval / revision / completion / cancellation, question closure, decider, options, need closure, criterion satisfaction, a recorded scope note) changes only through its own operation; `edit` refuses those keys. W — `ops/edit.rs:set_one`, `RESERVED`.
+- **N6** A reference to a node (full ID, padded ID, alias, a requirement's `ref`) resolves to exactly one node or is refused. W/D — `ops/snapshot.rs`.
+
+### Edges
+
+- **E1** A relation is one of the 12, and its (from kind, to kind) pair is in the one table. W — `model/links.rs:ALLOWED`.
+- **E2** An edge is stored on its from side only; the reverse is derived. — `model/links.rs`, `Repository::incoming`.
+- **E3** Rule: a write that would store the same edge (from, relation, to) a second time is refused, on every path. W/G — `model/edges.rs` (n-d2a5, d-fb49, d-ab9c).
+- **E4** Rule: an edge's target exists when the edge is written, on every path that writes one. W/G — `ops/*`, `store/remote/rebase.rs`.
+- **E5** `narrows` and `supersedes` carry a mark on the forward side only. Rule: the mark is refused when the edge is made (`link`, `decide --relate`) unless it is found in the older decision's body or scope note. `edit` is never refused for a mark (see D2). W — `ops/marks.rs`.
+- **E6** Rule: a `closes` edge comes only from a question closed by decision (`question close --by decision --decision D`, `decide --closes Q`); `link` never makes one, and a close by fact or non-decision makes none. W/G — `ops/link.rs`, `ops/question_close.rs`, `model/edges.rs` (n-ac83, d-fb49).
+- **E7** Rule: a write that adds a `depends-on` edge, or a lineage edge (`narrows`, `widens`, `supersedes`, `completes` together), that closes a cycle, a self-loop included, is refused. State invariant: both graphs stay acyclic. G — `model/shape.rs` (n-e299, d-858d).
+- **E8** Rule: a write that adds a `filed-as` to a need that is closed after the write is refused. G — `model/rule.rs:check_closed_need` (n-d5a2, d-ee34).
+
+### Need
+
+- **Nd1** A need is created with at least one `targets`. W — `ops/need_add.rs`.
+- **Nd2** Through its own operation a need closes once, with `by` (fact or external) and nonempty evidence; `need close` on a closed need is refused, and no operation reopens it. W — `ops/need_close.rs`.
+- **Nd3** Its state is derived: `closed` if closed; `done` if at least one `filed-as` requirement is done, none is `filed` or `approved`, and every criterion it targets is satisfied (a cancelled requirement counts neither way); `open` otherwise. D — `views/derive.rs:need_state` (d-85c6, d-bf90).
+- **Nd4** State invariant (from Nd3): a done need has no unmet targeted criterion. D.
+- **Nd5** It is ready iff it is open, every `depends-on` need is closed or done, and everything it `waits-on` is settled (a question closed; a requirement done or cancelled). D — `views/derive.rs:ready`.
+
+### Question
+
+- **Q1** A question has a nonempty decider and at least two options. W — `ops/question_add.rs`.
+- **Q2** Through its own operation a question closes once, with `by` and evidence; closing by decision names the decision and makes `closes` to it (E6). Closing a closed question is refused. W — `ops/question_close.rs`, `ops/decide.rs`.
+- **Q3** A question is open iff it has no closure. D — `views/derive.rs:question_open`.
+
+### Decision
+
+- **D1** A decision has a nonempty scope note, except the unrecorded marker only the migration sets; an unrecorded note can be recorded once with `edit --set decision_scope=` (N5), and a recorded one never changes. W — `model/scope.rs`, `ops/decide.rs`, `ops/edit.rs`.
+- **D2** Retraction, derived (n-0c6f, d-bde9, d-8f76):
+  - an incoming `narrows` retracts the passage its mark names; an incoming `supersedes` retracts the whole decision;
+  - the stored body and scope note never change by this; the marked text is returned beside them (`--json` carries the stored body), and `show`, serve and `publish` render the same marked text from one function;
+  - a mark that falls outside the `## Decision` section shows the whole body;
+  - an `edit` names, on `unresolved`, each incoming mark that resolved before the edit and does not after; a mark that never resolved is not named.
+  D — `views/retraction.rs`, `ops/edit.rs:69,87`.
+
+### Requirement
+
+- **R1** A requirement is created for at least one need, which files it (`filed-as`). W — `ops/req_add.rs`.
+- **R2** Through its own operations its state moves only filed→approved, approved→filed (revise), approved→done, filed|approved→cancelled; no operation moves it out of done or cancelled. W — `model/state.rs:advance`.
+- **R3** Each move stores its record with nonempty fields: approval (design, heard_by, evidence), revision (reason, source), completion (evidence), cancellation (reason, source). A revised requirement keeps its approval record. W — `ops/req_*.rs`.
+- **R4** A reference is opaque, and no two requirements in progress (filed or approved) share one. W — `ops/req_add.rs:check_reference`.
+- **R5 (I2)** Rule: while a requirement stays approved, a write that changes its title, body, `targets` or `relies-on`, or the title or body of a criterion it targets, is refused. A done requirement freezes nothing. G — `model/rule.rs`.
+
+### Criterion
+
+- **C1 (I1)** Rule: a write that turns a criterion satisfied is refused unless an approved or done requirement targets it. It judges the change, not the state: cancelling or revising the covering requirement later leaves the criterion satisfied (n-5b94). G — `model/rule.rs:check_criterion`, `covered`.
+- **C2** Satisfying needs evidence and refuses an already satisfied criterion; `--revoke` turns it back to unsatisfied. W — `ops/criterion_satisfy.rs`.
+- **C3** Coverage is one function: a criterion is covered iff an approved or done requirement targets it. The rule (C1) and the advice (V2) call the same function. — `model/rule.rs:covered`.
+- **C4** `bearer_count` of a criterion is the number of needs that target it (needs, not edges and not requirements). A criterion is **orphaned** iff it is unmet, its bearer count is at least one, and every bearing need is closed through `need close` (a derived `done` does not count). D — `ops/advice.rs:unmet_orphaned`, `views/handover.rs:orphaned_criteria`.
+
+### Writes and history
+
+- **T1** One intent is one transaction and one line of the log; a failed write leaves nothing. W — `store`.
+- **T2** Every write names its actor; a write to a shared copy also carries the git user (`by`). W — `store/mod.rs`, n-64be.
+- **T3** The log is append-only, and `seq` rises by one per line; the snapshot equals the replay of the log. — `store`.
+- **T4** `undo` takes back exactly the last transaction, only when it is the writer's own (the same actor, and on a shared copy the same `by`), and undo again redoes it. The reverse change passes the gate and may be refused by a rule (for example E7). G — `ops/undo.rs`, `store/file/undo.rs`, `store/file/mod.rs:95`.
+- **T5** The gate runs the model's rule on every path a write takes: commit, undo/redo, rebase. — `ops/judge.rs`, n-557f.
+
+### Derived judgements shared by every reader
+
+- **V1** The CLI and serve read every derived value through the same function of `gy-ledger`; serve judges nothing of its own.
+- **V2** `missing` (D — `ops/advice.rs`, `ops/advice/need.rs`), by kind and state. `missing` is advice: it never refuses a write.
+  - a need not closed through `need close` (derived `open` or `done`): a body if empty; `a filed-as requirement` if every `filed-as` requirement is cancelled or there is none; otherwise each targeted criterion that is unmet and that no filed or approved requirement covers (`unmet criterion <id>`, n-f60a). A derived `done` need with an empty body still reports the body;
+  - a closed need: each of its orphaned criteria (C4);
+  - an open question: a body if empty; a need that waits on it or a requirement that raised it, if neither exists;
+  - a decision: a body if empty;
+  - a filed requirement that has never been approved: a `relies-on` decision, a `targets` criterion, and a `ref`, each if absent; a revised requirement (it keeps its approval) reports none;
+  - an unmet criterion: a body if empty; an approved requirement (targets) if it is not covered (C3);
+  - every other node (closed question, approved / done / cancelled requirement, satisfied criterion): nothing.
+- **V3** The step toward satisfying an unmet criterion: `criterion satisfy <it>` if it is covered (C3); `req approve <R>` if a filed requirement targets it; otherwise `req add … --need <N> --targets <it>`, where `<N>` is a bearing need not closed through `need close`, or the literal placeholder `<N>` when there is none. `next` for a criterion is: for an unmet one, that step; for a satisfied one, the same step for an unmet criterion that shares a bearing need with it, or nothing when there is none (it never suggests satisfying it again, C2) (n-5a63). For an open need with a `filed-as`, `next` adds the step for each criterion V2 lists. For every kind, when the node reports an empty body, `edit <id> --body-file …` comes first.
+- **V4** `next` (the command) lists the ready needs (Nd5) ordered by `created`, then ID, and holds no priority.
+- **V5** handover's warnings are counts: a requirement in progress relying on a superseded decision or on an unrecorded scope note; a criterion with an empty body; an open question nobody waits on; an orphaned criterion (C4).
+
+### Item to test
+
+| Item | Test |
+| --- | --- |
+
 ## What handover and next judge
 
 `handover` reports the errors (an edge to a node that does not exist, a `filed-as` edge whose target is not a requirement), the requirements in progress (`ref`, state, `next_evidence`, `responsible`), the number of open questions, the number of needs that can be started, and the number of warnings. The warnings are: a requirement in progress that relies on a superseded decision, a requirement in progress that relies on a decision whose scope note is unrecorded, an acceptance criterion with an empty body, an open question that nobody waits on (neither `waits-on` nor `raised`), and an unmet acceptance criterion whose bearing needs are all closed (counts only; d-09b6, d-f7b6). It lists the states that need attention in an order a person can read.
