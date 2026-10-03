@@ -91,15 +91,15 @@ There are two forms, and a property test checks each in its own way:
 
 - **Nd1** A need is created with at least one `targets`. W — `ops/need_add.rs`.
 - **Nd2** Through its own operation a need closes once, with `by` (fact or external) and nonempty evidence; `need close` on a closed need is refused, and no operation reopens it. W — `ops/need_close.rs`.
-- **Nd3** Its state is derived: `closed` if closed; `done` if at least one `filed-as` requirement is done, none is `filed` or `approved`, and every criterion it targets is satisfied (a cancelled requirement counts neither way); `open` otherwise. D — `views/derive.rs:need_state` (d-85c6, d-bf90).
+- **Nd3** Its state is derived: `closed` if closed; `done` if at least one `filed-as` requirement is done, none is `filed` or `approved`, and every criterion it targets is satisfied (a cancelled requirement counts neither way); `open` otherwise. D — `model/derive.rs:need_state` (d-85c6, d-bf90).
 - **Nd4** State invariant (from Nd3): a done need has no unmet targeted criterion. D.
-- **Nd5** It is ready iff it is open, every `depends-on` need is closed or done, and everything it `waits-on` is settled (a question closed; a requirement done or cancelled). D — `views/derive.rs:ready`.
+- **Nd5** It is ready iff it is open, every `depends-on` need is closed or done, and everything it `waits-on` is settled (a question closed; a requirement done or cancelled). D — `model/derive.rs:ready`.
 
 ### Question
 
 - **Q1** A question has a nonempty decider and at least two options. W — `ops/question_add.rs`.
 - **Q2** Through its own operation a question closes once, with `by` and evidence; closing by decision names the decision and makes `closes` to it (E6). Closing a closed question is refused. W — `ops/question_close.rs`, `ops/decide.rs`.
-- **Q3** A question is open iff it has no closure. D — `views/derive.rs:question_open`.
+- **Q3** A question is open iff it has no closure. D — `model/derive.rs:question_open`.
 
 ### Decision
 
@@ -121,10 +121,10 @@ There are two forms, and a property test checks each in its own way:
 
 ### Criterion
 
-- **C1 (I1)** Rule: a write that turns a criterion satisfied is refused unless an approved or done requirement targets it. It judges the change, not the state: cancelling or revising the covering requirement later leaves the criterion satisfied (n-5b94). G — `model/rule.rs:check_criterion`, `covered`.
+- **C1 (I1)** Rule: a write that turns a criterion satisfied is refused unless an approved or done requirement targets it. It judges the change, not the state: cancelling or revising the covering requirement later leaves the criterion satisfied (n-5b94). G — `model/rule.rs:check_criterion`, `model/derive.rs:covered`.
 - **C2** Satisfying needs evidence and refuses an already satisfied criterion; `--revoke` turns it back to unsatisfied. W — `ops/criterion_satisfy.rs`.
-- **C3** Coverage is one function: a criterion is covered iff an approved or done requirement targets it. The rule (C1) and the advice (V2) call the same function. — `model/rule.rs:covered`.
-- **C4** `bearer_count` of a criterion is the number of needs that target it (needs, not edges and not requirements). A criterion is **orphaned** iff it is unmet, its bearer count is at least one, and every bearing need is closed through `need close` (a derived `done` does not count). D — `ops/advice.rs:unmet_orphaned`, `views/handover.rs:orphaned_criteria`.
+- **C3** Coverage is one function: a criterion is covered iff an approved or done requirement targets it. The rule (C1) and the advice (V2) call the same function. — `model/derive.rs:covered`.
+- **C4** `bearer_count` of a criterion is the number of needs that target it (needs, not edges and not requirements). A criterion is **orphaned** iff it is unmet, its bearer count is at least one, and every bearing need is closed through `need close` (a derived `done` does not count). D — `model/derive.rs:unmet_orphaned`, `views/handover.rs:orphaned_criteria`.
 
 ### Writes and history
 
@@ -136,7 +136,7 @@ There are two forms, and a property test checks each in its own way:
 
 ### Derived judgements shared by every reader
 
-- **V1** The CLI and serve read every derived value through the same function of `gy-ledger`; serve judges nothing of its own.
+- **V1** The CLI and serve read every derived value through the same function of `gy-ledger`; serve judges nothing of its own. The derived judgements — a need's state and readiness, whether a question is open, a criterion is satisfied, a requirement is in progress, a need is closed by hand, whether nobody waits on a question, coverage, and the orphaned criteria — are defined once in `model/derive.rs`, and the views and the advice call them (n-b4ec).
 - **V2** `missing` (D — `ops/advice.rs`, `ops/advice/need.rs`), by kind and state. `missing` is advice: it never refuses a write.
   - a need not closed through `need close` (derived `open` or `done`): a body if empty; `a filed-as requirement` if every `filed-as` requirement is cancelled or there is none; otherwise each targeted criterion that is unmet and that no filed or approved requirement covers (`unmet criterion <id>`, n-f60a). A derived `done` need with an empty body still reports the body;
   - a closed need: each of its orphaned criteria (C4);

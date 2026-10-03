@@ -2,6 +2,7 @@
 //! of an edge nor a closes edge on a question no decision closed. Every write,
 //! a create operation or a rebase line, passes here. A state the ledger already
 //! held stays.
+use super::derive::edges;
 use super::rule::{Before, Change};
 use super::{Closure, Node, NodeData, NodeKind, Relation};
 use crate::store::{Error, Result};
@@ -77,10 +78,9 @@ fn check_closes(before: &dyn Before, node: &Node) -> Result<()> {
 }
 
 fn closes(node: &Node) -> BTreeSet<String> {
-    node.links()
+    edges(node, Relation::Closes)
         .iter()
-        .filter(|edge| !edge.reversed && edge.label == Relation::Closes)
-        .map(|edge| edge.to.to_string())
+        .map(|id| id.to_string())
         .collect()
 }
 

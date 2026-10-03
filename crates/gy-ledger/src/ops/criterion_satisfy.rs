@@ -1,7 +1,7 @@
 //! criterion satisfy: record evidence that a criterion holds, or revoke it
 //! while keeping the evidence.
 use super::{Operation, Outcome, Repository, advice_for, now};
-use crate::model::{Node, NodeData, NodeId, NodeKind};
+use crate::model::{Node, NodeData, NodeId, NodeKind, criterion_satisfied};
 use crate::store::{Error, Result, Store};
 
 #[derive(Clone)]
@@ -38,12 +38,13 @@ impl<S: Store> Operation<S> for CriterionSatisfy {
 }
 
 fn update(node: &mut Node, id: &NodeId, evidence: &str, revoke: bool) -> Result<()> {
+    let already = criterion_satisfied(node.data());
     match node.data_mut() {
         NodeData::Criterion(data) => {
             if revoke {
                 data.satisfied = false;
                 data.satisfied_at = None;
-            } else if data.satisfied {
+            } else if already {
                 return Err(Error::invalid(format!("{id} is already satisfied")));
             } else {
                 data.satisfied = true;

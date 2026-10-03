@@ -1,7 +1,6 @@
 //! next: the needs ready to work, with how many of their criteria are
 //! satisfied and which requirements they became. The agent picks one (D-62).
-use super::derive::{edges, find, ready, reference};
-use crate::model::{Node, NodeData, NodeKind, Relation};
+use crate::model::{Node, NodeKind, Relation, criterion_satisfied, edges, find, ready, reference};
 use crate::ops::repository::{Repository, Result, Store};
 use serde::Serialize;
 use std::fmt;
@@ -73,18 +72,14 @@ fn row(need: &Node, all: &[Node]) -> NextRow {
     let targets = edges(need, Relation::Targets);
     let satisfied = targets
         .iter()
-        .filter(|id| {
-            find(all, id).is_some_and(
-                |node| matches!(node.data(), NodeData::Criterion(data) if data.satisfied),
-            )
-        })
+        .filter(|id| find(all, id).is_some_and(|node| criterion_satisfied(node.data())))
         .count();
     let requirements = edges(need, Relation::FiledAs)
         .iter()
         .filter_map(|id| find(all, id))
         .map(|node| RequirementLine {
             id: node.id().to_string(),
-            reference: reference(node),
+            reference: reference(node).map(str::to_string),
             state: node
                 .state()
                 .map(|state| state.name().to_string())

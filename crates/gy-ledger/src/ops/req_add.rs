@@ -3,6 +3,7 @@
 use super::{Operation, Outcome, Repository, advice_for, node_of, now};
 use crate::model::{
     Link as ModelLink, Node, NodeData, NodeId, NodeKind, Ref, Relation, RequirementState,
+    requirement_in_progress,
 };
 use crate::store::{Error, Result, Store};
 
@@ -102,10 +103,7 @@ fn check_reference<S: Store>(repo: &Repository<S>, reference: Option<&Ref>) -> R
             continue;
         };
         let same = data.reference.as_ref().is_some_and(|r| r.0 == reference.0);
-        let open = matches!(
-            data.state,
-            RequirementState::Filed | RequirementState::Approved
-        );
+        let open = requirement_in_progress(node.data());
         if same && open {
             return Err(Error::invalid(format!(
                 "{} already has reference {}",

@@ -1,13 +1,15 @@
 //! now: what a person is waiting on, what is in progress, and what is still
 //! open (d-995c, d-b02d, n-688a). The CLI, MCP, and serve give the same answer.
-use super::derive::{need_state, question_open, reference, writer, writers};
 use super::handover::{Handover, ProgressRow, handover};
 use super::list::LogRow;
 use super::next::ready_rows;
+use super::open_or_closed;
 use super::sync_row::SyncRow;
-use super::{NeedState, open_or_closed};
-use crate::model::{Node, NodeData, NodeKind, RequirementState};
-use crate::ops::advice;
+use super::writers::{writer, writers};
+use crate::model::{
+    NeedState, Node, NodeData, NodeKind, RequirementState, criterion_satisfied,
+    criterion_unsatisfied, need_state, question_open, reference, unwaited,
+};
 use crate::ops::repository::{Repository, Result, Store};
 use serde::Serialize;
 use std::collections::BTreeSet;
@@ -103,13 +105,13 @@ pub fn now<S: Store>(repo: &Repository<S>, scope: Option<&str>) -> Result<Now> {
     let mut open_questions: Vec<&Node> = visible
         .iter()
         .copied()
-        .filter(|node| question_open(node) && !waits_on_a_person(node, &writers))
+        .filter(|node| question_open(node.data()) && !waits_on_a_person(node, &writers))
         .collect();
     open_questions.sort_by(oldest_first);
     let mut unmet: Vec<&Node> = visible
         .iter()
         .copied()
-        .filter(|node| matches!(node.data(), NodeData::Criterion(data) if !data.satisfied))
+        .filter(|node| criterion_unsatisfied(node.data()))
         .collect();
     unmet.sort_by(newest_first);
     let last = repo.store().history().last();
@@ -119,7 +121,7 @@ pub fn now<S: Store>(repo: &Repository<S>, scope: Option<&str>) -> Result<Now> {
         at: last.map_or(0, |entry| entry.at),
         scope: scope.map(ToString::to_string),
         waiting: waiting(&visible, &all, &writers),
-        ready: ready(&all, scope),
+        ready: ready_view(&all, scope),
         resume: resume(repo, scope, &all, session),
         in_progress: rows(&in_progress, &all),
         open_questions: rows(&open_questions, &all),
@@ -145,7 +147,7 @@ fn resume<S: Store>(
     }
 }
 
-fn ready(all: &[Node], scope: Option<&str>) -> Vec<Ready> {
+fn ready_view(all: &[Node], scope: Option<&str>) -> Vec<Ready> {
     ready_rows(all, scope)
         .into_iter()
         .filter_map(|next| {
@@ -189,7 +191,7 @@ fn waiting(visible: &[&Node], all: &[Node], writers: &BTreeSet<String>) -> Vec<W
 /// never wrote the ledger (d-b02d).
 fn waits_on_a_person(node: &Node, writers: &BTreeSet<String>) -> bool {
     matches!(node.data(), NodeData::Question(data)
-        if question_open(node)
+        if question_open(node.data())
             && data.decider.as_deref().map(str::trim)
                 .is_some_and(|decider| !decider.is_empty() && !writers.contains(decider)))
 }
@@ -213,7 +215,7 @@ fn question_waiting(node: &Node, all: &[Node]) -> Waiting {
 fn requirement_waiting(node: &Node, all: &[Node]) -> Waiting {
     Waiting::Requirement {
         row: row(node, all),
-        reference: reference(node),
+        reference: reference(node).map(str::to_string),
     }
 }
 
@@ -230,7 +232,7 @@ fn row(node: &Node, all: &[Node]) -> NodeRow {
         scope: node.scope().to_string(),
         status: state_name(node, all),
         created: node.created().to_string(),
-        unwaited: advice::unwaited(node, all),
+        unwaited: unwaited(node, all),
     }
 }
 
@@ -238,9 +240,9 @@ fn row(node: &Node, all: &[Node]) -> NodeRow {
 fn state_name(node: &Node, all: &[Node]) -> String {
     match node.data() {
         NodeData::Need(_) => need_state(node, all).name().to_string(),
-        NodeData::Question(data) => open_or_closed(data.closure.is_some()).to_string(),
+        NodeData::Question(_) => open_or_closed(!question_open(node.data())).to_string(),
         NodeData::Requirement(data) => data.state.name().to_string(),
-        NodeData::Criterion(data) => if data.satisfied {
+        NodeData::Criterion(_) => if criterion_satisfied(node.data()) {
             "satisfied"
         } else {
             "unsatisfied"

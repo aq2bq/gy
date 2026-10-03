@@ -2,7 +2,9 @@
 //! requirement, a question, each with the record the type carries.
 use super::super::show::Shown;
 use super::wiki::Scope;
-use crate::model::{Closure, Criterion, NodeData, NodeKind, Question, Requirement};
+use crate::model::{
+    Closure, Criterion, NodeData, NodeKind, Question, Requirement, criterion_satisfied,
+};
 
 /// One `## ` section of the inlines whose ids are in scope, or nothing when
 /// none of them is a node this page shows.
@@ -101,7 +103,7 @@ fn requirement(node: &Shown, data: &Requirement, scope: &Scope, here: &str) -> S
     for revision in &data.revisions {
         out += &format!("- Revised: {}\n", revision.reason);
     }
-    let relies = scope.edges(&node.id, "relies-on");
+    let relies = scope.named_edges(&node.id, "relies-on");
     if !relies.is_empty() {
         let links: Vec<String> = relies
             .iter()
@@ -115,12 +117,13 @@ fn requirement(node: &Shown, data: &Requirement, scope: &Scope, here: &str) -> S
 
 fn criterion(node: &Shown, data: &Criterion, scope: &Scope) -> String {
     let mut out = heading(node);
-    out += if data.satisfied {
+    let satisfied = criterion_satisfied(&node.data);
+    out += if satisfied {
         "- Met\n"
     } else {
         "- Not met yet\n"
     };
-    if data.satisfied {
+    if satisfied {
         if let Some(evidence) = &data.evidence {
             out += &format!("- Evidence: {evidence}\n");
         }

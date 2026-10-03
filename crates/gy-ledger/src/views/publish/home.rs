@@ -4,7 +4,7 @@
 //! diagnostics are gone (d-d82b): a reader follows links, not a legend.
 use super::super::show::Shown;
 use super::wiki::Scope;
-use crate::model::{NodeData, NodeKind, RequirementState};
+use crate::model::{NodeKind, question_open, requirement_in_progress};
 
 /// A link from the entry: the page that shows the node, or `loose.md` for one
 /// no vertex expands.
@@ -73,7 +73,7 @@ fn section(title: &str, lines: &[String]) -> String {
 fn questions(scope: &Scope, nodes: &[&Shown]) -> Vec<String> {
     nodes
         .iter()
-        .filter(|node| matches!(&node.data, NodeData::Question(data) if data.closure.is_none()))
+        .filter(|node| question_open(&node.data))
         .map(|node| entry_link(scope, &node.id))
         .collect()
 }
@@ -81,10 +81,7 @@ fn questions(scope: &Scope, nodes: &[&Shown]) -> Vec<String> {
 fn building(scope: &Scope, nodes: &[&Shown]) -> Vec<String> {
     nodes
         .iter()
-        .filter(|node| {
-            matches!(&node.data, NodeData::Requirement(data)
-                if matches!(data.state, RequirementState::Filed | RequirementState::Approved))
-        })
+        .filter(|node| requirement_in_progress(&node.data))
         .map(|node| entry_link(scope, &node.id))
         .collect()
 }

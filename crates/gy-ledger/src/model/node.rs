@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 
 use super::{
     Alias, Approval, Cancellation, Closed, Closure, Completion, DecisionScope, Edge, Link, NodeId,
-    NodeKind, Ref, Relation, RequirementState, Revision,
+    NodeKind, Ref, RequirementState, Revision,
 };
 use crate::store::{Error, Result};
 use serde::{Deserialize, Serialize};
@@ -286,15 +286,4 @@ pub(crate) fn valid_created(text: &str) -> bool {
         && b.iter()
             .enumerate()
             .all(|(i, c)| on.contains(&i) || c.is_ascii_digit())
-}
-
-/// Needs that carry a Targets edge to a criterion, derived rather than stored.
-pub fn bearer_count(needs: &[Node], criterion: &NodeId) -> usize {
-    needs.iter().filter(|node| bears(node, criterion)).count()
-}
-
-fn bears(node: &Node, criterion: &NodeId) -> bool {
-    node.links()
-        .iter()
-        .any(|edge| edge.label == Relation::Targets && &edge.to == criterion)
 }

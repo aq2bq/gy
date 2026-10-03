@@ -1,10 +1,12 @@
 //! handover: what a session needs to resume in one command (AC-43). In-progress
 //! requirements with their ref and who waits, the counts that route the next
 //! step, integrity errors, and warnings as counts only (proposal-v3 14).
-use super::derive::{edges, find, ready, reference, requirement_in_progress, writer};
 use super::sync_row::{SyncRow, sync_row};
-use crate::model::{Node, NodeData, NodeKind, Relation};
-use crate::ops::advice;
+use super::writers::writer;
+use crate::model::{
+    Node, NodeData, NodeKind, Relation, edges, find, question_open, ready, reference,
+    requirement_in_progress, unmet_orphaned, unwaited,
+};
 use crate::ops::repository::{Repository, Result, Store};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
@@ -100,11 +102,11 @@ pub fn handover<S: Store>(repo: &Repository<S>, scope: Option<&str>) -> Result<H
     let all = repo.all()?;
     let in_progress: Vec<&Node> = all
         .iter()
-        .filter(|node| in_scope(node, scope) && requirement_in_progress(node))
+        .filter(|node| in_scope(node, scope) && requirement_in_progress(node.data()))
         .collect();
     let open_questions = all
         .iter()
-        .filter(|node| in_scope(node, scope) && open_question(node))
+        .filter(|node| in_scope(node, scope) && question_open(node.data()))
         .count();
     let ready_needs = all
         .iter()
@@ -149,7 +151,7 @@ fn last_writers<S: Store>(repo: &Repository<S>) -> BTreeMap<String, String> {
 fn progress(node: &Node, who: Option<String>) -> ProgressRow {
     ProgressRow {
         id: node.id().to_string(),
-        reference: reference(node),
+        reference: reference(node).map(str::to_string),
         state: node
             .state()
             .map(|state| state.name().to_string())
@@ -253,14 +255,14 @@ fn empty_bodies(all: &[Node], scope: Option<&str>) -> usize {
 /// Open questions in scope that no node waits on or raised (n-fa11, d-09b6).
 fn nobody_waits(all: &[Node], scope: Option<&str>) -> usize {
     all.iter()
-        .filter(|node| in_scope(node, scope) && advice::unwaited(node, all))
+        .filter(|node| in_scope(node, scope) && unwaited(node, all))
         .count()
 }
 
 /// Criteria in scope whose every bearing need is closed (n-f7ef, d-f7b6).
 fn orphaned_criteria(all: &[Node], scope: Option<&str>) -> usize {
     all.iter()
-        .filter(|node| in_scope(node, scope) && advice::unmet_orphaned(node, all))
+        .filter(|node| in_scope(node, scope) && unmet_orphaned(node, all))
         .count()
 }
 
@@ -275,10 +277,6 @@ fn push(warnings: &mut Vec<Warning>, label: &str, count: usize) {
 
 fn in_scope(node: &Node, scope: Option<&str>) -> bool {
     scope.is_none_or(|scope| node.scope() == scope)
-}
-
-fn open_question(node: &Node) -> bool {
-    matches!(node.data(), NodeData::Question(data) if data.closure.is_none())
 }
 
 fn unrecorded_scope(node: &Node) -> bool {

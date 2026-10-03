@@ -1,9 +1,10 @@
 //! show: one node, or several, in the verbatim a kind calls for, or in full
 //! (proposal-v3 4). A requirement always shows its id with its ref beside it.
-use super::derive::need_state;
 use super::open_or_closed;
 use super::retraction::{Retraction, retracted, retractions_by_node, scope_marked};
-use crate::model::{Criterion, Edge, Node, NodeData, NodeKind};
+use crate::model::{
+    Criterion, Edge, Node, NodeData, NodeKind, need_state, question_open, reference,
+};
 use crate::ops::repository::{Error, Repository, Result, Snapshot, Store};
 use crate::ops::{advice, local_time};
 use serde::Serialize;
@@ -81,10 +82,7 @@ impl Shown {
         all: &[Node],
         full: bool,
     ) -> Self {
-        let reference = match node.data() {
-            NodeData::Requirement(data) => data.reference.as_ref().map(|ref_| ref_.0.clone()),
-            _ => None,
-        };
+        let reference = reference(node).map(str::to_string);
         let body = projected_body(node, full, cancellation.as_ref());
         let body_marked = cancellation
             .as_ref()
@@ -126,7 +124,7 @@ impl Shown {
                 let _ = writeln!(out, "state: {}", self.need.unwrap_or("open"));
             }
             NodeData::Question(data) => {
-                let _ = writeln!(out, "state: {}", open_or_closed(data.closure.is_some()));
+                let _ = writeln!(out, "state: {}", open_or_closed(!question_open(&self.data)));
                 if let Some(decider) = &data.decider {
                     let _ = writeln!(out, "decider: {decider}");
                 }

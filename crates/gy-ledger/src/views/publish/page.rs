@@ -51,15 +51,15 @@ pub(super) fn decision_page(scope: &Scope, node: &Shown) -> String {
 /// The ids a node points at with one relation.
 fn edge_ids(scope: &Scope, id: &str, name: &str) -> Vec<String> {
     scope
-        .edges(id, name)
+        .named_edges(id, name)
         .iter()
         .map(|edge| edge.to.clone())
         .collect()
 }
 
 fn comes_from(scope: &Scope, node: &Shown, here: &str) -> String {
-    let spawned = scope.edges(&node.id, "spawned-by");
-    let depends = scope.edges(&node.id, "depends-on");
+    let spawned = scope.named_edges(&node.id, "spawned-by");
+    let depends = scope.named_edges(&node.id, "depends-on");
     if spawned.is_empty() && depends.is_empty() {
         return String::new();
     }
@@ -110,7 +110,7 @@ fn lineage(scope: &Scope, node: &Shown, here: &str) -> String {
         ("superseded-by", "Replaced by"),
         ("completed-by", "Completed by"),
     ] {
-        for edge in scope.edges(&node.id, name) {
+        for edge in scope.named_edges(&node.id, name) {
             out += &format!("- {phrase} {}\n", scope.link(&edge.to, here));
             if let Some(mark) = &edge.mark {
                 out += &format!("  - The passage that stops applying: \"{mark}\"\n");
@@ -121,8 +121,8 @@ fn lineage(scope: &Scope, node: &Shown, here: &str) -> String {
 }
 
 fn came_out(scope: &Scope, node: &Shown, here: &str) -> String {
-    let spawns = scope.edges(&node.id, "spawns");
-    let relied = scope.edges(&node.id, "relied-on-by");
+    let spawns = scope.named_edges(&node.id, "spawns");
+    let relied = scope.named_edges(&node.id, "relied-on-by");
     if spawns.is_empty() && relied.is_empty() {
         return String::new();
     }

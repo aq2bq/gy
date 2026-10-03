@@ -1,7 +1,7 @@
 //! need close: record how a need closed, with evidence. Completion is the
 //! need's own state (D-28).
 use super::{Operation, Outcome, Repository, advice_for};
-use crate::model::{Closed, ClosedBy, NodeData, NodeId, NodeKind};
+use crate::model::{Closed, ClosedBy, NodeData, NodeId, NodeKind, need_closed};
 use crate::store::{Error, Result, Store};
 
 #[derive(Clone)]
@@ -23,11 +23,11 @@ impl<S: Store> Operation<S> for NeedClose {
             return Err(Error::invalid("closing a need needs evidence"));
         }
         let source = self.evidence.clone();
+        if need_closed(node.data()) {
+            return Err(Error::invalid(format!("{} is already closed", self.id)));
+        }
         match node.data_mut() {
             NodeData::Need(data) => {
-                if data.closed.is_some() {
-                    return Err(Error::invalid(format!("{} is already closed", self.id)));
-                }
                 data.closed = Some(Closed {
                     by: self.by,
                     evidence: self.evidence,

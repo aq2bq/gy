@@ -3,6 +3,7 @@
 use super::{Operation, Outcome, Repository, advice_for, marks, now};
 use crate::model::{
     Closure, DecisionScope, Link as ModelLink, Node, NodeData, NodeId, NodeKind, Relation,
+    question_open,
 };
 use crate::store::{Error, Result, Store};
 
@@ -95,11 +96,11 @@ fn close_questions<S: Store>(
         if node.kind() != NodeKind::Question {
             return Err(Error::invalid(format!("{id} is not a question")));
         }
+        if !question_open(node.data()) {
+            return Err(Error::invalid(format!("{id} is already closed")));
+        }
         match node.data_mut() {
             NodeData::Question(data) => {
-                if data.closure.is_some() {
-                    return Err(Error::invalid(format!("{id} is already closed")));
-                }
                 data.closure = Some(Closure::Decision);
                 data.evidence = Some(decision.to_string());
             }

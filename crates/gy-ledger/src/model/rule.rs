@@ -5,7 +5,8 @@
 //! and body of a criterion it targets; `req revise` first. A closed need may
 //! not take a new filed-as requirement. The coverage judgement is one function,
 //! shared with the advice (n-f921).
-use super::{Node, NodeData, NodeId, NodeKind, Relation, RequirementState};
+use super::derive::{covered, criterion_satisfied, edges, filed_target, need_closed};
+use super::{Node, NodeId, NodeKind, Relation, RequirementState};
 use crate::store::{Error, Result};
 use std::collections::BTreeSet;
 
@@ -71,7 +72,10 @@ fn reads_state(changes: &[Change]) -> bool {
 /// are the requirements (n-f921).
 fn check_criterion(before: &dyn Before, after: &Node) -> Result<()> {
     let previous = before.get(after.id());
-    if satisfied(after) && !satisfied_of(previous.as_ref()) {
+    let was_satisfied = previous
+        .as_ref()
+        .is_some_and(|node| criterion_satisfied(node.data()));
+    if criterion_satisfied(after.data()) && !was_satisfied {
         let requirements = before.of_kind(NodeKind::Requirement);
         if !covered(&requirements, after.id()) {
             return Err(Error::invalid(refusal(&requirements, after)));
@@ -123,24 +127,23 @@ fn frozen_edges_changed(before: &Node, after: &Node) -> bool {
 /// The targets and relies-on edges the freeze holds, in a comparable order.
 /// Only the from side stores an edge, so the reverse side is absent.
 fn frozen_edges(node: &Node) -> Vec<(&'static str, String)> {
-    let mut edges: Vec<(&'static str, String)> = node
-        .links()
-        .iter()
-        .filter(|edge| {
-            !edge.reversed && matches!(edge.label, Relation::Targets | Relation::ReliesOn)
-        })
-        .map(|edge| (edge.label.name(), edge.to.to_string()))
-        .collect();
-    edges.sort();
-    edges
+    let mut frozen = Vec::new();
+    for relation in [Relation::Targets, Relation::ReliesOn] {
+        for id in edges(node, relation) {
+            frozen.push((relation.name(), id.to_string()));
+        }
+    }
+    frozen.sort();
+    frozen
 }
 
 /// The approved requirement that targets `criterion`, if any: the one the
 /// freeze reports (n-a3f2 2). A done requirement does not freeze.
 fn approved_target<'a>(nodes: &'a [Node], criterion: &NodeId) -> Option<&'a Node> {
-    nodes
-        .iter()
-        .find(|node| node.state() == Some(RequirementState::Approved) && targets(node, criterion))
+    nodes.iter().find(|node| {
+        node.state() == Some(RequirementState::Approved)
+            && edges(node, Relation::Targets).contains(criterion)
+    })
 }
 
 /// The message a criterion edit the freeze refuses reads: which requirement
@@ -172,48 +175,6 @@ fn refusal(requirements: &[Node], criterion: &Node) -> String {
     )
 }
 
-/// The one coverage judgement (n-f921): whether an approved or done
-/// requirement targets `criterion`. The rule and the advice share it.
-pub fn covered(nodes: &[Node], criterion: &NodeId) -> bool {
-    covering(nodes, criterion).is_some()
-}
-
-/// The approved or done requirement that targets `criterion`, if any.
-pub fn covering<'a>(nodes: &'a [Node], criterion: &NodeId) -> Option<&'a Node> {
-    nodes
-        .iter()
-        .find(|node| is_approved(node) && targets(node, criterion))
-}
-
-/// The filed requirement that targets `criterion`, if any: the one an approve
-/// would turn into coverage (n-f921).
-pub fn filed_target<'a>(nodes: &'a [Node], criterion: &NodeId) -> Option<&'a Node> {
-    nodes
-        .iter()
-        .find(|node| node.state() == Some(RequirementState::Filed) && targets(node, criterion))
-}
-
-fn is_approved(node: &Node) -> bool {
-    matches!(
-        node.state(),
-        Some(RequirementState::Approved | RequirementState::Done)
-    )
-}
-
-fn targets(node: &Node, criterion: &NodeId) -> bool {
-    node.links()
-        .iter()
-        .any(|edge| edge.label == Relation::Targets && &edge.to == criterion)
-}
-
-fn satisfied(node: &Node) -> bool {
-    matches!(node.data(), NodeData::Criterion(data) if data.satisfied)
-}
-
-fn satisfied_of(node: Option<&Node>) -> bool {
-    node.is_some_and(satisfied)
-}
-
 /// d-ee34: a need that has closed may not take a new filed-as requirement.
 /// Only an updated need whose filed-as edges grew is read; a transaction that
 /// adds none reads no previous state, and a need that already held one when it
@@ -223,7 +184,7 @@ fn check_closed_need(before: &dyn Before, changes: &[Change]) -> Result<()> {
         let Change::Updated(node) = change else {
             continue;
         };
-        if !matches!(node.data(), NodeData::Need(data) if data.closed.is_some()) {
+        if !need_closed(node.data()) {
             continue;
         }
         let after = filed_as(node);
@@ -244,9 +205,8 @@ fn check_closed_need(before: &dyn Before, changes: &[Change]) -> Result<()> {
 /// The filed-as edges of a need, in a comparable order. Only the from side
 /// stores an edge, so the reverse side is absent.
 fn filed_as(node: &Node) -> BTreeSet<String> {
-    node.links()
+    edges(node, Relation::FiledAs)
         .iter()
-        .filter(|edge| !edge.reversed && edge.label == Relation::FiledAs)
-        .map(|edge| edge.to.to_string())
+        .map(|id| id.to_string())
         .collect()
 }

@@ -56,7 +56,7 @@ pub fn ego<S: Store>(repo: &Repository<S>, text: &str, depth: usize) -> Result<E
     Ok(Ego {
         root,
         nodes: nodes(&all, &order, &hop),
-        edges: edges(&all, &kept),
+        edges: kept_edges(&all, &kept),
         truncated,
     })
 }
@@ -99,7 +99,7 @@ fn nodes(all: &[Node], order: &[String], hop: &BTreeMap<String, usize>) -> Vec<E
 }
 
 /// The edges whose both ends are kept, named from each side.
-fn edges(all: &[Node], kept: &BTreeSet<&str>) -> Vec<EgoEdge> {
+fn kept_edges(all: &[Node], kept: &BTreeSet<&str>) -> Vec<EgoEdge> {
     let mut edges = Vec::new();
     for node in all {
         let from = node.id().to_string();

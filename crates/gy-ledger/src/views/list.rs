@@ -1,10 +1,13 @@
 //! list: node rows, or the write units when asked (proposal-v3 2). A node's
 //! status comes from the model, so the view never compares status strings.
-use super::derive::{NeedState, need_state, writer};
 use super::open_or_closed;
-use crate::model::{Node, NodeData, NodeId, NodeKind, Relation, RequirementState};
+use super::writers::writer;
+use crate::model::{
+    NeedState, Node, NodeData, NodeId, NodeKind, Relation, RequirementState, criterion_satisfied,
+    criterion_unsatisfied, edges, need_state, question_open, reference, unwaited,
+};
+use crate::ops::local_time;
 use crate::ops::repository::{Error, Repository, Result, Store};
-use crate::ops::{advice, local_time};
 use serde::Serialize;
 use std::fmt;
 
@@ -146,11 +149,7 @@ fn keep(node: &Node, filter: &Filter, status: Option<Status>, all: &[Node]) -> b
         return false;
     }
     if let Some(target) = &filter.targets {
-        let hits = node
-            .links()
-            .iter()
-            .any(|edge| edge.label == Relation::Targets && &edge.to == target);
-        if !hits {
+        if !edges(node, Relation::Targets).contains(target) {
             return false;
         }
     }
@@ -163,19 +162,15 @@ fn keep(node: &Node, filter: &Filter, status: Option<Status>, all: &[Node]) -> b
 }
 
 fn row(node: &Node, all: &[Node]) -> Row {
-    let reference = match node.data() {
-        NodeData::Requirement(data) => data.reference.as_ref().map(|ref_| ref_.0.clone()),
-        _ => None,
-    };
     Row {
         id: node.id().to_string(),
-        reference,
+        reference: reference(node).map(str::to_string),
         kind: node.kind(),
         status: status_of(node, all),
         title: node.title().to_string(),
         scope: node.scope().to_string(),
         created: node.created().to_string(),
-        unwaited: advice::unwaited(node, all),
+        unwaited: unwaited(node, all),
     }
 }
 
@@ -184,10 +179,10 @@ fn row(node: &Node, all: &[Node]) -> Row {
 fn status_of(node: &Node, all: &[Node]) -> Option<String> {
     match node.data() {
         NodeData::Need(_) => Some(need_state(node, all).name().to_string()),
-        NodeData::Question(data) => Some(open_or_closed(data.closure.is_some()).to_string()),
+        NodeData::Question(_) => Some(open_or_closed(!question_open(node.data())).to_string()),
         NodeData::Requirement(data) => Some(data.state.name().to_string()),
-        NodeData::Criterion(data) => Some(
-            if data.satisfied {
+        NodeData::Criterion(_) => Some(
+            if criterion_satisfied(node.data()) {
                 "satisfied"
             } else {
                 "unsatisfied"
@@ -253,12 +248,12 @@ fn matches_status(node: &Node, wanted: Status, all: &[Node]) -> bool {
         (NodeData::Need(_), Status::Open) => need_state(node, all) == NeedState::Open,
         (NodeData::Need(_), Status::Closed) => need_state(node, all) == NeedState::Closed,
         (NodeData::Need(_), Status::Done) => need_state(node, all) == NeedState::Done,
-        (NodeData::Question(data), Status::Open) => data.closure.is_none(),
-        (NodeData::Question(data), Status::Closed) => data.closure.is_some(),
+        (NodeData::Question(_), Status::Open) => question_open(node.data()),
+        (NodeData::Question(_), Status::Closed) => !question_open(node.data()),
         (NodeData::Requirement(data), Status::Done) => data.state == RequirementState::Done,
         (NodeData::Requirement(data), Status::Requirement(state)) => data.state == state,
-        (NodeData::Criterion(data), Status::Satisfied) => data.satisfied,
-        (NodeData::Criterion(data), Status::Unsatisfied) => !data.satisfied,
+        (NodeData::Criterion(_), Status::Satisfied) => criterion_satisfied(node.data()),
+        (NodeData::Criterion(_), Status::Unsatisfied) => criterion_unsatisfied(node.data()),
         _ => false,
     }
 }

@@ -13,8 +13,9 @@ mod views;
 
 pub use model::{
     Alias, Approval, Attributes, Cancellation, Closed, ClosedBy, Closure, Completion, Criterion,
-    Decision, DecisionScope, Edge, FreeAttributes, Link, Need, Node, NodeData, NodeId, NodeKind,
-    Question, Ref, Relation, Requirement, RequirementState, Revision, bearer_count, free_attribute,
+    Decision, DecisionScope, Edge, FreeAttributes, Link, Need, NeedState, Node, NodeData, NodeId,
+    NodeKind, Question, Ref, Relation, Requirement, RequirementState, Revision, bearer_count,
+    free_attribute, requirement_in_progress,
 };
 /// This build's rule as a gate, for a caller that owns the order such as
 /// `gy remote set` (n-f921). Not part of the public reading surface.
@@ -42,7 +43,6 @@ pub use store::{Gate, Open, remote::sync_with};
 pub use versions::{max_version, newer_than, triple};
 pub use views::{
     EGO_LIMIT, EdgeLine, Ego, EgoEdge, EgoNode, Filter, Handover, Listing, LogRow, Narrowed,
-    NeedState, NextRow, NodeRow, Now, ProgressRow, Publication, Ready, RequirementLine, Resume,
-    Retraction, Row, Shown, SyncRow, Waiting, Warning, ego, handover, list, next, now, publish,
-    requirement_in_progress, show,
+    NextRow, NodeRow, Now, ProgressRow, Publication, Ready, RequirementLine, Resume, Retraction,
+    Row, Shown, SyncRow, Waiting, Warning, ego, handover, list, next, now, publish, show,
 };

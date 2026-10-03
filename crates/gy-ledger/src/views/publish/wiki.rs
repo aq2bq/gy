@@ -103,7 +103,7 @@ impl<'a> Scope<'a> {
         &self.order
     }
     /// The edges of one node that carry a given name, both directions.
-    pub(super) fn edges(&self, id: &str, name: &str) -> Vec<&EdgeLine> {
+    pub(super) fn named_edges(&self, id: &str, name: &str) -> Vec<&EdgeLine> {
         self.wiki.get(id).map_or_else(Vec::new, |node| {
             node.edges.iter().filter(|edge| edge.name == name).collect()
         })

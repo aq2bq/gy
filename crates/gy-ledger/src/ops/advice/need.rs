@@ -1,7 +1,10 @@
 //! The gaps an open need reports: its body, a filed-as requirement, and the
 //! targeted criteria the requirements that closed left behind (n-f60a, d-85c6).
-use super::{body_gap, find, linked, unsatisfied};
-use crate::model::{Node, NodeData, NodeId, Relation, RequirementState};
+use super::body_gap;
+use crate::model::{
+    Node, NodeData, NodeId, Relation, RequirementState, criterion_unsatisfied, edges, find,
+    requirement_in_progress,
+};
 
 pub(super) fn need_missing(node: &Node, all: &[Node]) -> Vec<String> {
     let mut out: Vec<String> = body_gap(node).into_iter().collect();
@@ -21,7 +24,7 @@ pub(super) fn need_missing(node: &Node, all: &[Node]) -> Vec<String> {
 /// requirement that is not cancelled. A cancelled requirement leaves the need
 /// as if it had none, so it asks for a new one (d-bf90).
 fn has_live_filed_as(node: &Node, all: &[Node]) -> bool {
-    linked(node, Relation::FiledAs)
+    edges(node, Relation::FiledAs)
         .into_iter()
         .filter_map(|id| find(all, &id))
         .any(|other| {
@@ -37,10 +40,10 @@ fn has_live_filed_as(node: &Node, all: &[Node]) -> bool {
 /// that closed left behind. Only a need with a filed-as requirement reports
 /// them, so a new need keeps saying it needs one.
 pub(super) fn unmet_criteria<'a>(need: &Node, all: &'a [Node]) -> Vec<&'a Node> {
-    linked(need, Relation::Targets)
+    edges(need, Relation::Targets)
         .into_iter()
         .filter_map(|id| find(all, &id))
-        .filter(|criterion| unsatisfied(criterion))
+        .filter(|criterion| criterion_unsatisfied(criterion.data()))
         .filter(|criterion| !in_progress_targets(all, criterion.id()))
         .collect()
 }
@@ -48,9 +51,6 @@ pub(super) fn unmet_criteria<'a>(need: &Node, all: &'a [Node]) -> Vec<&'a Node> 
 /// Whether a requirement still being built targets `criterion`.
 fn in_progress_targets(all: &[Node], criterion: &NodeId) -> bool {
     all.iter().any(|node| {
-        matches!(
-            node.state(),
-            Some(RequirementState::Filed | RequirementState::Approved)
-        ) && linked(node, Relation::Targets).contains(criterion)
+        requirement_in_progress(node.data()) && edges(node, Relation::Targets).contains(criterion)
     })
 }

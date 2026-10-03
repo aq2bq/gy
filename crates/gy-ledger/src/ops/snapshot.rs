@@ -1,7 +1,7 @@
 //! One pass over the store for a caller that reads many nodes (n-2e03). The
 //! nodes in store order, an id index, and the reverse edges; also the one
 //! resolution judgement, shared with `Repository`.
-use crate::model::{Edge, Node, NodeData, NodeId};
+use crate::model::{Edge, Node, NodeId, reference};
 use crate::store::{Error, Result};
 use std::collections::BTreeMap;
 
@@ -74,7 +74,7 @@ pub(crate) fn resolve_in(all: &[Node], text: &str) -> Result<NodeId> {
             .any(|alias| normalize(&alias.0) == old)
         {
             by_alias.push(node.id().clone());
-        } else if referenced(node).is_some_and(|ref_| ref_ == text || ref_.ends_with(text)) {
+        } else if reference(node).is_some_and(|ref_| ref_ == text || ref_.ends_with(text)) {
             by_ref.push(node.id().clone());
         }
     }
@@ -117,14 +117,6 @@ fn names(matches: &[NodeId]) -> String {
         .map(|id| id.to_string())
         .collect::<Vec<_>>()
         .join(", ")
-}
-
-/// A requirement's outward reference, if any.
-fn referenced(node: &Node) -> Option<&str> {
-    match node.data() {
-        NodeData::Requirement(requirement) => requirement.reference.as_ref().map(|r| r.0.as_str()),
-        _ => None,
-    }
 }
 
 fn choose(text: &str, mut matches: Vec<NodeId>) -> Result<NodeId> {

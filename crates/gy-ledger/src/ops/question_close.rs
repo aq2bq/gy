@@ -1,7 +1,7 @@
 //! question close: record the closure, its evidence, and, when a decision
 //! closed it, the Closes edge.
 use super::{Operation, Outcome, Repository, advice_for};
-use crate::model::{Closure, Link, Node, NodeData, NodeId, NodeKind, Relation};
+use crate::model::{Closure, Link, Node, NodeData, NodeId, NodeKind, Relation, question_open};
 use crate::store::{Error, Result, Store};
 
 #[derive(Clone)]
@@ -47,11 +47,11 @@ impl<S: Store> Operation<S> for QuestionClose {
 
 /// Record the closure and, when a decision closed it, its Closes edge.
 fn close(node: &mut Node, input: &QuestionClose) -> Result<()> {
+    if !question_open(node.data()) {
+        return Err(Error::invalid(format!("{} is already closed", input.id)));
+    }
     match node.data_mut() {
         NodeData::Question(data) => {
-            if data.closure.is_some() {
-                return Err(Error::invalid(format!("{} is already closed", input.id)));
-            }
             data.closure = Some(input.by);
             data.evidence = Some(input.evidence.clone());
         }
