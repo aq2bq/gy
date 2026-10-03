@@ -4,6 +4,8 @@
 //! and reads a column that includes undo. A zero count fails, so an item that
 //! was never exercised is visible.
 mod prop;
+#[path = "prop/rules.rs"]
+mod rules;
 #[path = "prop/rules_e.rs"]
 mod rules_e;
 use prop::{Kind, Rule, State, Step};
@@ -13,10 +15,10 @@ use std::cell::Cell;
 
 /// Every state invariant E1–E8, for T5's "the gate runs on every path".
 fn state_broken(before: &State, after: &State) -> bool {
-    prop::rules::broken_e1(before, after)
-        || prop::rules::broken_e2(before, after)
-        || prop::rules::broken_e3(before, after)
-        || prop::rules::broken_e4(before, after)
+    rules::broken_e1(before, after)
+        || rules::broken_e2(before, after)
+        || rules::broken_e3(before, after)
+        || rules::broken_e4(before, after)
         || rules_e::broken_e5(before, after)
         || rules_e::broken_e6(before, after)
         || rules_e::broken_e7(before, after)
@@ -27,10 +29,7 @@ fn state_broken(before: &State, after: &State) -> bool {
 fn run_all(visit: impl Fn(&Step) -> Result<(), TestCaseError>) {
     TestRunner::new(Config::with_cases(prop::CASES))
         .run(&prop::plan(), |plan| {
-            for step in &prop::replay(&plan).steps {
-                visit(step)?;
-            }
-            Ok(())
+            prop::replay_visit(&plan, |step, _| visit(step))
         })
         .unwrap();
 }

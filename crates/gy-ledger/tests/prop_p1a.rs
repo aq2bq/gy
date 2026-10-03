@@ -3,7 +3,9 @@
 //! that met the rule; E2 is a state item. A zero count fails, so an item that
 //! was never exercised is visible.
 mod prop;
-use prop::{Rule, State, Step, rules};
+#[path = "prop/rules.rs"]
+mod rules;
+use prop::{Rule, State, Step};
 use proptest::prelude::*;
 use proptest::test_runner::{Config, TestRunner};
 use std::cell::Cell;
@@ -12,10 +14,7 @@ use std::cell::Cell;
 fn run_all(visit: impl Fn(&Step) -> Result<(), TestCaseError>) {
     TestRunner::new(Config::with_cases(prop::CASES))
         .run(&prop::plan(), |plan| {
-            for step in &prop::replay(&plan).steps {
-                visit(step)?;
-            }
-            Ok(())
+            prop::replay_visit(&plan, |step, _| visit(step))
         })
         .unwrap();
 }

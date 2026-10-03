@@ -2,7 +2,8 @@
 //! snapshots for an accepted step. `prop_p1b` reads this with `#[path]`, so
 //! the E1–E4 test crate does not carry them.
 use crate::prop::State;
-use crate::prop::rules::{find, fwd, is_approved, is_closed_need};
+use crate::prop::{is_approved, is_closed_need};
+use crate::rules::{find, fwd};
 use gy_ledger::{Closure, Edge, Node, NodeData, NodeId, NodeKind, Relation, RequirementState};
 use std::collections::{BTreeMap, BTreeSet};
 

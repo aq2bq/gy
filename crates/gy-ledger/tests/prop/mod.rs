@@ -1,16 +1,56 @@
 //! The shared generator and replay for the invariant property tests (n-99c6,
 //! n-a006). A plan is one random sequence of writes; replay records what every
-//! step saw and did. P1a, P1b, P2 and P3 read this module with `mod prop;`.
-use gy_ledger::{Actor, FormatVersion, MemoryStore, Node, NodeId, Relation, Repository, Store};
+//! step saw and did. P1a, P1b and P3 read this module with `mod prop;`. The
+//! rule predicates live outside this module (`rules.rs`), included by the test
+//! that reads them, so a reader that does not judge E1-E4 does not carry them
+//! (dead code would otherwise fail the build).
+use gy_ledger::{
+    Actor, FormatVersion, MemoryStore, Node, NodeData, NodeId, NodeKind, Relation, Repository,
+    RequirementState, Store,
+};
 use proptest::prelude::*;
 use std::collections::BTreeSet;
 
-pub mod rules;
 mod step;
 use step::{creates, run};
 
 pub const CASES: u32 = 96;
 pub const MAX_OPS: usize = 24;
+
+/// The (from kind, relation, to kind) pairs of `model/links.rs:ALLOWED`, read by
+/// the generator to pick a link a write would make, and by the E1 predicate.
+pub const ALLOWED: &[(Relation, NodeKind, NodeKind)] = &[
+    (Relation::Closes, NodeKind::Question, NodeKind::Decision),
+    (Relation::Narrows, NodeKind::Decision, NodeKind::Decision),
+    (Relation::Widens, NodeKind::Decision, NodeKind::Decision),
+    (Relation::Supersedes, NodeKind::Decision, NodeKind::Decision),
+    (Relation::Completes, NodeKind::Decision, NodeKind::Decision),
+    (Relation::Targets, NodeKind::Need, NodeKind::Criterion),
+    (
+        Relation::Targets,
+        NodeKind::Requirement,
+        NodeKind::Criterion,
+    ),
+    (Relation::SpawnedBy, NodeKind::Need, NodeKind::Decision),
+    (Relation::FiledAs, NodeKind::Need, NodeKind::Requirement),
+    (Relation::DependsOn, NodeKind::Need, NodeKind::Need),
+    (
+        Relation::ReliesOn,
+        NodeKind::Requirement,
+        NodeKind::Decision,
+    ),
+    (Relation::Raised, NodeKind::Requirement, NodeKind::Question),
+    (Relation::WaitsOn, NodeKind::Need, NodeKind::Question),
+    (Relation::WaitsOn, NodeKind::Need, NodeKind::Requirement),
+];
+
+pub fn is_approved(node: &Node) -> bool {
+    node.state() == Some(RequirementState::Approved)
+}
+
+pub fn is_closed_need(node: &Node) -> bool {
+    matches!(node.data(), NodeData::Need(data) if data.closed.is_some())
+}
 
 /// A rule that can refuse a write. E2 and T5 are state invariants: no write is
 /// refused for them.
@@ -45,6 +85,8 @@ pub enum Kind {
     Satisfy,
     NeedClose,
     Approve,
+    Done,
+    Cancel,
     Edit,
     Undo,
 }
@@ -76,11 +118,6 @@ pub struct Step {
     pub hits: BTreeSet<Rule>,
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct Trace {
-    pub steps: Vec<Step>,
-}
-
 /// A random plan: the setup the rules need, then the writes to try.
 pub fn plan() -> impl Strategy<Value = Vec<Op>> {
     prop::collection::vec(op(), 4..=MAX_OPS).prop_map(|mut tail| {
@@ -93,7 +130,10 @@ pub fn plan() -> impl Strategy<Value = Vec<Op>> {
 /// The state the rules need: criteria, questions, needs, a filed and approved
 /// requirement, a closed need and a question closed by decision, so an
 /// operation has targets, an edge to repeat, and the states E5–E8, R5, C1 and
-/// C2 judge.
+/// C2 judge. P3's derived judgements need more: a shipped requirement whose
+/// need still has an unmet criterion (Nd3's d-85c6 branch), a need whose only
+/// requirement was cancelled (d-bf90), a narrowed passage and a superseded
+/// decision (D2), and a depends-on and a waits-on edge (Nd5).
 fn prologue() -> Vec<Op> {
     let op = |kind, a, b| Op {
         kind,
@@ -101,6 +141,14 @@ fn prologue() -> Vec<Op> {
         b,
         rel: 0,
         mark: 0,
+        flag: false,
+    };
+    let link = |rel, a, b, mark| Op {
+        kind: Kind::Link,
+        a,
+        b,
+        rel,
+        mark,
         flag: false,
     };
     vec![
@@ -116,6 +164,79 @@ fn prologue() -> Vec<Op> {
         op(Kind::Approve, 0, 0),
         op(Kind::NeedClose, 1, 0),
         op(Kind::Decide, 0, 0),
+        // c0 is covered by approved R0; satisfy it and ship R0, so N0 (targets
+        // c0, c1) has a done requirement and an unmet criterion. 1.2.2 read
+        // that as done (n-f60a); d-85c6 does not.
+        op(Kind::Satisfy, 0, 0),
+        op(Kind::Done, 0, 0),
+        // A second requirement filed for N2 and N0 is cancelled, so N2 has
+        // only a cancelled requirement and asks for a new one (d-bf90).
+        Op {
+            kind: Kind::ReqAdd,
+            a: 2,
+            b: 0,
+            rel: 1,
+            mark: 0,
+            flag: false,
+        },
+        op(Kind::Cancel, 1, 0),
+        // A second decision supersedes D0 and narrows the passage `m1` its
+        // body carries, for D2's retraction.
+        op(Kind::Decide, 1, 0),
+        link(3, 1, 0, 0),
+        link(1, 1, 0, 1),
+        // N2 depends on the closed N1, so it is ready; N0 waits on the open q1,
+        // so it is not (Nd5).
+        link(9, 2, 1, 0),
+        link(12, 0, 1, 0),
+        // A need that genuinely reaches done (Nd4): every requirement it is
+        // filed as shipped and every targeted criterion satisfied.
+        op(Kind::CriterionAdd, 0, 0),
+        op(Kind::CriterionAdd, 0, 0),
+        op(Kind::NeedAdd, 3, 4),
+        Op {
+            kind: Kind::ReqAdd,
+            a: 3,
+            b: 0,
+            rel: 3,
+            mark: 0,
+            flag: false,
+        },
+        op(Kind::Approve, 2, 0),
+        op(Kind::Satisfy, 3, 0),
+        Op {
+            kind: Kind::ReqAdd,
+            a: 3,
+            b: 0,
+            rel: 4,
+            mark: 0,
+            flag: false,
+        },
+        op(Kind::Approve, 3, 0),
+        op(Kind::Satisfy, 4, 0),
+        op(Kind::Done, 2, 0),
+        op(Kind::Done, 3, 0),
+        // N4 is otherwise ready but depends on the open N2 (Nd5's depends-on
+        // branch), and N5 is otherwise ready but waits on the cancelled R1
+        // (Nd5's waits-on branch).
+        op(Kind::NeedAdd, 0, 1),
+        link(9, 4, 2, 0),
+        op(Kind::NeedAdd, 0, 1),
+        link(13, 5, 1, 0),
+        // c5 is covered by the shipped R4 and left unsatisfied: a done
+        // requirement covers a criterion the way an approved one does (C3).
+        op(Kind::CriterionAdd, 0, 0),
+        op(Kind::NeedAdd, 5, 0),
+        Op {
+            kind: Kind::ReqAdd,
+            a: 6,
+            b: 0,
+            rel: 5,
+            mark: 0,
+            flag: false,
+        },
+        op(Kind::Approve, 4, 0),
+        op(Kind::Done, 4, 0),
     ]
 }
 
@@ -132,6 +253,8 @@ fn op() -> impl Strategy<Value = Op> {
         2 => Just(Kind::Satisfy),
         2 => Just(Kind::NeedClose),
         2 => Just(Kind::Approve),
+        2 => Just(Kind::Done),
+        2 => Just(Kind::Cancel),
         2 => Just(Kind::Edit),
         2 => Just(Kind::Undo),
     ];
@@ -155,14 +278,17 @@ fn op() -> impl Strategy<Value = Op> {
     })
 }
 
-/// Replay the plan, recording what each step saw and did. A write whose
-/// operands the ledger does not hold is skipped (it leaves no step). Node ids
-/// are kept in the order they were created, so the same plan always picks the
-/// same nodes (the generator is deterministic).
-pub fn replay(plan: &[Op]) -> Trace {
+/// Replay the plan, handing each step and the repository in its after state to
+/// `visit`. A write whose operands the ledger does not hold is skipped (it
+/// leaves no step). Node ids are kept in the order they were created, so the
+/// same plan always picks the same nodes (the generator is deterministic). A
+/// visitor that reports an error stops the replay.
+pub fn replay_visit(
+    plan: &[Op],
+    mut visit: impl FnMut(&Step, &Repository<MemoryStore>) -> Result<(), TestCaseError>,
+) -> Result<(), TestCaseError> {
     let mut repo = repo();
     let mut created: Vec<NodeId> = Vec::new();
-    let mut steps = Vec::new();
     for op in plan {
         let before = snapshot(&repo);
         let hits = hits(op);
@@ -174,15 +300,16 @@ pub fn replay(plan: &[Op]) -> Trace {
                 created.push(id.clone());
             }
         }
-        steps.push(Step {
+        let step = Step {
             before,
             after: snapshot(&repo),
             kind: op.kind,
             accepted: result.is_ok(),
             hits,
-        });
+        };
+        visit(&step, &repo)?;
     }
-    Trace { steps }
+    Ok(())
 }
 
 fn repo() -> Repository<MemoryStore> {
@@ -248,7 +375,7 @@ pub fn hits(op: &Op) -> BTreeSet<Rule> {
 /// edge (a `Repeat`'s edge is resolved when it runs).
 fn relation_of(op: &Op) -> Option<Relation> {
     match op.kind {
-        Kind::Link => Some(rules::ALLOWED[op.rel as usize % rules::ALLOWED.len()].0),
+        Kind::Link => Some(ALLOWED[op.rel as usize % ALLOWED.len()].0),
         Kind::Stray => Some(Relation::ALL[op.rel as usize % 12]),
         _ => None,
     }

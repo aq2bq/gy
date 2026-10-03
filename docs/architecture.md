@@ -165,6 +165,18 @@ There are two forms, and a property test checks each in its own way:
 | C1 | `prop_p1b::c1_covered_satisfy` |
 | C2 | `prop_p1b::c2_evidence_once` |
 | T5 | `prop_p1b::t5_gate_every_path`, `gate_edges_rebase::*`, `gate_cycle_rebase::*`, `gate_closed_need_rebase::*`, `freeze_rebase::*` |
+| Nd3 | `prop_p3::nd3_need_state` |
+| Nd4 | `prop_p3::nd4_done_need_has_no_unmet_criterion` |
+| Nd5 | `prop_p3::nd5_ready` |
+| Q3 | `prop_p3::q3_question_open` |
+| C3 | `prop_p3::c3_covered_is_one_function` |
+| C4 | `prop_p3::c4_bearer_count_and_orphaned` |
+| D2 | `prop_p3::d2_retraction_derived` |
+| V1 | `prop_p3::v1_views_share_one_function` |
+| V2 | `prop_p3::v2_missing_by_kind_and_state` |
+| V3 | `prop_p3::v3_criterion_step` |
+| V4 | `prop_p3::v4_next_order` |
+| V5 | `prop_p3::v5_handover_warnings` |
 
 ## What handover and next judge
 

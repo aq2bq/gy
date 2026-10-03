@@ -1,11 +1,10 @@
 //! Running one generated write against the ledger (n-99c6, n-a006): resolve
 //! the operands from the nodes created so far, then call the operation.
-use super::rules::{self, is_approved, is_closed_need};
-use super::{Kind, Op};
+use super::{ALLOWED, Kind, Op, is_approved, is_closed_need};
 use gy_ledger::{
     ClosedBy, CriterionAdd, CriterionSatisfy, Decide, DecisionScope, Edit, MemoryStore, NeedAdd,
     NeedClose, Node, NodeId, NodeKind, Operation, QuestionAdd, Relation, Repository, ReqAdd,
-    ReqApprove, Undo, link,
+    ReqApprove, ReqCancel, ReqDone, Undo, link,
 };
 
 /// Run one write against the nodes it read. `None` skips a write whose operand
@@ -66,7 +65,7 @@ pub(super) fn run(
             scope: "a".into(),
             title: "d".into(),
             decision_scope: DecisionScope::recorded("conditions").ok()?,
-            body: Some("body".into()),
+            body: Some("body m1".into()),
             source: None,
             closes: vec![pick(created, repo, NodeKind::Question, op.a)?],
             relates: vec![],
@@ -74,8 +73,7 @@ pub(super) fn run(
         .run(repo)
         .map(|outcome| outcome.id),
         Kind::Link => {
-            let (relation, from_kind, to_kind) =
-                rules::ALLOWED[op.rel as usize % rules::ALLOWED.len()];
+            let (relation, from_kind, to_kind) = ALLOWED[op.rel as usize % ALLOWED.len()];
             let from = if op.flag && relation == Relation::FiledAs {
                 closed_need(created, repo, op.a)?
             } else {
@@ -131,6 +129,19 @@ pub(super) fn run(
             design: "d".into(),
             heard_by: "h".into(),
             evidence: "e".into(),
+        }
+        .run(repo)
+        .map(|outcome| outcome.id),
+        Kind::Done => ReqDone {
+            id: pick(created, repo, NodeKind::Requirement, op.a)?,
+            evidence: "e".into(),
+        }
+        .run(repo)
+        .map(|outcome| outcome.id),
+        Kind::Cancel => ReqCancel {
+            id: pick(created, repo, NodeKind::Requirement, op.a)?,
+            reason: "r".into(),
+            source: "s".into(),
         }
         .run(repo)
         .map(|outcome| outcome.id),
