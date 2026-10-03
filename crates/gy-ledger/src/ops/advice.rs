@@ -237,16 +237,18 @@ fn bearing_need(criterion: &NodeId, all: &[Node]) -> String {
         .map_or_else(|| "<N>".to_string(), |need| need.id().to_string())
 }
 
-/// Another unsatisfied criterion on a need that also targets `criterion`.
+/// Another unsatisfied criterion on a need that also targets `criterion`: a
+/// satisfied sibling early in the list does not hide an unsatisfied one behind.
 fn open_sibling<'a>(criterion: &NodeId, all: &'a [Node]) -> Option<&'a Node> {
     all.iter()
         .filter(|need| need.kind() == NodeKind::Need)
+        .filter(|need| linked(need, Relation::Targets).contains(criterion))
         .find_map(|need| {
             linked(need, Relation::Targets)
                 .into_iter()
                 .filter(|id| id != criterion)
-                .find_map(|id| find(all, &id))
-                .filter(|node| unsatisfied(node))
+                .filter_map(|id| find(all, &id))
+                .find(|node| unsatisfied(node))
         })
 }
 
