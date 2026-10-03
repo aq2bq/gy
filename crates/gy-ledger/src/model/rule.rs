@@ -24,32 +24,33 @@ pub trait Before {
     fn of_kind(&self, kind: NodeKind) -> Vec<Node>;
 }
 
-/// The rule: I1 for a criterion turning satisfied, and the n-a3f2 freeze for an
-/// approved requirement and the criteria it targets. Every other change is
-/// admitted.
+/// The rule: I1 for a criterion turning satisfied, the n-a3f2 freeze for an
+/// approved requirement and the criteria it targets, and the shape of the
+/// depends-on and lineage graphs (n-e299). Every other change is admitted.
 pub fn admit(before: &dyn Before, changes: &[Change]) -> Result<()> {
-    if !reads_state(changes) {
-        return Ok(());
-    }
-    for change in changes {
-        match change {
-            Change::Updated(node) => match node.kind() {
-                NodeKind::Criterion => check_criterion(before, node)?,
-                NodeKind::Requirement => check_frozen_requirement(before, node)?,
+    if reads_state(changes) {
+        for change in changes {
+            match change {
+                Change::Updated(node) => match node.kind() {
+                    NodeKind::Criterion => check_criterion(before, node)?,
+                    NodeKind::Requirement => check_frozen_requirement(before, node)?,
+                    _ => {}
+                },
+                Change::Created(node) if node.kind() == NodeKind::Criterion => {
+                    check_criterion(before, node)?
+                }
                 _ => {}
-            },
-            Change::Created(node) if node.kind() == NodeKind::Criterion => {
-                check_criterion(before, node)?
             }
-            _ => {}
         }
     }
-    Ok(())
+    super::shape::admit(before, changes)
 }
 
-/// Whether the transaction carries a criterion or requirement the rule reads.
-/// Any other transaction reads no previous state, so a commit decodes nothing
-/// it does not judge (n-f921, n-a3f2).
+/// Whether the transaction carries a criterion or requirement the coverage and
+/// freeze rules read. Other transactions skip those two rules; the graph rule
+/// (n-e299) reads only the changed needs and decisions, and only when they add
+/// an edge, so a commit still decodes nothing it does not judge (n-f921,
+/// n-a3f2).
 fn reads_state(changes: &[Change]) -> bool {
     changes.iter().any(|change| match change {
         Change::Created(node) | Change::Updated(node) => {

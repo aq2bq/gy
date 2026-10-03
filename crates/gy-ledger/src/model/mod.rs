@@ -6,6 +6,7 @@ mod links;
 mod node;
 mod rule;
 mod scope;
+mod shape;
 mod state;
 
 pub use kind::{Alias, NodeId, NodeKind, Ref};

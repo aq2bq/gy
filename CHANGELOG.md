@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **A `depends-on` or decision-lineage cycle is refused** (n-e299, d-858d):
+  `link` accepted `A depends-on B` after `B depends-on A`, and even
+  `A depends-on A`. The needs in such a cycle wait on each other forever, so
+  they never appear in `next`, and `handover` said nothing. The decision
+  lineage (`narrows`, `widens`, `supersedes`, `completes`) took cycles the
+  same way, and then no one could tell which decision was the newer one. A
+  write that would close a cycle in either graph, a self-loop included, is
+  now refused on every path a write takes (an ordinary write, `undo` and
+  redo, and the rebase of a shared ledger), and the refusal spells the cycle
+  out as a chain of IDs. Only an edge the write adds is judged, so a ledger
+  that already holds a cycle still opens and reads as before.
+
+### Updating
+
+Nothing to do. In the eight ledgers measured before the release (gy's own,
+Kokopelli's, voyager's and five others), no cycle was found.
+
 ## 1.2.3 - 2026-10-03
 
 ### Fixed
