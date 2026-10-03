@@ -153,6 +153,10 @@ There are two forms, and a property test checks each in its own way:
 
 | Item | Test |
 | --- | --- |
+| E1 | `prop_p1a::e1_relation_pairs` |
+| E2 | `prop_p1a::e2_edges_stored_forward` |
+| E3 | `prop_p1a::e3_duplicate_edge` |
+| E4 | `prop_p1a::e4_target_exists` |
 
 ## What handover and next judge
 
