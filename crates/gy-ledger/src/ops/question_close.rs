@@ -24,6 +24,10 @@ impl<S: Store> Operation<S> for QuestionClose {
             return Err(Error::invalid("closing a question needs evidence"));
         } else if self.by == Closure::Decision && self.decision.is_none() {
             return Err(Error::invalid("closing by decision needs the decision"));
+        } else if self.by != Closure::Decision && self.decision.is_some() {
+            return Err(Error::invalid(
+                "closes is made only when the question is closed by decision; name the decision in --evidence",
+            ));
         }
         check_decision(repo, &self.decision)?;
         close(&mut node, &self)?;

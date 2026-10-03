@@ -1,6 +1,7 @@
 //! The model layer: the five node types and their invariants, checked when a
 //! node is built so the ledger is always valid (D-75, AC-53). It uses the
 //! store layer only, for ID hashes and errors.
+mod edges;
 mod kind;
 mod links;
 mod node;

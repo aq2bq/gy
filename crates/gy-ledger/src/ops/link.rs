@@ -36,9 +36,6 @@ impl<S: Store> Operation<S> for Link {
             };
             from.unlink(index);
         } else {
-            if existing.is_some() {
-                return Err(Error::invalid("that edge already exists"));
-            }
             marks::check(&to, self.mark.as_deref(), marks::required(self.relation))?;
             let edge = ModelLink::new(self.from.clone(), self.relation, self.to.clone())?;
             from.link(edge.with_mark(self.mark.clone()));

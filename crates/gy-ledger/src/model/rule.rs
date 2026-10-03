@@ -28,8 +28,9 @@ pub trait Before {
 
 /// The rule: I1 for a criterion turning satisfied, the n-a3f2 freeze for an
 /// approved requirement and the criteria it targets, the shape of the
-/// depends-on and lineage graphs (n-e299), and a closed need taking a new
-/// filed-as requirement (d-ee34). Every other change is admitted.
+/// depends-on and lineage graphs (n-e299), a closed need taking a new filed-as
+/// requirement (d-ee34), and a duplicate edge or a non-decision closes
+/// (d-fb49). Every other change is admitted.
 pub fn admit(before: &dyn Before, changes: &[Change]) -> Result<()> {
     if reads_state(changes) {
         for change in changes {
@@ -47,6 +48,7 @@ pub fn admit(before: &dyn Before, changes: &[Change]) -> Result<()> {
         }
     }
     super::shape::admit(before, changes)?;
+    super::edges::admit(before, changes)?;
     check_closed_need(before, changes)
 }
 

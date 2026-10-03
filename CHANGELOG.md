@@ -22,13 +22,28 @@
   rebase of a shared ledger all refuse it with the same message
   (`<id> is closed`). A need that already had a requirement when it closed
   keeps it.
+- **The same edge cannot be stored twice, whichever command writes it**
+  (n-d2a5, d-fb49, d-ab9c): `link` refused a second copy of an edge, but
+  `need add --targets A --targets A` and `req add` with a repeated
+  `--targets` stored it twice, and `missing` then listed the criterion twice.
+  Every path now refuses it in the gate (`<from> <relation> <to> is already
+  registered`).
+- **A question closed by fact or non-decision makes no `closes` edge**
+  (n-ac83, d-fb49): `question close --by fact --decision D` (or
+  `--by non-decision`) used to store `closes D` beside a closure that says no
+  decision closed it. It is now refused, and the message asks you to name the
+  decision in `--evidence` instead.
 
 ### Updating
 
 Nothing to do. In the eight ledgers measured before the release (gy's own,
 Kokopelli's, voyager's and five others), no cycle was found; closed needs that
 already hold a requirement (2 to 5 per ledger, in four of them) stay valid,
-since only a new edge is judged.
+since only a new edge is judged. Kokopelli's ledger holds 3 duplicate edges
+on 2 needs and 7 questions closed by fact or non-decision with a `closes`
+edge; they stay and read as before. To tidy them, `link --remove` the extra
+edge; a `closes` on a question closed by fact or non-decision can stay or be
+removed with `link --remove`.
 
 ## 1.2.3 - 2026-10-03
 
