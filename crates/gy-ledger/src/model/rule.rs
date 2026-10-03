@@ -1,11 +1,13 @@
-//! The write-time rule the gate runs (n-557f, n-f921, n-a3f2). I1: a criterion
-//! may be recorded satisfied only while an approved or done requirement targets
-//! it. I2: while a requirement stays approved, its title, body, and its targets
-//! and relies-on edges are frozen, and so are the title and body of a criterion
-//! it targets; `req revise` first. The coverage judgement is one function,
+//! The write-time rule the gate runs (n-557f, n-f921, n-a3f2, d-ee34). I1: a
+//! criterion may be recorded satisfied only while an approved or done
+//! requirement targets it. I2: while a requirement stays approved, its title,
+//! body, and its targets and relies-on edges are frozen, and so are the title
+//! and body of a criterion it targets; `req revise` first. A closed need may
+//! not take a new filed-as requirement. The coverage judgement is one function,
 //! shared with the advice (n-f921).
 use super::{Node, NodeData, NodeId, NodeKind, Relation, RequirementState};
 use crate::store::{Error, Result};
+use std::collections::BTreeSet;
 
 /// A change, typed: what the store's log carries as JSON, for the rule to read.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,8 +27,9 @@ pub trait Before {
 }
 
 /// The rule: I1 for a criterion turning satisfied, the n-a3f2 freeze for an
-/// approved requirement and the criteria it targets, and the shape of the
-/// depends-on and lineage graphs (n-e299). Every other change is admitted.
+/// approved requirement and the criteria it targets, the shape of the
+/// depends-on and lineage graphs (n-e299), and a closed need taking a new
+/// filed-as requirement (d-ee34). Every other change is admitted.
 pub fn admit(before: &dyn Before, changes: &[Change]) -> Result<()> {
     if reads_state(changes) {
         for change in changes {
@@ -43,7 +46,8 @@ pub fn admit(before: &dyn Before, changes: &[Change]) -> Result<()> {
             }
         }
     }
-    super::shape::admit(before, changes)
+    super::shape::admit(before, changes)?;
+    check_closed_need(before, changes)
 }
 
 /// Whether the transaction carries a criterion or requirement the coverage and
@@ -206,4 +210,41 @@ fn satisfied(node: &Node) -> bool {
 
 fn satisfied_of(node: Option<&Node>) -> bool {
     node.is_some_and(satisfied)
+}
+
+/// d-ee34: a need that has closed may not take a new filed-as requirement.
+/// Only an updated need whose filed-as edges grew is read; a transaction that
+/// adds none reads no previous state, and a need that already held one when it
+/// closed keeps it (the gate looks at what the write changes).
+fn check_closed_need(before: &dyn Before, changes: &[Change]) -> Result<()> {
+    for change in changes {
+        let Change::Updated(node) = change else {
+            continue;
+        };
+        if !matches!(node.data(), NodeData::Need(data) if data.closed.is_some()) {
+            continue;
+        }
+        let after = filed_as(node);
+        if after.is_empty() {
+            continue;
+        }
+        let previous = before
+            .get(node.id())
+            .map(|node| filed_as(&node))
+            .unwrap_or_default();
+        if after.difference(&previous).next().is_some() {
+            return Err(Error::invalid(format!("{} is closed", node.id())));
+        }
+    }
+    Ok(())
+}
+
+/// The filed-as edges of a need, in a comparable order. Only the from side
+/// stores an edge, so the reverse side is absent.
+fn filed_as(node: &Node) -> BTreeSet<String> {
+    node.links()
+        .iter()
+        .filter(|edge| !edge.reversed && edge.label == Relation::FiledAs)
+        .map(|edge| edge.to.to_string())
+        .collect()
 }

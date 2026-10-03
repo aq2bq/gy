@@ -15,11 +15,20 @@
   redo, and the rebase of a shared ledger), and the refusal spells the cycle
   out as a chain of IDs. Only an edge the write adds is judged, so a ledger
   that already holds a cycle still opens and reads as before.
+- **A closed need takes no new requirement, whichever command writes it**
+  (n-d5a2, d-ee34): `req add --need <closed need>` was refused, but
+  `link <closed need> filed-as <requirement>` went through. The rule now
+  sits in the same gate as the others, so `req add`, `link`, `undo` and the
+  rebase of a shared ledger all refuse it with the same message
+  (`<id> is closed`). A need that already had a requirement when it closed
+  keeps it.
 
 ### Updating
 
 Nothing to do. In the eight ledgers measured before the release (gy's own,
-Kokopelli's, voyager's and five others), no cycle was found.
+Kokopelli's, voyager's and five others), no cycle was found; closed needs that
+already hold a requirement (2 to 5 per ledger, in four of them) stay valid,
+since only a new edge is judged.
 
 ## 1.2.3 - 2026-10-03
 

@@ -22,7 +22,6 @@ impl<S: Store> Operation<S> for ReqAdd {
         if self.needs.is_empty() {
             return Err(Error::invalid("a requirement needs at least one need"));
         }
-        check_needs(repo, &self.needs)?;
         kind_check(repo, &self.relies_on, NodeKind::Decision)?;
         kind_check(repo, &self.targets, NodeKind::Criterion)?;
         check_reference(repo, self.reference.as_ref())?;
@@ -85,18 +84,6 @@ impl ReqAdd {
         }
         Ok(node)
     }
-}
-
-fn check_needs<S: Store>(repo: &Repository<S>, needs: &[NodeId]) -> Result<()> {
-    for id in needs {
-        let need = node_of(repo, id, NodeKind::Need)?;
-        if let NodeData::Need(data) = need.data() {
-            if data.closed.is_some() {
-                return Err(Error::invalid(format!("{id} is closed")));
-            }
-        }
-    }
-    Ok(())
 }
 
 fn kind_check<S: Store>(repo: &Repository<S>, ids: &[NodeId], kind: NodeKind) -> Result<()> {
