@@ -14,7 +14,7 @@ use std::collections::BTreeSet;
 mod step;
 use step::{creates, run};
 
-pub const CASES: u32 = 96;
+pub const CASES: u32 = 16;
 pub const MAX_OPS: usize = 24;
 
 /// The (from kind, relation, to kind) pairs of `model/links.rs:ALLOWED`, read by
@@ -162,6 +162,9 @@ fn prologue() -> Vec<Op> {
         op(Kind::NeedAdd, 1, 2),
         op(Kind::ReqAdd, 0, 1),
         op(Kind::Approve, 0, 0),
+        // An edit of the approved R0 is refused (R5), so the random tail need
+        // not reach a frozen requirement for the rule to have a hit.
+        op(Kind::Edit, 0, 0),
         op(Kind::NeedClose, 1, 0),
         op(Kind::Decide, 0, 0),
         // c0 is covered by approved R0; satisfy it and ship R0, so N0 (targets
@@ -237,6 +240,34 @@ fn prologue() -> Vec<Op> {
         },
         op(Kind::Approve, 4, 0),
         op(Kind::Done, 4, 0),
+        // Refused writes, one per rule the random tail would otherwise have to
+        // reach, so no hit count depends on the number of cases: E1 a link
+        // whose pair is not allowed, E3 a second copy of an existing edge, E4
+        // an operand the ledger does not hold, E6 a closes edge made by link,
+        // E8 a closed need taking a new filed-as requirement.
+        Op {
+            kind: Kind::Stray,
+            a: 4,
+            b: 4,
+            rel: 0,
+            mark: 0,
+            flag: false,
+        },
+        op(Kind::Repeat, 0, 0),
+        op(Kind::NeedClose, 8, 0),
+        link(0, 0, 0, 0),
+        Op {
+            kind: Kind::Link,
+            a: 0,
+            b: 0,
+            rel: 8,
+            mark: 0,
+            flag: true,
+        },
+        // A criterion no need bears, left unsatisfied: the bearer-less gap the
+        // advice reports rather than an orphan (C4), so the M6 direction is
+        // exercised without the random tail.
+        op(Kind::CriterionAdd, 0, 0),
     ]
 }
 
