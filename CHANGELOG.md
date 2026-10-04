@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 1.2.4 - 2026-10-04
+
+This release closes the gaps found while writing down the invariants of the
+nodes and edges (now a section of `docs/architecture.md`, checked by property
+tests). Each one let a write through on one path that another path refused,
+or left a need in a state that said nothing about why.
 
 ### Fixed
 
@@ -42,10 +47,23 @@
   criterion it targets is satisfied. A need whose only requirements are
   cancelled asks for a new one under `missing` (`a filed-as requirement`). In
   the three ledgers measured, no need changes state.
+- **After a criterion is satisfied, `next` points at a sibling on the same
+  need** (n-5a63): the step that followed `criterion satisfy` could name a
+  criterion of an unrelated need, and missed an unmet sibling when the first
+  one was already satisfied.
+- **Undo of a library `MemoryStore` transaction that wrote a node twice**
+  (n-baa3): it restored the intermediate value and left an edge to the
+  removed node. The CLI uses the file store and was not affected.
 
 ### Updating
 
-Nothing to do. In the eight ledgers measured before the release (gy's own,
+Install the new release with `cargo install gy --locked`. The storage format,
+`gy.toml`, the set of commands and their options are unchanged; the new
+refusals apply only to new writes. The gy-loop and gy-ledger skills changed by
+one sentence each, so copy the skills again (see "Telling the AI about gy" in
+the README).
+
+In the eight ledgers measured before the release (gy's own,
 Kokopelli's, voyager's and five others), no cycle was found; closed needs that
 already hold a requirement (2 to 5 per ledger, in four of them) stay valid,
 since only a new edge is judged. Kokopelli's ledger holds 3 duplicate edges
