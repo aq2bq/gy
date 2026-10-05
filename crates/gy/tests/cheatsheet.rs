@@ -801,29 +801,49 @@ fn required_from_text(source: &str) -> BTreeSet<String> {
     required
 }
 
+/// The relations the `link` row lists, read from the cheatsheet's own words.
+fn link_relations(source: &str) -> BTreeSet<String> {
+    let line = source
+        .lines()
+        .find(|line| line.trim_start().starts_with("relations:"))
+        .expect("the link row lists its relations");
+    let rest = line.trim_start().trim_start_matches("relations:");
+    let end = rest.find('.').unwrap_or(rest.len());
+    rest[..end]
+        .split(',')
+        .map(|part| part.trim().to_string())
+        .filter(|part| !part.is_empty())
+        .collect()
+}
+
+/// The relations the `link` row must not list: `link` refuses them.
+fn link_relation_problems(relations: &BTreeSet<String>) -> Vec<String> {
+    let mut problems = Vec::new();
+    if relations.is_empty() {
+        problems.push("the link row lists no relation".to_string());
+    }
+    if relations.contains("closes") {
+        problems.push("the link row lists closes, which link refuses".to_string());
+    }
+    problems
+}
+
 /// (c) The mark rule, run in full for every relation. A mark is required
 /// exactly where the cheatsheet says, a mark that resolves is accepted, and one
 /// that does not is refused.
 #[test]
 fn marks_match_the_rule() {
-    let relations = [
-        "narrows",
-        "widens",
-        "supersedes",
-        "completes",
-        "targets",
-        "spawned-by",
-        "filed-as",
-        "depends-on",
-        "relies-on",
-        "raised",
-        "waits-on",
-    ];
+    let source = read(CHEATSHEET);
+    // Link's relations come from the row's own words, so putting a relation
+    // back into the list (or taking one out) is judged by the CLI.
+    let relations = link_relations(&source);
+    let problems = link_relation_problems(&relations);
+    assert!(problems.is_empty(), "{}", problems.join("; "));
     let lineage = ["narrows", "widens", "supersedes", "completes"];
     let mut observed = BTreeSet::new();
-    for relation in relations {
+    for relation in &relations {
         if link_requires_mark(relation) {
-            observed.insert(relation.to_string());
+            observed.insert(relation.clone());
         }
     }
     for relation in lineage {
@@ -831,28 +851,35 @@ fn marks_match_the_rule() {
             observed.insert(relation.to_string());
         }
     }
-    // `closes` is not formable through `link`; the rule does not reach it.
-    let closes = link_is_refused("closes");
+    // `closes` is written by `decide --closes`, not by `link`; the row says so
+    // and the CLI refuses it.
     assert!(
-        closes,
-        "link must refuse closes, as the cheatsheet's lines imply"
+        link_is_refused("closes"),
+        "link must refuse closes, as the cheatsheet's link row says"
     );
 
-    let stated = required_from_text(&read(CHEATSHEET));
+    let stated = required_from_text(&source);
     assert_eq!(
         stated, observed,
         "the cheatsheet's required marks ({stated:?}) must match the CLI's ({observed:?})"
     );
 
     // Swapping one relation name in the words must be caught.
-    let mutated = read(CHEATSHEET).replace(
+    let swapped = source.replace(
         "required with narrows and supersedes and optional",
         "required with widens and supersedes and optional",
     );
     assert_ne!(
-        required_from_text(&mutated),
+        required_from_text(&swapped),
         observed,
         "the mark rule check would not catch a swapped relation name"
+    );
+
+    // Putting `closes` back into link's list must be caught.
+    let added = source.replace("relations: targets,", "relations: closes, targets,");
+    assert!(
+        !link_relation_problems(&link_relations(&added)).is_empty(),
+        "listing closes in the link row must be caught"
     );
 }
 

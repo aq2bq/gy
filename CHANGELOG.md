@@ -48,10 +48,12 @@
   `[--out <dir>]`, the `list` filters, and `edit`'s `[--title <title>]` and
   `[--body-file <path>]` — and the scope rule says a write that *creates a
   node* needs `--scope` when `gy.toml` names more than one scope (a write to
-  an existing node does not). A test now runs every row against a real
-  two-scope ledger, checks each row's brackets against `--help`, and runs the
-  mark rule for every relation through `link` and `decide`, so the drawing
-  cannot drift from the CLI.
+  an existing node does not). The `link` row no longer lists `closes`, which
+  `link` refuses (`decide --closes` writes it), and the test reads that list
+  from the row. A test now runs every row against a real two-scope ledger,
+  checks each row's brackets against `--help`, and runs the mark rule for
+  every relation through `link` and `decide`, so the drawing cannot drift from
+  the CLI.
 
 ### Updating
 
