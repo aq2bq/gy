@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## 2.0.0 - 2026-10-05
+
+This release lets a reader name a node by pointing at it, on the node page's
+connection map and on the graph page, and puts the cheatsheet in the binary as
+`gy cheat`, now run as a script by the tests so it cannot drift from the CLI.
+The major version is for the Rust API only: `gy-ledger`'s `EgoNode` gained two
+fields, and the read types became `#[non_exhaustive]` so later fields are
+compatible. The command line, its output, `gy.toml`, and the storage format are
+unchanged; a ledger written by 1.2.4 is read as it is.
 
 ### Breaking
 
@@ -73,6 +81,10 @@
 
 ### Updating
 
+- **Update the binary**: `cargo install gy --locked`. Nothing in a ledger or
+  in `gy.toml` needs to change, and running the command again is safe.
+- **Only Rust code that depends on `gy-ledger` needs changes** (see Breaking).
+  The CLI and `gy serve` users have nothing to do beyond the two items here.
 - **The bundled skills changed** (n-d599): the skills no longer carry a
   cheatsheet file, so copy them again (for example `npx skills add aq2bq/gy`;
   see the README's Install section). If an old `CHEATSHEET.md` sits beside the
