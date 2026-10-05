@@ -14,6 +14,7 @@ use std::fmt;
 
 /// An in-progress requirement: id, ref, state, title, and who waits on it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct ProgressRow {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -51,9 +52,17 @@ impl fmt::Display for ProgressRow {
 
 /// A warning kind and how many there are. The list itself is not shown (AC-43).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct Warning {
     pub label: String,
     pub count: usize,
+}
+
+impl Warning {
+    /// A warning kind and how many there are.
+    pub fn new(label: String, count: usize) -> Self {
+        Self { label, count }
+    }
 }
 impl fmt::Display for Warning {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -64,6 +73,7 @@ impl fmt::Display for Warning {
 /// The session handover: errors first, then in-progress, then the counts that
 /// route the next step, then warning counts.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct Handover {
     pub errors: Vec<String>,
     /// The synced copy's state, when one is due (n-ecbf).
@@ -268,10 +278,7 @@ fn orphaned_criteria(all: &[Node], scope: Option<&str>) -> usize {
 
 fn push(warnings: &mut Vec<Warning>, label: &str, count: usize) {
     if count > 0 {
-        warnings.push(Warning {
-            label: label.to_string(),
-            count,
-        });
+        warnings.push(Warning::new(label.to_string(), count));
     }
 }
 

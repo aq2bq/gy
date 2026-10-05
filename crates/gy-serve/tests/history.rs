@@ -54,15 +54,9 @@ fn status(repo: &Repository<MemoryStore>, query: Option<&str>) -> u16 {
 fn history_matches_the_view() {
     let repo = ledger();
     let full = answer(&repo, None);
-    let view = match list(
-        &repo,
-        &Filter {
-            since: Some(0),
-            ..Default::default()
-        },
-    )
-    .unwrap()
-    {
+    let mut filter = Filter::default();
+    filter.since = Some(0);
+    let view = match list(&repo, &filter).unwrap() {
         Listing::History(rows) => rows,
         Listing::Nodes(_) => Vec::new(),
     };

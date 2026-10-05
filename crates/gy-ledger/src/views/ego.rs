@@ -13,6 +13,7 @@ pub const EGO_LIMIT: usize = 40;
 
 /// One node of the neighbourhood: how far it stands from the focus.
 #[derive(Debug, Clone, Serialize)]
+#[non_exhaustive]
 pub struct EgoNode {
     pub id: String,
     pub hop: usize,
@@ -34,6 +35,7 @@ pub struct EgoNode {
 /// One edge between two nodes of the neighbourhood, named from each side: the
 /// `from` side reads `name`, the `to` side reads `inverse`.
 #[derive(Debug, Clone, Serialize)]
+#[non_exhaustive]
 pub struct EgoEdge {
     pub from: String,
     pub to: String,
@@ -46,6 +48,7 @@ pub struct EgoEdge {
 /// The focus and its neighbourhood: its id, the nodes (nearest first), the
 /// edges between them, and how many the cap left out.
 #[derive(Debug, Clone, Serialize)]
+#[non_exhaustive]
 pub struct Ego {
     pub root: String,
     pub nodes: Vec<EgoNode>,

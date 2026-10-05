@@ -14,17 +14,20 @@ use crate::model::NodeKind;
 use crate::ops::repository::{Repository, Result, Store};
 
 /// The files to write: one group per scope, each holding that scope's pages.
+#[non_exhaustive]
 pub struct Publication {
     pub scopes: Vec<ScopeFiles>,
 }
 
 /// The files of one scope, with paths relative to `<out>/<scope>/`.
+#[non_exhaustive]
 pub struct ScopeFiles {
     pub name: String,
     pub files: Vec<FileEntry>,
 }
 
 /// One file: a relative path and its text.
+#[non_exhaustive]
 pub struct FileEntry {
     pub path: String,
     pub text: String,

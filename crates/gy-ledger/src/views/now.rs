@@ -20,6 +20,7 @@ const RECENT: usize = 14;
 /// One node as now lists it: id, first alias, kind, title, scope, and the
 /// model's own name for its state.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct NodeRow {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -53,6 +54,7 @@ pub enum Waiting {
 /// One need ready to work, exactly as `next` orders it, with its criteria
 /// counts (d-3e8f).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct Ready {
     pub row: NodeRow,
     pub satisfied: usize,
@@ -62,6 +64,7 @@ pub struct Ready {
 /// How a session resumes: the in-progress requirements, the counts that route
 /// the next step, and the last write (d-3e8f).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct Resume {
     pub in_progress: Vec<ProgressRow>,
     pub open_questions: usize,
@@ -77,6 +80,7 @@ pub struct Resume {
 /// The now view: where the log stands, who waits, what is in progress, what is
 /// still open, and the writes that just happened.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct Now {
     pub seq: u64,
     /// The last write, in epoch seconds.

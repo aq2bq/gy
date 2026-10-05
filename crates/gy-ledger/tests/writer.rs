@@ -65,15 +65,9 @@ fn requirement() -> Node {
 }
 
 fn history(repo: &Repository<FileStore>) -> Vec<gy_ledger::LogRow> {
-    match list(
-        repo,
-        &Filter {
-            since: Some(0),
-            ..Default::default()
-        },
-    )
-    .unwrap()
-    {
+    let mut filter = Filter::default();
+    filter.since = Some(0);
+    match list(repo, &filter).unwrap() {
         Listing::History(rows) => rows,
         Listing::Nodes(_) => Vec::new(),
     }
@@ -98,18 +92,14 @@ fn a_history_row_and_the_filter_name_the_human_first() {
     assert_eq!(rows[0].who, "pememo / lead");
     assert_eq!(rows[0].actor, "lead");
 
-    let count = |actor: &str| match list(
-        &repo,
-        &Filter {
-            actor: Some(actor.into()),
-            since: Some(0),
-            ..Default::default()
-        },
-    )
-    .unwrap()
-    {
-        Listing::History(rows) => rows.len(),
-        Listing::Nodes(_) => 0,
+    let count = |actor: &str| {
+        let mut filter = Filter::default();
+        filter.actor = Some(actor.into());
+        filter.since = Some(0);
+        match list(&repo, &filter).unwrap() {
+            Listing::History(rows) => rows.len(),
+            Listing::Nodes(_) => 0,
+        }
     };
     assert_eq!(count("pememo"), 1);
     assert_eq!(count("lead"), 1);

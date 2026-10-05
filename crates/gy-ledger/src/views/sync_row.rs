@@ -6,6 +6,7 @@ use std::fmt;
 
 /// The one line, and the JSON object, a synced copy adds to handover.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct SyncRow {
     pub pending: u64,
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -106,10 +106,8 @@ fn named<S: Store>(repo: &Repository<S>, edge: &EdgeLine) -> Edge {
 
 /// This node's writes, newest first.
 fn history<S: Store>(repo: &Repository<S>, id: &str) -> Vec<LogRow> {
-    let filter = Filter {
-        since: Some(0),
-        ..Default::default()
-    };
+    let mut filter = Filter::default();
+    filter.since = Some(0);
     match list(repo, &filter) {
         Ok(Listing::History(rows)) => rows
             .into_iter()

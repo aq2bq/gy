@@ -13,6 +13,7 @@ use std::fmt;
 
 /// What to keep. `actor` and `since` switch the output to write units.
 #[derive(Debug, Default, Clone)]
+#[non_exhaustive]
 pub struct Filter {
     pub kind: Option<NodeKind>,
     pub status: Option<String>,
@@ -24,6 +25,7 @@ pub struct Filter {
 
 /// One node as a row: id, ref, kind, status, title, scope, created.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct Row {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -56,6 +58,7 @@ impl fmt::Display for Row {
 /// One write unit: the history entry that a `--actor` / `--since` listing
 /// returns.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct LogRow {
     pub seq: u64,
     pub at: u64,

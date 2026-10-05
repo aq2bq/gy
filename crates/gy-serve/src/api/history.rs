@@ -21,11 +21,9 @@ pub fn answer<S: Store>(repo: &Repository<S>, req: &Request) -> Response {
         Ok(seq) => seq,
         Err(response) => return response,
     };
-    let filter = Filter {
-        actor: req.param("actor").map(ToString::to_string),
-        since: Some(since),
-        ..Default::default()
-    };
+    let mut filter = Filter::default();
+    filter.actor = req.param("actor").map(ToString::to_string);
+    filter.since = Some(since);
     let rows = match list(repo, &filter) {
         Ok(Listing::History(rows)) => rows,
         Ok(Listing::Nodes(_)) => Vec::new(),
@@ -76,13 +74,9 @@ fn seq_param(req: &Request) -> std::result::Result<u64, Response> {
 /// Every writer as a reader sees them, in name order, from the whole
 /// history (n-4a08, n-d36d).
 fn writers<S: Store>(repo: &Repository<S>) -> Result<Vec<String>> {
-    let rows = match list(
-        repo,
-        &Filter {
-            since: Some(0),
-            ..Default::default()
-        },
-    )? {
+    let mut filter = Filter::default();
+    filter.since = Some(0);
+    let rows = match list(repo, &filter)? {
         Listing::History(rows) => rows,
         Listing::Nodes(_) => Vec::new(),
     };

@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Breaking
+
+- **gy-ledger's read types are `#[non_exhaustive]`, and `EgoNode` gained a
+  status and a scope** (n-d903, r-c7a8, d-d62d): every `pub struct` under
+  `crates/gy-ledger/src/views/` — the types the read views return, `EgoNode`
+  included — now carries `#[non_exhaustive]`, and `EgoNode` has two new
+  fields, `status: Option<String>` and `scope: Option<String>` (absent for a
+  node that is gone). A field can now be added without a breaking change, so
+  the two land together. **Downstream must not build these types with a
+  struct literal**: a `Filter` starts from `Filter::default()` and then sets
+  its fields, the other types come from the view functions (or a constructor:
+  `Narrowed::new`, `Warning::new`), and a pattern that destructures one must
+  use `..` (`let Row { id, .. } = row;`). The JSON shape is unchanged except
+  for `EgoNode`'s two fields; every command, the storage format, and the URLs
+  are unchanged.
+
 ### Added
 
 - **The node page's connection map names the box under the pointer** (n-dc1a,

@@ -24,20 +24,19 @@ pub fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
         return Err(Error::invalid("not a list"));
     };
     let repository = repo::open(ledger)?;
-    let filter = Filter {
-        kind: kind.as_deref().map(parse_kind).transpose()?,
-        status: status.clone(),
-        targets: targets
-            .as_deref()
-            .map(|text| repository.resolve(text))
-            .transpose()?,
-        grep: grep.clone(),
-        actor: actor.clone(),
-        since: since
-            .as_deref()
-            .map(|text| parse_since(&repository, text))
-            .transpose()?,
-    };
+    let mut filter = Filter::default();
+    filter.kind = kind.as_deref().map(parse_kind).transpose()?;
+    filter.status = status.clone();
+    filter.targets = targets
+        .as_deref()
+        .map(|text| repository.resolve(text))
+        .transpose()?;
+    filter.grep = grep.clone();
+    filter.actor = actor.clone();
+    filter.since = since
+        .as_deref()
+        .map(|text| parse_since(&repository, text))
+        .transpose()?;
     emit(cli.json, &list(&repository, &filter)?)
 }
 
@@ -271,13 +270,9 @@ fn parse_since<S: Store>(repository: &Repository<S>, text: &str) -> Result<u64> 
         return Ok(seq);
     }
     let start = local_day_start(text)?;
-    let rows = match list(
-        repository,
-        &Filter {
-            since: Some(0),
-            ..Default::default()
-        },
-    )? {
+    let mut filter = Filter::default();
+    filter.since = Some(0);
+    let rows = match list(repository, &filter)? {
         Listing::History(rows) => rows,
         Listing::Nodes(_) => Vec::new(),
     };

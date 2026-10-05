@@ -7,6 +7,7 @@ use std::fmt;
 
 /// A filed requirement as next shows it: id, ref, state.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct RequirementLine {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -25,6 +26,7 @@ impl fmt::Display for RequirementLine {
 /// One ready need: id, title, scope, satisfied / total criteria, and its filed
 /// requirements.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct NextRow {
     pub id: String,
     pub title: String,

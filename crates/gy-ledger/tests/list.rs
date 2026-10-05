@@ -49,10 +49,8 @@ fn list_filters_by_kind() {
         Node::criterion(id(NodeKind::Criterion, "0002"), SCOPE, DATE, "a criterion").unwrap();
     seed(&mut repo, &[need, criterion]);
 
-    let filter = Filter {
-        kind: Some(NodeKind::Need),
-        ..Filter::default()
-    };
+    let mut filter = Filter::default();
+    filter.kind = Some(NodeKind::Need);
     let rows = node_rows(&repo, &filter);
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].kind, NodeKind::Need);
@@ -70,22 +68,16 @@ fn list_filters_by_status_and_rejects_an_unknown_one() {
         Node::criterion(id(NodeKind::Criterion, "0004"), SCOPE, DATE, "a criterion").unwrap();
     seed(&mut repo, &[need, criterion]);
 
-    let open = Filter {
-        status: Some("open".into()),
-        ..Filter::default()
-    };
+    let mut open = Filter::default();
+    open.status = Some("open".into());
     assert_eq!(node_rows(&repo, &open).len(), 1);
-    let unsatisfied = Filter {
-        status: Some("unsatisfied".into()),
-        ..Filter::default()
-    };
+    let mut unsatisfied = Filter::default();
+    unsatisfied.status = Some("unsatisfied".into());
     let rows = node_rows(&repo, &unsatisfied);
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].kind, NodeKind::Criterion);
-    let weird = Filter {
-        status: Some("weird".into()),
-        ..Filter::default()
-    };
+    let mut weird = Filter::default();
+    weird.status = Some("weird".into());
     assert!(list(&repo, &weird).is_err());
 }
 
@@ -106,11 +98,9 @@ fn list_filters_a_done_need_by_its_derived_state() {
     let need_id = need.id().clone();
     seed(&mut repo, &[requirement, need]);
 
-    let filter = Filter {
-        kind: Some(NodeKind::Need),
-        status: Some("done".into()),
-        ..Filter::default()
-    };
+    let mut filter = Filter::default();
+    filter.kind = Some(NodeKind::Need);
+    filter.status = Some("done".into());
     let rows = node_rows(&repo, &filter);
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].id, need_id.to_string());
@@ -151,24 +141,18 @@ fn list_filters_by_targets_and_grep() {
     let other = Node::need(id(NodeKind::Need, "0007"), SCOPE, DATE, "beta").unwrap();
     seed(&mut repo, &[criterion, requirement, other]);
 
-    let by_target = Filter {
-        targets: Some(criterion_id),
-        ..Filter::default()
-    };
+    let mut by_target = Filter::default();
+    by_target.targets = Some(criterion_id);
     let rows = node_rows(&repo, &by_target);
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].id, requirement_id.to_string());
     assert_eq!(rows[0].reference.as_deref(), Some("https://example/9"));
 
-    let by_title = Filter {
-        grep: Some("alpha".into()),
-        ..Filter::default()
-    };
+    let mut by_title = Filter::default();
+    by_title.grep = Some("alpha".into());
     assert_eq!(node_rows(&repo, &by_title).len(), 1);
-    let none = Filter {
-        grep: Some("gamma".into()),
-        ..Filter::default()
-    };
+    let mut none = Filter::default();
+    none.grep = Some("gamma".into());
     assert!(node_rows(&repo, &none).is_empty());
 }
 
@@ -184,10 +168,8 @@ fn list_returns_history_for_actor_and_since() {
         &[Node::need(id(NodeKind::Need, "0009"), SCOPE, DATE, "two").unwrap()],
     );
 
-    let actor = Filter {
-        actor: Some("piko".into()),
-        ..Filter::default()
-    };
+    let mut actor = Filter::default();
+    actor.actor = Some("piko".into());
     let rows = log_rows(&repo, &actor);
     assert_eq!(rows.len(), 2);
     assert_eq!(rows[0].seq, 1);
@@ -195,10 +177,8 @@ fn list_returns_history_for_actor_and_since() {
     assert_eq!(rows[0].why, "seed");
     assert_eq!(rows[0].source, "test");
 
-    let since = Filter {
-        since: Some(1),
-        ..Filter::default()
-    };
+    let mut since = Filter::default();
+    since.since = Some(1);
     let rows = log_rows(&repo, &since);
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].seq, 2);
@@ -214,10 +194,8 @@ fn history_entries_of_one_transaction_share_the_seq() {
             Node::need(id(NodeKind::Need, "0011"), SCOPE, DATE, "two").unwrap(),
         ],
     );
-    let since = Filter {
-        since: Some(0),
-        ..Filter::default()
-    };
+    let mut since = Filter::default();
+    since.since = Some(0);
     let rows = log_rows(&repo, &since);
     assert_eq!(rows.len(), 2);
     assert_eq!(rows[0].seq, 1);

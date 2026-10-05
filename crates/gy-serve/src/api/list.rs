@@ -18,12 +18,10 @@ pub fn rows<S: Store>(repo: &Repository<S>, req: &Request) -> Response {
         },
         None => None,
     };
-    let filter = Filter {
-        kind,
-        status: req.param("status").map(ToString::to_string),
-        grep: req.param("q").map(ToString::to_string),
-        ..Default::default()
-    };
+    let mut filter = Filter::default();
+    filter.kind = kind;
+    filter.status = req.param("status").map(ToString::to_string);
+    filter.grep = req.param("q").map(ToString::to_string);
     let rows = match list(repo, &filter) {
         Ok(Listing::Nodes(rows)) => rows,
         Ok(Listing::History(_)) => Vec::new(),

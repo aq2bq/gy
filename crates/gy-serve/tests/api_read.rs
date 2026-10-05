@@ -118,10 +118,8 @@ fn view_ids(repo: &Repository<MemoryStore>, filter: &Filter) -> Vec<String> {
 #[test]
 fn list_matches_the_view() {
     let repo = ledger();
-    let filter = Filter {
-        kind: Some(NodeKind::Need),
-        ..Default::default()
-    };
+    let mut filter = Filter::default();
+    filter.kind = Some(NodeKind::Need);
     assert_eq!(
         ids(&answer(&repo, "/api/list", Some("kind=Need"))["rows"]),
         view_ids(&repo, &filter)
@@ -132,10 +130,8 @@ fn list_matches_the_view() {
     assert!(!all["rows"].as_array().unwrap().is_empty());
     assert!(scoped["rows"].as_array().unwrap().len() < all["rows"].as_array().unwrap().len());
 
-    let grep = Filter {
-        grep: Some("duplicated".to_string()),
-        ..Default::default()
-    };
+    let mut grep = Filter::default();
+    grep.grep = Some("duplicated".to_string());
     let rows = answer(&repo, "/api/list", Some("q=duplicated"));
     assert_eq!(ids(&rows["rows"]), view_ids(&repo, &grep));
     assert_eq!(rows["rows"].as_array().unwrap().len(), 12);

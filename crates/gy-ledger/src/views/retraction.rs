@@ -7,14 +7,23 @@ use std::collections::BTreeMap;
 
 /// A passage a later decision narrows, and the decision that narrows it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct Narrowed {
     pub by: String,
     pub mark: String,
 }
 
+impl Narrowed {
+    /// The passage a later decision narrows, and the decision that narrows it.
+    pub fn new(by: String, mark: String) -> Self {
+        Self { by, mark }
+    }
+}
+
 /// The retractions a node carries: decisions that replace it whole
 /// (`supersedes`) and the passages later decisions narrow (`narrows`).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct Retraction {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub superseded_by: Vec<String>,
@@ -42,10 +51,7 @@ pub fn retractions_by_node(all: &[Node]) -> BTreeMap<String, Retraction> {
                         out.entry(edge.to.to_string())
                             .or_default()
                             .narrowed
-                            .push(Narrowed {
-                                by,
-                                mark: mark.clone(),
-                            });
+                            .push(Narrowed::new(by, mark.clone()));
                     }
                 }
                 _ => {}

@@ -447,10 +447,8 @@ pub fn retraction(all: &[Node], id: &str) -> Option<Retraction> {
                 }
                 Relation::Narrows => {
                     if let Some(mark) = &edge.mark {
-                        out.narrowed.push(Narrowed {
-                            by: node.id().to_string(),
-                            mark: mark.clone(),
-                        });
+                        out.narrowed
+                            .push(Narrowed::new(node.id().to_string(), mark.clone()));
                         any = true;
                     }
                 }
@@ -563,9 +561,6 @@ fn relying_on(in_progress: &[&Node], targets: &BTreeSet<String>) -> usize {
 
 fn push(out: &mut Vec<Warning>, label: &str, count: usize) {
     if count > 0 {
-        out.push(Warning {
-            label: label.to_string(),
-            count,
-        });
+        out.push(Warning::new(label.to_string(), count));
     }
 }

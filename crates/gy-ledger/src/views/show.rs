@@ -15,6 +15,7 @@ use std::fmt::Write as _;
 /// One edge as a view prints it: the name from this node's side, the other id,
 /// and the mark a narrows / supersedes carries.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct EdgeLine {
     pub name: String,
     pub to: String,
@@ -40,6 +41,7 @@ impl EdgeLine {
 /// A node as a view projects it. `data` stays typed, so `--json` is the model
 /// and `Display` is the human rendering.
 #[derive(Debug, Clone, Serialize)]
+#[non_exhaustive]
 pub struct Shown {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
