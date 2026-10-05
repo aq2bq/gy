@@ -33,8 +33,9 @@
       history: { actor: null, since: null },
       graph: { cam: { x: 0, y: 0, k: 1 }, target: null, selected: null, hover: null },
       /* The node page's connections map: its own camera, so the graph page's
-         and the node's never move each other (n-9ca9). */
-      ego: { cam: { x: 0, y: 0, k: 1 } },
+         and the node's never move each other (n-9ca9). `hover` is the box the
+         pointer is on, for the card the region draws (n-dc1a). */
+      ego: { cam: { x: 0, y: 0, k: 1 }, hover: null },
       palette: { open: false, query: '', selected: 0 },
       shell: null,
       now: null,
@@ -78,9 +79,10 @@
           ? [...state.trail, route.arg].slice(-20)
           : state.trail;
         /* Another node opens at the whole figure; the same node keeps its
-           camera through a redraw (n-9ca9). */
+           camera through a redraw (n-9ca9). The pointer's box is forgotten, so
+           a stale card cannot open with the new node (n-dc1a). */
         const ego = route.name === 'node' && route.arg !== state.route.arg
-          ? { cam: { x: 0, y: 0, k: 1 } }
+          ? { cam: { x: 0, y: 0, k: 1 }, hover: null }
           : state.ego;
         const list = route.name === 'list' ? { ...state.list, filter: 'open' } : state.list;
         return { ...state, route, trail, ego, page: null, list };
@@ -99,6 +101,10 @@
         return { ...state, graph: { ...state.graph, target: intent.value } };
       case 'mapCam':
         return { ...state, ego: { ...state.ego, cam: intent.value } };
+      /* The box under the pointer, for the card the node region draws
+         (n-dc1a). The camera is not touched. */
+      case 'mapHover':
+        return { ...state, ego: { ...state.ego, hover: intent.value } };
       case 'graphSelect':
         return { ...state, graph: { ...state.graph, selected: intent.value }, page: null };
       case 'graphHover':

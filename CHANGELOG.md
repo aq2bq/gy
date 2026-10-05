@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **The node page's connection map names the box under the pointer** (n-dc1a,
+  r-5c92, d-58b1): hovering a box — the focus included — shows a card with the
+  node's id (and its alias when it has one), kind, status, scope badge, and
+  whole title; moving away takes it away. The card is drawn outside the map's
+  camera, so zooming and panning the figure never change its text size, and a
+  drag shows no card. `/api/node`'s neighbourhood now carries `status` and
+  `scope` per node, derived the same way the list derives a row's status
+  (`views/list.rs`), so the two views cannot disagree; a node that is gone
+  keeps only its id. The storage format, the URL, and the commands are
+  unchanged.
+
 ## 1.2.4 - 2026-10-04
 
 This release closes the gaps found while writing down the invariants of the

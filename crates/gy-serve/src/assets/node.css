@@ -18,7 +18,7 @@
 .body{margin-top:26px}
 .body .bt{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--paper-3);text-transform:uppercase}
 .body pre{white-space:pre-wrap;font-family:var(--sans);color:var(--paper-2);font-size:14px;border-left:1px solid var(--line);padding-left:18px;margin:12px 0 0}
-.map{border:1px solid var(--line-soft);border-radius:12px;background:var(--ink-2);padding:10px;overflow-x:auto}
+.map{border:1px solid var(--line-soft);border-radius:12px;background:var(--ink-2);padding:10px;overflow-x:auto;position:relative}
 .map svg{display:block;width:100%;height:auto;cursor:grab}
 .map svg.grab{cursor:grabbing}
 .map a,.map a text{cursor:pointer}
@@ -30,6 +30,15 @@
 .map .box.from{stroke-width:2.6;filter:drop-shadow(0 0 5px rgba(226,232,255,.55))}
 .map .edge{fill:none;stroke:var(--line);stroke-width:1.2}
 .map .center{fill:var(--ink);stroke-width:2}
+/* The card over the box the pointer is on (n-dc1a): plain HTML beside the
+   figure, so the map's camera never scales its text. It takes no pointer, so
+   moving over it cannot steal the hover from the box. */
+.egocard{position:absolute;z-index:3;pointer-events:none;max-width:260px;background:rgba(20,27,45,.96);border:1px solid var(--line);border-radius:10px;padding:8px 12px;box-shadow:0 14px 40px rgba(0,0,0,.45)}
+.egocard .ek{display:flex;gap:8px;align-items:center;font-family:var(--mono);font-size:11px;color:var(--paper-3);flex-wrap:wrap}
+.egocard .ek .al{color:var(--paper);font-size:13px}
+.egocard .ek .id{color:var(--paper-3);font-size:11px}
+.egocard .em{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:7px;font-size:11px;color:var(--paper-2)}
+.egocard .et{font-family:var(--sans);font-size:13px;line-height:1.5;color:var(--paper);margin-top:7px;word-break:break-word}
 .hist{display:flex;flex-direction:column}
 .hi{display:grid;grid-template-columns:118px 64px minmax(0,1fr);gap:12px;padding:8px 0;border-top:1px solid var(--line-soft);font-size:13px}
 /* The bottom line closes the list. A writes row sits in a list item wrapper of

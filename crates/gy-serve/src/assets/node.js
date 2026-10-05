@@ -11,6 +11,8 @@
   let copy = () => '';
   /* The map's camera, the state's one, kept here for the draw (n-9ca9). */
   let cam = { x: 0, y: 0, k: 1 };
+  /* The box the pointer is on, from the state; the card names it (n-dc1a). */
+  let hover = null;
   /* The nodes this tab has opened, for the "came from" mark (n-...). */
   let trail = [];
 
@@ -51,6 +53,7 @@
     copy = text => window.GyCopy.tag(text, state, ui);
     node = state.page;
     cam = (state.ego && state.ego.cam) || { x: 0, y: 0, k: 1 };
+    hover = (state.ego && state.ego.hover) || null;
     trail = state.trail || [];
     if (!node) {
       el.innerHTML = `<div class="hero"><h1>${esc(state.route.arg)} — ${t('notFound')}</h1></div>`;
@@ -58,6 +61,7 @@
     }
     const moved = !shown || shown.dataset.shown !== node.id;
     el.innerHTML = `<div class="node" data-shown="${esc(node.id)}"><div>${left()}</div><div>${right()}</div></div>`;
+    placeCard(el);
     if (moved) window.scrollTo(0, 0);
   }
 
@@ -149,7 +153,7 @@
       : `<div class="empty">${t('migrated')}</div>`;
     const from = referrer();
     const heading = `${t('connections')}${from ? `<a href="#/n/${esc(from.id)}">◂ ${esc(from.name)}</a>` : ''}`;
-    return `<div class="card" style="margin-top:0"><h3>${heading}</h3><div class="map">${map()}</div></div>` +
+    return `<div class="card" style="margin-top:0"><h3>${heading}</h3><div class="map">${map()}${hoverCard()}</div></div>` +
       card(fill(t('hist'), { n: rows.length }), `<div class="hist" role="list" aria-label="${esc(t('histTitle'))}">${history}</div>`);
   }
 
@@ -199,7 +203,51 @@
       ? `${esc(item.alias || item.id)} · ${esc(t(item.kind))}`
       : `${esc(item.alias || item.id)}${item.kind ? ` · ${esc(t(item.kind))}` : ''}`;
     const inner = `<rect class="${cls}" data-hop="${item.hop}"${item.id === from ? ' data-from="1"' : ''} x="${p.x - BW / 2}" y="${p.y - BH / 2}" width="${BW}" height="${BH}" rx="7"${stroke}/><text class="al" x="${p.x - BW / 2 + 8}" y="${p.y - 5}">${label}</text><text x="${p.x - BW / 2 + 8}" y="${p.y + 13}">${esc(short(item.title))}</text>`;
-    return item.id === root ? `<g>${inner}</g>` : `<a href="#/n/${esc(item.id)}"><g>${inner}</g></a>`;
+    return item.id === root
+      ? `<g data-node="${esc(item.id)}">${inner}</g>`
+      : `<a href="#/n/${esc(item.id)}"><g data-node="${esc(item.id)}">${inner}</g></a>`;
+  }
+
+  /* The card over the box the pointer is on (n-dc1a): the five things that tell
+     one neighbour from another — id (with its alias), kind, status, scope, and
+     the whole title. It is HTML inside the map's frame but outside the camera,
+     so the figure's zoom never changes its size; a plain card, no copy mark,
+     because it takes no pointer (d-58b1). */
+  function hoverCard() {
+    const hood = node.neighborhood;
+    const item = hover && hood && (hood.nodes || []).find(entry => entry.id === hover);
+    if (!item) return '';
+    const kind = item.kind ? `<span class="k k-${item.kind}" data-testid="mapcardKind">${esc(t(item.kind))}</span>` : '';
+    const name = item.alias
+      ? `<span class="al">${esc(item.alias)}</span><span class="id" data-testid="mapcardId">${esc(item.id)}</span>`
+      : `<span class="id" data-testid="mapcardId">${esc(item.id)}</span>`;
+    const status = item.kind && item.status ? `<span data-testid="mapcardStatus">${esc(t(`st.${item.kind}.${item.status}`))}</span>` : '';
+    const scope = item.scope ? `<span data-testid="mapcardScope">${tag(item.scope)}</span>` : '';
+    return `<div class="egocard" data-testid="mapcard"><div class="ek">${kind}${name}</div>` +
+      `<div class="em">${status}${scope}</div>` +
+      `<div class="et" data-testid="mapcardTitle">${esc(item.title || '')}</div></div>`;
+  }
+
+  /* The card sits beside the box it names, kept inside the map. It is placed
+     after the draw from the geometry alone; the region owns this element
+     (d-03ca). */
+  function placeCard(el) {
+    const card = el.querySelector('.egocard');
+    const map = el.querySelector('.map');
+    const svg = el.querySelector('#ego');
+    if (!card || !map || !svg || !hover) return;
+    const box = [...svg.querySelectorAll('[data-node]')].find(one => one.dataset.node === hover);
+    if (!box) return;
+    const rect = box.getBoundingClientRect();
+    const area = map.getBoundingClientRect();
+    const gap = 10;
+    let left = rect.right - area.left + gap;
+    if (left + card.offsetWidth > area.width) left = rect.left - area.left - card.offsetWidth - gap;
+    left = Math.max(4, Math.min(left, area.width - card.offsetWidth - 4));
+    let top = rect.top - area.top + rect.height / 2 - card.offsetHeight / 2;
+    top = Math.max(4, Math.min(top, area.height - card.offsetHeight - 4));
+    card.style.left = `${left}px`;
+    card.style.top = `${top}px`;
   }
 
   /* The camera drawn: one transform inside the svg. Events turns a pointer and a

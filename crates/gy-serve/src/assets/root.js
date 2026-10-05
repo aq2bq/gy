@@ -125,8 +125,9 @@
     if (intent.type === 'copied') { scheduleCopy(); paint(); return; }
     if (intent.type === 'graphCam' || intent.type === 'graphHover') { paintPage(); return; }
     /* The node map's camera moves like the graph's: the page alone is redrawn,
-       so a drag stays light (n-9ca9). */
-    if (intent.type === 'mapCam') { paintPage(); return; }
+       so a drag stays light (n-9ca9). The pointer's box redraws the page too,
+       so the card appears and goes without a read (n-dc1a). */
+    if (intent.type === 'mapCam' || intent.type === 'mapHover') { paintPage(); return; }
     if (intent.type === 'paletteOpen') {
       paintPalette();
       focusPalette();

@@ -2,6 +2,7 @@
 //! connection map (n-...). The whole graph is read once, the nearness comes
 //! from a breadth-first walk over the undirected edges, and the cap keeps the
 //! nearest, so the card never draws an unbounded picture.
+use super::list::status_of;
 use crate::model::{Edge, Node, NodeKind};
 use crate::ops::repository::{Repository, Result, Store};
 use serde::Serialize;
@@ -21,6 +22,13 @@ pub struct EgoNode {
     pub alias: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    /// The same derivation the list prints (`list::status_of`), so a box's
+    /// badge and its row never disagree (n-dc1a). Absent for a node that is
+    /// gone, or a kind the model gives no status.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scope: Option<String>,
 }
 
 /// One edge between two nodes of the neighbourhood, named from each side: the
@@ -93,6 +101,8 @@ fn nodes(all: &[Node], order: &[String], hop: &BTreeMap<String, usize>) -> Vec<E
                 kind: node.map(Node::kind),
                 alias: node.and_then(|node| node.aliases().first().map(|alias| alias.0.clone())),
                 title: node.map(|node| node.title().to_string()),
+                status: node.and_then(|node| status_of(node, all)),
+                scope: node.map(|node| node.scope().to_string()),
             }
         })
         .collect()

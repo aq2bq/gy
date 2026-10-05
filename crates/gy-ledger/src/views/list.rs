@@ -175,8 +175,9 @@ fn row(node: &Node, all: &[Node]) -> Row {
 }
 
 /// The status a row prints: the model's own name, and for a need the derived
-/// state from the graph (n-35cf).
-fn status_of(node: &Node, all: &[Node]) -> Option<String> {
+/// state from the graph (n-35cf). Shared with the ego map's boxes, so the two
+/// views never drift (n-dc1a).
+pub(crate) fn status_of(node: &Node, all: &[Node]) -> Option<String> {
     match node.data() {
         NodeData::Need(_) => Some(need_state(node, all).name().to_string()),
         NodeData::Question(_) => Some(open_or_closed(!question_open(node.data())).to_string()),

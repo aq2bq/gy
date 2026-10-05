@@ -180,6 +180,23 @@ fn node_names_its_edges_and_history() {
     assert_eq!(hood["edges"][0]["to"], "r-0006");
     assert_eq!(hood["edges"][0]["name"], "filed-as");
 
+    // Every box's status and scope are the list's for the same node (n-dc1a):
+    // one derivation, so the map's card and the row never disagree.
+    let rows = answer(&repo, "/api/list", None);
+    let rows = rows["rows"].as_array().unwrap();
+    for node in hood["nodes"].as_array().unwrap() {
+        let id = node["id"].as_str().unwrap();
+        let row = rows.iter().find(|row| row["id"] == id).unwrap();
+        assert_eq!(
+            node["status"].as_str(),
+            row["status"].as_str(),
+            "the neighbourhood's status for {id} matches the list"
+        );
+        assert_eq!(node["scope"].as_str(), row["scope"].as_str(), "{id}");
+    }
+    assert_eq!(hood["nodes"][0]["status"], "open");
+    assert_eq!(hood["nodes"][1]["status"], "filed");
+
     let aliased = answer(&repo, "/api/node/D-85", None);
     assert_eq!(aliased["id"], "d-0005");
     assert_eq!(aliased["aliases"][0], "D-85");

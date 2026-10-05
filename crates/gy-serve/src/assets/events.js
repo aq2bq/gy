@@ -190,8 +190,17 @@
     api.run({ type: 'mapCam', value: window.GyGraph.panCam(api.state().ego.cam, dx * sx, dy * sy) });
   }
 
-  /* The node map's pointer: a drag pans it. No capture, so a plain press still
-     reaches a box's anchor (n-9ca9). */
+  /* The box under the pointer, by the name the region gave it (`data-node`):
+     the box's <g> for any of its parts, and nothing off the map (n-dc1a). */
+  function boxUnder(svg, target) {
+    if (!svg.contains(target) || !target.closest) return null;
+    const box = target.closest('[data-node]');
+    return box ? box.dataset.node : null;
+  }
+
+  /* The node map's pointer: a drag pans it; a still pointer picks the box
+     under it for the card. No capture, so a plain press still reaches a box's
+     anchor (n-9ca9). */
   function mapPointer(api) {
     let down = null, swallow = false;
     /* A drag that began on a box would otherwise let the press through as a
@@ -210,12 +219,19 @@
     });
     document.addEventListener('pointermove', event => {
       const svg = document.getElementById('ego');
-      if (!down || !svg) return;
-      const dx = event.clientX - down.x, dy = event.clientY - down.y;
-      if (!down.moved && Math.hypot(dx, dy) > 3) down.moved = true;
-      if (!down.moved) return;
-      down.x = event.clientX; down.y = event.clientY;
-      mapPan(api, svg, dx, dy);
+      if (!svg) return;
+      if (down) {
+        const dx = event.clientX - down.x, dy = event.clientY - down.y;
+        if (!down.moved && Math.hypot(dx, dy) > 3) down.moved = true;
+        if (!down.moved) return;
+        down.x = event.clientX; down.y = event.clientY;
+        mapPan(api, svg, dx, dy);
+        /* A drag shows no card, even when it began on a box (n-dc1a). */
+        if (api.state().ego.hover) api.run({ type: 'mapHover', value: null });
+        return;
+      }
+      const id = boxUnder(svg, event.target);
+      if (id !== api.state().ego.hover) api.run({ type: 'mapHover', value: id });
     });
     document.addEventListener('pointerup', () => {
       const svg = document.getElementById('ego');

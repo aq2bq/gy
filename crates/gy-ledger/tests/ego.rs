@@ -59,6 +59,12 @@ fn ego_walks_to_the_depth_and_keeps_the_near() {
     assert_eq!(hood.edges[0].name, "depends-on");
     assert_eq!(hood.nodes[1].kind, Some(NodeKind::Need));
     assert_eq!(hood.nodes[1].title.as_deref(), Some("a need"));
+    // The box carries the same status the list gives a need, and its scope
+    // (n-dc1a), so the map's card and the list never disagree.
+    assert_eq!(hood.nodes[0].status.as_deref(), Some("open"));
+    assert_eq!(hood.nodes[0].scope.as_deref(), Some(SCOPE));
+    assert_eq!(hood.nodes[1].status.as_deref(), Some("open"));
+    assert_eq!(hood.nodes[1].scope.as_deref(), Some(SCOPE));
 }
 
 #[test]

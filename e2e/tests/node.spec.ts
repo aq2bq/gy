@@ -204,6 +204,60 @@ test('a box answers a press on its text', async ({ page, request }) => {
   await expect(main.getByRole('heading', { level: 1 })).not.toHaveText(node.title);
 });
 
+test('a box shows a card on hover, and the card keeps its size when the map zooms', async ({ page, request }) => {
+  const decision = await closes(request);
+  const node = await (await request.get(`${gy.url}api/node/${decision.id}`)).json();
+  const edge = node.edges.find((item: { name: string }) => item.name === 'closed-by');
+  const peer = await (await request.get(`${gy.url}api/node/${edge.to}`)).json();
+  await page.goto(`${gy.url}#/n/${decision.id}`);
+  const main = page.getByTestId('main');
+  const map = main.getByTestId('ego');
+  const card = main.getByTestId('mapcard');
+  const moveTo = async (target: Locator) => {
+    const box = await target.boundingBox();
+    if (!box) throw new Error('the target has no box');
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  };
+  await expect(card).toHaveCount(0);
+
+  // The focus's own box shows a card too (d-58b1).
+  await moveTo(main.locator('svg rect[data-hop="0"]'));
+  await expect(card).toBeVisible();
+  await expect(card.getByTestId('mapcardTitle')).toHaveText(node.title);
+  await expect(card.getByTestId('mapcardId')).toHaveText(decision.id);
+
+  // A neighbour's card names it: id, kind, the list's status, scope, and the
+  // whole title (d-58b1, ac-dcf6).
+  const box = main.locator('svg a').filter({ hasText: named(edge) }).first();
+  await moveTo(box.locator('rect').first());
+  await expect(card).toBeVisible();
+  await expect(card.getByTestId('mapcardTitle')).toHaveText(peer.title);
+  await expect(card.getByTestId('mapcardKind')).toHaveClass(/k-Question/);
+  await expect(card.getByTestId('mapcardStatus')).toHaveText(/closed|閉じた/);
+  await expect(card.getByTestId('mapcardScope')).toHaveText(peer.scope);
+
+  // Leaving the box takes the card away.
+  await page.mouse.move(0, 0);
+  await expect(card).toHaveCount(0);
+
+  // The map's zoom never reaches the card: its text keeps the page's size
+  // (d-58b1). The wheel leaves the pointer on the box, so the card stays.
+  await moveTo(box.locator('rect').first());
+  await expect(card).toBeVisible();
+  const before = await card.boundingBox();
+  const size = await card.getByTestId('mapcardTitle').evaluate(el => getComputedStyle(el).fontSize);
+  await page.mouse.wheel(0, -240);
+  await expect.poll(async () => (await camera(map)).k).toBeGreaterThan(1);
+  await expect(card).toBeVisible();
+  expect(await card.getByTestId('mapcardTitle').evaluate(el => getComputedStyle(el).fontSize)).toBe(size);
+  const after = await card.boundingBox();
+  expect(after?.height).toBeCloseTo(before?.height ?? 0, 0);
+
+  // A box still opens its page on a plain press (ac-dcf6).
+  await box.click();
+  await expect(main.getByRole('heading', { level: 1 })).toHaveText(peer.title);
+});
+
 test('the camera is kept on a redraw and reset on another node', async ({ page, request }) => {
   const decision = await closes(request);
   const node = await (await request.get(`${gy.url}api/node/${decision.id}`)).json();
