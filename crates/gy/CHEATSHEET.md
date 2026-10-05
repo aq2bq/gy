@@ -11,6 +11,7 @@ Starting a session:
   gy show <ID>
 
 Reads:
+  gy cheat                                             print this cheatsheet as it is: no gy.toml is looked for and it has no options
   gy show <ID|ref>... [--full]                         show nodes, with what each still lacks
   gy list [--type] [--status] [--targets] [--grep] [--actor] [--since]   list nodes; with --actor / --since, list write units. Spelling ignores case. --since takes a seq (the writes after it, not including it) or a date (YYYY-MM-DD, from midnight where you are)
   gy next [--scope]                                    the needs whose prerequisites are settled, limited to the scope when given
@@ -24,6 +25,7 @@ Where the ledger lives (experimental; only for sharing with a team. With no remo
   gy remote sync                                       sync with the remote (experimental): fetch the copy, push what is not pushed, pull and rebase. On trouble, the cause and the way out
 
 Writes:
+  A write needs --scope <name> when gy.toml names more than one scope; with one scope the only one is used.
   gy need add "<title>" --targets <AC>... [--spawned-by <D>] [--body-file <path>]
   gy need close <ID> --by fact|external --evidence <text>
   gy question add "<title>" --decider <name> --options <text>... [--body-file <path>]        at least two options
@@ -36,9 +38,9 @@ Writes:
   gy req done <ID> --evidence <text>
   gy req cancel <ID> --reason <text> --source <text>
   gy decide "<title>" --scope-note <text> [--body-file <path>] [--closes <Q>]... [--relate <relation> <D> --mark <text>] [--source <text>]
-        --mark is not a note: it is the exact text in the older decision that stops applying
+        --mark is required with --relate narrows and supersedes, optional with widens and completes; given, it must be a passage in the older decision's body or scope note, or the write is refused
   gy link <from> <relation> <to> [--mark <text>] [--remove]
-        relations: targets, filed-as, relies-on, depends-on, waits-on, raised, spawned-by, closes, narrows, widens, supersedes, completes. --mark only with narrows and supersedes
+        relations: targets, filed-as, relies-on, depends-on, waits-on, raised, spawned-by, closes, narrows, widens, supersedes, completes. --mark is required with narrows and supersedes and optional with the others; given, it must be a passage in the older decision's body or scope note, or the write is refused
   gy edit <ID> --reason <text> [--title] [--body-file] [--set k=v] [--append k=v]
         free attributes are strings. --set overwrites, --set k= removes, --append adds one line
         --set scope=<name> moves the node to a scope in gy.toml. --set decision_scope=<text> records a missing scope note, once

@@ -49,6 +49,8 @@ cargo install gy
 npx skills add aq2bq/gy
 ```
 
+`gy cheat` prints the cheatsheet this gy carries — the shape of every command — so the bundled skills name it and there is no cheatsheet file to copy beside them.
+
 Once a day, in the background, gy runs `cargo info gy` to learn the newest release on crates.io. When it is newer than yours, `gy handover` and `gy next` say so in one line on stderr, with the command to update. No other request leaves your machine unless you share a ledger.
 
 ### Telling the AI about gy
@@ -153,7 +155,7 @@ The canonical ledger is an append-only event log. The repository itself holds on
 
 `undo --reason <text>` inverts the last transaction as a new one, so the history keeps both the mistake and the correction. It undoes one transaction only; a second undo undoes the first undo (a redo). The log is the ledger; a snapshot file alongside it only speeds up opening and can be deleted.
 
-## The twenty-six operations
+## The twenty-seven operations
 
 A write adds a transaction of your own to the ledger: it names who wrote and why, and `undo` applies to it. A read leaves the ledger as it is. Three operations are neither; they decide where the ledger lives.
 
@@ -163,7 +165,7 @@ Before the first write (1):
 | --- | --- |
 | `init <scope>` | Start a repository here: write `gy.toml` with one scope, then name the skill to read and the first node to file. A `gy.toml` already here is reported, not touched |
 
-Reads (6):
+Reads (7):
 
 | Operation | Result |
 | --- | --- |
@@ -173,6 +175,7 @@ Reads (6):
 | `handover [--scope]` | In-progress requirements and the counts a session needs to resume; with `--scope`, only that scope |
 | `publish [--scope] [--out]` | Write the record as a Markdown wiki: an entry `README.md` per scope and a page per need and decision |
 | `serve` | Read the ledger in a browser, on 127.0.0.1 (GET only, no write path), until stopped. It opens the browser when started from a terminal |
+| `cheat` | Print the cheatsheet this gy carries, as it is. It needs no `gy.toml` and has no options |
 
 Where the ledger lives (3, experimental):
 

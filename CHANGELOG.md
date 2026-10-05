@@ -25,6 +25,31 @@
   graph's answer is unchanged: the title and alias come from `/api/labels`,
   never `/api/graph` (ac-adda).
 
+- **`gy cheat` prints the cheatsheet this gy carries** (n-d599, r-99e3,
+  d-89fb): the one file (now `crates/gy/CHEATSHEET.md`) is embedded in the
+  binary, so the shape of the commands matches the release that prints it,
+  instead of a copy that can drift beside the skills. It needs no `gy.toml`,
+  takes no options of its own, and is listed in `gy --help`. The bundled
+  `gy-loop` and `gy-ledger` skills now name `gy cheat` rather than a
+  cheatsheet file.
+
+### Changed
+
+- **The cheatsheet says when a write needs `--scope`, and what a mark
+  requires** (n-d599, r-99e3, ac-0d9c): the Writes section now states that a
+  write needs `--scope <name>` when `gy.toml` names more than one scope, and
+  the `decide` and `link` rows now match `marks.rs` — a mark is required with
+  `narrows` and `supersedes`, optional with the other relations, and, when
+  given, must be a passage in the older decision's body or scope note or the
+  write is refused. No storage format, other operation, or output changes.
+
+### Updating
+
+- **The bundled skills changed** (n-d599): the skills no longer carry a
+  cheatsheet file, so copy them again (for example `npx skills add aq2bq/gy`;
+  see the README's Install section). If an old `CHEATSHEET.md` sits beside the
+  skills, delete it — `gy cheat` prints the cheatsheet now.
+
 ## 1.2.4 - 2026-10-04
 
 This release closes the gaps found while writing down the invariants of the

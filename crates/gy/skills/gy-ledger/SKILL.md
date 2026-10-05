@@ -5,7 +5,7 @@ description: "Use when you operate nodes and edges in a gy ledger: how needs, re
 
 # The gy ledger
 
-How to work (restore, pick one, advance, ask, stop, satisfy) is in `gy-loop`. This is what the nodes and edges mean. The shape of every command is in `gy-loop`'s `CHEATSHEET.md`.
+How to work (restore, pick one, advance, ask, stop, satisfy) is in `gy-loop`. This is what the nodes and edges mean. The shape of every command is in `gy cheat`.
 
 ## Needs, requirements, acceptance criteria
 

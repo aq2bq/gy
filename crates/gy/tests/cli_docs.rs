@@ -9,7 +9,7 @@ use std::process::Command;
 /// documents: gy's global flags, and clap's own help and version.
 const COMMON: [&str; 6] = ["--json", "-C", "--scope", "-h", "--help", "--version"];
 
-const CHEATSHEET: &str = "skills/gy-loop/CHEATSHEET.md";
+const CHEATSHEET: &str = "CHEATSHEET.md";
 const README: &str = "../../README.md";
 const README_JA: &str = "../../README.ja.md";
 
@@ -204,4 +204,63 @@ fn the_cli_surface_and_the_documents_agree() {
         }
     }
     assert!(failures.is_empty(), "\n{}", failures.join("\n"));
+}
+
+/// `gy cheat` prints the embedded cheatsheet itself and needs no gy.toml
+/// (n-d599, ac-4dc4): a directory with nothing in it still answers, and the
+/// bytes are the repository's canonical file.
+#[test]
+fn gy_cheat_prints_the_cheatsheet_without_a_repository() {
+    let dir = tempfile::tempdir().expect("a temporary directory");
+    let output = Command::new(env!("CARGO_BIN_EXE_gy"))
+        .arg("cheat")
+        .current_dir(dir.path())
+        .output()
+        .expect("run gy cheat");
+    assert!(
+        output.status.success(),
+        "gy cheat exited {}: {}",
+        output.status,
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        output.stderr.is_empty(),
+        "gy cheat wrote to stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        output.stdout,
+        read(CHEATSHEET).into_bytes(),
+        "gy cheat does not print the canonical cheatsheet byte for byte"
+    );
+}
+
+/// The cheatsheet's Writes section states when a write needs `--scope`
+/// (n-d599, ac-0d9c): the rule must be there, so a reader who meets a
+/// multi-scope gy.toml is not refused by surprise.
+#[test]
+fn the_cheatsheet_writes_section_states_the_scope_rule() {
+    let text = read(CHEATSHEET);
+    let mut in_writes = false;
+    let mut found = false;
+    for line in text.lines() {
+        if line.starts_with("Writes:") {
+            in_writes = true;
+            continue;
+        }
+        if !in_writes || line.trim().is_empty() {
+            continue;
+        }
+        // The section ends at the next line that starts at the margin.
+        if !line.starts_with(' ') {
+            break;
+        }
+        if line.contains("--scope") && line.contains("gy.toml") {
+            found = true;
+        }
+    }
+    assert!(
+        found,
+        "the Writes section no longer states the --scope rule"
+    );
 }

@@ -20,6 +20,10 @@ use remote_cli::RemoteAction;
 use std::path::Path;
 use write::Written;
 
+/// The cheatsheet this binary carries (n-d599): one file, printed byte for byte
+/// by `gy cheat`, so the shape of the commands never drifts from the release.
+const CHEATSHEET: &str = include_str!("../CHEATSHEET.md");
+
 fn main() {
     let cli = Cli::parse();
     if let Err(error) = dispatch(&cli) {
@@ -37,8 +41,17 @@ fn dispatch(cli: &Cli) -> Result<()> {
     deprecation(&cli.command);
     match &cli.command {
         Command::Init { name } => writes::init(cli, name),
+        // The cheatsheet needs no gy.toml and no ledger, so it runs before the
+        // root is resolved (n-d599).
+        Command::Cheat => cheat(),
         _ => run(cli),
     }
+}
+
+/// `gy cheat`: print the embedded cheatsheet wherever the reader stands.
+fn cheat() -> Result<()> {
+    print!("{CHEATSHEET}");
+    Ok(())
 }
 
 /// The one line an old name prints before it does the same work (n-8d0e).
@@ -87,6 +100,7 @@ fn run(cli: &Cli) -> Result<()> {
         Command::Sync => reads::sync_command(cli, &root, &ledger),
         Command::Remote { action } => remote(cli, &root, &ledger, action),
         Command::Init { .. } | Command::Share { .. } | Command::Join => unreachable!("early"),
+        Command::Cheat => unreachable!("early"),
         Command::Need { action } => write_need(cli, &root, &ledger, action),
         Command::Question { action } => write_question(cli, &root, &ledger, action),
         Command::Criterion { action } => write_criterion(cli, &root, &ledger, action),

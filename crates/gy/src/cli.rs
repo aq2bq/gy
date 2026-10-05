@@ -68,6 +68,8 @@ pub enum Command {
     },
     /// Read the ledger in a browser, on 127.0.0.1 until stopped.
     Serve,
+    /// Print the cheatsheet this gy carries, as it is.
+    Cheat,
     /// Where the ledger lives: set the remote, join a shared project, or sync.
     Remote {
         #[command(subcommand)]
