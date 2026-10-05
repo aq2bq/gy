@@ -43,6 +43,16 @@
   given, must be a passage in the older decision's body or scope note or the
   write is refused. No storage format, other operation, or output changes.
 
+- **The cheatsheet's rows are drawn to be typed as they stand** (n-cb00,
+  r-5fcf): every option now shows its value — `[--scope <name>]`,
+  `[--out <dir>]`, the `list` filters, and `edit`'s `[--title <title>]` and
+  `[--body-file <path>]` — and the scope rule says a write that *creates a
+  node* needs `--scope` when `gy.toml` names more than one scope (a write to
+  an existing node does not). A test now runs every row against a real
+  two-scope ledger, checks each row's brackets against `--help`, and runs the
+  mark rule for every relation through `link` and `decide`, so the drawing
+  cannot drift from the CLI.
+
 ### Updating
 
 - **The bundled skills changed** (n-d599): the skills no longer carry a

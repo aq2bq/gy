@@ -6,17 +6,17 @@ Starting a repository:
   gy init <scope>                                      write gy.toml with one scope here; a gy.toml already here is reported, not touched; the upward search stops at .git
 
 Starting a session:
-  gy handover [--scope]
-  gy next [--scope]
+  gy handover [--scope <name>]
+  gy next [--scope <name>]
   gy show <ID>
 
 Reads:
   gy cheat                                             print this cheatsheet as it is: no gy.toml is looked for and it has no options
   gy show <ID|ref>... [--full]                         show nodes, with what each still lacks
-  gy list [--type] [--status] [--targets] [--grep] [--actor] [--since]   list nodes; with --actor / --since, list write units. Spelling ignores case. --since takes a seq (the writes after it, not including it) or a date (YYYY-MM-DD, from midnight where you are)
-  gy next [--scope]                                    the needs whose prerequisites are settled, limited to the scope when given
-  gy handover [--scope]                                requirements in progress and the counts a session needs to resume, limited to the scope when given
-  gy publish [--scope] [--out]                          the wiki a person reads on GitHub: one entry README per scope and a page per need and decision, the nodes each reaches in full, and loose.md for the rest
+  gy list [--type <kind>] [--status <status>] [--targets <ID>] [--grep <text>] [--actor <name>] [--since <seq|date>]   list nodes; with --actor / --since, list write units. Spelling ignores case. --since takes a seq (the writes after it, not including it) or a date (YYYY-MM-DD, from midnight where you are)
+  gy next [--scope <name>]                             the needs whose prerequisites are settled, limited to the scope when given
+  gy handover [--scope <name>]                         requirements in progress and the counts a session needs to resume, limited to the scope when given
+  gy publish [--scope <name>] [--out <dir>]             the wiki a person reads on GitHub: one entry README per scope and a page per need and decision, the nodes each reaches in full, and loose.md for the rest
   gy serve                                              read the ledger in a browser: 127.0.0.1, GET only, no path that writes, until stopped. Opens the browser when started from a terminal
 
 Where the ledger lives (experimental; only for sharing with a team. With no remote in gy.toml none of these is ever used and gy stays local. remote set is the person's step, not yours: it writes gy.toml and uploads the ledger. The old names share / join / sync still work but are deprecated):
@@ -25,7 +25,7 @@ Where the ledger lives (experimental; only for sharing with a team. With no remo
   gy remote sync                                       sync with the remote (experimental): fetch the copy, push what is not pushed, pull and rebase. On trouble, the cause and the way out
 
 Writes:
-  A write needs --scope <name> when gy.toml names more than one scope; with one scope the only one is used.
+  A write that creates a node needs --scope <name> when gy.toml names more than one scope; a write to an existing node does not, and with one scope the only one is used.
   gy need add "<title>" --targets <AC>... [--spawned-by <D>] [--body-file <path>]
   gy need close <ID> --by fact|external --evidence <text>
   gy question add "<title>" --decider <name> --options <text>... [--body-file <path>]        at least two options
@@ -41,7 +41,7 @@ Writes:
         --mark is required with --relate narrows and supersedes, optional with widens and completes; given, it must be a passage in the older decision's body or scope note, or the write is refused
   gy link <from> <relation> <to> [--mark <text>] [--remove]
         relations: targets, filed-as, relies-on, depends-on, waits-on, raised, spawned-by, closes, narrows, widens, supersedes, completes. --mark is required with narrows and supersedes and optional with the others; given, it must be a passage in the older decision's body or scope note, or the write is refused
-  gy edit <ID> --reason <text> [--title] [--body-file] [--set k=v] [--append k=v]
+  gy edit <ID> --reason <text> [--title <title>] [--body-file <path>] [--set k=v] [--append k=v]
         free attributes are strings. --set overwrites, --set k= removes, --append adds one line
         --set scope=<name> moves the node to a scope in gy.toml. --set decision_scope=<text> records a missing scope note, once
         the edit is applied; a later decision's mark that stops resolving is named on unresolved:
