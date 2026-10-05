@@ -15,6 +15,16 @@
   keeps only its id. The storage format, the URL, and the commands are
   unchanged.
 
+- **The same card names the node under the pointer on the graph page**
+  (n-8e21, r-5c04, d-1c00): hovering a node on `#/graph` — in the overview of
+  bubbles or in close — shows the node page's card (id and alias, kind, status,
+  scope badge, whole title) beside it, kept inside the figure and taking no
+  pointer; moving off the node or the canvas, and dragging, take it away. The
+  card is built by one core function (`GyState.card`, handed to the pages as
+  `ui.card`), which the node page now calls too, so the two cannot drift. The
+  graph's answer is unchanged: the title and alias come from `/api/labels`,
+  never `/api/graph` (ac-adda).
+
 ## 1.2.4 - 2026-10-04
 
 This release closes the gaps found while writing down the invariants of the

@@ -9,6 +9,9 @@
   let lang = 'en';
   let tag = () => '';
   let copy = () => '';
+  /* The shared card builder, handed in by the root; the node page and the
+     graph page show one card (d-1c00). */
+  let makeCard = () => '';
   /* The map's camera, the state's one, kept here for the draw (n-9ca9). */
   let cam = { x: 0, y: 0, k: 1 };
   /* The box the pointer is on, from the state; the card names it (n-dc1a). */
@@ -51,6 +54,7 @@
     lang = state.lang;
     tag = ui.scopeTag;
     copy = text => window.GyCopy.tag(text, state, ui);
+    makeCard = ui.card;
     node = state.page;
     cam = (state.ego && state.ego.cam) || { x: 0, y: 0, k: 1 };
     hover = (state.ego && state.ego.hover) || null;
@@ -208,24 +212,16 @@
       : `<a href="#/n/${esc(item.id)}"><g data-node="${esc(item.id)}">${inner}</g></a>`;
   }
 
-  /* The card over the box the pointer is on (n-dc1a): the five things that tell
-     one neighbour from another — id (with its alias), kind, status, scope, and
-     the whole title. It is HTML inside the map's frame but outside the camera,
-     so the figure's zoom never changes its size; a plain card, no copy mark,
-     because it takes no pointer (d-58b1). */
+  /* The card over the box the pointer is on (d-58b1, d-1c00): the shared card,
+     built by core, so the node page and the graph page show one shape. It is
+     HTML inside the map's frame but outside the camera, so the figure's zoom
+     never changes its size; a plain card, no copy mark, because it takes no
+     pointer. */
   function hoverCard() {
     const hood = node.neighborhood;
     const item = hover && hood && (hood.nodes || []).find(entry => entry.id === hover);
     if (!item) return '';
-    const kind = item.kind ? `<span class="k k-${item.kind}" data-testid="mapcardKind">${esc(t(item.kind))}</span>` : '';
-    const name = item.alias
-      ? `<span class="al">${esc(item.alias)}</span><span class="id" data-testid="mapcardId">${esc(item.id)}</span>`
-      : `<span class="id" data-testid="mapcardId">${esc(item.id)}</span>`;
-    const status = item.kind && item.status ? `<span data-testid="mapcardStatus">${esc(t(`st.${item.kind}.${item.status}`))}</span>` : '';
-    const scope = item.scope ? `<span data-testid="mapcardScope">${tag(item.scope)}</span>` : '';
-    return `<div class="egocard" data-testid="mapcard"><div class="ek">${kind}${name}</div>` +
-      `<div class="em">${status}${scope}</div>` +
-      `<div class="et" data-testid="mapcardTitle">${esc(item.title || '')}</div></div>`;
+    return makeCard({ id: item.id, alias: item.alias, kind: item.kind, status: item.status, scope: item.scope, title: item.title });
   }
 
   /* The card sits beside the box it names, kept inside the map. It is placed

@@ -33,6 +33,7 @@
   /* The shared pure helpers, bound to this state (state.js holds them). */
   const plural = kind => window.GyState.plural(kind, word);
   const scopeTag = name => window.GyState.scopeTag(name, state.shell ? state.shell.scopes : []);
+  const card = fields => window.GyState.card(fields, word, state.shell ? state.shell.scopes : []);
   const when = at => window.GyState.when(at, state.lang);
   const day = at => window.GyState.day(at, state.lang);
   const tickAt = seq => window.GyState.tickAt(state.band ? state.band.ticks : [], seq);
@@ -219,7 +220,7 @@
   /* What the regions may use: the read-only helpers and whether a copy mark is
      possible. The elements themselves belong to the regions' own holders. */
   const ui = {
-    t: word, plural, scopeTag, tickAt, when, day,
+    t: word, plural, scopeTag, card, tickAt, when, day,
     canCopy: !!navigator.clipboard,
   };
 

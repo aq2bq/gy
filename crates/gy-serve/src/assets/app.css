@@ -88,5 +88,15 @@ main{padding:0 32px 150px;max-width:1280px}
 .cpb{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;padding:0;border:1px solid var(--line);border-radius:5px;background:transparent;color:var(--paper-3);font:inherit;font-size:11px;line-height:1;cursor:pointer;flex:none}
 .cpb:hover{color:var(--paper);border-color:var(--paper-3)}
 .cpb.on{color:var(--decision);border-color:var(--decision)}
+/* The card over a node the pointer is on (d-58b1, d-1c00): plain HTML beside
+   the figure, so no figure's camera scales its text. It takes no pointer, so
+   moving over it cannot steal the hover from the node. The node page and the
+   graph page both show it (built by state.js `card`). */
+.egocard{position:absolute;z-index:2;pointer-events:none;max-width:260px;background:rgba(20,27,45,.96);border:1px solid var(--line);border-radius:10px;padding:8px 12px;box-shadow:0 14px 40px rgba(0,0,0,.45)}
+.egocard .ek{display:flex;gap:8px;align-items:center;font-family:var(--mono);font-size:11px;color:var(--paper-3);flex-wrap:wrap}
+.egocard .ek .al{color:var(--paper);font-size:13px}
+.egocard .ek .id{color:var(--paper-3);font-size:11px}
+.egocard .em{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:7px;font-size:11px;color:var(--paper-2)}
+.egocard .et{font-family:var(--sans);font-size:13px;line-height:1.5;color:var(--paper);margin-top:7px;word-break:break-word}
 @media (max-width:900px){.app{grid-template-columns:1fr}.side{position:static;height:auto}}
 .pushmark{font-family:var(--mono);font-size:9px;font-style:normal;color:var(--criterion);margin-left:3px}

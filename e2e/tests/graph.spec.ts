@@ -67,9 +67,65 @@ test('the graph goes from a bubble to a node to a page', async ({ page, request 
   await page.mouse.click(box.x + at.x, box.y + at.y);
   const shown = await (await request.get(`${gy.url}api/node/${node.id}`)).json();
   await expect(main(page).getByRole('link', { name: /Open/ })).toBeVisible();
-  await expect(main(page).getByText(shown.title)).toBeVisible();
+  await expect(main(page).getByTestId('gpanel').getByText(shown.title)).toBeVisible();
 
   // A double click on the same node opens its page.
+  await settleCamera(page);
+  const again = await screen(page, node.x, node.y);
+  await page.mouse.dblclick(box.x + again.x, box.y + again.y);
+  await expect(page).toHaveURL(new RegExp(`#/n/${node.id}$`));
+});
+
+test('a node shows the shared card on hover, at any scale', async ({ page, request }) => {
+  const graph = await (await request.get(`${gy.url}api/graph`)).json();
+  const words = await (await request.get(`${gy.url}assets/i18n.json`)).json();
+  // A node with a state word and a label, so the card carries all five things.
+  const node = graph.nodes.find((item: { state: string | null }) => item.state);
+  const labels = await (await request.get(`${gy.url}api/labels?ids=${encodeURIComponent(node.id)}`)).json();
+  const label = labels.labels[node.id];
+
+  await page.goto(`${gy.url}#/graph`);
+  const canvas = main(page).locator('canvas');
+  await expect(canvas).toBeVisible();
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('the canvas has no box');
+  await expect(main(page).getByRole('button', { name: /all scopes/ })).toBeVisible();
+  await settleCamera(page);
+  const card = main(page).getByTestId('mapcard');
+  await expect(card).toHaveCount(0);
+
+  // The widest step — bubbles and dots — shows the card too (ac-f333).
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  for (let step = 0; step < 6; step++) await page.mouse.wheel(0, 600);
+  let at = await screen(page, node.x, node.y);
+  await page.mouse.move(box.x + at.x, box.y + at.y);
+  await expect(card).toBeVisible();
+  await expect(card.getByTestId('mapcardId')).toHaveText(node.id);
+  await expect(card.getByTestId('mapcardKind')).toHaveClass(new RegExp(`k-${node.kind}`));
+  await expect(card.getByTestId('mapcardStatus')).toHaveText(words.en.st[node.kind][node.state]);
+  await expect(card.getByTestId('mapcardScope')).toHaveText(node.scope);
+  await expect(card.getByTestId('mapcardTitle')).toHaveText(label.title);
+
+  // Off the node and the canvas: the card goes.
+  await page.mouse.move(box.x - 40, box.y + box.height / 2);
+  await expect(card).toHaveCount(0);
+
+  // Close in (dots, ids, titles): the card stays, and the zoom never changes
+  // its text (d-1c00).
+  at = await screen(page, node.x, node.y);
+  await page.mouse.move(box.x + at.x, box.y + at.y);
+  await expect(card).toBeVisible();
+  const size = await card.getByTestId('mapcardTitle').evaluate(el => getComputedStyle(el).fontSize);
+  for (let step = 0; step < 6; step++) await page.mouse.wheel(0, -240);
+  await expect(card).toBeVisible();
+  expect(await card.getByTestId('mapcardTitle').evaluate(el => getComputedStyle(el).fontSize)).toBe(size);
+
+  // A click still selects (the right-hand card opens); a double click still
+  // opens the node's page.
+  at = await screen(page, node.x, node.y);
+  await page.mouse.click(box.x + at.x, box.y + at.y);
+  await expect(main(page).getByRole('link', { name: /Open/ })).toBeVisible();
+  await expect(main(page).getByTestId('gpanel').getByText(label.title)).toBeVisible();
   await settleCamera(page);
   const again = await screen(page, node.x, node.y);
   await page.mouse.dblclick(box.x + again.x, box.y + again.y);

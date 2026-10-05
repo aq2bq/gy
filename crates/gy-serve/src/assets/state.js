@@ -187,6 +187,22 @@
     return `<span class="sb" style="--sb:${hue}">${esc(text)}</span>`;
   }
 
+  /* The card over a node the pointer is on (d-1c00): the five things that tell
+     one node from another — id (with alias), kind, status, scope, and the whole
+     title. The node page and the graph page both show it, so it is built here
+     once; `t` translates a dictionary key and `scopes` colours the badge. */
+  function card(fields, t, scopes) {
+    const kind = fields.kind ? `<span class="k k-${fields.kind}" data-testid="mapcardKind">${esc(t(fields.kind))}</span>` : '';
+    const name = fields.alias
+      ? `<span class="al">${esc(fields.alias)}</span><span class="id" data-testid="mapcardId">${esc(fields.id)}</span>`
+      : `<span class="id" data-testid="mapcardId">${esc(fields.id)}</span>`;
+    const status = fields.kind && fields.status ? `<span data-testid="mapcardStatus">${esc(t(`st.${fields.kind}.${fields.status}`))}</span>` : '';
+    const scope = fields.scope ? `<span data-testid="mapcardScope">${scopeTag(fields.scope, scopes)}</span>` : '';
+    return `<div class="egocard" data-testid="mapcard"><div class="ek">${kind}${name}</div>` +
+      `<div class="em">${status}${scope}</div>` +
+      `<div class="et" data-testid="mapcardTitle">${esc(fields.title || '')}</div></div>`;
+  }
+
   const loc = lang => (lang === 'ja' ? 'ja-JP' : 'en-GB');
   const when = (at, lang) => new Date(at * 1000).toLocaleString(loc(lang), { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   const day = (at, lang) => new Date(at * 1000).toLocaleDateString(loc(lang));
@@ -201,5 +217,5 @@
     return found;
   }
 
-  window.GyState = { initial, apply, parseRoute, esc, plural, scopeTag, when, day, tickAt };
+  window.GyState = { initial, apply, parseRoute, esc, plural, scopeTag, card, when, day, tickAt };
 })();

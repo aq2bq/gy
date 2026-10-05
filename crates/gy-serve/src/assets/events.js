@@ -151,10 +151,16 @@
         if (down.moved) {
           down.x = event.clientX; down.y = event.clientY;
           api.run({ type: 'graphCam', value: window.GyGraph.panBy(api.state(), dx, dy) });
+          /* A drag shows no card, even when it began on a node (d-1c00). */
+          if (api.state().graph.hover) api.run({ type: 'graphHover', value: null });
         }
         return;
       }
-      if (event.target.id !== 'g') return;
+      /* Off the canvas is off the node: the card goes too (d-1c00). */
+      if (event.target.id !== 'g') {
+        if (api.state().graph.hover) api.run({ type: 'graphHover', value: null });
+        return;
+      }
       const id = window.GyGraph.hit(api.state(), canvas, event.clientX, event.clientY);
       if (id !== api.state().graph.hover) api.run({ type: 'graphHover', value: id });
     });

@@ -22,13 +22,40 @@
     };
   }
 
-  /* The scaffold, once per visit: the canvas, the crumb, the panel, the hint,
-     and the legend. A language switch does not rebuild it (as before). */
+  /* The scaffold, once per visit: the canvas, the crumb, the panel, the hover
+     card's holder, the hint, and the legend. A language switch does not rebuild
+     it (as before). */
   function build(el, ui) {
     el.innerHTML =
-      `<div class="gwrap" data-settled="true"><canvas id="g"></canvas><div class="gcrumb" id="gcrumb"></div><div class="gpanel" id="gpanel"></div>` +
+      `<div class="gwrap" data-settled="true"><canvas id="g"></canvas><div class="gcrumb" id="gcrumb"></div><div class="gpanel" id="gpanel" data-testid="gpanel"></div>` +
+      `<div class="ghover" id="ghover"></div>` +
       `<div class="ghint">${ui.t('gHint')}</div>` +
       `<div class="legend">${KINDS.map(kind => `<span><span class="dot dot-${kind}"></span>${ui.t(kind)}</span>`).join('')}</div></div>`;
+  }
+
+  /* The card over the node the pointer is on (d-1c00): the node page's card,
+     built by core, placed beside the node's screen point and kept inside the
+     figure. The canvas is drawn, so the point comes from the pure span; the
+     card takes no pointer, so it never steals the hover from the canvas. */
+  function hoverCard(el, state, view, ui) {
+    const holder = el.querySelector('#ghover');
+    if (!holder) return;
+    const id = state.graph.hover;
+    const node = id ? (state.map.nodes || []).find(item => item.id === id) : null;
+    if (!node) { holder.innerHTML = ''; return; }
+    const label = (state.labels || {})[id] || {};
+    holder.innerHTML = ui.card({ id, alias: label.alias, kind: node.kind, status: node.state, scope: node.scope, title: label.title });
+    const card = holder.querySelector('.egocard');
+    const wrap = el.querySelector('.gwrap');
+    if (!card || !wrap) return;
+    const p = window.GyDraw.span(view, node.x, node.y);
+    const gap = 14;
+    let left = p.x + gap;
+    if (left + card.offsetWidth > wrap.clientWidth) left = p.x - card.offsetWidth - gap;
+    left = Math.max(6, Math.min(left, wrap.clientWidth - card.offsetWidth - 6));
+    const top = Math.max(6, Math.min(p.y - card.offsetHeight / 2, wrap.clientHeight - card.offsetHeight - 6));
+    card.style.left = `${left}px`;
+    card.style.top = `${top}px`;
   }
 
   /* The panel: the selected node's answer (state.page), as the old page drew it. */
@@ -70,6 +97,7 @@
     if (crumb) crumb.innerHTML = window.GyDraw.crumb(c, view, ui.t, step(view.cam.k));
     const box = el.querySelector('#gpanel');
     if (box) panel(box, state, ui);
+    hoverCard(el, state, view, ui);
     window.GyDraw.frame(c, view);
   }
 
