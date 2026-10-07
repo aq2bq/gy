@@ -274,3 +274,46 @@ test('the drawing list asks for the labels it cannot name', async ({ page, reque
   expect(new Set(frame.wanted)).toEqual(new Set(frame.nodes.map(item => item.id)));
   expect(frame.nodes.every(item => graph.nodes.some((node: { id: string }) => node.id === item.id))).toBe(true);
 });
+
+/// One call the last event chose, as data: what the page would do (r-bb59).
+type Call = { type: string; value?: unknown; id?: string };
+
+/// The calls the last pointer, key, or click chose. The screen holds only what
+/// changed; this reads the judgement itself (r-bb59).
+const chosen = (page: Page) =>
+  page.evaluate(() => (window as unknown as { GyEvents: { lastCalls: () => Call[] } }).GyEvents.lastCalls());
+
+/// The node a hover call names, if the last move chose one.
+const hovered = (list: Call[]) => {
+  const step = list.find(call => (call.value as { type?: string } | undefined)?.type === 'graphHover');
+  return step ? (step.value as { value?: unknown }).value : null;
+};
+
+/// Whether the calls hold a run of the given intent type.
+const ran = (list: Call[], type: string) =>
+  list.some(call => call.type === 'run' && (call.value as { type?: string } | undefined)?.type === type);
+
+test('the pointer, the keys, and a click show the calls they chose', async ({ page, request }) => {
+  const graph = await (await request.get(`${gy.url}api/graph`)).json();
+  await page.goto(`${gy.url}#/graph`);
+  const canvas = main(page).locator('canvas');
+  await expect(canvas).toBeVisible();
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('the canvas has no box');
+  await expect(main(page).getByRole('button', { name: /all scopes/ })).toBeVisible();
+  await settleCamera(page);
+
+  // A still pointer over a node chooses the hover (graphPointer's move).
+  const node = graph.nodes.find((item: { degree: number }) => item.degree > 0);
+  const at = await screen(page, node.x, node.y);
+  await page.mouse.move(box.x + at.x, box.y + at.y);
+  await expect.poll(async () => hovered(await chosen(page))).toBe(node.id);
+
+  // An arrow key chooses the next sequence on the band (keys).
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => (await chosen(page)).some(call => call.type === 'at')).toBe(true);
+
+  // A click on a region's act chooses the root's run (click).
+  await page.getByTestId('searchEntry').click();
+  await expect.poll(async () => ran(await chosen(page), 'paletteOpen')).toBe(true);
+});

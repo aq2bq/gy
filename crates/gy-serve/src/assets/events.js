@@ -2,8 +2,15 @@
    one keydown, the input, the hash, the resize, the band's drag, and the
    graph's pointer and wheel (第 3 段). It holds no state; it turns what happened
    into the root's calls, and the geometry it needs is the graph's pure
-   functions (n-88b2). */
+   functions (n-88b2).
+
+   One event is two halves (r-bb59): a choice turns the state and what happened
+   into the calls as data, and perform is the only place that runs them. The
+   calls the last event chose are kept for what reads the screen. */
 (function () {
+  /* The calls the last event chose; read from the outside (r-bb59). */
+  let last = [];
+
   function wire(api) {
     document.addEventListener('click', event => click(api, event));
     document.addEventListener('input', event => {
@@ -23,59 +30,74 @@
   /* One click anywhere: the palette's frame, the sky, the graph's crumb and
      panel, then the plain acts the regions carry. */
   function click(api, event) {
-    if (event.target.id === 'pal') { api.run({ type: 'paletteClose' }); return; }
-    if (event.target.id === 'sky') {
-      const id = window.GySky.hit(api.state(), event.target, event.clientX, event.clientY);
-      if (id) location.hash = `#/graph/${id}`;
-      return;
+    const calls = clickPlan(api.state(), event);
+    last = calls;
+    perform(api, calls, event);
+  }
+
+  /* What one click does, from the state and where it landed. Pure: the event
+     and the state in, the calls as data. */
+  function clickPlan(state, event) {
+    const target = event.target;
+    if (target.id === 'pal') return [{ type: 'run', value: { type: 'paletteClose' } }];
+    if (target.id === 'sky') {
+      const id = window.GySky.hit(state, target, event.clientX, event.clientY);
+      return id ? [{ type: 'hash', value: `#/graph/${id}` }] : [];
     }
-    const crumb = event.target.closest('#gcrumb button');
-    if (crumb) { graphCrumb(api, crumb); return; }
-    const link = event.target.closest('#gpanel a[data-go]');
-    if (link) { event.preventDefault(); graphPick(api, link.dataset.go, true); return; }
-    const el = event.target.closest('[data-act]');
-    if (!el) return;
-    const act = el.dataset.act;
-    const arg = el.dataset.arg ?? null;
-    if (act === 'setScope') api.run({ type: 'setScope', value: arg });
-    else if (act === 'setLang') api.run({ type: 'setLang', value: arg });
-    else if (act === 'setAt') api.setAt(arg === 'now' ? null : Number(arg));
-    else if (act === 'listFilter') api.run({ type: 'listFilter', value: arg });
-    else if (act === 'historyActor') api.run({ type: 'historyActor', value: arg || null });
-    else if (act === 'copy') copy(api, arg);
-    else if (act === 'paletteOpen') api.run({ type: 'paletteOpen' });
-    else if (act === 'paletteGo') goHit(api, Number(arg));
+    const crumb = target.closest('#gcrumb button');
+    if (crumb) return [{ type: 'crumb', id: crumb.id, scope: crumb.dataset.scope }];
+    const link = target.closest('#gpanel a[data-go]');
+    if (link) return [{ type: 'prevent' }, { type: 'pick', id: link.dataset.go, force: true }];
+    const el = target.closest('[data-act]');
+    return el ? actPlan(el.dataset.act, el.dataset.arg ?? null) : [];
+  }
+
+  /* The plain acts a region carries (`data-act`), as calls. */
+  function actPlan(act, arg) {
+    switch (act) {
+      case 'setScope': return [{ type: 'run', value: { type: 'setScope', value: arg } }];
+      case 'setLang': return [{ type: 'run', value: { type: 'setLang', value: arg } }];
+      case 'setAt': return [{ type: 'at', value: arg === 'now' ? null : Number(arg) }];
+      case 'listFilter': return [{ type: 'run', value: { type: 'listFilter', value: arg } }];
+      case 'historyActor': return [{ type: 'run', value: { type: 'historyActor', value: arg || null } }];
+      case 'copy': return [{ type: 'clipboard', text: arg }];
+      case 'paletteOpen': return [{ type: 'run', value: { type: 'paletteOpen' } }];
+      case 'paletteGo': return [{ type: 'hit', index: Number(arg) }];
+      default: return [];
+    }
   }
 
   /* One key: the palette's own keys first, then the band's arrows and the two
      zoom keys of whichever figure is on the page (n-9ca9). */
   function keys(api, event) {
     if (api.composing(event)) return;
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-      event.preventDefault();
-      api.run({ type: 'paletteOpen' });
-      return;
-    }
+    const calls = keyPlan(api.state(), event);
+    last = calls;
+    perform(api, calls, event);
+  }
+
+  /* What one key does. Pure: the event and the state in, the calls as data. */
+  function keyPlan(state, event) {
+    const key = event.key;
+    if ((event.metaKey || event.ctrlKey) && key.toLowerCase() === 'k') return [{ type: 'prevent' }, { type: 'run', value: { type: 'paletteOpen' } }];
     const typing = event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA';
-    if (api.state().palette.open && event.target.id === 'palq') { paletteKey(api, event); return; }
-    if (event.key === '/' && !typing) {
-      event.preventDefault();
-      api.run({ type: 'paletteOpen' });
-      return;
-    }
-    const state = api.state();
+    if (state.palette.open && event.target.id === 'palq') return [{ type: 'palette' }];
+    if (key === '/' && !typing) return [{ type: 'prevent' }, { type: 'run', value: { type: 'paletteOpen' } }];
     const head = state.at === null ? (state.band ? state.band.max : 0) : state.at;
-    if (event.key === 'ArrowLeft') api.setAt(head - 1);
-    if (event.key === 'ArrowRight') api.setAt(head + 1);
+    if (key === 'ArrowLeft') return [{ type: 'at', value: head - 1 }];
+    if (key === 'ArrowRight') return [{ type: 'at', value: head + 1 }];
+    return zoomPlan(event, typing);
+  }
+
+  /* The two zoom keys, for whichever figure is on the page (n-9ca9). */
+  function zoomPlan(event, typing) {
     const canvas = document.getElementById('g');
     const map = document.getElementById('ego');
-    if ((!canvas && !map) || typing || event.metaKey || event.ctrlKey || event.altKey) return;
-    if (event.key === '+' || event.key === '=' || event.key === '-' || event.key === '_') {
-      event.preventDefault();
-      const ratio = event.key === '+' || event.key === '=' ? 1.4 : 1 / 1.4;
-      if (canvas) api.run({ type: 'graphCam', value: window.GyGraph.zoomAt(state, canvas, ratio) });
-      else mapZoom(api, map, ratio);
-    }
+    if ((!canvas && !map) || typing || event.metaKey || event.ctrlKey || event.altKey) return [];
+    const key = event.key;
+    if (key !== '+' && key !== '=' && key !== '-' && key !== '_') return [];
+    const ratio = key === '+' || key === '=' ? 1.4 : 1 / 1.4;
+    return [{ type: 'prevent' }, { type: 'zoom', ratio, onCanvas: !!canvas }];
   }
 
   /* The copy mark: write the text, then let the state show the sign (n-6afd). No
@@ -137,42 +159,96 @@
   function graphPointer(api) {
     let down = null, clicked = -Infinity;
     document.addEventListener('pointerdown', event => {
-      if (event.target.id !== 'g') return;
-      down = { x: event.clientX, y: event.clientY, moved: false };
-      event.target.setPointerCapture(event.pointerId);
-      event.target.classList.add('grab');
+      const plan = graphDown(event);
+      if (!plan) return;
+      down = plan.down;
+      last = plan.calls;
+      perform(api, plan.calls, event);
     });
     document.addEventListener('pointermove', event => {
-      const canvas = document.getElementById('g');
-      if (!canvas) return;
-      if (down) {
-        const dx = event.clientX - down.x, dy = event.clientY - down.y;
-        if (Math.hypot(dx, dy) > 3) down.moved = true;
-        if (down.moved) {
-          down.x = event.clientX; down.y = event.clientY;
-          api.run({ type: 'graphCam', value: window.GyGraph.panBy(api.state(), dx, dy) });
-          /* A drag shows no card, even when it began on a node (d-1c00). */
-          if (api.state().graph.hover) api.run({ type: 'graphHover', value: null });
-        }
-        return;
-      }
-      /* Off the canvas is off the node: the card goes too (d-1c00). */
-      if (event.target.id !== 'g') {
-        if (api.state().graph.hover) api.run({ type: 'graphHover', value: null });
-        return;
-      }
-      const id = window.GyGraph.hit(api.state(), canvas, event.clientX, event.clientY);
-      if (id !== api.state().graph.hover) api.run({ type: 'graphHover', value: id });
+      const plan = graphMove(api.state(), event, down);
+      if (!plan) return;
+      down = plan.down;
+      last = plan.calls;
+      perform(api, plan.calls, event);
     });
     document.addEventListener('pointerup', event => {
-      if (!down) return;
-      const wasDrag = down.moved;
-      down = null;
-      const canvas = document.getElementById('g');
-      if (canvas) canvas.classList.remove('grab');
-      if (wasDrag || event.target.id !== 'g') return;
-      clicked = graphClick(api, event.target, event, clicked);
+      const plan = graphUp(api.state(), event, down, clicked, performance.now());
+      if (!plan) return;
+      down = plan.down;
+      clicked = plan.clicked;
+      last = plan.calls;
+      perform(api, plan.calls, event);
     });
+  }
+
+  /* A press on the canvas starts a drag, keeping the pointer (r-bb59). */
+  function graphDown(event) {
+    if (event.target.id !== 'g') return null;
+    return {
+      down: { x: event.clientX, y: event.clientY, moved: false },
+      calls: [{ type: 'capture', element: event.target, pointerId: event.pointerId }, { type: 'grab', element: event.target, on: true }],
+    };
+  }
+
+  /* A move: a drag pans it and hides the card; a still pointer changes the
+     hover. Null when the graph is not on the page: the event is another
+     figure's. Pure: the session in, the session and the calls out. */
+  function graphMove(state, event, down) {
+    const canvas = document.getElementById('g');
+    if (!canvas) return null;
+    if (!down) return { down: null, calls: hoverCalls(state, canvas, event) };
+    const hover = state.graph.hover ? { type: 'run', value: { type: 'graphHover', value: null } } : null;
+    return dragMove(down, event, (dx, dy) => ({ type: 'graphPan', dx, dy }), hover);
+  }
+
+  /* The node under a still pointer, and the card that follows it; off the
+     canvas is off the node (d-1c00). */
+  function hoverCalls(state, canvas, event) {
+    if (event.target.id !== 'g') return state.graph.hover ? [{ type: 'run', value: { type: 'graphHover', value: null } }] : [];
+    const id = window.GyGraph.hit(state, canvas, event.clientX, event.clientY);
+    return id !== state.graph.hover ? [{ type: 'run', value: { type: 'graphHover', value: id } }] : [];
+  }
+
+  /* A drag's move, for the canvas and the map: past 3 px it pans by the step and
+     hides the card (d-1c00, n-dc1a). */
+  function dragMove(down, event, pan, hover) {
+    const dx = event.clientX - down.x, dy = event.clientY - down.y;
+    const moved = down.moved || Math.hypot(dx, dy) > 3;
+    if (!moved) return { down, calls: [] };
+    const calls = [pan(dx, dy)];
+    if (hover) calls.push(hover);
+    return { down: { x: event.clientX, y: event.clientY, moved: true }, calls };
+  }
+
+  /* A release: a drag only lets the grab go; a plain press on the canvas picks
+     what it landed on. Null when there was no press on the canvas. Pure: when
+     it landed and the calls as data. */
+  function graphUp(state, event, down, clicked, now) {
+    if (!down) return null;
+    const canvas = document.getElementById('g');
+    const calls = canvas ? [{ type: 'grab', element: canvas, on: false }] : [];
+    if (down.moved || event.target.id !== 'g') return { down: null, clicked, calls };
+    const result = graphClickPlan(state, event, clicked, now);
+    return { down: null, clicked: result.clicked, calls: calls.concat(result.calls) };
+  }
+
+  /* One click on the canvas: a node, a bubble, or nothing. The second click on
+     the same node opens its page (n-7c5d). Pure: when it landed and the calls. */
+  function graphClickPlan(state, event, clicked, now) {
+    const canvas = document.getElementById('g');
+    const id = window.GyGraph.hit(state, canvas, event.clientX, event.clientY);
+    const double = now - clicked < 350;
+    if (id) {
+      const calls = double && id === state.graph.selected
+        ? [{ type: 'hash', value: `#/n/${id}` }]
+        : [{ type: 'pick', id, force: false }];
+      return { clicked: now, calls };
+    }
+    if (double) return { clicked: now, calls: [{ type: 'zoom', ratio: 2, x: event.clientX, y: event.clientY, onCanvas: true }] };
+    const bubble = window.GyGraph.bubbleAt(state, canvas, event.clientX, event.clientY);
+    if (bubble && state.graph.cam.k < 1.2) return { clicked: now, calls: [{ type: 'bubble', bubble }] };
+    return { clicked: now, calls: [{ type: 'run', value: { type: 'graphSelect', value: null } }] };
   }
 
   /* The node map's camera: the pointer and the drag arrive in screen px, so the
@@ -217,34 +293,56 @@
       event.preventDefault();
     }, true);
     document.addEventListener('pointerdown', event => {
-      const svg = document.getElementById('ego');
+      const plan = mapDown(event);
       swallow = false;
-      if (!svg || !svg.contains(event.target)) return;
-      down = { x: event.clientX, y: event.clientY, moved: false };
-      svg.classList.add('grab');
+      if (!plan) return;
+      down = plan.down;
+      last = plan.calls;
+      perform(api, plan.calls, event);
     });
     document.addEventListener('pointermove', event => {
-      const svg = document.getElementById('ego');
-      if (!svg) return;
-      if (down) {
-        const dx = event.clientX - down.x, dy = event.clientY - down.y;
-        if (!down.moved && Math.hypot(dx, dy) > 3) down.moved = true;
-        if (!down.moved) return;
-        down.x = event.clientX; down.y = event.clientY;
-        mapPan(api, svg, dx, dy);
-        /* A drag shows no card, even when it began on a box (n-dc1a). */
-        if (api.state().ego.hover) api.run({ type: 'mapHover', value: null });
-        return;
-      }
-      const id = boxUnder(svg, event.target);
-      if (id !== api.state().ego.hover) api.run({ type: 'mapHover', value: id });
+      const plan = mapMove(api.state(), event, down);
+      if (!plan) return;
+      down = plan.down;
+      last = plan.calls;
+      perform(api, plan.calls, event);
     });
     document.addEventListener('pointerup', () => {
-      const svg = document.getElementById('ego');
-      if (svg) svg.classList.remove('grab');
-      swallow = !!down && down.moved;
+      const plan = mapUp(down);
       down = null;
+      swallow = plan ? plan.swallow : false;
+      if (!plan) return;
+      last = plan.calls;
+      perform(api, plan.calls, null);
     });
+  }
+
+  /* A press on the map starts a drag, with no capture (n-9ca9). */
+  function mapDown(event) {
+    const svg = document.getElementById('ego');
+    if (!svg || !svg.contains(event.target)) return null;
+    return { down: { x: event.clientX, y: event.clientY, moved: false }, calls: [{ type: 'grab', element: svg, on: true }] };
+  }
+
+  /* A move: a drag pans it; a still pointer picks the box under it. Null when
+     the map is not on the page: the event is another figure's. */
+  function mapMove(state, event, down) {
+    const svg = document.getElementById('ego');
+    if (!svg) return null;
+    if (!down) {
+      const id = boxUnder(svg, event.target);
+      return { down: null, calls: id !== state.ego.hover ? [{ type: 'run', value: { type: 'mapHover', value: id } }] : [] };
+    }
+    const hover = state.ego.hover ? { type: 'run', value: { type: 'mapHover', value: null } } : null;
+    return dragMove(down, event, (dx, dy) => ({ type: 'panMap', dx, dy }), hover);
+  }
+
+  /* A release: the grab goes, and a drag consumes the click that follows it.
+     Null when the map is not on the page. */
+  function mapUp(down) {
+    const svg = document.getElementById('ego');
+    if (!svg) return null;
+    return { swallow: !!down && down.moved, calls: [{ type: 'grab', element: svg, on: false }] };
   }
 
   /* The wheel over a figure: one notch is one zoom about the pointer, on the
@@ -269,28 +367,6 @@
     mapZoom(api, map, ratio, event.clientX, event.clientY);
   }
 
-  /* One click on the canvas: a node, a bubble, or nothing. The second click on
-     the same node opens its page (n-7c5d). Returns when it landed. */
-  function graphClick(api, canvas, event, clicked) {
-    const state = api.state();
-    const id = window.GyGraph.hit(state, canvas, event.clientX, event.clientY);
-    const now = performance.now();
-    const double = now - clicked < 350;
-    if (id) {
-      if (double && id === state.graph.selected) location.hash = `#/n/${id}`;
-      else graphPick(api, id, false);
-      return now;
-    }
-    if (double) {
-      api.run({ type: 'graphCam', value: window.GyGraph.zoomAt(state, canvas, 2, event.clientX, event.clientY) });
-      return now;
-    }
-    const bubble = window.GyGraph.bubbleAt(state, canvas, event.clientX, event.clientY);
-    if (bubble && state.graph.cam.k < 1.2) graphBubble(api, bubble);
-    else api.run({ type: 'graphSelect', value: null });
-    return now;
-  }
-
   /* A node picked: the panel opens, and a close camera goes to it. */
   function graphPick(api, id, force) {
     const state = api.state();
@@ -304,9 +380,9 @@
     graphFit(api, { scope: bubble.scope });
   }
 
-  function graphCrumb(api, button) {
+  function graphCrumb(api, id, scope) {
     api.run({ type: 'graphSelect', value: null });
-    graphFit(api, button.id === 'gback' ? null : { scope: button.dataset.scope });
+    graphFit(api, id === 'gback' ? null : { scope });
   }
 
   /* The pure fit becomes the root's target; the root's clock moves the camera. */
@@ -317,5 +393,43 @@
     if (cam) api.run({ type: 'graphTarget', value: cam });
   }
 
-  window.GyEvents = { wire };
+  /* The one zoom, for the canvas or the map, about a point when given. */
+  function zoomCall(api, step) {
+    const state = api.state();
+    if (step.onCanvas) {
+      api.run({ type: 'graphCam', value: window.GyGraph.zoomAt(state, document.getElementById('g'), step.ratio, step.x, step.y) });
+      return;
+    }
+    mapZoom(api, document.getElementById('ego'), step.ratio, step.x, step.y);
+  }
+
+  /* The decided calls, becoming acts: the root, the hash, and the DOM. Nothing
+     is judged here (r-bb59). */
+  function perform(api, calls, event) {
+    for (const step of calls) {
+      const go = CALLS[step.type];
+      if (go) go(api, step, event);
+    }
+  }
+
+  /* One name per call: what each decided call does. */
+  const CALLS = {
+    run: (api, step) => api.run(step.value),
+    at: (api, step) => api.setAt(step.value),
+    hash: (api, step) => { location.hash = step.value; },
+    prevent: (api, step, event) => event.preventDefault(),
+    capture: (api, step) => step.element.setPointerCapture(step.pointerId),
+    grab: (api, step) => step.element.classList.toggle('grab', step.on),
+    pick: (api, step) => graphPick(api, step.id, step.force),
+    bubble: (api, step) => graphBubble(api, step.bubble),
+    crumb: (api, step) => graphCrumb(api, step.id, step.scope),
+    hit: (api, step) => goHit(api, step.index),
+    clipboard: (api, step) => copy(api, step.text),
+    palette: (api, step, event) => paletteKey(api, event),
+    zoom: (api, step) => zoomCall(api, step),
+    graphPan: (api, step) => api.run({ type: 'graphCam', value: window.GyGraph.panBy(api.state(), step.dx, step.dy) }),
+    panMap: (api, step) => mapPan(api, document.getElementById('ego'), step.dx, step.dy),
+  };
+
+  window.GyEvents = { wire, lastCalls: () => last };
 })();

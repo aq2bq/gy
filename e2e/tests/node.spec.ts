@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Locator } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test';
 import { start, type Ledger } from '../fixtures/ledger';
 
 let gy: Ledger;
@@ -323,4 +323,29 @@ test('a node opened again after another page starts at the top', async ({ page, 
   await page.evaluate(id => { location.hash = `#/n/${id}`; }, decision.id);
   await expect(map).toBeVisible();
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
+});
+
+/// The calls the last pointer chose, as data: the judgement, not its pixels
+/// (r-bb59). The graph spec reads the same handle for the canvas.
+const chosen = (page: Page) =>
+  page.evaluate(() => (window as unknown as { GyEvents: { lastCalls: () => { type: string; value?: unknown }[] } }).GyEvents.lastCalls());
+
+test('the map pointer shows the hover call it chose', async ({ page, request }) => {
+  const decision = await closes(request);
+  await page.goto(`${gy.url}#/n/${decision.id}`);
+  const main = page.getByTestId('main');
+  const map = main.getByTestId('ego');
+  await expect(map).toBeVisible();
+
+  // A still pointer over the focus box chooses the map's hover (mapPointer).
+  const box = main.locator('svg rect[data-hop="0"]');
+  const at = await box.boundingBox();
+  if (!at) throw new Error('the focus box has no box');
+  await page.mouse.move(at.x + at.width / 2, at.y + at.height / 2);
+  await expect
+    .poll(async () => {
+      const step = (await chosen(page)).find(call => (call.value as { type?: string } | undefined)?.type === 'mapHover');
+      return step ? (step.value as { value?: unknown }).value : null;
+    })
+    .toBe(decision.id);
 });
