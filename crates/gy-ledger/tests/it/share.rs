@@ -8,8 +8,7 @@ use std::path::Path;
 use std::process::Command;
 use std::sync::Arc;
 
-mod common;
-use common::ident;
+use crate::common::ident;
 
 fn git(cwd: &Path, args: &[&str]) -> String {
     let out = Command::new("git")

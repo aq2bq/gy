@@ -3,9 +3,8 @@
 //! from the empty record. Each item compares the library's answer (`show`,
 //! `list`, `next`, `now`, `handover`) with the spec's own function in
 //! `derived.rs`, so a semantic change in the source shows up here.
-#[path = "prop/derived.rs"]
-mod derived;
-mod prop;
+use crate::derived;
+use crate::prop;
 
 use derived as d;
 use gy_ledger::{

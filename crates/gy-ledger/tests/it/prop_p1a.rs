@@ -2,9 +2,8 @@
 //! item checks every accepted step's state change and counts the refused steps
 //! that met the rule; E2 is a state item. A zero count fails, so an item that
 //! was never exercised is visible.
-mod prop;
-#[path = "prop/rules.rs"]
-mod rules;
+use crate::prop;
+use crate::rules;
 use prop::{Rule, State, Step};
 use proptest::prelude::*;
 use proptest::test_runner::{Config, TestRunner};

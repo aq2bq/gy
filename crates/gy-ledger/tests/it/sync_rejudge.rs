@@ -28,8 +28,7 @@ impl Gate for RefuseAc0003 {
     }
 }
 
-mod common;
-use common::ident;
+use crate::common::ident;
 
 fn git(cwd: &Path, args: &[&str]) -> String {
     let out = Command::new("git")

@@ -4,8 +4,7 @@ use gy_ledger::{FileStore, FormatVersion, Node, NodeId, NodeKind, Repository, fo
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-mod common;
-use common::ident;
+use crate::common::ident;
 
 fn git(cwd: &Path, args: &[&str]) -> String {
     let out = Command::new("git")

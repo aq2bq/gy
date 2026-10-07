@@ -3,11 +3,9 @@
 //! change and counts the refused steps that met the rule; T5 is a state item
 //! and reads a column that includes undo. A zero count fails, so an item that
 //! was never exercised is visible.
-mod prop;
-#[path = "prop/rules.rs"]
-mod rules;
-#[path = "prop/rules_e.rs"]
-mod rules_e;
+use crate::prop;
+use crate::rules;
+use crate::rules_e;
 use prop::{Kind, Rule, State, Step};
 use proptest::prelude::*;
 use proptest::test_runner::{Config, TestRunner};

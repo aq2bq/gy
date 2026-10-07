@@ -12,8 +12,7 @@ use std::time::Duration;
 /// time: the waiter's mark is process-wide.
 static SERIAL: Mutex<()> = Mutex::new(());
 
-mod common;
-use common::ident;
+use crate::common::ident;
 
 fn git(cwd: &Path, args: &[&str]) -> String {
     let out = Command::new("git")

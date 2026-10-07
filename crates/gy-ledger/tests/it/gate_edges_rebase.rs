@@ -7,8 +7,7 @@ use gy_ledger::{
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-mod common;
-use common::ident;
+use crate::common::ident;
 
 const SCOPE: &str = "a";
 const DATE: &str = "2026-09-15T00:00:00Z";

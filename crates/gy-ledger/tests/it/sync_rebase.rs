@@ -1,3 +1,4 @@
+use crate::common::ident;
 use gy_ledger::{
     CriterionSatisfy, FileStore, FormatVersion, Link, Node, NodeId, NodeKind, Operation, Relation,
     Repository, RequirementState, Rules, format, log, share_upload, sync,
@@ -5,8 +6,6 @@ use gy_ledger::{
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
-mod common;
-use common::ident;
 fn git(cwd: &Path, args: &[&str]) -> String {
     let out = Command::new("git")
         .args(args)
