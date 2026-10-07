@@ -49,9 +49,7 @@ cargo install gy
 npx skills add aq2bq/gy
 ```
 
-`gy cheat` prints the cheatsheet this gy carries — the shape of every command — so the bundled skills name it and there is no cheatsheet file to copy beside them.
-
-Once a day, in the background, gy runs `cargo info gy` to learn the newest release on crates.io. When it is newer than yours, `gy handover` and `gy next` say so in one line on stderr, with the command to update. No other request leaves your machine unless you share a ledger.
+Once a day gy runs `cargo info gy` to check for a newer release, and `gy handover` and `gy next` tell you when there is one. Unless you share a ledger with a team, that is the only network request gy makes.
 
 ### Telling the AI about gy
 
@@ -104,200 +102,29 @@ To look at the record yourself, use `gy serve`. The screenshots show a demo ledg
 
 <img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-node-en.png" alt="One node" width="100%">
 
-## The five nodes and twelve edges
+## What the ledger holds
 
-There are five kinds of node. Four of them form a ring that follows one turn of the work: a decision spawns needs, a need is filed as a requirement, the work raises questions, and a question closes as the next decision. The fifth kind, the acceptance criterion, measures the work from outside the ring.
-
-| Node | ID | Meaning |
-| --- | --- | --- |
-| need | `n-…` | Work that must be done, aimed at acceptance criteria |
-| question | `q-…` | Something undecided, with a decider and at least two options |
-| decision | `d-…` | A decision with the conditions under which it applies |
-| requirement | `r-…` | A need turned into an approval request, with an outward reference |
-| criterion | `ac-…` | An acceptance criterion that work is counted against |
-
-Edges are stored on the node they start from; the reverse direction is derived, never written twice. An edge is one of twelve relations, and each relation is only allowed between the kinds shown here.
-
-| From → to | Relation | Reverse |
-| --- | --- | --- |
-| question → decision | `closes` | `closed-by` |
-| decision → decision | `narrows`, `widens`, `supersedes`, `completes` | `narrowed-by`, `widened-by`, `superseded-by`, `completed-by` |
-| need, requirement → criterion | `targets` | `targeted-by` |
-| need → decision | `spawned-by` | `spawns` |
-| need → requirement | `filed-as` | `files` |
-| need → need | `depends-on` | `depended-on-by` |
-| requirement → decision | `relies-on` | `relied-on-by` |
-| requirement → question | `raised` | `raised-by` |
-| need → question, requirement | `waits-on` | `awaited-by` |
-
-A decision is stored with its scope note (where it holds), so a later reader can tell where it does and does not hold. `narrows` and `supersedes` also name the passage of the older decision that loses effect; the mark is checked against that decision's text when the edge is written.
-
-## How a requirement moves
-
-A requirement has four states: `filed` (registered), `approved` (design confirmed), `done` (shipped), and `cancelled`. Approval, revision, completion, and cancellation are each one command that records who heard the design, the evidence, and the reason, and every other transition is refused.
-
-| From | To | Command |
-| --- | --- | --- |
-| filed | approved | `req approve` |
-| approved | filed | `req revise` |
-| approved | done | `req done` |
-| filed, approved | cancelled | `req cancel` |
-
-Approval is the gate for outside work. gy cannot see what is built outside the ledger, but it refuses to record its result: `criterion satisfy` is refused unless an approved or done requirement `targets` the criterion, and the refusal says the command that comes next (`req add …` or `req approve …`). While a requirement is approved, its title, body, `targets` and `relies-on`, and the title and body of the criteria it targets, cannot be edited; `req revise` sends it back to filed first. Who approves is your policy, not gy's: the bundled `gy-loop` skill has the agent ask once whether you read every requirement, only the first, or leave it to the agent.
-
-A need is `done` when at least one requirement filed as it is `done`, no requirement filed as it is still `filed` or `approved`, and every criterion it `targets` is satisfied; a `cancelled` requirement counts on neither side, so a need whose requirements are all `cancelled` asks for a new `filed-as` requirement. Until then it is `open`, and `missing` names a targeted criterion that is unmet and that no requirement in progress covers. A need that ended without that is closed with `need close`.
-
-gy holds nothing about the work after approval except these four records. Where the implementation is tracked, how it is designed, and when it is audited belong outside gy, in the issue and pull request that the requirement's reference points at.
-
-## Where the ledger lives
-
-The canonical ledger is an append-only event log. The repository itself holds only `gy.toml`. Every write is one transaction appended to the log with the sequence number, time, actor, reason, and source; nothing is edited in place.
-
-`undo --reason <text>` inverts the last transaction as a new one, so the history keeps both the mistake and the correction. It undoes one transaction only; a second undo undoes the first undo (a redo). The log is the ledger; a snapshot file alongside it only speeds up opening and can be deleted.
-
-## The twenty-seven operations
-
-A write adds a transaction of your own to the ledger: it names who wrote and why, and `undo` applies to it. A read leaves the ledger as it is. Three operations are neither; they decide where the ledger lives.
-
-Before the first write (1):
-
-| Operation | Result |
+| Node | What it is |
 | --- | --- |
-| `init <scope>` | Start a repository here: write `gy.toml` with one scope, then name the skill to read and the first node to file. A `gy.toml` already here is reported, not touched |
+| need `n-…` | What you want done. Points at acceptance criteria |
+| question `q-…` | Something to decide, with a decider and at least two options |
+| decision `d-…` | What was decided, with where it holds |
+| requirement `r-…` | A promise of what will be built. Work starts after it is approved |
+| criterion `ac-…` | What has to be true for the work to count as finished |
 
-Reads (7):
-
-| Operation | Result |
-| --- | --- |
-| `show <ID\|ref>... [--full]` | One or more nodes by ID, alias, or reference, with what each still lacks |
-| `list [--type] [--status] [--targets] [--grep] [--actor] [--since]` | Node rows, or write units when `--actor` or `--since` is given. The type and status words ignore case, and `--since` takes a sequence (writes after it, not including it) or a date (`YYYY-MM-DD`, from that day's start in your own place) |
-| `next [--scope]` | The needs whose prerequisites are settled; with `--scope`, only that scope |
-| `handover [--scope]` | In-progress requirements and the counts a session needs to resume; with `--scope`, only that scope |
-| `publish [--scope] [--out]` | Write the record as a Markdown wiki: an entry `README.md` per scope and a page per need and decision |
-| `serve` | Read the ledger in a browser, on 127.0.0.1 (GET only, no write path), until stopped. It opens the browser when started from a terminal |
-| `cheat` | Print the cheatsheet this gy carries, as it is. It needs no `gy.toml` and has no options |
-
-Where the ledger lives (3, experimental):
-
-These exist only for sharing with a team. With no `remote` in `gy.toml`, none of them is ever used and gy stays local. They change things outside the ledger's own history: `remote set` writes `gy.toml` and uploads the ledger, and `remote sync` pushes commits. The old top-level names `share`, `join` and `sync` still work but are deprecated; use the `remote` group.
-
-| Operation | Result |
-| --- | --- |
-| `remote set <URL>` | Start sharing (experimental): check the remote, write `remote` into `gy.toml`, upload the ledger, print the protection and the invitation |
-| `remote join` | Join (experimental): check what you need with the fixes, fetch the copy, say who you write as and what is next; harmless to repeat |
-| `remote sync` | Sync with the remote (experimental): fetch a missing copy, push unpushed writes one commit each, take in a remote that moved ahead and re-seat your writes; on failure, say why and what to do |
-
-Writes (16):
-
-| Operation | Result |
-| --- | --- |
-| `need add "<title>" --targets <AC>... [--spawned-by <D>] [--body-file <path>]` | File a need against acceptance criteria |
-| `need close <ID> --by fact\|external --evidence <text>` | Close a need without a requirement |
-| `question add "<title>" --decider <name> --options <text>... [--body-file <path>]` | Open a question with a decider and at least two options |
-| `question close <ID> --by fact\|decision\|non-decision --evidence <text> [--decision <D>]` | Close a question and, when decided, record the decision |
-| `criterion add "<title>" [--body-file <path>]` | Add an acceptance criterion |
-| `criterion satisfy <AC> --evidence <text> [--revoke]` | Record that a criterion holds, or revoke it |
-| `req add "<title>" --need <N>... [--relies-on <D>]... [--targets <AC>]... [--ref <ref>] [--body-file <path>]` | File a requirement against needs, decisions, and criteria |
-| `req approve <ID\|ref> --design <text> --heard-by <name> --evidence <text>` | Confirm the design of a requirement |
-| `req revise <ID> --reason <text> --source <text>` | Send an approved requirement back to filed |
-| `req done <ID> --evidence <text>` | Record that an approved requirement shipped |
-| `req cancel <ID> --reason <text> --source <text>` | Cancel a requirement that was not done |
-| `decide "<title>" --scope-note <text> [--body-file <path>] [--closes <Q>]... [--relate <relation> <D> --mark <text>] [--source <text>]` | Create a decision, close questions, and record one lineage edge |
-| `link <from> <relation> <to> [--mark <text>] [--remove]` | Add or remove one edge |
-| `edit <ID> --reason <text> [--title] [--body-file] [--set k=v] [--append k=v]` | Change a node's title, body, or free attributes. A free attribute is a string; `--set` overwrites it, `--set k=` drops it, and `--append` adds one line, separated by a newline. `--set scope=<name>` moves the node to a scope gy.toml declares, and `--set decision_scope=<text>` records a decision's unrecorded applicability conditions once |
-| `scope rename <old> <new>` | Move every node of a scope to a new name and rewrite gy.toml, keeping its comments and order |
-| `undo --reason <text>` | Invert the last transaction |
-
-Every write prints what it changed, what the node still lacks, and the shape of the command that could come next, so the next step is visible without a separate instruction sheet. A write that creates a node (`need add`, `question add`, `criterion add`, `decide`, `req add`) prints `id: <ID>` as its first line, and `req add` with a `--ref` prints `id: <ID> (<ref>)`. Pass `--json` for the same content as data, and read an id from there rather than from that line.
-
-## Dates and times
-
-A node's `created`, a criterion's `satisfied_at` and a requirement's recorded dates are stored as UTC instants; `show` and `list` print them in your own time zone (`TZ`) as `YYYY-MM-DD HH:MM`, while `--json` keeps the stored value (`2026-09-18T07:28:56Z`). To name a point in time to another agent, use the write sequence or a node id, not a date.
-
-## Resuming a session
-
-A new session starts with three commands. `handover` shows the in-progress requirements with their references, the number of open questions, the number of ready needs, and the errors and warning counts. `next` lists the needs whose prerequisites are settled, and the agent presents one of them to the person it works for. `show` reads one node in full. There is no `lint` pass to run later: an invalid write is refused when it is made, and what needs attention is counted by `handover`.
-
-```sh
-gy handover
-gy next
-gy show n-3f9a
-```
-
-## gy.toml
-
-The only configuration is a scope name and, if wanted, an output path for `publish`. Anything else is refused when the file is read.
-
-Put `gy.toml` at the root of the project's git repository. gy looks for it from the current directory upward and stops at the nearest `.git`, so a repository nested inside another one never uses the outer one's ledger.
-
-```toml
-# Optional. publish writes here when --out is not given.
-output = "docs/publication"
-# Optional (experimental): the ledger-only git repository. See "Working as a team".
-remote = "https://github.com/you/yourproject-ledger.git"
-
-[scopes.myproject]
-```
-
-Reads cover every scope; `next`, `handover`, and `publish` take `--scope` to read one scope only. A write needs a scope only when the file names more than one; pass `--scope <name>` to choose. The first write creates the ledger, and reads never do.
-
-## Working as a team (experimental)
-
-A team shares one ledger through a ledger-only git repository. The members are people, each on their own machine and with their own copy of the ledger: the person starts it with `gy remote set` and another joins with `gy remote join`, and each person's agent writes to that person's copy. Two agents on one machine already share the local ledger and need no remote. There are two procedures, and in both gy says what to do next.
-
-**Start sharing (the one who used gy alone).** Create an empty private repository on GitHub and run, in a checkout of the project:
-
-```sh
-gy remote set https://github.com/you/yourproject-ledger.git
-```
-
-It checks the remote (empty or ledger-only, and that you can push), writes `remote` into `gy.toml`, uploads the ledger you have as it is, and prints how to protect the branch (require linear history, block force pushes; gy changes no settings) and the invitation to send a member. Commit `gy.toml` with the project.
-
-This step is yours, not your agent's. `gy remote set` uploads the whole ledger to that repository; an agent's runtime may treat the upload as sending data out and refuse it, and an agent cannot grant itself the permission. Run `gy remote set` yourself, once, as you create the repository and protect its branch yourself, or allow `gy remote set` and `gy remote sync` in the agent's settings yourself. After that the agent writes as before and the pushes happen in the background.
-
-**Join (the one invited).** Get write access to the ledger repository, clone the project, and run:
-
-```sh
-gy remote join
-```
-
-It checks what you need in one go (git, credentials that can read the repository, and a name to write under — `git config user.name` and `user.email`, or `GIT_AUTHOR_NAME` and `GIT_AUTHOR_EMAIL`) and, if something is missing, lists each with the fix and stops. When all is there it fetches your copy, says who you will write as (`user.name / GY_ACTOR`) and what to do next (`gy handover`). Running it again is harmless. Starting with `gy handover` instead also fetches the copy and prints the same "joined" line.
-
-**From then on, use gy as before.**
-
-- A write lands in your copy at once and is pushed in the background (right after the write, and every ten seconds while `gy serve` runs). `gy remote sync` syncs explicitly. While the remote is unreachable, reads and writes keep working, and what piled up is pushed when it is back.
-- If the remote moved ahead, your unpushed writes are re-seated after it. Only a write to a node the other side changed first is rejected, and only you are told: on stderr at your next gy command and in `handover`. Whether to redo it is your call.
-- A writer is recorded and shown as `user.name / GY_ACTOR`; the same agent name under two humans is two writers. The name is the one git signs your commits with, resolved git's way — `GIT_AUTHOR_NAME` first, then `git config user.name` — so the ledger and the git history never name two people for one write.
-- The remote is written by gy alone: one write is one commit, and a history changed outside gy is refused with the way back. A repository holding anything but a ledger is refused.
-- Remove the `remote` line from `gy.toml` and the copy is local again (the next command says so once). Put the same line back — checking out an older commit and returning does just that — and the copy carries on where it stopped; what you wrote meanwhile is pushed as usual. A different remote, or a separate ledger, is refused: there is no merge.
-
-A ledger holds the exchanges behind decisions. Putting it on a remote means that record is on GitHub.
+A criterion can be recorded as satisfied only while an approved requirement points at it. Who approves is up to you, not gy.
 
 ## Who writes
 
-Every write names its actor in `GY_ACTOR`. An unset or blank value is an error, and the name is kept in the history beside the reason and source.
+Every write needs a name in `GY_ACTOR`. Give each agent its own name, and the history shows who wrote what and why.
 
-```sh
-export GY_ACTOR=leader
-```
+## Commands
 
-Each agent writes its own records with its own name, so the history shows who changed what and why.
+`gy cheat` lists them, but every write prints the commands you can type next, so there is nothing to memorize. `gy undo` takes back the last write, and the undo stays in the history too. `gy publish` writes the ledger out as a Markdown wiki you can read on GitHub.
 
-## IDs, aliases, and refs
+## gy.toml
 
-gy allocates each ID itself, as a kind prefix and a short hash, such as `n-3f9a`. A hash always contains at least one letter a–f, so it never looks like an old ID. No counter is shared, so two agents writing at once cannot collide; a collision just mints a longer hash. `show` accepts the exact ID, an alias (zero-padding and case are ignored, so `D-8` = `D-08`), or a requirement's outward reference by exact or suffix match.
-
-An existing ledger keeps its old IDs as aliases, so `show D-164` and `show '#6027'` both reach the renamed node. A requirement's reference (`--ref`) is opaque: gy stores it and never reads what it points at.
-
-## publish
-
-`publish` writes the record as a Markdown wiki to read on GitHub: one directory per scope under the output directory, with an entry `README.md` and one page per need and per decision. The nodes each vertex reaches — its criteria, requirements and questions — are shown in full on that page, and the nodes no need and no decision reaches go to `loose.md`, so every node of the scope is readable in full.
-
-A page opens with front matter (`id`, `kind`, `state` for a need and a requirement, `scope`, `created`, and its edges by relation), the title, a link back to the entry, then the sections. A narrowed passage is struck through where it stands and names the decision that retracted it. Another scope's node is plain text with its scope named, not a link.
-
-The entry lists the open questions, the requirements being built, the newest vertices, and every decision and need, each as a link to the page that shows it. It carries no legend, no history and no diagnostics. A second run writes the same files byte for byte.
-
-`publish` always shows the record as it is now: `--since` is accepted for compatibility, has no effect, and says so on standard error once. `--out` names the output directory, `gy.toml`'s `output` names a default, and without either publish is an error. Only the target scopes' directories are removed and rewritten; other files under `--out` and other scope directories are left alone.
+`gy init <scope>` creates it. It holds only the scope names, plus the publish output directory and the remote if you want them.
 
 ## Development
 
