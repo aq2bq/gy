@@ -1,8 +1,9 @@
-//! Straight re-implementations of the derived judgements from the
-//! architecture text (Nd3–Nd5, Q3, C3, C4, D2, V1–V5), written independently
-//! of `gy-ledger`'s own functions so that a semantic change in the source
-//! shows up as a mismatch (n-7a58, r-e9f2). `show`, `list`, `next`, `now` and
-//! `handover` are the library's answers; these are the spec's.
+//! Straight re-implementations of the derived judgements (Nd3–Nd5, Q3, C3, C4,
+//! D2, V1–V5), whose item text the acceptance criteria in the ledger carry,
+//! written independently of `gy-ledger`'s own functions so that a semantic
+//! change in the source shows up as a mismatch (n-7a58, r-e9f2). `show`,
+//! `list`, `next`, `now` and `handover` are the library's answers; these are
+//! the spec's.
 use gy_ledger::{
     Narrowed, Node, NodeData, NodeId, NodeKind, Relation, RequirementState, Retraction, Warning,
 };
