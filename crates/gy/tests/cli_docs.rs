@@ -1,7 +1,8 @@
-//! The CLI's surface and its documents (n-ea49, r-13a4): every option the built
-//! binary offers must appear in the cheatsheet and in both READMEs, and no
-//! document may name an option the binary does not have. The surface is read
-//! from the binary's `--help`, the thing a reader actually sees.
+//! The CLI's surface and its documents (n-ea49, r-13a4): the cheatsheet carries
+//! the whole surface — every option the built binary offers and a row for every
+//! command — while no document, READMEs included, may name an option the binary
+//! does not have. The surface is read from the binary's `--help`, the thing a
+//! reader actually sees.
 use std::collections::{BTreeMap, BTreeSet};
 use std::process::Command;
 
@@ -132,9 +133,9 @@ fn rows(text: &str, paths: &[String]) -> BTreeMap<String, (BTreeSet<String>, usi
     found
 }
 
-/// Both directions: an option the binary has but a document lacks, and an
-/// option a document names but the binary does not have. A failure says the
-/// document, the command, the option, and the line to fix.
+/// The cheatsheet must carry every option the binary offers and a row for every
+/// command; no document may name an option the binary does not have. A failure
+/// says the document, the command, the option, and the line to fix.
 #[test]
 fn the_cli_surface_and_the_documents_agree() {
     let mut surface = BTreeMap::new();
@@ -150,25 +151,41 @@ fn the_cli_surface_and_the_documents_agree() {
         ("README.ja.md", README_JA),
     ];
     let mut failures = Vec::new();
+    // The cheatsheet carries the list (r-13a4): every option must appear in a
+    // row, and every leaf command — one with no subcommands (n-29b3) — must
+    // have one. A parent like `need` is a name, not an operation, so it is not
+    // required. The READMEs name commands only in prose, so only the reverse
+    // check below applies to them.
+    let found = rows(&read(CHEATSHEET), &paths);
+    for (path, options) in &surface {
+        if path.is_empty() {
+            continue;
+        }
+        let (shown, line) = found.get(path).cloned().unwrap_or((BTreeSet::new(), 0));
+        for option in options
+            .difference(&common())
+            .filter(|option| !shown.contains(*option))
+        {
+            let where_ = if line == 0 {
+                "no row".to_string()
+            } else {
+                format!(":{line}")
+            };
+            failures.push(format!("CHEATSHEET.md{where_} {path} is missing {option}"));
+        }
+    }
+    for command in &paths {
+        let parent = paths
+            .iter()
+            .any(|other| other.starts_with(&format!("{command} ")));
+        if !parent && !found.contains_key(command) {
+            failures.push(format!("CHEATSHEET.md has no row for {command}"));
+        }
+    }
+    println!("CHEATSHEET.md: {} commands matched", found.len());
+    // The reverse direction, for every document.
     for (name, path) in docs {
         let found = rows(&read(path), &paths);
-        for (path, options) in &surface {
-            if path.is_empty() {
-                continue;
-            }
-            let (shown, line) = found.get(path).cloned().unwrap_or((BTreeSet::new(), 0));
-            for option in options
-                .difference(&common())
-                .filter(|option| !shown.contains(*option))
-            {
-                let where_ = if line == 0 {
-                    "no row".to_string()
-                } else {
-                    format!(":{line}")
-                };
-                failures.push(format!("{name}{where_} {path} is missing {option}"));
-            }
-        }
         for (path, (options, line)) in &found {
             let known = surface.get(path).cloned().unwrap_or_default();
             for option in options
@@ -181,20 +198,6 @@ fn the_cli_surface_and_the_documents_agree() {
             }
         }
         println!("{name}: {} commands matched", found.len());
-    }
-    // Every leaf command (one with no subcommands) must appear as a row in all
-    // three documents (n-29b3). A parent like `need` is a name, not an
-    // operation, so it is not required.
-    for (name, path) in docs {
-        let found = rows(&read(path), &paths);
-        for command in &paths {
-            let parent = paths
-                .iter()
-                .any(|other| other.starts_with(&format!("{command} ")));
-            if !parent && !found.contains_key(command) {
-                failures.push(format!("{name} has no row for {command}"));
-            }
-        }
     }
     println!("the surface, {} commands:", paths.len());
     for (path, options) in &surface {
