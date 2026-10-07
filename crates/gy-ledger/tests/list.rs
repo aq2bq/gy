@@ -1,6 +1,6 @@
 use gy_ledger::{
-    Actor, Filter, FormatVersion, Link, Listing, LogRow, MemoryStore, Node, NodeData, NodeId,
-    NodeKind, Ref, Relation, Repository, RequirementState, Row, Store, list,
+    Actor, Alias, Filter, FormatVersion, Link, Listing, LogRow, Match, MemoryStore, Node, NodeData,
+    NodeId, NodeKind, Ref, Relation, Repository, RequirementState, Row, Store, list, matches,
 };
 
 const SCOPE: &str = "a";
@@ -173,6 +173,21 @@ fn list_grep_ignores_case_and_reads_the_body() {
     let mut upper_body = Filter::default();
     upper_body.grep = Some("word".into());
     assert_eq!(node_rows(&repo, &upper_body).len(), 1);
+}
+
+#[test]
+fn matches_an_alias_exactly_and_partly() {
+    let mut node = Node::need(id(NodeKind::Need, "000b"), SCOPE, DATE, "the titled one").unwrap();
+    node.add_alias(Alias("D-85".into()));
+
+    // The whole alias, whatever the case, is the exact hit; a part of it is
+    // only a name hit (d-6a45).
+    assert_eq!(matches(&node, "D-85"), Some(Match::Exact));
+    assert_eq!(matches(&node, "d-85"), Some(Match::Exact));
+    assert_eq!(matches(&node, "D-8"), Some(Match::Title));
+
+    // A query that no alias carries does not hit at all.
+    assert_eq!(matches(&node, "zzz"), None);
 }
 
 #[test]
