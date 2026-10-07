@@ -157,6 +157,25 @@ fn list_filters_by_targets_and_grep() {
 }
 
 #[test]
+fn list_grep_ignores_case_and_reads_the_body() {
+    let mut repo = repo();
+    let mut node = Node::need(id(NodeKind::Need, "000a"), SCOPE, DATE, "the titled one").unwrap();
+    node.set_body("a body WOrd");
+    let node_id = node.id().clone();
+    seed(&mut repo, &[node]);
+
+    let mut upper_title = Filter::default();
+    upper_title.grep = Some("TITLED".into());
+    let rows = node_rows(&repo, &upper_title);
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].id, node_id.to_string());
+
+    let mut upper_body = Filter::default();
+    upper_body.grep = Some("word".into());
+    assert_eq!(node_rows(&repo, &upper_body).len(), 1);
+}
+
+#[test]
 fn list_returns_history_for_actor_and_since() {
     let mut repo = repo();
     seed(

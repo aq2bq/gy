@@ -1,7 +1,8 @@
-//! GET /api/search?q=<text>: the rows whose id, alias, or title contains the
-//! text, at most ten, exact ids and aliases first (n-bd52).
+//! GET /api/search?q=<text>: the rows whose id, alias, title, or body contains
+//! the text, at most ten, exact ids and aliases first, then titles, then bodies
+//! (n-bd52, d-6a45).
 use crate::http::{Request, Response};
-use gy_ledger::{Filter, Listing, NodeKind, Repository, Row, Store, list};
+use gy_ledger::{Filter, Listing, Node, NodeKind, Repository, Store, list, matches};
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -27,7 +28,7 @@ struct Hits {
 }
 
 pub fn search<S: Store>(repo: &Repository<S>, req: &Request) -> Response {
-    let query = req.param("q").unwrap_or_default().trim().to_lowercase();
+    let query = req.param("q").unwrap_or_default().trim().to_string();
     if query.is_empty() {
         return Response::json(&Hits { hits: Vec::new() });
     }
@@ -35,57 +36,35 @@ pub fn search<S: Store>(repo: &Repository<S>, req: &Request) -> Response {
         Ok(Listing::Nodes(rows)) => rows,
         _ => Vec::new(),
     };
-    let aliases = aliases(repo);
-    let mut exact = Vec::new();
-    let mut rest = Vec::new();
+    let nodes: HashMap<String, Node> = repo
+        .all()
+        .unwrap_or_default()
+        .into_iter()
+        .map(|node| (node.id().to_string(), node))
+        .collect();
+    let mut hits = Vec::new();
     for row in rows {
-        let alias = aliases.get(&row.id).cloned();
-        if !matches(&query, &row, alias.as_deref()) {
+        let Some(node) = nodes.get(&row.id) else {
             continue;
-        }
-        let hit = Hit {
-            id: row.id,
-            alias,
-            kind: row.kind,
-            title: row.title,
-            scope: row.scope,
-            status: row.status,
         };
-        if exact_id_or_alias(&query, &hit) {
-            exact.push(hit);
-        } else {
-            rest.push(hit);
-        }
+        let Some(grade) = matches(node, &query) else {
+            continue;
+        };
+        let alias = node.aliases().first().map(|alias| alias.0.clone());
+        hits.push((
+            grade,
+            Hit {
+                id: row.id,
+                alias,
+                kind: row.kind,
+                title: row.title,
+                scope: row.scope,
+                status: row.status,
+            },
+        ));
     }
-    exact.extend(rest);
+    hits.sort_by_key(|(grade, _)| *grade);
     Response::json(&Hits {
-        hits: exact.into_iter().take(LIMIT).collect(),
+        hits: hits.into_iter().take(LIMIT).map(|(_, hit)| hit).collect(),
     })
-}
-
-/// Whether the row matches on its id, its alias, or its title.
-fn matches(query: &str, row: &Row, alias: Option<&str>) -> bool {
-    row.id.to_lowercase().contains(query)
-        || row.title.to_lowercase().contains(query)
-        || alias.is_some_and(|alias| alias.to_lowercase().contains(query))
-}
-
-/// Whether the id or the alias is the query itself, so it sorts first.
-fn exact_id_or_alias(query: &str, hit: &Hit) -> bool {
-    hit.id.to_lowercase() == query
-        || hit
-            .alias
-            .as_deref()
-            .is_some_and(|alias| alias.to_lowercase() == query)
-}
-
-/// Every node's first alias, by id. One pass instead of one `resolve` per row.
-fn aliases<S: Store>(repo: &Repository<S>) -> HashMap<String, String> {
-    let mut out = HashMap::new();
-    for node in repo.all().unwrap_or_default() {
-        if let Some(alias) = node.aliases().first() {
-            out.insert(node.id().to_string(), alias.0.clone());
-        }
-    }
-    out
 }

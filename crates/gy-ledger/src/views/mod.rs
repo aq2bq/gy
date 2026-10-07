@@ -14,7 +14,7 @@ mod writers;
 
 pub use ego::{EGO_LIMIT, Ego, EgoEdge, EgoNode, ego};
 pub use handover::{Handover, ProgressRow, Warning, handover};
-pub use list::{Filter, Listing, LogRow, Row, list};
+pub use list::{Filter, Listing, LogRow, Match, Row, list, matches};
 pub use next::{NextRow, RequirementLine, next};
 pub use now::{NodeRow, Now, Ready, Resume, Waiting, now};
 pub use publish::{Publication, publish};

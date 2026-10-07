@@ -21,7 +21,7 @@ fn ledger() -> Repository<MemoryStore> {
     let store = MemoryStore::with_actor(FormatVersion::CURRENT, Actor::new("piko").unwrap());
     let mut repo = Repository::new(store).with_scopes(vec!["a".to_string(), "b".to_string()]);
     let mut nodes = vec![
-        Node::need(id(NodeKind::Need, "0001"), "a", DATE, "a need").unwrap(),
+        Node::need(id(NodeKind::Need, "0001"), "a", DATE, "the zebra need").unwrap(),
         Node::criterion(id(NodeKind::Criterion, "0002"), "a", DATE, "measures well").unwrap(),
         Node::criterion(
             id(NodeKind::Criterion, "0003"),
@@ -52,6 +52,7 @@ fn ledger() -> Repository<MemoryStore> {
         data.decider = Some("master".to_string());
         data.options = vec!["left".to_string(), "right".to_string()];
     }
+    nodes[3].set_body("only the body says zebra");
     nodes[1].add_alias(Alias("#5896".to_string()));
     nodes[4].add_alias(Alias("D-85".to_string()));
     for index in 0..12 {
@@ -210,6 +211,22 @@ fn search_matches_id_alias_and_title() {
     assert!(
         ids(&title["hits"]).contains(&"d-0005".to_string()),
         "{title}"
+    );
+
+    // A word only in the body still finds the node, and a title hit sorts
+    // before a body-only hit for the same word (d-6a45).
+    let body = answer(&repo, "/api/search", Some("q=says"));
+    assert_eq!(
+        ids(&body["hits"]),
+        [id(NodeKind::Question, "0004").to_string()]
+    );
+    let ordered = answer(&repo, "/api/search", Some("q=ZEBRA"));
+    assert_eq!(
+        ids(&ordered["hits"]),
+        [
+            id(NodeKind::Need, "0001").to_string(),
+            id(NodeKind::Question, "0004").to_string()
+        ]
     );
 
     let empty = answer(&repo, "/api/search", Some("q="));

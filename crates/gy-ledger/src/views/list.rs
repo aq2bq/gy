@@ -157,11 +157,52 @@ fn keep(node: &Node, filter: &Filter, status: Option<Status>, all: &[Node]) -> b
         }
     }
     if let Some(grep) = &filter.grep {
-        if !node.title().contains(grep.as_str()) && !node.body().contains(grep.as_str()) {
+        if matches(node, grep).is_none() {
             return false;
         }
     }
     true
+}
+
+/// Where a query hit a node. Ordered so a caller can sort by it: an exact id
+/// or alias first, then a name (or title) hit, then a body-only hit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[non_exhaustive]
+pub enum Match {
+    /// The id or an alias is the query itself.
+    Exact,
+    /// The id, an alias, or the title contains the query.
+    Title,
+    /// Only the body contains the query.
+    Body,
+}
+
+/// The one place the ledger judges whether a query hits a node (d-6a45): the
+/// id, every alias, the title, and the body, each as a case-insensitive
+/// substring. The grade says where it hit, so `list --grep` and the Web search
+/// read the same rule.
+pub fn matches(node: &Node, query: &str) -> Option<Match> {
+    let query = query.to_lowercase();
+    if query.is_empty() {
+        return None;
+    }
+    let id = node.id().to_string().to_lowercase();
+    let aliases: Vec<String> = node
+        .aliases()
+        .iter()
+        .map(|alias| alias.0.to_lowercase())
+        .collect();
+    let title = node.title().to_lowercase();
+    if id == query || aliases.iter().any(|alias| alias == &query) {
+        return Some(Match::Exact);
+    }
+    if id.contains(&query) || title.contains(&query) || aliases.iter().any(|a| a.contains(&query)) {
+        return Some(Match::Title);
+    }
+    if node.body().to_lowercase().contains(&query) {
+        return Some(Match::Body);
+    }
+    None
 }
 
 fn row(node: &Node, all: &[Node]) -> Row {

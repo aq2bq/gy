@@ -42,7 +42,7 @@ pub use store::{
 pub use store::{Gate, Open, remote::sync_with};
 pub use versions::{max_version, newer_than, triple};
 pub use views::{
-    EGO_LIMIT, EdgeLine, Ego, EgoEdge, EgoNode, Filter, Handover, Listing, LogRow, Narrowed,
+    EGO_LIMIT, EdgeLine, Ego, EgoEdge, EgoNode, Filter, Handover, Listing, LogRow, Match, Narrowed,
     NextRow, NodeRow, Now, ProgressRow, Publication, Ready, RequirementLine, Resume, Retraction,
-    Row, Shown, SyncRow, Waiting, Warning, ego, handover, list, next, now, publish, show,
+    Row, Shown, SyncRow, Waiting, Warning, ego, handover, list, matches, next, now, publish, show,
 };
