@@ -9,6 +9,9 @@ homepage.workspace = true
 rust-version.workspace = true
 readme = "../../README.md"
 
+[lints]
+workspace = true
+
 [dependencies]
 gy-ledger = { path = "../gy-ledger", version = "2.0.0" }
 chrono.workspace = true

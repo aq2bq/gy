@@ -9,6 +9,9 @@ homepage.workspace = true
 rust-version.workspace = true
 readme = "../../README.md"
 
+[lints]
+workspace = true
+
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
@@ -17,5 +20,6 @@ toml.workspace = true
 chrono.workspace = true
 
 [dev-dependencies]
+archunit = "0.0.2"
 proptest = "1.11.0"
 tempfile.workspace = true
