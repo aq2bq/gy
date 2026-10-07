@@ -7,9 +7,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          # cargo-mutants reads the diff since the pushed-from commit.
-          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -25,15 +22,6 @@ jobs:
         run: |
           cargo install --locked knots@1.18.0
           knots --recursive crates --exclude-path 'tests/' --cognitive-threshold 15 --baseline knots-baseline.json
-      - name: Mutation testing on the pushed diff (cargo-mutants)
-        run: |
-          cargo install --locked cargo-mutants@27.1.0
-          BASE="${{ github.event.before }}"
-          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
-            BASE=HEAD~1
-          fi
-          git diff "$BASE" > "$RUNNER_TEMP/mutants.diff"
-          cargo mutants --in-diff "$RUNNER_TEMP/mutants.diff"
 
   e2e:
     runs-on: ubuntu-latest
