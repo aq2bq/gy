@@ -4,7 +4,7 @@ This document defines how gy's version is decided, how a release is prepared, an
 
 ## Decide the version
 
-Compare the working tree with the last published version on each of: the public Rust API, the surface of the CLI, the storage format, `gy.toml`, the diagnostics and exit codes, and the interpretation of the history. In `0.y.z` a compatible change moves `z` and an incompatible change moves `y`. From `1.0.0` on, follow semver. Do not decide by the amount of tests or the size of the diff. Put incompatible changes together in one version.
+Compare the working tree with the last published version on each of: the surface of the CLI, the storage format, `gy.toml`, the diagnostics and exit codes, and the interpretation of the history. In `0.y.z` a compatible change moves `z` and an incompatible change moves `y`. From `1.0.0` on, follow semver. Do not decide by the amount of tests or the size of the diff. Put incompatible changes together in one version. The Rust APIs of gy-ledger and gy-serve are internal to gy and carry no compatibility promise, so they do not move the version (d-4d37).
 
 A build under development keeps the last version number until the release. At release time, align the versions of `gy-ledger`, `gy-serve` and `gy`, the version requirements of the crates the CLI depends on, and `Cargo.lock` in one commit. Keep this commit separate from feature commits. The commit message is in English and states the reason for the change.
 

@@ -5,6 +5,8 @@
 //!
 //! Only `model::free_attribute` reads a node attribute by a string key; every
 //! other field is typed.
+//!
+//! Internal to gy: the API carries no compatibility promise (d-4d37).
 mod model;
 mod ops;
 mod store;

@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 2.0.1 - 2026-10-08
 
-### Changed
+### Fixed
 
 - **`gy list --grep` no longer distinguishes case**: the term is matched against the id, aliases, title, and body without regard to case (r-454a, ac-a85c).
 - **The Web search reads the body too**: `/api/search` finds a node by a word only in its body, an exact id or alias first, then a title hit, then a body-only hit (r-454a, ac-fb72).
