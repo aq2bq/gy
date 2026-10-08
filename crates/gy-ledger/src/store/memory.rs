@@ -23,7 +23,6 @@ pub struct MemoryStore {
     staged_history: Vec<HistoryEntry>,
     undo_stack: Vec<Vec<(String, Option<Vec<u8>>)>>,
     seq: u64,
-    salt: u64,
     gate: Option<Arc<dyn Gate>>,
 }
 impl MemoryStore {
@@ -50,7 +49,6 @@ impl MemoryStore {
             staged_history: Vec::new(),
             undo_stack: Vec::new(),
             seq: 0,
-            salt: 0,
             gate: None,
         }
     }
@@ -77,7 +75,6 @@ impl MemoryStore {
             staged_history: Vec::new(),
             undo_stack: Vec::new(),
             seq,
-            salt: 0,
             gate: None,
         })
     }
@@ -268,9 +265,8 @@ impl Store for MemoryStore {
 }
 impl IdSource for MemoryStore {
     fn next_hash(&mut self, prefix: &str) -> Result<String> {
-        self.salt += 1;
         let used: BTreeSet<String> = self.committed.keys().cloned().collect();
-        let seed = id_seed(prefix, used.len(), self.salt);
+        let seed = id_seed(prefix, used.len());
         unique_hash(prefix, &seed, &used)
     }
 }

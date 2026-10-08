@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **A new id stays four hex digits unless it collides**: the retries that keep a letter in it no longer fall to six digits by chance (r-ab3b).
+
 ## 2.0.1 - 2026-10-08
 
 ### Fixed

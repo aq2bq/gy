@@ -233,9 +233,8 @@ impl Store for FileStore {
 }
 impl IdSource for FileStore {
     fn next_hash(&mut self, prefix: &str) -> Result<String> {
-        self.salt += 1;
         let used: BTreeSet<String> = self.nodes.keys().cloned().collect();
-        let seed = id_seed(prefix, used.len(), self.salt);
+        let seed = id_seed(prefix, used.len());
         unique_hash(prefix, &seed, &used)
     }
 }
