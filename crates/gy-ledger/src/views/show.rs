@@ -282,19 +282,22 @@ fn projected_edges(node: &Node, incoming: &[Edge], full: bool) -> Vec<EdgeLine> 
     edges
 }
 
-/// Requirements show next_evidence and responsible; full shows every free
-/// attribute.
+/// Requirements show next_evidence and responsible; criteria show due, responsible,
+/// and then. Full shows every free attribute.
 fn projected_attributes(node: &Node, full: bool) -> BTreeMap<String, String> {
     if full {
         return node.free_attributes().clone();
     }
-    let mut out = BTreeMap::new();
-    if node.kind() == NodeKind::Requirement {
-        for name in ["next_evidence", "responsible"] {
-            if let Some(value) = node.free(name) {
-                out.insert(name.to_string(), value.clone());
-            }
-        }
-    }
-    out
+    let names: &[&str] = match node.kind() {
+        NodeKind::Requirement => &["next_evidence", "responsible"],
+        NodeKind::Criterion => &["due", "responsible", "then"],
+        _ => &[],
+    };
+    names
+        .iter()
+        .filter_map(|&name| {
+            node.free(name)
+                .map(|value| (name.to_string(), value.clone()))
+        })
+        .collect()
 }

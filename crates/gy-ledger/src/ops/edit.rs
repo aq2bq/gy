@@ -98,6 +98,7 @@ fn apply(node: &mut Node, edit: &Edit, scopes: &[String]) -> Result<Vec<String>>
     for (key, value) in &edit.append {
         append_one(node, key, value, &mut changed)?;
     }
+    crate::model::validate_wait(node)?;
     Ok(changed)
 }
 

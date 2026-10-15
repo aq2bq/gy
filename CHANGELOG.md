@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Added
+
+- **Criteria can carry a dated wait**: `edit --set` accepts `due=YYYY-MM-DD`, `responsible`, and `then`.
+  Invalid dates and waits without dates are refused; if unknown, record when you will decide the date (r-e9ca).
+
+### Changed
+
+- **`show` displays a criterion's wait; `handover` and `next` surface it when resuming**:
+  handover lists due unmet criteria and summarizes future dates; next adds due / waiting criteria beneath ready needs.
+  Both honor scope and JSON. Satisfaction may still be recorded early; `now` / serve are unchanged (r-e9ca).
+
 ### Fixed
 
 - **A new id stays four hex digits unless it collides**: the retries that keep a letter in it no longer fall to six digits by chance (r-ab3b).

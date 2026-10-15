@@ -42,9 +42,15 @@ Writes:
   gy link <from> <relation> <to> [--mark <text>] [--remove]
         relations: targets, filed-as, relies-on, depends-on, waits-on, raised, spawned-by, narrows, widens, supersedes, completes. closes is written by decide --closes, not by link. --mark is required with narrows and supersedes and optional with the others; given, it must be a passage in the older decision's body or scope note, or the write is refused
   gy edit <ID> --reason <text> [--title <title>] [--body-file <path>] [--set k=v] [--append k=v]
+        for a criterion wait: --set due=YYYY-MM-DD --set responsible=<who> --set then="<action>"
         free attributes are strings. --set overwrites, --set k= removes, --append adds one line
         --set scope=<name> moves the node to a scope in gy.toml. --set decision_scope=<text> records a missing scope note, once
+
         the edit is applied; a later decision's mark that stops resolving is named on unresolved:
+        Criterion waits: due is the reader's local date. If unknown, record when you will decide it.
+        responsible or then requires due; invalid dates are refused. Early satisfaction is allowed.
+        show <AC> displays all three; handover lists due unmet criteria and summarizes future dates;
+        next shows each ready need's targeted waits as due or waiting. Both reads honor --scope and --json.
   gy scope rename <old> <new>
         moves every node of the old scope to the new name and rewrites gy.toml, keeping comments and order
   gy undo --reason <text>

@@ -2,8 +2,11 @@
 //! node is built so the ledger is always valid (D-75, AC-53). It uses the
 //! store layer only, for ID hashes and errors.
 mod derive;
+mod due;
 mod edges;
 mod kind;
+pub(crate) use derive::criterion_wait;
+pub(crate) use due::{due_date, validate_wait};
 mod links;
 mod node;
 mod rule;

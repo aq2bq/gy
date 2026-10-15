@@ -1,8 +1,10 @@
 //! next: the needs ready to work, with how many of their criteria are
 //! satisfied and which requirements they became. The agent picks one (D-62).
+use super::due::DueRow;
 use crate::model::{Node, NodeKind, Relation, criterion_satisfied, edges, find, ready, reference};
 use crate::ops::repository::{Repository, Result, Store};
 use serde::Serialize;
+use std::collections::BTreeMap;
 use std::fmt;
 
 /// A filed requirement as next shows it: id, ref, state.
@@ -34,6 +36,8 @@ pub struct NextRow {
     pub satisfied: usize,
     pub targets: usize,
     pub requirements: Vec<RequirementLine>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub criteria: Vec<DueRow>,
 }
 impl fmt::Display for NextRow {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -45,13 +49,41 @@ impl fmt::Display for NextRow {
         for requirement in &self.requirements {
             writeln!(f, "  {requirement}")?;
         }
+        for row in &self.criteria {
+            writeln!(f, "  {} due {} ({})", row.id, row.due, row.status)?;
+        }
         Ok(())
     }
 }
 
 /// The ready needs, ordered by created then id (no priority; D-62).
 pub fn next<S: Store>(repo: &Repository<S>, scope: Option<&str>) -> Result<Vec<NextRow>> {
-    Ok(ready_rows(&repo.all()?, scope))
+    next_on(repo, scope, chrono::Local::now().date_naive())
+}
+
+/// Next with the reader's local date supplied by the caller.
+pub fn next_on<S: Store>(
+    repo: &Repository<S>,
+    scope: Option<&str>,
+    today: chrono::NaiveDate,
+) -> Result<Vec<NextRow>> {
+    let all = repo.all()?;
+    let index: BTreeMap<String, &Node> = all
+        .iter()
+        .map(|node| (node.id().to_string(), node))
+        .collect();
+    let mut rows = ready_rows(&all, scope);
+    for row in &mut rows {
+        let Some(need) = index.get(&row.id) else {
+            continue;
+        };
+        row.criteria = edges(need, Relation::Targets)
+            .iter()
+            .filter_map(|id| index.get(&id.to_string()))
+            .filter_map(|node| DueRow::of(node, today, scope))
+            .collect();
+    }
+    Ok(rows)
 }
 
 /// The ready rows, so `now` reports the same judgement and order as `next`.
@@ -95,5 +127,6 @@ fn row(need: &Node, all: &[Node]) -> NextRow {
         satisfied,
         targets: targets.len(),
         requirements,
+        criteria: Vec::new(),
     }
 }

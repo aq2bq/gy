@@ -1,54 +1,19 @@
 //! handover: what a session needs to resume in one command (AC-43). In-progress
 //! requirements with their ref and who waits, the counts that route the next
 //! step, integrity errors, and warnings as counts only (proposal-v3 14).
+use super::due::{DatedWaiting, DueRow, dated};
+pub use super::progress::ProgressRow;
+use super::progress::progress;
 use super::sync_row::{SyncRow, sync_row};
 use super::writers::writer;
 use crate::model::{
-    Node, NodeData, NodeKind, Relation, edges, find, question_open, ready, reference,
-    requirement_in_progress, unmet_orphaned, unwaited,
+    Node, NodeData, NodeKind, Relation, edges, find, question_open, ready, requirement_in_progress,
+    unmet_orphaned, unwaited,
 };
 use crate::ops::repository::{Repository, Result, Store};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
-
-/// An in-progress requirement: id, ref, state, title, and who waits on it.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[non_exhaustive]
-pub struct ProgressRow {
-    pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reference: Option<String>,
-    pub state: String,
-    pub title: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub next_evidence: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub responsible: Option<String>,
-    /// The writer of the requirement's last write, as a reader sees them
-    /// (n-d36d).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub who: Option<String>,
-}
-impl fmt::Display for ProgressRow {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let id = match &self.reference {
-            Some(reference) => format!("{} ({reference})", self.id),
-            None => self.id.clone(),
-        };
-        writeln!(f, "{id} {} {}", self.state, self.title)?;
-        if let Some(next_evidence) = &self.next_evidence {
-            writeln!(f, "  next_evidence: {next_evidence}")?;
-        }
-        if let Some(responsible) = &self.responsible {
-            writeln!(f, "  responsible: {responsible}")?;
-        }
-        if let Some(who) = &self.who {
-            writeln!(f, "  who: {who}")?;
-        }
-        Ok(())
-    }
-}
 
 /// A warning kind and how many there are. The list itself is not shown (AC-43).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -83,6 +48,9 @@ pub struct Handover {
     pub open_questions: usize,
     pub ready_needs: usize,
     pub warnings: Vec<Warning>,
+    pub due: Vec<DueRow>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub waiting_until: Option<DatedWaiting>,
 }
 impl fmt::Display for Handover {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -98,6 +66,16 @@ impl fmt::Display for Handover {
         for row in &self.in_progress {
             write!(f, "{row}")?;
         }
+        for row in &self.due {
+            write!(f, "{row}")?;
+        }
+        if let Some(waiting) = &self.waiting_until {
+            writeln!(
+                f,
+                "waiting until a date: {} (earliest {})",
+                waiting.count, waiting.earliest
+            )?;
+        }
         writeln!(f, "in progress: {}", self.in_progress.len())?;
         writeln!(f, "open questions: {}", self.open_questions)?;
         writeln!(f, "ready needs: {}", self.ready_needs)?;
@@ -109,7 +87,17 @@ impl fmt::Display for Handover {
 }
 
 pub fn handover<S: Store>(repo: &Repository<S>, scope: Option<&str>) -> Result<Handover> {
+    handover_on(repo, scope, chrono::Local::now().date_naive())
+}
+
+/// Handover with the reader's local date supplied by the caller.
+pub fn handover_on<S: Store>(
+    repo: &Repository<S>,
+    scope: Option<&str>,
+    today: chrono::NaiveDate,
+) -> Result<Handover> {
     let all = repo.all()?;
+    let (due, waiting_until) = dated(&all, scope, today);
     let in_progress: Vec<&Node> = all
         .iter()
         .filter(|node| in_scope(node, scope) && requirement_in_progress(node.data()))
@@ -124,6 +112,8 @@ pub fn handover<S: Store>(repo: &Repository<S>, scope: Option<&str>) -> Result<H
         .count();
     let who = last_writers(repo);
     Ok(Handover {
+        due,
+        waiting_until,
         errors: errors_with_rejected(&all, repo),
         sync: sync_row(repo),
         in_progress: in_progress
@@ -156,21 +146,6 @@ fn last_writers<S: Store>(repo: &Repository<S>) -> BTreeMap<String, String> {
         who.insert(entry.node.clone(), writer(entry.by.as_deref(), actor));
     }
     who
-}
-
-fn progress(node: &Node, who: Option<String>) -> ProgressRow {
-    ProgressRow {
-        id: node.id().to_string(),
-        reference: reference(node).map(str::to_string),
-        state: node
-            .state()
-            .map(|state| state.name().to_string())
-            .unwrap_or_default(),
-        title: node.title().to_string(),
-        next_evidence: node.free("next_evidence").cloned(),
-        responsible: node.free("responsible").cloned(),
-        who,
-    }
 }
 
 /// Edges that point at nothing, and filed-as edges whose target is not a

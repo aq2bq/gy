@@ -9,6 +9,16 @@ How to work (restore, pick one, advance, ask, stop, satisfy) is in `gy-loop`. Th
 
 ## Needs, requirements, acceptance criteria
 
+For a criterion that must wait, use `gy edit <AC> --reason "date the wait"`
+with `--set due=YYYY-MM-DD --set responsible=<who> --set then="<action>"`.
+`due` is the reader's local date; if unknown, record when you will decide it.
+`responsible` or `then` without `due`, and invalid dates, are refused. You may
+still satisfy early with evidence under the existing approval rule.
+`gy show <AC>` displays all three without `--full`; `gy handover` lists due unmet
+criteria and summarizes future ones by count and earliest date; `gy next` shows
+each ready need's targeted waits as due or waiting. The latter two honor
+`--scope` and `--json` and omit satisfied waits. See `gy cheat` for the command shape.
+
 - A need points at its acceptance criteria with `targets`. `need add` prints `id: <ID>` first, and `next` shows the command that could follow. The body goes in with `--body-file` at creation.
 - A requirement is filed with `req add` and tied to the needs it serves (`--need`), the decisions it relies on (`--relies-on`) and the criteria it targets (`--targets`).
 - What must come first is an edge: `depends-on` and `waits-on`. `next` reads them.

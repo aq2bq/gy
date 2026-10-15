@@ -25,6 +25,7 @@ mod config;
 mod criterion_add;
 mod criterion_satisfy;
 mod decide;
+mod due;
 mod edit;
 mod edit_marks;
 mod ego;
