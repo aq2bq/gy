@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 2.1.0 - 2026-10-15
+
+This release lets a criterion wait for a date: work that can only be judged
+after a rollout settles or on a set day now shows up in `handover` and `next`
+when that day comes, instead of living in a session's memory (n-b0e5).
 
 ### Added
 
@@ -16,6 +20,25 @@
 ### Fixed
 
 - **A new id stays four hex digits unless it collides**: the retries that keep a letter in it no longer fall to six digits by chance (r-ab3b).
+
+### Updating
+
+Install the new release with `cargo install gy --locked`. The storage format,
+`gy.toml` and the set of commands and their options are unchanged; `handover`
+and `next` gain lines (and JSON fields) only when a criterion carries `due`.
+The gy-ledger skill changed by one paragraph, so copy the skills again (see
+"Telling the AI about gy" in the README).
+
+The new refusal applies to a criterion that carries `responsible` or `then`
+without `due`: any later `edit` of it is refused until it gets a date. Of the
+four ledger copies measured before the release (gy's own, two of Kokopelli's and
+kokodock-terraform's), only Kokopelli's holds such criteria (3, written with
+`measure_on` / `measured_by`). Move each one with one command; running it
+again is safe:
+
+```
+gy edit <AC> --reason "measure_on to due" --set due=<measure_on> --set responsible=<measured_by> --set measure_on= --set measured_by=
+```
 
 ## 2.0.1 - 2026-10-08
 
