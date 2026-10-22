@@ -1,5 +1,57 @@
 # Changelog
 
+## Unreleased
+
+This release ties every decision to what it is for. In a shared ledger the
+decisions that belonged to nothing — a review's verdict, a measurement from a
+prototype, a session's event, a rule for running the team — grew from 14% to 43%
+of all decisions in two days, and were then read as standing rules for all later
+work (d-b2a1, q-f00f). `decide` now refuses a decision with no need, requirement,
+criterion, question, or lineage behind it, and `handover` counts the ones already
+written (d-753c, r-0a63).
+
+What the ledger holds is a judgement about the thing being built. How the team
+runs is not one: a review's verdict, the tool or branch to use, and what happened
+in a session stay out of the ledger (d-749e).
+
+### Breaking
+
+- **`decide` refuses a decision that serves nothing**: name what it is for with `--serves <N|R|AC>`, close a question with `--closes <Q>`, or `--relate` it to a decision that has one. Without one the write exits 2, leaves the ledger untouched, and says which of the three to add. `gy link --remove` refuses a removal that would leave a decision with nothing (ac-c6d2).
+- **`serves` is a relation of the closed set**: `decide --serves`, and `gy link <D> serves <N|R|AC>` for a decision written earlier. It points from a decision to a need, a requirement, or a criterion.
+- **A decision's gaps and next step say what it serves**: `show` and every write's `missing` report `what it serves (serves)`, and `next` offers `link <D> serves <N|R|AC>` (ac-d0df).
+- **`handover` counts the decisions serving nothing**: a count in the scope you ask for, `decisions serving nothing: N`, left out when the count is zero. Nothing is deleted; the decisions written before this release are read as they are.
+
+### Updating
+
+Install the new release with `cargo install gy --locked`. The storage format and
+`gy.toml` are unchanged; the skills changed (gy-loop, gy-decide, gy-ledger), so
+copy them again (see "Telling the AI about gy" in the README).
+
+A decision written before this release may serve nothing. It is not an error to
+read it: `gy show <D>` names the gap, and `handover` counts it per scope. Tie it
+with one command, naming the need, requirement, or criterion it belongs to:
+
+```
+gy link d-1a2b serves n-0007
+```
+
+Running the same command again is safe: the edge is already there, so the write
+stops with `d-1a2b serves n-0007 is already registered` instead of adding a
+second copy (D-75). A script that ties a list of decisions can therefore be run
+again. To check one first, `gy show d-1a2b` lists the links it carries.
+
+Before, a decision needed only its scope note:
+
+```
+gy decide "ship the first version" --scope-note "until the beta"
+```
+
+After, it also says what it is for:
+
+```
+gy decide "ship the first version" --scope-note "until the beta" --serves n-0007
+```
+
 ## 2.1.0 - 2026-10-15
 
 This release lets a criterion wait for a date: work that can only be judged

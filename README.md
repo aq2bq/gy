@@ -108,7 +108,7 @@ To look at the record yourself, use `gy serve`. The screenshots show a demo ledg
 | --- | --- |
 | need `n-…` | What you want done. Points at acceptance criteria |
 | question `q-…` | Something to decide, with a decider and at least two options |
-| decision `d-…` | What was decided, with where it holds |
+| decision `d-…` | What was decided, what it is for, and where it holds |
 | requirement `r-…` | A promise of what will be built. Work starts after it is approved |
 | criterion `ac-…` | What has to be true for the work to count as finished |
 
