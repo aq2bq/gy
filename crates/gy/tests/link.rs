@@ -1,6 +1,6 @@
 mod common;
 
-use common::{criterion, decision, fixture, need, question, stderr, stdout};
+use common::{criterion, decision, fixture, id_of, need, question, stderr, stdout};
 
 #[test]
 fn link_adds_then_removes_an_edge() {
@@ -128,6 +128,39 @@ fn link_removes_a_tie_when_another_one_remains() {
     fx.seed(&[first.clone(), second.clone(), serving(decision, &second)]);
 
     let out = fx.run(&["link", "d-0003", "serves", "ac-0001", "--remove"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    assert_eq!(serving_nothing(&fx), 0);
+}
+
+#[test]
+fn link_removes_the_only_serves_edge_when_the_decision_closes_a_question() {
+    let fx = fixture();
+    let ac = criterion("0001", "a criterion");
+    fx.seed(&[ac]);
+    let closed = id_of(&fx.run(&[
+        "question",
+        "add",
+        "a question",
+        "--decider",
+        "someone",
+        "--options",
+        "one",
+        "--options",
+        "two",
+    ]));
+    let decision = id_of(&fx.run(&[
+        "decide",
+        "a decision",
+        "--scope-note",
+        "a scope",
+        "--serves",
+        "ac-0001",
+        "--closes",
+        &closed,
+    ]));
+
+    // The closed question still ties it, so its only serves edge may go.
+    let out = fx.run(&["link", &decision, "serves", "ac-0001", "--remove"]);
     assert!(out.status.success(), "{}", stderr(&out));
     assert_eq!(serving_nothing(&fx), 0);
 }
