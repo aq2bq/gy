@@ -18,7 +18,7 @@ in a session stay out of the ledger (d-749e).
 
 - **`decide` refuses a decision that serves nothing**: name what it is for with `--serves <N|R|AC>`, close a question with `--closes <Q>`, or `--relate` it to a decision that has one. Without one the write exits 2, leaves the ledger untouched, and says which of the three to add. `gy link --remove` refuses a removal that would leave a decision with nothing (ac-c6d2).
 - **`serves` is a relation of the closed set**: `decide --serves`, and `gy link <D> serves <N|R|AC>` for a decision written earlier. It points from a decision to a need, a requirement, or a criterion.
-- **A decision's gaps and next step say what it serves**: `show` and every write's `missing` report `what it serves (serves)`, and `next` offers `link <D> serves <N|R|AC>` (ac-d0df).
+- **`show` says when a decision serves nothing**: its `missing` line reports `what it serves (serves)`, and a refused `link --remove` names `link <D> serves <N|R|AC>` (ac-d0df).
 - **`handover` counts the decisions serving nothing**: a count in the scope you ask for, `decisions serving nothing: N`, left out when the count is zero. Nothing is deleted; the decisions written before this release are read as they are.
 
 ### Updating
