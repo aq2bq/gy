@@ -85,9 +85,17 @@ fn decide_creates_a_decision_without_an_adr() {
     assert_eq!(node.kind(), NodeKind::Decision);
     assert_eq!(outcome.changed, ["created", "serves"]);
 
-    let mut unrecorded = decide(vec![], vec![], vec![]);
+    let mut unrecorded = decide(vec![target.id().clone()], vec![], vec![]);
     unrecorded.decision_scope = DecisionScope::migration_unrecorded();
-    assert!(unrecorded.run(&mut repo).is_err());
+    let error = unrecorded
+        .run(&mut repo)
+        .expect_err("the unrecorded marker is refused");
+    assert!(
+        error
+            .to_string()
+            .contains("unrecorded marker is set only by migration"),
+        "{error}"
+    );
 }
 
 #[test]
