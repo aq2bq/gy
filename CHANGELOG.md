@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.2.0 - 2026-10-22
 
 This release ties every decision to what it is for. In a shared ledger the
 decisions that belonged to nothing — a review's verdict, a measurement from a
