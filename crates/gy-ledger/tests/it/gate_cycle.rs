@@ -179,6 +179,10 @@ fn a_lineage_self_loop_and_a_mixed_two_point_cycle_are_refused() {
 fn a_decision_created_by_decide_joins_the_lineage_graph() {
     let mut repo = repo();
     let older = decision(&mut repo, "0002", "the second scope");
+    let target = need(&mut repo, "0001");
+    link(&older, Relation::Serves, &target, None)
+        .run(&mut repo)
+        .unwrap();
     let third = Decide {
         scope: SCOPE.to_string(),
         title: "third".to_string(),
@@ -191,6 +195,7 @@ fn a_decision_created_by_decide_joins_the_lineage_graph() {
             older.clone(),
             Some("the second scope".to_string()),
         )],
+        serves: Vec::new(),
     }
     .run(&mut repo)
     .unwrap()

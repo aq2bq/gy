@@ -83,6 +83,7 @@ pub fn decide(cli: &Cli, root: &Path, ledger: &Path, args: &DecideArgs) -> Resul
         source: args.source.clone(),
         closes: write::resolve_all(&repository, &args.closes)?,
         relates,
+        serves: write::resolve_all(&repository, &args.serves)?,
     };
     let (_, outcome) = retry(|| repo::open_write(ledger), operation)?;
     emit(cli.json, &Written::of(&outcome).created(true))

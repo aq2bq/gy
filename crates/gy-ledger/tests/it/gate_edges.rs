@@ -169,7 +169,8 @@ fn link_refuses_a_second_copy_of_an_edge() {
 fn decide_refuses_the_same_relate_twice() {
     let mut repo = repo();
     let old = decision("0001");
-    seed(&mut repo, std::slice::from_ref(&old));
+    let target = need("0002");
+    seed(&mut repo, &[old.clone(), target.clone()]);
     let before = seq(&repo);
     let refused = Decide {
         scope: SCOPE.to_string(),
@@ -182,6 +183,7 @@ fn decide_refuses_the_same_relate_twice() {
             (Relation::Completes, old.id().clone(), None),
             (Relation::Completes, old.id().clone(), None),
         ],
+        serves: vec![target.id().clone()],
     }
     .run(&mut repo);
     assert!(registered(&refused), "{refused:?}");

@@ -37,10 +37,14 @@ Writes:
   gy req revise <ID> --reason <text> --source <text>
   gy req done <ID> --evidence <text>
   gy req cancel <ID> --reason <text> --source <text>
-  gy decide "<title>" --scope-note <text> [--body-file <path>] [--closes <Q>]... [--relate <relation> <D> --mark <text>] [--source <text>]
+  gy decide "<title>" --scope-note <text> [--body-file <path>] [--closes <Q>]... [--serves <N|R|AC>]... [--relate <relation> <D> --mark <text>] [--source <text>]
+        a decision needs what it is for: --serves a need, requirement, or criterion, --closes a question, or --relate it to a decision that has one. Without one the write is refused
+        a decision is a judgement about what is being built. A review's verdict, a tool or branch to use, and a session's events are not decisions
+        a decision written before this rule may serve nothing: tie it with link <D> serves <N|R|AC>, and handover counts what is left
         --mark is required with --relate narrows and supersedes, optional with widens and completes; given, it must be a passage in the older decision's body or scope note, or the write is refused
   gy link <from> <relation> <to> [--mark <text>] [--remove]
-        relations: targets, filed-as, relies-on, depends-on, waits-on, raised, spawned-by, narrows, widens, supersedes, completes. closes is written by decide --closes, not by link. --mark is required with narrows and supersedes and optional with the others; given, it must be a passage in the older decision's body or scope note, or the write is refused
+        relations: targets, filed-as, relies-on, depends-on, waits-on, raised, spawned-by, serves, narrows, widens, supersedes, completes. closes is written by decide --closes, not by link. --mark is required with narrows and supersedes and optional with the others; given, it must be a passage in the older decision's body or scope note, or the write is refused
+        a decision's last serves edge is not removed: link <D> serves <N|R|AC> first, or the removal is refused
   gy edit <ID> --reason <text> [--title <title>] [--body-file <path>] [--set k=v] [--append k=v]
         for a criterion wait: --set due=YYYY-MM-DD --set responsible=<who> --set then="<action>"
         free attributes are strings. --set overwrites, --set k= removes, --append adds one line

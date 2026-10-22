@@ -7,8 +7,8 @@ use super::progress::progress;
 use super::sync_row::{SyncRow, sync_row};
 use super::writers::writer;
 use crate::model::{
-    Node, NodeData, NodeKind, Relation, edges, find, question_open, ready, requirement_in_progress,
-    unmet_orphaned, unwaited,
+    Node, NodeData, NodeKind, Relation, decision_bound, edges, find, question_open, ready,
+    requirement_in_progress, unmet_orphaned, unwaited,
 };
 use crate::ops::repository::{Repository, Result, Store};
 use serde::Serialize;
@@ -195,6 +195,11 @@ fn warnings(all: &[Node], scope: Option<&str>, in_progress: &[&Node]) -> Vec<War
     );
     push(
         &mut warnings,
+        "decisions serving nothing",
+        serving_nothing(all, scope),
+    );
+    push(
+        &mut warnings,
         "criteria unmet with every need closed",
         orphaned_criteria(all, scope),
     );
@@ -248,6 +253,17 @@ fn nobody_waits(all: &[Node], scope: Option<&str>) -> usize {
 fn orphaned_criteria(all: &[Node], scope: Option<&str>) -> usize {
     all.iter()
         .filter(|node| in_scope(node, scope) && unmet_orphaned(node, all))
+        .count()
+}
+
+/// Decisions in scope that carry nothing they are for (ac-d0df, r-0a63). A
+/// decision written before the rule may still be one; it is counted, not
+/// deleted.
+fn serving_nothing(all: &[Node], scope: Option<&str>) -> usize {
+    all.iter()
+        .filter(|node| {
+            in_scope(node, scope) && node.kind() == NodeKind::Decision && !decision_bound(node, all)
+        })
         .count()
 }
 

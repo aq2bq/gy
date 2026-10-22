@@ -17,7 +17,7 @@ pub use model::{
     Alias, Approval, Attributes, Cancellation, Closed, ClosedBy, Closure, Completion, Criterion,
     Decision, DecisionScope, Edge, FreeAttributes, Link, Need, NeedState, Node, NodeData, NodeId,
     NodeKind, Question, Ref, Relation, Requirement, RequirementState, Revision, bearer_count,
-    free_attribute, requirement_in_progress,
+    decision_bound, free_attribute, requirement_in_progress,
 };
 /// This build's rule as a gate, for a caller that owns the order such as
 /// `gy remote set` (n-f921). Not part of the public reading surface.

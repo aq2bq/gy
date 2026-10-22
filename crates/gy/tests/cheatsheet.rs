@@ -244,7 +244,20 @@ impl Fixture {
                 ],
                 body,
             ),
-            "decision" => self.create(&["decide", "a decision", "--scope-note", "a scope"], body),
+            "decision" => {
+                let need = self.node("need", None);
+                self.create(
+                    &[
+                        "decide",
+                        "a decision",
+                        "--scope-note",
+                        "a scope",
+                        "--serves",
+                        &need,
+                    ],
+                    body,
+                )
+            }
             "requirement" => {
                 let need = self.node("need", None);
                 let target = self.criterion();
@@ -564,10 +577,12 @@ fn fill(command: &str, f: &mut Fixture) -> Fill {
         "decide" => {
             let question = f.node("question", None);
             let older = f.node("decision", Some(MARK));
+            let need = f.node("need", None);
             fill.value("<title>", "a decision");
             fill.values("<text>", &["a scope note", MARK, "a source"]);
             fill.value("<path>", &body);
             fill.value("<Q>", &question);
+            fill.value("<N|R|AC>", &need);
             fill.value("<relation>", "narrows");
             fill.value("<D>", &older);
         }
@@ -953,6 +968,7 @@ fn pair(f: &mut Fixture, relation: &str) -> (String, String) {
         }
         "targets" => (f.node("need", None), f.node("criterion", Some(MARK))),
         "spawned-by" => (f.node("need", None), f.node("decision", Some(MARK))),
+        "serves" => (f.node("decision", None), f.node("need", Some(MARK))),
         "filed-as" => (f.node("need", None), f.node("requirement", Some(MARK))),
         "depends-on" => (f.node("need", None), f.node("need", Some(MARK))),
         "relies-on" => (f.node("requirement", None), f.node("decision", Some(MARK))),

@@ -198,6 +198,10 @@ pub struct DecideArgs {
     /// Repeat for each: `--closes A --closes B`.
     #[arg(long, value_name = "Q")]
     pub closes: Vec<String>,
+    /// Repeat for each: `--serves N --serves AC`. The need, requirement, or
+    /// criterion this decision is for.
+    #[arg(long, value_name = "N|R|AC")]
+    pub serves: Vec<String>,
     #[arg(long, num_args = 2, value_names = ["RELATION", "D"], help = write::relate_help())]
     pub relate: Vec<String>,
     #[arg(long, value_name = "TEXT")]

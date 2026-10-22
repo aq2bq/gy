@@ -6,8 +6,8 @@ mod need;
 use self::need::{need_missing, unmet_criteria};
 use crate::model::{
     Node, NodeData, NodeId, NodeKind, Relation, Requirement, RequirementState, covered,
-    criterion_unsatisfied, edges, filed_target, find, need_closed, question_open, reference,
-    unmet_orphaned, unwaited,
+    criterion_unsatisfied, decision_bound, edges, filed_target, find, need_closed, question_open,
+    reference, unmet_orphaned, unwaited,
 };
 
 /// The gaps a node still has, as short phrases. A node that is already closed,
@@ -17,7 +17,7 @@ pub fn missing(node: &Node, all: &[Node]) -> Vec<String> {
         NodeData::Need(_) if !need_closed(node.data()) => need_missing(node, all),
         NodeData::Need(_) => closed_need_missing(node, all),
         NodeData::Question(_) if question_open(node.data()) => question_missing(node, all),
-        NodeData::Decision(_) => decision_missing(node),
+        NodeData::Decision(_) => decision_missing(node, all),
         NodeData::Requirement(data) if pre_approval(data) => requirement_missing(node),
         NodeData::Criterion(_) if criterion_unsatisfied(node.data()) => {
             criterion_missing(node, all)
@@ -103,10 +103,15 @@ fn question_missing(node: &Node, all: &[Node]) -> Vec<String> {
     out
 }
 
-/// A decision's gaps: its body. A decision that closes no question is the
-/// normal shape (d-43f624); the question side asks for its closer.
-fn decision_missing(node: &Node) -> Vec<String> {
-    body_gap(node).into_iter().collect()
+/// A decision's gaps: its body, and what it is for when nothing carries that
+/// (d-753c, ac-d0df). A decision bound through a question, a requirement, a
+/// need, or lineage has what it is for.
+fn decision_missing(node: &Node, all: &[Node]) -> Vec<String> {
+    let mut out: Vec<String> = body_gap(node).into_iter().collect();
+    if !decision_bound(node, all) {
+        out.push("what it serves (serves)".to_string());
+    }
+    out
 }
 
 fn requirement_missing(node: &Node) -> Vec<String> {
@@ -124,6 +129,10 @@ fn requirement_missing(node: &Node) -> Vec<String> {
 }
 
 fn decision_next(node: &Node, all: &[Node]) -> Vec<String> {
+    let mut out = Vec::new();
+    if !decision_bound(node, all) {
+        out.push(format!("link {} serves <N|R|AC>", node.id()));
+    }
     let lineage = node.links().iter().any(|edge| {
         matches!(
             edge.label,
@@ -136,13 +145,12 @@ fn decision_next(node: &Node, all: &[Node]) -> Vec<String> {
             && other.scope() == node.scope()
     });
     if !lineage && sibling {
-        vec![format!(
+        out.push(format!(
             "link {} narrows <older D> --mark <text>",
             node.id()
-        )]
-    } else {
-        Vec::new()
+        ));
     }
+    out
 }
 
 fn requirement_next(id: &NodeId, data: &Requirement) -> Vec<String> {

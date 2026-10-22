@@ -85,7 +85,14 @@ fn the_words_ignore_case_and_since_takes_a_date() {
         "--options",
         "two",
     ]);
-    create(&["decide", "a decision", "--scope-note", "a call"]);
+    create(&[
+        "decide",
+        "a decision",
+        "--scope-note",
+        "a call",
+        "--serves",
+        &need,
+    ]);
     create(&["req", "add", "a requirement", "--need", &need]);
 
     for kind in ["Need", "Question", "Decision", "Requirement", "Criterion"] {

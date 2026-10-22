@@ -23,6 +23,16 @@ fn question(hash: &str) -> Node {
     .unwrap()
 }
 
+fn need(hash: &str) -> Node {
+    Node::need(
+        NodeId::from_hash(NodeKind::Need, hash).unwrap(),
+        SCOPE,
+        DATE,
+        "a need",
+    )
+    .unwrap()
+}
+
 fn older(hash: &str, body: &str) -> Node {
     let mut node = Node::decision(
         NodeId::from_hash(NodeKind::Decision, hash).unwrap(),
@@ -36,7 +46,11 @@ fn older(hash: &str, body: &str) -> Node {
     node
 }
 
-fn decide(closes: Vec<NodeId>, relates: Vec<(Relation, NodeId, Option<String>)>) -> Decide {
+fn decide(
+    serves: Vec<NodeId>,
+    closes: Vec<NodeId>,
+    relates: Vec<(Relation, NodeId, Option<String>)>,
+) -> Decide {
     Decide {
         scope: SCOPE.into(),
         title: "a decision".into(),
@@ -45,18 +59,33 @@ fn decide(closes: Vec<NodeId>, relates: Vec<(Relation, NodeId, Option<String>)>)
         source: None,
         closes,
         relates,
+        serves,
     }
+}
+
+fn seed(repo: &mut Repository<MemoryStore>, nodes: &[Node]) {
+    repo.transaction("seed", "test", |repo| {
+        for node in nodes {
+            repo.put(node)?;
+        }
+        Ok(())
+    })
+    .unwrap();
 }
 
 #[test]
 fn decide_creates_a_decision_without_an_adr() {
     let mut repo = repo();
-    let outcome = decide(vec![], vec![]).run(&mut repo).unwrap();
+    let target = need("0001");
+    seed(&mut repo, std::slice::from_ref(&target));
+    let outcome = decide(vec![target.id().clone()], vec![], vec![])
+        .run(&mut repo)
+        .unwrap();
     let node = repo.get(outcome.id.as_ref().unwrap()).unwrap().unwrap();
     assert_eq!(node.kind(), NodeKind::Decision);
-    assert_eq!(outcome.changed, ["created"]);
+    assert_eq!(outcome.changed, ["created", "serves"]);
 
-    let mut unrecorded = decide(vec![], vec![]);
+    let mut unrecorded = decide(vec![], vec![], vec![]);
     unrecorded.decision_scope = DecisionScope::migration_unrecorded();
     assert!(unrecorded.run(&mut repo).is_err());
 }
@@ -67,7 +96,7 @@ fn decide_closes_a_question_and_its_edge() {
     let question = question("0001");
     repo.transaction("seed", "test", |repo| repo.put(&question))
         .unwrap();
-    let outcome = decide(vec![question.id().clone()], vec![])
+    let outcome = decide(vec![], vec![question.id().clone()], vec![])
         .run(&mut repo)
         .unwrap();
     let decision = outcome.id.clone().unwrap();
@@ -93,7 +122,7 @@ fn closing_a_non_question_is_rejected() {
     repo.transaction("seed", "test", |repo| repo.put(&older))
         .unwrap();
     assert!(
-        decide(vec![older.id().clone()], vec![])
+        decide(vec![], vec![older.id().clone()], vec![])
             .run(&mut repo)
             .is_err()
     );
@@ -103,12 +132,16 @@ fn closing_a_non_question_is_rejected() {
 fn narrows_needs_a_mark() {
     let mut repo = repo();
     let older = older("0001", "Ordering may be implementation-dependent.");
-    repo.transaction("seed", "test", |repo| repo.put(&older))
-        .unwrap();
+    let target = need("0002");
+    seed(&mut repo, &[older.clone(), target.clone()]);
     assert!(
-        decide(vec![], vec![(Relation::Narrows, older.id().clone(), None)])
-            .run(&mut repo)
-            .is_err()
+        decide(
+            vec![target.id().clone()],
+            vec![],
+            vec![(Relation::Narrows, older.id().clone(), None)]
+        )
+        .run(&mut repo)
+        .is_err()
     );
 }
 
@@ -116,9 +149,10 @@ fn narrows_needs_a_mark() {
 fn a_mark_that_is_not_in_the_body_is_rejected() {
     let mut repo = repo();
     let older = older("0001", "Ordering may be implementation-dependent.");
-    repo.transaction("seed", "test", |repo| repo.put(&older))
-        .unwrap();
+    let target = need("0002");
+    seed(&mut repo, &[older.clone(), target.clone()]);
     let error = decide(
+        vec![target.id().clone()],
         vec![],
         vec![(
             Relation::Narrows,
@@ -137,9 +171,10 @@ fn a_mark_that_is_not_in_the_body_is_rejected() {
 fn supersedes_is_visible_from_the_older_decision() {
     let mut repo = repo();
     let older = older("0001", "Old behavior");
-    repo.transaction("seed", "test", |repo| repo.put(&older))
-        .unwrap();
+    let target = need("0002");
+    seed(&mut repo, &[older.clone(), target.clone()]);
     let outcome = decide(
+        vec![target.id().clone()],
         vec![],
         vec![(
             Relation::Supersedes,
@@ -166,6 +201,7 @@ fn a_failed_decide_writes_nothing() {
     })
     .unwrap();
     let result = decide(
+        vec![],
         vec![question.id().clone()],
         vec![(Relation::Narrows, older.id().clone(), None)],
     )

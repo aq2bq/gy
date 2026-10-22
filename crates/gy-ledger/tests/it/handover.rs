@@ -50,6 +50,22 @@ fn criterion(hash: &str, scope: &str) -> Node {
     Node::criterion(id(NodeKind::Criterion, hash), scope, DATE, "a criterion").unwrap()
 }
 
+fn decision(hash: &str, scope: &str) -> Node {
+    Node::decision(
+        id(NodeKind::Decision, hash),
+        scope,
+        DATE,
+        "a decision",
+        DecisionScope::recorded("a scope").unwrap(),
+    )
+    .unwrap()
+}
+
+/// The decision's own edge to what it is for.
+fn serves(decision: &mut Node, target: &Node) {
+    decision.link(Link::new(decision.id().clone(), Relation::Serves, target.id().clone()).unwrap());
+}
+
 fn targets(need: &mut Node, criterion: &Node) {
     need.link(Link::new(need.id().clone(), Relation::Targets, criterion.id().clone()).unwrap());
 }
@@ -297,4 +313,46 @@ fn handover_ignores_a_criterion_no_need_targets() {
 
     let report = handover(&repo, None).unwrap();
     assert_eq!(warning_count(&report, ORPHANED), 0, "{:?}", report.warnings);
+}
+
+const SERVING_NOTHING: &str = "decisions serving nothing";
+
+#[test]
+fn handover_counts_the_decisions_serving_nothing() {
+    let mut repo = repo();
+    let ac = criterion("0001", SCOPE);
+    let mut bound = decision("0002", SCOPE);
+    serves(&mut bound, &ac);
+    let lonely = decision("0003", SCOPE);
+    let elsewhere = decision("0004", "b");
+    seed(&mut repo, &[ac, bound, lonely, elsewhere]);
+
+    let all = handover(&repo, None).unwrap();
+    assert_eq!(
+        warning_count(&all, SERVING_NOTHING),
+        2,
+        "{:?}",
+        all.warnings
+    );
+    let scoped = handover(&repo, Some(SCOPE)).unwrap();
+    assert_eq!(warning_count(&scoped, SERVING_NOTHING), 1);
+}
+
+#[test]
+fn handover_says_nothing_when_every_decision_serves_something() {
+    let mut repo = repo();
+    let ac = criterion("0001", SCOPE);
+    let mut bound = decision("0002", SCOPE);
+    serves(&mut bound, &ac);
+    seed(&mut repo, &[ac, bound]);
+
+    let report = handover(&repo, None).unwrap();
+    assert!(
+        !report
+            .warnings
+            .iter()
+            .any(|warning| warning.label == SERVING_NOTHING),
+        "a zero count is left out: {:?}",
+        report.warnings
+    );
 }

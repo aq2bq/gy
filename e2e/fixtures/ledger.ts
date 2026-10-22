@@ -99,7 +99,7 @@ function build(gy: (args: string[]) => string) {
   const answered = id([...a, 'question', 'add', 'the answered question', '--decider', 'master', '--options', 'one', '--options', 'two']);
   id([...a, 'question', 'add', 'the lead question', '--decider', 'lead', '--options', 'one', '--options', 'two']);
   id([...a, 'decide', 'closes the answered question', '--scope-note', 'the master said so', '--closes', answered]);
-  id([...b, 'decide', 'the second decision', '--scope-note', 'another call']);
+  id([...b, 'decide', 'the second decision', '--scope-note', 'another call', '--serves', closed]);
   id([...a, 'req', 'add', 'the filed requirement', '--need', first]);
 }
 
@@ -109,8 +109,10 @@ function buildLarge(gy: (args: string[]) => string) {
   for (let index = 0; index < 40; index++) {
     gy(['--scope', 'a', 'need', 'add', `need ${index}`, '--targets', one]);
   }
+  // Every decision must say what it is for; one need in b carries all of them.
+  const subject = JSON.parse(gy(['--scope', 'b', 'need', 'add', 'the big need', '--targets', one])).id as string;
   for (let index = 0; index < 60; index++) {
-    gy(['--scope', 'b', 'decide', `decision ${index}`, '--scope-note', 'a call']);
+    gy(['--scope', 'b', 'decide', `decision ${index}`, '--scope-note', 'a call', '--serves', subject]);
   }
   for (let index = 0; index < 20; index++) {
     gy(['--scope', 'a', 'question', 'add', `question ${index}`, '--decider', 'lead', '--options', 'one', '--options', 'two']);

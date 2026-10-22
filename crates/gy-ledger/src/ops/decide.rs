@@ -3,7 +3,7 @@
 use super::{Operation, Outcome, Repository, advice_for, marks, now};
 use crate::model::{
     Closure, DecisionScope, Link as ModelLink, Node, NodeData, NodeId, NodeKind, Relation,
-    question_open,
+    decision_bound, question_open,
 };
 use crate::store::{Error, Result, Store};
 
@@ -16,6 +16,7 @@ pub struct Decide {
     pub source: Option<String>,
     pub closes: Vec<NodeId>,
     pub relates: Vec<(Relation, NodeId, Option<String>)>,
+    pub serves: Vec<NodeId>,
 }
 impl<S: Store> Operation<S> for Decide {
     type Output = NodeId;
@@ -26,9 +27,13 @@ impl<S: Store> Operation<S> for Decide {
             ));
         }
         let id = repo.next_id(NodeKind::Decision)?;
+        check_serves(repo, &self.serves)?;
         let questions = close_questions(repo, &self.closes, &id)?;
         check_relates(repo, &self.relates)?;
         let node = self.build(&id)?;
+        if !decision_bound(&node, &known(repo, &questions)?) {
+            return Err(unbound());
+        }
         let source = self.source.clone().unwrap_or_else(|| "decide".to_string());
         let why = format!("decide {id}");
         repo.transaction(&why, &source, |repo| {
@@ -41,7 +46,7 @@ impl<S: Store> Operation<S> for Decide {
         let (missing, next) = advice_for(repo, &node)?;
         Ok(Outcome {
             id: Some(id.clone()),
-            changed: changed(&self.closes, &self.relates),
+            changed: changed(&self.closes, &self.relates, &self.serves),
             missing,
             next,
             unresolved: Vec::new(),
@@ -66,11 +71,56 @@ impl Decide {
             let edge = ModelLink::new(id.clone(), *relation, target.clone())?;
             node.link(edge.with_mark(mark.clone()));
         }
+        for target in &self.serves {
+            node.link(ModelLink::new(
+                id.clone(),
+                Relation::Serves,
+                target.clone(),
+            )?);
+        }
         Ok(node)
     }
 }
 
-fn changed(closes: &[NodeId], relates: &[(Relation, NodeId, Option<String>)]) -> Vec<String> {
+/// The state the binding check reads: the ledger, with the questions this write
+/// closes as they will stand.
+fn known<S: Store>(repo: &Repository<S>, staged: &[Node]) -> Result<Vec<Node>> {
+    let mut all = repo.all()?;
+    all.extend(staged.iter().cloned());
+    Ok(all)
+}
+
+/// The refusal a decision that serves nothing reads (ac-c6d2).
+fn unbound() -> Error {
+    Error::invalid(
+        "a decision needs what it is for: --serves <N|R|AC>, --closes <Q>, \
+         or --relate <lineage> <D> to a decision that has one",
+    )
+}
+
+/// A serves edge points at a need, a requirement, or a criterion.
+fn check_serves<S: Store>(repo: &Repository<S>, serves: &[NodeId]) -> Result<()> {
+    for id in serves {
+        let target = repo
+            .get(id)?
+            .ok_or_else(|| Error::invalid(format!("{id} does not exist")))?;
+        if !matches!(
+            target.kind(),
+            NodeKind::Need | NodeKind::Requirement | NodeKind::Criterion
+        ) {
+            return Err(Error::invalid(format!(
+                "{id} is not a need, a requirement, or a criterion"
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn changed(
+    closes: &[NodeId],
+    relates: &[(Relation, NodeId, Option<String>)],
+    serves: &[NodeId],
+) -> Vec<String> {
     let mut changed = vec!["created".to_string()];
     changed.extend(closes.iter().map(|_| "closes".to_string()));
     changed.extend(
@@ -78,6 +128,7 @@ fn changed(closes: &[NodeId], relates: &[(Relation, NodeId, Option<String>)]) ->
             .iter()
             .map(|(relation, _, _)| relation.name().to_string()),
     );
+    changed.extend(serves.iter().map(|_| Relation::Serves.name().to_string()));
     changed
 }
 

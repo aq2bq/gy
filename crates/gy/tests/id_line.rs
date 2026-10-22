@@ -70,6 +70,8 @@ fn a_creating_write_prints_its_id_first() {
         "a decision",
         "--scope-note",
         "a call",
+        "--serves",
+        &need,
     ]);
     let requirement = create(&[
         "--scope",

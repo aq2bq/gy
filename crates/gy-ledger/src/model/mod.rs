@@ -15,8 +15,8 @@ mod shape;
 mod state;
 
 pub use derive::{
-    NeedState, bearer_count, covered, criterion_satisfied, criterion_unsatisfied, edges,
-    filed_target, find, need_closed, need_state, question_open, ready, reference,
+    NeedState, bearer_count, covered, criterion_satisfied, criterion_unsatisfied, decision_bound,
+    edges, filed_target, find, need_closed, need_state, question_open, ready, reference,
     requirement_in_progress, unmet_orphaned, unwaited,
 };
 pub use kind::{Alias, NodeId, NodeKind, Ref};

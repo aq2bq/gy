@@ -69,6 +69,7 @@ pub(super) fn run(
             source: None,
             closes: vec![pick(created, repo, NodeKind::Question, op.a)?],
             relates: vec![],
+            serves: vec![],
         }
         .run(repo)
         .map(|outcome| outcome.id),
@@ -91,7 +92,7 @@ pub(super) fn run(
         }
         Kind::Stray => link::Link {
             from: pick(created, repo, NodeKind::ALL[op.a as usize % 5], op.a)?,
-            relation: Relation::ALL[op.rel as usize % 12],
+            relation: Relation::ALL[op.rel as usize % Relation::ALL.len()],
             to: pick(created, repo, NodeKind::ALL[op.b as usize % 5], op.b)?,
             mark: mark(op.mark),
             remove: false,

@@ -14,8 +14,9 @@ test.beforeAll(async () => {
     build: run => {
       const file = join(mkdtempSync(join(tmpdir(), 'gy-retract-')), 'body.md');
       writeFileSync(file, '## Decision\nThe old passage stands here.\n');
+      const measure = JSON.parse(run(['--scope', 'a', 'criterion', 'add', 'measures one'])).id as string;
       const older = JSON.parse(
-        run(['--scope', 'a', 'decide', 'the retracted decision', '--scope-note', 'the old scope', '--body-file', file]),
+        run(['--scope', 'a', 'decide', 'the retracted decision', '--scope-note', 'the old scope', '--body-file', file, '--serves', measure]),
       ).id as string;
       run([
         '--scope', 'a', 'decide', 'the retracting decision', '--scope-note', 'a new call',

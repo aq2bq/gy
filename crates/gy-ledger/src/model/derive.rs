@@ -125,6 +125,54 @@ pub fn unwaited(node: &Node, all: &[Node]) -> bool {
         })
 }
 
+/// Whether a decision carries what it is for (d-753c, r-0a63): it serves a need,
+/// requirement, or criterion; a question closed it; a requirement relies on it;
+/// a need is spawned by it; or a lineage edge reaches a decision that has one.
+/// The one judgement decide, link, handover, and show share.
+pub fn decision_bound(decision: &Node, all: &[Node]) -> bool {
+    let mut seen = Vec::new();
+    bound_through(decision, all, &mut seen)
+}
+
+fn bound_through(node: &Node, all: &[Node], seen: &mut Vec<String>) -> bool {
+    let id = node.id().to_string();
+    if seen.contains(&id) {
+        return false;
+    }
+    seen.push(id);
+    if directly_bound(node, all) {
+        return true;
+    }
+    lineage(node)
+        .into_iter()
+        .filter_map(|id| find(all, &id))
+        .any(|older| bound_through(older, all, seen))
+}
+
+/// The bindings a decision holds itself, without following lineage.
+fn directly_bound(decision: &Node, all: &[Node]) -> bool {
+    !edges(decision, Relation::Serves).is_empty()
+        || all.iter().any(|other| match other.kind() {
+            NodeKind::Question => edges(other, Relation::Closes).contains(decision.id()),
+            NodeKind::Requirement => edges(other, Relation::ReliesOn).contains(decision.id()),
+            NodeKind::Need => edges(other, Relation::SpawnedBy).contains(decision.id()),
+            _ => false,
+        })
+}
+
+/// The older decisions a lineage edge points at.
+fn lineage(node: &Node) -> Vec<NodeId> {
+    [
+        Relation::Narrows,
+        Relation::Widens,
+        Relation::Supersedes,
+        Relation::Completes,
+    ]
+    .into_iter()
+    .flat_map(|relation| edges(node, relation))
+    .collect()
+}
+
 /// The one coverage judgement (n-f921): whether an approved or done
 /// requirement targets `criterion`. The rule (C1) and the advice (V2) share it.
 pub fn covered(nodes: &[Node], criterion: &NodeId) -> bool {

@@ -146,7 +146,14 @@ fn a_creating_write_prints_id_first() {
         "--options",
         "two",
     ]));
-    creating(&fx.run(&["decide", "a decision", "--scope-note", "a call"]));
+    creating(&fx.run(&[
+        "decide",
+        "a decision",
+        "--scope-note",
+        "a call",
+        "--serves",
+        &need,
+    ]));
     creating(&fx.run(&["req", "add", "a requirement", "--need", &need]));
     creating(&fx.run(&[
         "req",
@@ -175,7 +182,14 @@ fn a_non_creating_write_keeps_the_bare_id() {
         "--options",
         "two",
     ]));
-    creating(&fx.run(&["decide", "a decision", "--scope-note", "a call"]));
+    creating(&fx.run(&[
+        "decide",
+        "a decision",
+        "--scope-note",
+        "a call",
+        "--serves",
+        &need,
+    ]));
     let req = creating(&fx.run(&[
         "req",
         "add",
@@ -256,7 +270,15 @@ fn json_carries_the_same_fields() {
         &[],
     );
     json_keys(
-        &fx.run(&["--json", "decide", "a decision", "--scope-note", "s"]),
+        &fx.run(&[
+            "--json",
+            "decide",
+            "a decision",
+            "--scope-note",
+            "s",
+            "--serves",
+            &need,
+        ]),
         &[],
     );
     json_keys(

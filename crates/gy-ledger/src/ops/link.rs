@@ -1,7 +1,7 @@
 //! link: add or remove one edge between two nodes. Closes is not allowed here
 //! (question close and decide keep a closure and its edge together).
 use super::{Operation, Outcome, Repository, marks};
-use crate::model::{Link as ModelLink, NodeId, Relation};
+use crate::model::{Link as ModelLink, Node, NodeId, NodeKind, Relation, decision_bound, find};
 use crate::store::{Error, Result, Store};
 
 #[derive(Clone)]
@@ -35,6 +35,7 @@ impl<S: Store> Operation<S> for Link {
                 return Err(Error::invalid("there is no such edge to remove"));
             };
             from.unlink(index);
+            keeps_binding(repo, &from, &to)?;
         } else {
             marks::check(&to, self.mark.as_deref(), marks::required(self.relation))?;
             let edge = ModelLink::new(self.from.clone(), self.relation, self.to.clone())?;
@@ -51,4 +52,28 @@ impl<S: Store> Operation<S> for Link {
             value: self.from,
         })
     }
+}
+
+/// Refuse a removal that would leave a decision with nothing that it is for
+/// (ac-c6d2). The check reads the decision from either side of the edge: the
+/// one the edge leaves, and the one it pointed at.
+fn keeps_binding<S: Store>(repo: &Repository<S>, after: &Node, peer: &Node) -> Result<()> {
+    let all = repo.all()?;
+    let mut next = all.clone();
+    if let Some(slot) = next.iter_mut().find(|node| node.id() == after.id()) {
+        *slot = after.clone();
+    }
+    for id in [after.id(), peer.id()] {
+        if id.kind() != NodeKind::Decision {
+            continue;
+        }
+        let was = find(&all, id).is_some_and(|node| decision_bound(node, &all));
+        let stays = find(&next, id).is_some_and(|node| decision_bound(node, &next));
+        if was && !stays {
+            return Err(Error::invalid(format!(
+                "{id} would serve nothing: link {id} serves <N|R|AC> first"
+            )));
+        }
+    }
+    Ok(())
 }

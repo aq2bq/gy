@@ -1,6 +1,6 @@
 mod common;
 
-use common::{decision, fixture, id_of, question, stderr, stdout};
+use common::{decision, fixture, id_of, need, question, stderr, stdout};
 
 #[test]
 fn decide_creates_closes_and_links_one_relation() {
@@ -81,7 +81,7 @@ fn decide_help_names_the_relations() {
 #[test]
 fn decide_errors_and_json() {
     let fx = fixture();
-    fx.seed(&[decision("0003", "an old decision")]);
+    fx.seed(&[decision("0003", "an old decision"), need("0004", "a need")]);
 
     let out = fx.run(&["decide", "d", "--scope-note", "x", "--mark", "m"]);
     assert_eq!(out.status.code(), Some(2));
@@ -138,7 +138,15 @@ fn decide_errors_and_json() {
     let out = fx.run(&["decide", "d"]);
     assert_eq!(out.status.code(), Some(2));
 
-    let out = fx.run(&["--json", "decide", "d", "--scope-note", "x"]);
+    let out = fx.run(&[
+        "--json",
+        "decide",
+        "d",
+        "--scope-note",
+        "x",
+        "--serves",
+        "n-0004",
+    ]);
     assert!(out.status.success(), "{}", stderr(&out));
     let json: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
     assert!(json["id"].is_string());
@@ -150,13 +158,15 @@ fn show_without_full_names_the_passage_a_decision_retracted() {
     let fx = fixture();
     let mut old = decision("0002", "an old decision");
     old.set_body("## Decision\nthe old passage here\n");
-    fx.seed(&[old]);
+    fx.seed(&[old, need("0003", "a need")]);
 
     let out = fx.run(&[
         "decide",
         "a narrowing decision",
         "--scope-note",
         "now",
+        "--serves",
+        "n-0003",
         "--relate",
         "narrows",
         "d-0002",
@@ -186,4 +196,104 @@ fn show_without_full_names_the_passage_a_decision_retracted() {
             .contains("[[retracted by"),
         "{json}"
     );
+}
+
+/// The writes the ledger holds, as the number of transactions recorded: a
+/// refused write leaves it where it was (ac-c6d2).
+fn writes(fx: &common::Fixture) -> usize {
+    std::fs::read_to_string(fx.ledger().join("events.jsonl"))
+        .map(|text| text.lines().count())
+        .unwrap_or(0)
+}
+
+#[test]
+fn decide_refuses_a_decision_that_serves_nothing() {
+    let fx = fixture();
+    let mut older = decision("0002", "an old decision");
+    older.set_body("## Decision\nthe old passage here\n");
+    fx.seed(&[older, need("0003", "a need")]);
+    let before = writes(&fx);
+
+    let out = fx.run(&["decide", "d", "--scope-note", "x"]);
+    assert_eq!(out.status.code(), Some(2));
+    let message = stderr(&out);
+    assert!(message.contains("needs what it is for"), "{message}");
+    assert!(message.contains("--serves <N|R|AC>"), "{message}");
+    assert!(message.contains("--closes <Q>"), "{message}");
+    assert!(message.contains("--relate"), "{message}");
+
+    // A lineage edge to a decision that has nothing does not tie the new one.
+    let out = fx.run(&[
+        "decide",
+        "d",
+        "--scope-note",
+        "x",
+        "--relate",
+        "narrows",
+        "d-0002",
+        "--mark",
+        "the old passage here",
+    ]);
+    assert_eq!(out.status.code(), Some(2));
+    assert!(stderr(&out).contains("needs what it is for"), "{out:?}");
+
+    assert_eq!(writes(&fx), before, "a refused decide writes nothing");
+    let listed = stdout(&fx.run(&["list", "--type", "Decision"]));
+    assert_eq!(listed.lines().count(), 1, "{listed}");
+}
+
+#[test]
+fn decide_serves_an_approved_requirement() {
+    let fx = fixture();
+    let ac = common::criterion("0001", "a criterion");
+    fx.seed(&[ac]);
+    let requirement = common::cover(&fx, "ac-0001");
+
+    let out = fx.run(&[
+        "decide",
+        "we ship it",
+        "--scope-note",
+        "until the beta",
+        "--serves",
+        &requirement,
+    ]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    assert!(
+        stdout(&out).contains("changed: created, serves"),
+        "{}",
+        stdout(&out)
+    );
+    let id = id_of(&out);
+
+    let shown = stdout(&fx.run(&["show", "--full", &id]));
+    assert!(shown.contains(&format!("serves {requirement}")), "{shown}");
+}
+
+#[test]
+fn decide_refuses_a_serves_target_that_is_not_a_need_requirement_or_criterion() {
+    let fx = fixture();
+    fx.seed(&[decision("0001", "an old decision"), need("0002", "a need")]);
+
+    let out = fx.run(&["decide", "d", "--scope-note", "x", "--serves", "d-0001"]);
+    assert_eq!(out.status.code(), Some(2));
+    assert!(
+        stderr(&out).contains("is not a need, a requirement, or a criterion"),
+        "{out:?}"
+    );
+
+    let out = fx.run(&["decide", "d", "--scope-note", "x", "--serves", "n-9999"]);
+    assert_eq!(out.status.code(), Some(2));
+    assert!(stderr(&out).contains("no node matches"), "{out:?}");
+}
+
+#[test]
+fn show_names_what_a_decision_still_lacks_and_the_link_that_ties_it() {
+    let fx = fixture();
+    fx.seed(&[
+        decision("0001", "a decision written before the rule"),
+        need("0002", "a need"),
+    ]);
+
+    let shown = stdout(&fx.run(&["show", "d-0001"]));
+    assert!(shown.contains("what it serves (serves)"), "{shown}");
 }

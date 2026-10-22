@@ -53,6 +53,7 @@ fn seed<S: Store>(repo: &mut Repository<S>, nodes: &[Node]) {
 
 fn decide(
     body: Option<String>,
+    serves: Vec<NodeId>,
     closes: Vec<NodeId>,
     relates: Vec<(Relation, NodeId, Option<String>)>,
 ) -> Decide {
@@ -64,6 +65,7 @@ fn decide(
         source: None,
         closes,
         relates,
+        serves,
     }
 }
 
@@ -209,11 +211,15 @@ fn decide_reports_missing_and_suggests_a_link() {
     let old_id = old.id().clone();
     let question = question("0002");
     let question_id = question.id().clone();
-    seed(&mut repo, &[old, question]);
+    let target = need("0003");
+    let target_id = target.id().clone();
+    seed(&mut repo, &[old, question, target]);
 
-    let bare = decide(None, Vec::new(), Vec::new()).run(&mut repo).unwrap();
-    // d-43f624: a decision that closes no question is the normal shape, so it
-    // is not reported as missing.
+    let bare = decide(None, vec![target_id], Vec::new(), Vec::new())
+        .run(&mut repo)
+        .unwrap();
+    // A decision that closes no question is normal when it serves something
+    // (d-43f624): the body is all it lacks.
     assert_eq!(bare.missing, ["a body"]);
     let bare_id = bare.id.clone().unwrap();
     assert_eq!(
@@ -226,6 +232,7 @@ fn decide_reports_missing_and_suggests_a_link() {
 
     let full = decide(
         Some("## Decision\nwe chose".into()),
+        Vec::new(),
         vec![question_id],
         vec![(Relation::Narrows, old_id, Some("changed part".into()))],
     )

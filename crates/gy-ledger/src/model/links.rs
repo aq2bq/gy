@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Relation {
     Closes,
+    Serves,
     Narrows,
     Widens,
     Supersedes,
@@ -22,8 +23,9 @@ pub enum Relation {
     WaitsOn,
 }
 impl Relation {
-    const PAIRS: [(&'static str, &'static str); 12] = [
+    const PAIRS: [(&'static str, &'static str); 13] = [
         ("closes", "closed-by"),
+        ("serves", "served-by"),
         ("narrows", "narrowed-by"),
         ("widens", "widened-by"),
         ("supersedes", "superseded-by"),
@@ -37,8 +39,9 @@ impl Relation {
         ("waits-on", "awaited-by"),
     ];
     /// Every relation, in the one order the parse, the help, and a failure use.
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 13] = [
         Self::Closes,
+        Self::Serves,
         Self::Narrows,
         Self::Widens,
         Self::Supersedes,
@@ -55,6 +58,9 @@ impl Relation {
     /// model, so an edge that breaks a kind pairing cannot be built (D-75).
     const ALLOWED: &'static [(Self, NodeKind, NodeKind)] = &[
         (Self::Closes, NodeKind::Question, NodeKind::Decision),
+        (Self::Serves, NodeKind::Decision, NodeKind::Need),
+        (Self::Serves, NodeKind::Decision, NodeKind::Requirement),
+        (Self::Serves, NodeKind::Decision, NodeKind::Criterion),
         (Self::Narrows, NodeKind::Decision, NodeKind::Decision),
         (Self::Widens, NodeKind::Decision, NodeKind::Decision),
         (Self::Supersedes, NodeKind::Decision, NodeKind::Decision),

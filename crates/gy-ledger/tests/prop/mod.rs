@@ -42,6 +42,9 @@ pub const ALLOWED: &[(Relation, NodeKind, NodeKind)] = &[
     (Relation::Raised, NodeKind::Requirement, NodeKind::Question),
     (Relation::WaitsOn, NodeKind::Need, NodeKind::Question),
     (Relation::WaitsOn, NodeKind::Need, NodeKind::Requirement),
+    (Relation::Serves, NodeKind::Decision, NodeKind::Need),
+    (Relation::Serves, NodeKind::Decision, NodeKind::Requirement),
+    (Relation::Serves, NodeKind::Decision, NodeKind::Criterion),
 ];
 
 pub fn is_approved(node: &Node) -> bool {
@@ -407,7 +410,7 @@ pub fn hits(op: &Op) -> BTreeSet<Rule> {
 fn relation_of(op: &Op) -> Option<Relation> {
     match op.kind {
         Kind::Link => Some(ALLOWED[op.rel as usize % ALLOWED.len()].0),
-        Kind::Stray => Some(Relation::ALL[op.rel as usize % 12]),
+        Kind::Stray => Some(Relation::ALL[op.rel as usize % Relation::ALL.len()]),
         _ => None,
     }
 }
