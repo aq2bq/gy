@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+The bundled skills no longer speak of a team: gy has no such notion. What the
+ledger leaves out is how the work is run, unless the way of working is itself
+what is being built (d-c1a1, r-86ea).
+
+### Changed
+
+- **gy-loop and gy-decide**: "how the team runs" now reads "how the work is run", and a writer's name is one no other session writes under at the same time, telling a reader whose work each write was. The rule behind both is unchanged.
+
+### Updating
+
+Nothing in the CLI, the storage format, or `gy.toml` changed. The skills changed
+(gy-loop, gy-decide), so copy them again (see "Telling the AI about gy" in the
+README).
+
 ## 2.2.0 - 2026-10-22
 
 This release ties every decision to what it is for. In a shared ledger the
