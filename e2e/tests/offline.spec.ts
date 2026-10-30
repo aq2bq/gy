@@ -65,7 +65,9 @@ test('a write with an unreachable remote is marked not pushed', async ({ page })
     const band = page.getByTestId('band');
     await expect(band).toHaveAttribute('title', /not pushed/, { timeout: 20000 });
     const reached = Number(await band.getAttribute('data-unpushed'));
-    const head = Number((await page.getByTestId('seq').innerText()).match(/seq (\d+)/)?.[1]);
+    // The band's own end is the head's sequence (testid `seq` was the removed
+    // header's; the sidebar's clock and the band both read the shell).
+    const head = Number(await band.getByRole('slider').getAttribute('aria-valuemax'));
     expect(Number.isFinite(reached)).toBe(true);
     expect(reached).toBeGreaterThanOrEqual(1);
     expect(reached).toBeLessThan(head);

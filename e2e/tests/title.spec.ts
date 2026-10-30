@@ -17,11 +17,11 @@ test('the tab names the ledger directory', async ({ page }) => {
   await expect(page).toHaveTitle(`gy - ${basename(gy.dir)}`);
 });
 
-test('the header names the ledger on every screen', async ({ page, request }) => {
-  const view = await (await request.get(`${gy.url}api/overview`)).json();
-  const id = view.needs[0].id;
+test('the sidebar names the ledger on every page', async ({ page, request }) => {
+  const rows = (await (await request.get(`${gy.url}api/list?kind=Need`)).json()).rows;
+  const id = rows[0].id;
   const title = `gy - ${basename(gy.dir)}`;
-  for (const route of ['#/', '#/cross', `#/n/${id}`]) {
+  for (const route of ['#/', '#/now', '#/cross', '#/list/Need', '#/history', `#/n/${id}`, '#/eye/wait']) {
     await page.goto(`${gy.url}${route}`);
     await expect(page).toHaveTitle(title);
     // The visible name is the one the title carries, not another derivation.
@@ -64,7 +64,7 @@ test('two ledgers name themselves apart', async ({ page }) => {
 
 test('the language switch redraws without a reload', async ({ page }) => {
   await page.goto(`${gy.url}?lang=en`);
-  const tab = page.getByTestId('tabs').getByRole('link').first();
+  const tab = page.getByTestId('nav').getByRole('link').first();
   const english = await tab.innerText();
 
   // A reload would drop this mark; the switch must keep it.

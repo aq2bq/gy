@@ -69,3 +69,73 @@ test('a refused thread leaves the facts and body in place', async ({ page, reque
   await expect(main(page).locator('pre')).toBeVisible();
   await expect(main(page).getByTestId('facts')).toBeVisible();
 });
+
+/// The name a box on the thread shows for an edge's peer.
+const named = (edge: { alias?: string; to: string }) => edge.alias || edge.to;
+
+/// The decision these scenes open: it closes a question and serves a criterion,
+/// so its thread has a box on each side.
+async function closes(request: import('@playwright/test').APIRequestContext) {
+  const rows = (await (await request.get(`${gy.url}api/list?kind=Decision`)).json()).rows;
+  return rows.find((row: { title: string }) => row.title.startsWith('closes'));
+}
+
+test('the decision page matches /api/node', async ({ page, request }) => {
+  const decision = await closes(request);
+  const node = await (await request.get(`${gy.url}api/node/${decision.id}`)).json();
+  const path = await (await request.get(`${gy.url}api/node/${decision.id}/path?depth=2`)).json();
+  const words = await (await request.get(`${gy.url}assets/i18n.json`)).json();
+
+  await page.goto(`${gy.url}?lang=en#/n/${decision.id}`);
+  const view = main(page);
+  await expect(view.getByRole('heading', { level: 1 })).toHaveText(node.title);
+  await expect(view.getByText(node.data.Decision.scope.text)).toBeVisible();
+  await expect(view.getByRole('list', { name: /History/ }).getByRole('listitem')).toHaveCount(node.history.length);
+  // Every node of the thread is a box, the focus included (d-e239).
+  await expect(view.getByTestId('threadCenter')).toHaveCount(1);
+  await expect(view.getByTestId('threadBox')).toHaveCount(boxes(path));
+
+  // The body is open from the start, with no fold to open (n-d9a6).
+  await expect(view.locator('summary')).toHaveCount(0);
+  await expect(view.getByText(words.en.bodyTitle, { exact: true })).toBeVisible();
+  await expect(view.locator('pre')).not.toBeEmpty();
+});
+
+test('the decision names the question it closed', async ({ page, request }) => {
+  const decision = await closes(request);
+  const node = await (await request.get(`${gy.url}api/node/${decision.id}`)).json();
+  const edge = node.edges.find((item: { name: string }) => item.name === 'closed-by');
+  const question = await (await request.get(`${gy.url}api/node/${edge.to}`)).json();
+  const view = main(page);
+
+  await page.goto(`${gy.url}?lang=en#/n/${decision.id}`);
+  const box = view.locator('svg a').filter({ hasText: named(edge) }).first();
+  await expect(box).toHaveCount(1);
+  // The relation reads as "closed" from this side (the label sits beside the
+  // box, not inside it).
+  const labels = await view.locator('svg text').evaluateAll(nodes => nodes.map(node => node.textContent));
+  expect(labels.join(' ')).toMatch(/closed|閉じた/);
+
+  // The box opens the question's page.
+  await box.click();
+  await expect(view.getByRole('heading', { level: 1 })).toHaveText(question.title);
+  await expect(view.getByRole('list', { name: /History/ }).getByRole('listitem')).toHaveCount(question.history.length);
+});
+
+test('a node opened again after another page starts at the top', async ({ page, request }) => {
+  const decision = await closes(request);
+  await page.setViewportSize({ width: 1280, height: 420 });
+  await page.goto(`${gy.url}#/n/${decision.id}`);
+  const center = page.getByTestId('main').getByTestId('threadCenter');
+  await expect(center).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 220));
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+
+  // Another page carries no mark of the node that was shown.
+  await page.evaluate(() => { location.hash = '#/list/Need'; });
+  await expect(page.getByTestId('main').getByRole('heading', { level: 1 })).toBeVisible();
+
+  await page.evaluate(id => { location.hash = `#/n/${id}`; }, decision.id);
+  await expect(center).toBeVisible();
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+});
