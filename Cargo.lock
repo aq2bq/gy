@@ -372,7 +372,7 @@ dependencies = [
 
 [[package]]
 name = "gy"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "clap",
  "gy-ledger",
@@ -384,7 +384,7 @@ dependencies = [
 
 [[package]]
 name = "gy-ledger"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "archunit",
  "chrono",
@@ -398,7 +398,7 @@ dependencies = [
 
 [[package]]
 name = "gy-serve"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "chrono",
  "gy-ledger",
