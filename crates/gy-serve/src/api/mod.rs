@@ -1,10 +1,18 @@
 //! The routes: plain functions over `http`, testable without a socket (ac-a49a).
+//!
+//! Three of them are the reading surface the three screens use (d-6d90):
+//! `overview` (the first screen), `cross` (the crossing screen), and `path`
+//! (the detail screen). Each file's doc comment is the shape of its JSON and
+//! the meaning of every key.
+pub mod cross;
 pub mod graph;
 pub mod history;
 pub mod labels;
 pub mod list;
 pub mod node;
 pub mod now;
+pub mod overview;
+pub mod path;
 pub mod search;
 pub mod shell;
 pub mod ticks;
