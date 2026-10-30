@@ -22,16 +22,13 @@ test('ArrowLeft rewinds the head, and the screens answer for that point', async 
   await expect(band(page).getByText(`seq ${shell.seq} / ${shell.seq}`)).toBeVisible();
   expect(await at(page)).toBe('now');
 
-  await page.keyboard.press('ArrowLeft');
+  // The first screen asks for the point, not the head (n-32a9).
   const point = shell.seq - 1;
+  const asked = page.waitForRequest(request => request.url().includes(`/api/overview?at=${point}`));
+  await page.keyboard.press('ArrowLeft');
   expect(await at(page)).toBe(String(point));
   await expect(band(page).getByText(`seq ${point} / ${shell.seq}`)).toBeVisible();
   await expect(page.getByTestId('seq')).toHaveText(`seq ${point} / ${shell.seq}`);
-
-  // The first screen asks for the point, not the head.
-  const asked = page.waitForRequest(request => request.url().includes(`/api/overview?at=${point}`));
-  await page.goto(`${gy.url}?lang=en`);
-  await page.keyboard.press('ArrowLeft');
   await asked;
 });
 
