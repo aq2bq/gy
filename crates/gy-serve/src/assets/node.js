@@ -109,7 +109,8 @@
     const y1 = left.y + BH / 2;
     const x2 = right.x;
     const y2 = right.y + BH / 2;
-    const path = `<path class="e" data-to="${esc(item.id)}" d="M${x1},${y1} C${x1 + GX / 2},${y1} ${x2 - GX / 2},${y2} ${x2},${y2}"/>`;
+    const title = item.mark ? `<title>${esc(item.mark)}</title>` : '';
+    const path = `<path class="e" data-to="${esc(item.id)}" d="M${x1},${y1} C${x1 + GX / 2},${y1} ${x2 - GX / 2},${y2} ${x2},${y2}">${title}</path>`;
     if (!item.relation) return path;
     const near = child.x < parent.x ? child : parent;
     return path + `<text class="rl" x="${near.x + BW - 4}" y="${near.y - 5}" text-anchor="end">${esc(ui.t(`rel.${item.relation}`))}</text>`;
@@ -206,9 +207,22 @@
     return said.length ? `<div class="retract">${said.join('<br>')}</div>` : '';
   }
 
+  /* The decisions before and after this one, with the passage each quoted
+     (d-e239: the detail screen gives the thread). */
   function decisionFacts(node, ui) {
     const text = node.decision_scope_marked || (node.data.Decision && node.data.Decision.scope && node.data.Decision.scope.text) || ui.t('unrecorded');
-    return kv(ui, 'scopeOf', esc(text)) + retraction(node, ui);
+    const edges = node.edges || [];
+    const before = ['narrows', 'widens', 'supersedes', 'completes'];
+    const after = ['narrowed-by', 'widened-by', 'superseded-by', 'completed-by'];
+    const row = edge => {
+      const link = `<a href="#/n/${encodeURIComponent(edge.to)}">${esc(edge.alias || edge.to)}</a>`;
+      const mark = edge.mark ? ` <span class="dim">「${esc(edge.mark)}」</span>` : '';
+      return `${esc(ui.t(`rel.${edge.name}`))} ${link}${mark}`;
+    };
+    const beforeRows = edges.filter(edge => before.includes(edge.name)).map(row).join('<br>');
+    const afterRows = edges.filter(edge => after.includes(edge.name)).map(row).join('<br>');
+    return kv(ui, 'scopeOf', esc(text)) +
+      kv(ui, 'prevDecisions', beforeRows) + kv(ui, 'nextDecisions', afterRows) + retraction(node, ui);
   }
 
   function requirementFacts(node, ui, lang) {

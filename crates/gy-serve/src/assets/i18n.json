@@ -301,7 +301,9 @@
     "madeWeek": "the week it was made {from}–{to}",
     "around3": "{scope} around 3 days",
     "wordLink": "“{w}”",
-    "historySub": "{n} writes · newest first"
+    "historySub": "{n} writes · newest first",
+    "prevDecisions": "Earlier decisions",
+    "nextDecisions": "Later decisions"
   },
   "ja": {
     "now": "いま",
@@ -605,6 +607,8 @@
     "madeWeek": "作られた週 {from}–{to}",
     "around3": "{scope} の前後 3 日",
     "wordLink": "語「{w}」",
-    "historySub": "{n} 回の書き込み · 新しい順"
+    "historySub": "{n} 回の書き込み · 新しい順",
+    "prevDecisions": "前の決定",
+    "nextDecisions": "後の決定"
   }
 }
