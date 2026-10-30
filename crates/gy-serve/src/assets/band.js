@@ -35,6 +35,13 @@
     const x = seq => ((seq - band.min) / Math.max(1, band.max - band.min)) * width;
 
     draw(canvas, band, width, x, ui);
+    if (canvas.dataset.unpushed) {
+      el.dataset.unpushed = canvas.dataset.unpushed;
+      el.title = `${window.GySync.pending} ${ui.t('notPushed')}`;
+    } else {
+      delete el.dataset.unpushed;
+      el.removeAttribute('title');
+    }
     head.style.left = `${x(seqAt)}px`;
     shade.style.width = `${Math.max(0, width - x(seqAt))}px`;
 
@@ -60,10 +67,14 @@
     ctx.clearRect(0, 0, width, tall);
 
     const sync = window.GySync;
-    if (sync && sync.last_ok_seq != null && sync.last_ok_seq < band.max) {
-      const left = x(Math.max(band.min, sync.last_ok_seq));
-      ctx.fillStyle = 'rgba(126,122,112,.18)';
+    if (sync && sync.pending && (sync.last_ok_seq ?? 0) < band.max) {
+      const reached = sync.last_ok_seq ?? 0;
+      const left = x(Math.max(band.min, reached));
+      ctx.fillStyle = 'rgba(126,122,112,.22)';
       ctx.fillRect(left, 6, Math.max(1, x(band.max) - left), 32);
+      canvas.dataset.unpushed = String(reached);
+    } else {
+      delete canvas.dataset.unpushed;
     }
     ctx.strokeStyle = '#2a3450';
     ctx.lineWidth = 1;

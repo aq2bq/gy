@@ -62,6 +62,8 @@
     try {
       const body = await window.GyReads.filled(state, kind, await (await read(url)).json());
       if (ticket !== window.GyState.routeKey(state.route) + `|${state.at}|${state.detail.depth}`) return;
+      /* The band reads the synced copy's state from the shell (d-6d90). */
+      if (kind === 'shell') window.GySync = body.sync || null;
       state = window.GyState.apply(state, { type: 'dataArrived', kind, body });
     } catch (failure) {
       if (ticket !== window.GyState.routeKey(state.route) + `|${state.at}|${state.detail.depth}`) return;
