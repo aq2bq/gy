@@ -1,6 +1,6 @@
 mod common;
 
-use common::{fixture, need, stderr, stdout};
+use common::{criterion, fixture, need, stderr, stdout};
 
 #[test]
 fn edit_changes_title_and_free_attributes() {
@@ -116,7 +116,7 @@ fn edit_errors() {
 #[test]
 fn edit_refusals_name_the_operation_that_changes_the_attribute() {
     let fx = fixture();
-    fx.seed(&[need("0001", "a need")]);
+    fx.seed(&[need("0001", "a need"), criterion("0002", "a criterion")]);
 
     let refusal = |key: &str| -> String {
         let out = fx.run(&[
@@ -134,6 +134,17 @@ fn edit_refusals_name_the_operation_that_changes_the_attribute() {
     let state = refusal("state");
     assert!(state.contains("gy req approve"), "{state}");
     assert!(state.contains("gy need close"), "{state}");
+    assert!(state.contains("gy criterion satisfy"), "{state}");
+    let criterion_state = fx.run(&[
+        "edit", "ac-0002", "--reason", "shortcut", "--set", "state=x",
+    ]);
+    assert_eq!(criterion_state.status.code(), Some(2));
+    let message = stderr(&criterion_state);
+    assert!(message.contains("gy criterion satisfy"), "{message}");
+    assert!(
+        !message.contains("its own operation"),
+        "the old refusal survives: {message}"
+    );
     let reference = refusal("reference");
     assert!(reference.contains("gy req add --ref"), "{reference}");
     assert!(reference.contains("cannot be changed later"), "{reference}");

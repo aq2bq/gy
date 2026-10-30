@@ -195,11 +195,11 @@ const RESERVED: &[(&str, &str)] = &[
     ),
     (
         "state",
-        "state is moved with `gy req approve`, `gy req revise`, `gy req done`, or `gy req cancel`; a need is closed with `gy need close`",
+        "state is moved with `gy req approve`, `gy req revise`, `gy req done`, or `gy req cancel`; a need is closed with `gy need close`; a criterion is satisfied with `gy criterion satisfy`",
     ),
     (
         "status",
-        "status is read from the node's state: move it with `gy req approve`, `gy req revise`, `gy req done`, or `gy req cancel`, or close a need with `gy need close`",
+        "status is read from the node's state: move it with `gy req approve`, `gy req revise`, `gy req done`, or `gy req cancel`, close a need with `gy need close`, or satisfy a criterion with `gy criterion satisfy`",
     ),
     (
         "reference",
