@@ -1,0 +1,63 @@
+/* The crossing screen's rules (r-2d02): the narrowing on the left, the picture
+   in the middle, and the scale on the right. */
+.cross{display:grid;grid-template-columns:300px minmax(0,1fr) 330px;gap:20px;align-items:start;margin-top:12px}
+.panel{background:var(--ink-2);border:1px solid var(--line-soft);border-radius:12px;padding:14px}
+.panel h3{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--paper-3);margin:14px 0 6px;font-weight:500;text-transform:uppercase}
+.panel h3:first-child{margin-top:0}
+.panel h3 .sub{font-family:var(--sans);font-size:10px;letter-spacing:0;text-transform:none;color:var(--paper-3)}
+.panel input.q{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 10px;outline:0;font-size:14px;color:var(--paper)}
+.panel input.q:focus{border-color:var(--paper-3)}
+.range{display:flex;gap:6px;align-items:center;font-family:var(--mono);font-size:11px;color:var(--paper-3)}
+.range input{flex:1;min-width:0;background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-family:var(--mono);font-size:12px;color:var(--paper)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{border:1px solid var(--line);border-radius:999px;padding:1px 10px;font-size:12px;color:var(--paper-2);background:var(--ink);display:inline-block}
+.chip:hover{color:var(--paper);border-color:var(--paper-3)}
+.chip.on{background:var(--ink-3);color:var(--paper);border-color:hsl(var(--h,200) 50% 55%)}
+.chip small{font-family:var(--mono);font-size:10px;color:var(--paper-3);margin-left:4px}
+.stage{position:relative;background:var(--ink-2);border:1px solid var(--line-soft);border-radius:12px;overflow:hidden;min-height:520px}
+.stage .bar{display:flex;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line-soft);font-size:12px;flex-wrap:wrap}
+.stage .bar .what{font-size:14px}
+.stage .bar .what b{font-family:var(--mono)}
+#canvas{overflow-x:auto}
+#canvas svg{display:block}
+#canvas .lane-l{font-family:var(--mono);font-size:12px;font-weight:600;fill:var(--paper)}
+#canvas .lane-c{font-family:var(--mono);font-size:10px;fill:var(--paper-3)}
+#canvas .axis text{font-family:var(--mono);font-size:10px;fill:var(--paper-3)}
+#canvas circle.nd:hover{stroke:var(--paper);stroke-width:2}
+.legend{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--line-soft);font-size:11px;color:var(--paper-3)}
+.legend span{display:inline-flex;gap:5px;align-items:center}
+.dotk{display:inline-block;width:8px;height:8px;border-radius:50%;border:1.5px solid currentColor;vertical-align:middle;flex:none}
+.dotk.o{background:currentColor}
+.dotk.c{background:transparent}
+.empty-msg{padding:18px 14px;font-size:13px;color:var(--paper-2);max-width:70ch}
+.heatwrap{overflow-x:auto;padding:10px 14px}
+.heat{border-collapse:collapse;font-family:var(--mono);font-size:11px}
+.heat th{color:var(--paper-3);font-weight:400;padding:3px 4px;white-space:nowrap}
+.heat th.s{text-align:left;padding-right:10px;white-space:nowrap}
+.heat td{padding:1px}
+.heat td a{display:block;min-width:28px;height:22px;line-height:22px;text-align:center;border-radius:3px;color:var(--paper)}
+.heat td a:hover{outline:1px solid var(--paper-3)}
+.heat td .z{display:block;min-width:28px;height:22px;border-radius:3px;background:rgba(255,255,255,.02)}
+.heatnote{padding:0 14px 14px;font-size:11px;color:var(--paper-3)}
+.big{font-size:32px;font-weight:600;font-family:var(--mono);line-height:1.1}
+.big small{display:block;font-family:var(--sans);font-size:11px;font-weight:400;color:var(--paper-3);margin-top:4px}
+.sumtab{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}
+.sumtab th{font-family:var(--mono);font-size:10px;font-weight:500;color:var(--paper-3);text-align:right;padding:3px 2px;border-bottom:1px solid var(--line)}
+.sumtab th:first-child{text-align:left}
+.sumtab td{padding:3px 2px;text-align:right;border-bottom:1px solid var(--line-soft);font-family:var(--mono)}
+.sumtab td:first-child{text-align:left;font-family:var(--sans)}
+.sumtab .o{color:var(--paper)}
+.sumtab .c{font-size:10px}
+.evsum{display:flex;gap:12px;flex-wrap:wrap;margin-top:4px}
+.evsum b{font-family:var(--mono);color:var(--paper);font-size:16px;margin-right:4px}
+.evsum span{font-size:11px;color:var(--paper-3)}
+.nlist{display:flex;flex-direction:column}
+.gh{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--paper-3);margin-top:10px;text-transform:uppercase}
+.nlist a{display:grid;grid-template-columns:14px 70px minmax(0,1fr);gap:6px;align-items:baseline;padding:3px 0;font-size:12px}
+.nlist a:hover .t{text-decoration:underline}
+.nlist .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nlist .mono{font-size:10px}
+.hint{font-size:13px;color:var(--paper-2);line-height:1.7}
+.hint a{color:var(--paper);text-decoration:underline;text-underline-offset:3px}
+@media (max-width:1280px){.cross{grid-template-columns:260px minmax(0,1fr)}.cross #summary{grid-column:1 / -1}}
+@media (max-width:900px){.cross{grid-template-columns:1fr}}

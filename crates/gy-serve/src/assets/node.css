@@ -1,43 +1,48 @@
-/* The node page's rules, from the prototype (.local/proto/template.html). */
-.node{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(360px,1fr);gap:48px;padding-top:12px;align-items:start}
-.nh h1{font-family:var(--sans);font-weight:600;font-size:30px;line-height:1.45;margin:10px 0 0;text-wrap:balance}
-.nh .meta{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:var(--paper-3);margin-top:12px}
-.nh .meta .al{color:var(--paper);font-size:14px}
-.card{margin-top:26px}
-.card h3{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--paper-3);text-transform:uppercase;margin:0 0 10px;font-weight:500;display:flex;gap:12px;align-items:baseline}
-.card h3 a{margin-left:auto;letter-spacing:0;text-transform:none;color:var(--paper-3)} .card h3 a:hover{color:var(--paper)}
-.scope{font-family:var(--sans);font-size:17px;line-height:1.85;border-left:2px solid var(--decision);padding:2px 0 2px 18px;max-width:66ch}
-.scope.c{border-color:var(--criterion)}
+/* The detail screen's rules (r-2d02): the head, the left/right thread, the
+   facts and body, and the writes. */
+.back{font-family:var(--mono);font-size:11px;color:var(--paper-3);display:inline-block;margin-top:2px}
+.back:hover{color:var(--paper)}
+.nhead{margin-top:8px}
+.nhead .meta{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:var(--paper-3);margin-top:12px}
+.nhead .meta .al{color:var(--paper);font-size:14px}
+.nhead h1{font-family:var(--sans);font-weight:600;font-size:30px;line-height:1.45;margin:10px 0 0;text-wrap:balance}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.seg button{padding:2px 12px;font-size:12px;color:var(--paper-3)}
+.seg button.on{background:var(--ink-3);color:var(--paper)}
+.thread{border:1px solid var(--line-soft);border-radius:12px;background:var(--ink-2);padding:8px}
+.thread-scroll{overflow-x:auto}
+.thread svg{display:block}
+.thread text{font-family:var(--sans);font-size:12px;fill:var(--paper)}
+.thread text.ch{font-family:var(--mono);font-size:10px;letter-spacing:.1em;fill:var(--paper-3);text-transform:uppercase}
+.thread text.id{font-family:var(--mono);font-size:10px;fill:var(--paper-3)}
+.thread text.rl{font-family:var(--sans);font-size:10px;fill:var(--paper-3)}
+.thread text.more{font-family:var(--mono);font-size:11px;fill:var(--paper-3)}
+.thread .bx-rect{fill:var(--ink-3);stroke-width:1.2}
+.thread .bx-rect.closed{fill:var(--ink)}
+.thread .bx-rect.ctr{fill:var(--ink);stroke-width:2.4}
+.thread .bx:hover .bx-rect{fill:#243050}
+.thread .e{fill:none;stroke:var(--line);stroke-width:1.2}
+.thread .e.hl{stroke:var(--paper-2)}
+.thread-frame{min-height:90px}
+.ngrid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(340px,1fr);gap:48px;align-items:start;margin-top:4px}
+.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 18px;font-size:14px;align-items:baseline}
+.kv .k2{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--paper-3);text-transform:uppercase;padding-top:4px}
+.kv .v{color:var(--paper-2);line-height:1.75;min-width:0}
+.kv .v b{color:var(--paper);font-weight:500}
 .opts{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
-.opts li{border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:14px;color:var(--paper-2)}
+.opts li{border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:14px;color:var(--paper-2)}
 .opts li .tag{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--question);margin-right:8px}
-.fact{font-size:14px;color:var(--paper-2);max-width:66ch}
-.fact b{color:var(--paper);font-weight:500}
-/* The body (n-d9a6): open from the start, no fold. The heading keeps the old
-   summary's look as a quiet mark where the body begins. */
-.body{margin-top:26px}
-.body .bt{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--paper-3);text-transform:uppercase}
-.body pre{white-space:pre-wrap;font-family:var(--sans);color:var(--paper-2);font-size:14px;border-left:1px solid var(--line);padding-left:18px;margin:12px 0 0}
-.map{border:1px solid var(--line-soft);border-radius:12px;background:var(--ink-2);padding:10px;overflow-x:auto;position:relative}
-.map svg{display:block;width:100%;height:auto;cursor:grab}
-.map svg.grab{cursor:grabbing}
-.map a,.map a text{cursor:pointer}
-.map text{font-family:var(--sans);font-size:13px;fill:var(--paper)}
-.map text.rel{font-family:var(--sans);font-size:11px;fill:var(--paper-2)}
-.map text.al{font-family:var(--mono);font-size:10px;fill:var(--paper-3)}
-.map .box{fill:var(--ink-3);stroke-width:1.2;cursor:pointer} .map .box:hover{fill:#243050}
-.map .box.far{stroke-dasharray:3 3;opacity:.72}
-.map .box.from{stroke-width:2.6;filter:drop-shadow(0 0 5px rgba(226,232,255,.55))}
-.map .edge{fill:none;stroke:var(--line);stroke-width:1.2}
-.map .center{fill:var(--ink);stroke-width:2}
+.body pre{white-space:pre-wrap;font-family:var(--sans);color:var(--paper-2);font-size:14px;border-left:1px solid var(--line);padding-left:18px;margin:12px 0 0;line-height:1.85}
+.retract{border-left:3px solid var(--need);padding:2px 0 2px 14px;margin-top:10px;font-size:13px;color:var(--paper-2)}
+.outs{display:flex;gap:8px;flex-wrap:wrap}
+.outs a{border:1px solid var(--line);border-radius:999px;padding:2px 11px;font-size:12px;color:var(--paper-2)}
+.outs a:hover{border-color:var(--paper-3);color:var(--paper)}
 .hist{display:flex;flex-direction:column}
 .hi{display:grid;grid-template-columns:118px 64px minmax(0,1fr);gap:12px;padding:8px 0;border-top:1px solid var(--line-soft);font-size:13px}
-/* The bottom line closes the list. A writes row sits in a list item wrapper of
-   its own, so on the history page every row would otherwise be its parent's
-   last child; only the list's last row keeps the line (n-bc89). */
 .hi:last-child{border-bottom:1px solid var(--line-soft)}
-.list .hist > div:not(:last-child) > .hi{border-bottom:0}
 .hi .when{font-family:var(--mono);font-size:11px;color:var(--paper-3);white-space:nowrap}
-.hi .who{font-family:var(--mono);font-size:11px;color:var(--actor-teal);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hi .src{color:var(--paper-2)} .hi .why{color:var(--paper-3);font-size:12px}
-@media (max-width:900px){.node{grid-template-columns:1fr}}
+.hi .who{font-family:var(--mono);font-size:11px;color:var(--decision);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hi .src{color:var(--paper-2)}
+.hi .why{color:var(--paper-3);font-size:12px}
+.empty{font-size:13px;color:var(--paper-3)}
+@media (max-width:1100px){.ngrid{grid-template-columns:1fr;gap:20px}}

@@ -1,16 +1,12 @@
 /* The root (d-03ca): the one place that reads, draws the regions in order,
-   turns events into intents, and moves the graph's camera. 第 3 段 took the
-   bridge away; the roles are root / reads.js / events.js / ease.js. */
+   turns events into intents, and names a read that did not answer. The first
+   frame is drawn before any API call, so a slow or refused answer leaves a
+   frame with a reason instead of an empty page (r-2d02). */
 (function () {
-  /* The rail's breakpoint; app.css holds the same number (change both). */
-  const WIDE = window.matchMedia('(min-width: 1560px)');
-
   let words = null;
   let state = window.GyState.initial({
     lang: pickLang(),
-    scope: pickScope(),
     route: window.GyState.parseRoute(location.hash),
-    wide: WIDE.matches,
   });
 
   /* ?lang= wins, then the stored choice, then what the server sent (ac-b9b1). */
@@ -18,9 +14,6 @@
     const asked = new URLSearchParams(location.search).get('lang');
     if (asked === 'en' || asked === 'ja') return asked;
     return localStorage.getItem('gy-lang') || (document.documentElement.lang === 'ja' ? 'ja' : 'en');
-  }
-  function pickScope() {
-    return sessionStorage.getItem('gy-scope') || 'all';
   }
 
   /* A word by key; a dotted key walks nested objects (`st.Need.open`). */
@@ -33,7 +26,6 @@
   /* The shared pure helpers, bound to this state (state.js holds them). */
   const plural = kind => window.GyState.plural(kind, word);
   const scopeTag = name => window.GyState.scopeTag(name, state.shell ? state.shell.scopes : []);
-  const card = fields => window.GyState.card(fields, word, state.shell ? state.shell.scopes : []);
   const when = at => window.GyState.when(at, state.lang);
   const day = at => window.GyState.day(at, state.lang);
   const tickAt = seq => window.GyState.tickAt(state.band ? state.band.ticks : [], seq);
@@ -43,42 +35,70 @@
   const composing = event => event.isComposing || event.keyCode === 229;
   const composedRecently = () => performance.now() - composedAt < 50;
 
-  /* The reads live in reads.js (第 3 段); the root keeps the pending marks. */
+  /* The reads live in reads.js; the root keeps the pending marks. */
   const read = url => window.GyReads.read(state, url);
 
-  /* One read per wanted thing that is missing; dataArrived fills the state. */
+  /* The answer each screen needs. The shell and the band are the frame; the
+     screen's own answer is what may be missing. */
+  const SCREEN = {
+    overview: ['overview'],
+    cross: ['cross'],
+    node: ['page', 'path'],
+    missing: [],
+  };
+  const wanted = () => ['shell', 'band', ...(SCREEN[state.route.name] || [])];
+
+  /* One read per wanted thing that is missing; dataArrived fills the state.
+     A failure keeps the frame and records why, and never starts a second
+     read for the same thing. */
   async function ensure(kind) {
     const url = window.GyReads.path(kind, state);
-    if (state[kind] || state.pending[kind] || !url) return;
+    if (!url || state[kind] || state.pending[kind]) return;
+    /* The place the answer is for: a reply for a point or a node the reader
+       has already left is dropped, not painted (n-32a9). */
+    const ticket = window.GyState.routeKey(state.route) + `|${state.at}|${state.detail.depth}`;
     state = window.GyState.apply(state, { type: 'readStarted', kind });
+    paint();
     try {
       const body = await window.GyReads.filled(state, kind, await (await read(url)).json());
+      if (ticket !== window.GyState.routeKey(state.route) + `|${state.at}|${state.detail.depth}`) return;
       state = window.GyState.apply(state, { type: 'dataArrived', kind, body });
-    } catch {
-      state = window.GyState.apply(state, { type: 'dataArrived', kind, body: null });
+    } catch (failure) {
+      if (ticket !== window.GyState.routeKey(state.route) + `|${state.at}|${state.detail.depth}`) return;
+      state = window.GyState.apply(state, { type: 'readFailed', kind, reason: reasonOf(failure) });
     }
+    paint();
   }
 
-  async function reload() {
-    const extra = { now: ['map'], list: ['page'], node: ['page'], history: ['page'], graph: ['map', 'page'] }[state.route.name] || [];
-    await Promise.all(['shell', 'now', 'band', 'rail', ...extra].map(ensure));
-    if (state.route.name === 'graph') await ensure('labels');
+  /* The server's status and words when it gave them, else the browser's. */
+  function reasonOf(failure) {
+    const text = failure && failure.message ? failure.message : '';
+    return text || word('loadFailed');
+  }
+
+  /* Ask for everything the frame wants; each answer paints as it comes. */
+  function refresh() {
+    return Promise.allSettled(wanted().map(ensure));
+  }
+
+  /* The reader asked again after a failure. */
+  function retry() {
+    state = window.GyState.apply(state, { type: 'readAgain' });
     paint();
+    refresh();
   }
 
   /* A write arrived: state.js says what that makes stale (n-ca6d). */
   async function moved() {
     state = window.GyState.apply(state, { type: 'ledgerMoved' });
-    await reload();
+    paint();
+    await refresh();
   }
 
-  /* Draw the regions in order, then hand #main to the route's page. */
+  /* Draw the frame in order, then hand #main to the route's screen. */
   function paint() {
-    document.documentElement.lang = state.lang;
-    if (window.GySidebar) window.GySidebar.render(state, document.querySelector('.side'), ui);
-    if (window.GyTopbar) window.GyTopbar.render(state, document.getElementById('crumb'), ui);
+    if (window.GyHeader) window.GyHeader.render(state, document.querySelector('.top'), ui);
     if (window.GyBand) window.GyBand.render(state, document.querySelector('.scrub'), ui);
-    if (window.GyRail) window.GyRail.render(state, document.getElementById('railBody'), ui);
     if (window.GyPalette) window.GyPalette.render(state, document.getElementById('pal'), ui);
     paintPage();
   }
@@ -87,53 +107,25 @@
     const main = document.getElementById('main');
     main.className = '';
     const name = state.route.name;
-    if (name === 'now' && window.GyNow) window.GyNow.render(state, main, ui);
-    else if (name === 'list' && window.GyList) window.GyList.render(state, main, ui);
-    else if (name === 'eye' && window.GyEye) window.GyEye.render(state, main, ui);
+    if (name === 'overview' && window.GyOverview) window.GyOverview.render(state, main, ui);
+    else if (name === 'cross' && window.GyCross) window.GyCross.render(state, main, ui);
     else if (name === 'node' && window.GyNode) window.GyNode.render(state, main, ui);
-    else if (name === 'history' && window.GyHistory) window.GyHistory.render(state, main, ui);
-    else if (name === 'graph' && window.GyGraph) { window.GyGraph.render(state, main, ui); aimGraph(); }
-    else if (name === 'missing') main.textContent = word('notYet');
-  }
-
-  /* Point the graph's camera when the page opens or its point changes: the
-     focus node in the hash, else everything. The canvas is what the fit needs,
-     so this runs after the page has drawn. */
-  let aimed = null, aimedArg = null;
-  function aimGraph() {
-    const canvas = document.getElementById('g');
-    if (!canvas || !state.map) return;
-    const key = `${state.scope}|${state.at}`;
-    const focus = state.route.arg || null;
-    if (aimed === key && aimedArg === focus) return;
-    aimed = key;
-    aimedArg = focus;
-    if (focus) run({ type: 'graphSelect', value: focus });
-    ease.start(window.GyGraph.fitTo(state, canvas, focus ? { node: focus } : null));
+    else if (name === 'missing') main.innerHTML = `<div class="frame"><p class="hd">${word('notYet')}</p></div>`;
   }
 
   /* The insides of an intent: which ones need a read before the redraw. */
-  let reloadTimer = null;
   async function run(intent) {
     state = window.GyState.apply(state, intent);
-    if (intent.type === 'setScope' || intent.type === 'setAt' || intent.type === 'go') ease.stop();
-    if (intent.type === 'setScope') { await reload(); return; }
-    if (intent.type === 'go') { await reload(); return; }
-    if (intent.type === 'graphSelect') { await reload(); return; }
-    if (intent.type === 'historyActor' || intent.type === 'historySince') { await reload(); return; }
-    if (intent.type === 'setAt') { preview(); scheduleReload(); return; }
-    if (intent.type === 'graphTarget') { ease.start(intent.value); return; }
-    if (intent.type === 'copied') { scheduleCopy(); paint(); return; }
-    if (intent.type === 'graphCam' || intent.type === 'graphHover') { paintPage(); return; }
-    /* The node map's camera moves like the graph's: the page alone is redrawn,
-       so a drag stays light (n-9ca9). The pointer's box redraws the page too,
-       so the card appears and goes without a read (n-dc1a). */
-    if (intent.type === 'mapCam' || intent.type === 'mapHover') { paintPage(); return; }
-    if (intent.type === 'paletteOpen') {
-      paintPalette();
-      focusPalette();
+    if (intent.type === 'setLang') {
+      localStorage.setItem('gy-lang', intent.value);
+      paint();
       return;
     }
+    if (intent.type === 'go') { paint(); await refresh(); return; }
+    if (intent.type === 'detailDepth') { paint(); await refresh(); return; }
+    if (intent.type === 'setAt') { preview(); scheduleRefresh(); return; }
+    if (intent.type === 'copied') { scheduleCopy(); paint(); return; }
+    if (intent.type === 'paletteOpen') { paint(); focusPalette(); paintPalette(); return; }
     if (intent.type === 'paletteQuery') { searchChanged(); return; }
     if (intent.type === 'paletteMove' || intent.type === 'paletteClose') { paintPalette(); return; }
     if (intent.type === 'liveChanged') { paintLive(); return; }
@@ -169,31 +161,37 @@
       return;
     }
     paintPalette();
-    const body = await (await read(`/api/search?q=${encodeURIComponent(query)}`)).json();
-    if (state.palette.query.trim() !== query) return;
-    state = window.GyState.apply(state, { type: 'dataArrived', kind: 'search', body });
+    try {
+      const body = await (await window.GyReads.read(state, `/api/search?q=${encodeURIComponent(query)}`)).json();
+      if (state.palette.query.trim() !== query) return;
+      state = window.GyState.apply(state, { type: 'dataArrived', kind: 'search', body });
+    } catch {
+      if (state.palette.query.trim() !== query) return;
+      state = window.GyState.apply(state, { type: 'dataArrived', kind: 'search', body: { hits: [] } });
+    }
     paintPalette();
   }
 
-  /* The connection mark, drawn by the sidebar and the rail from state.live. */
+  /* The connection mark, drawn by the header from state.live. */
   function setLive(on) {
     if (state.live === on) return;
     state = window.GyState.apply(state, { type: 'liveChanged', value: on });
     paintLive();
   }
   function paintLive() {
-    if (window.GySidebar) window.GySidebar.render(state, document.querySelector('.side'), ui);
-    if (window.GyRail) window.GyRail.render(state, document.getElementById('railBody'), ui);
+    if (window.GyHeader) window.GyHeader.render(state, document.querySelector('.top'), ui);
   }
 
-  /* While the head is dragged: the band and the clock follow at once. */
+  /* While the head is dragged: the band and the header follow at once. */
   function preview() {
     if (window.GyBand) window.GyBand.render(state, document.querySelector('.scrub'), ui);
-    if (window.GySidebar) window.GySidebar.render(state, document.querySelector('.side'), ui);
+    if (window.GyHeader) window.GyHeader.render(state, document.querySelector('.top'), ui);
+    paintPage();
   }
-  function scheduleReload() {
-    if (reloadTimer) return;
-    reloadTimer = setTimeout(() => { reloadTimer = null; reload(); }, 60);
+  let refreshTimer = null;
+  function scheduleRefresh() {
+    if (refreshTimer) return;
+    refreshTimer = setTimeout(() => { refreshTimer = null; refresh(); }, 60);
   }
 
   /* The band's head: a number of the log, or null for the head (n-32a9). */
@@ -207,42 +205,37 @@
   }
 
   function go(route) {
-    if (route.name === state.route.name && route.arg === state.route.arg) return;
+    if (window.GyState.routeKey(route) === window.GyState.routeKey(state.route)) return;
     run({ type: 'go', value: route });
   }
 
-  /* Events: the wiring is in events.js; here is what it may call. */
   function composedEnd() { composedAt = performance.now(); }
   function resized() {
     if (window.GyBand) window.GyBand.render(state, document.querySelector('.scrub'), ui);
   }
 
-  /* What the regions may use: the read-only helpers and whether a copy mark is
-     possible. The elements themselves belong to the regions' own holders. */
-  const ui = {
-    t: word, plural, scopeTag, card, tickAt, when, day,
-    canCopy: !!navigator.clipboard,
+  /* What the regions may use: the read-only helpers and where a link goes. */
+  const ledgerName = () => {
+    const badge = document.querySelector('[data-testid="ledger"]');
+    return badge ? badge.textContent.trim() : '';
   };
+  const ui = {
+    t: word, plural, scopeTag, when, day, tickAt,
+    hue: name => window.GyState.hue(name, state.shell ? state.shell.scopes : []),
+    canCopy: !!navigator.clipboard,
+    navigate: hash => { location.hash = hash; },
+    retry,
+  };
+  Object.defineProperty(ui, 'ledger', { get: ledgerName });
 
-  /* The camera's ease: the root's clock, the graph's curve (n-88b2). */
-  const ease = window.GyEase.make({
-    get: () => state,
-    aim: value => { state = window.GyState.apply(state, { type: 'graphTarget', value }); },
-    cam: value => { state = window.GyState.apply(state, { type: 'graphCam', value }); },
-    arrived: () => { state = window.GyState.apply(state, { type: 'graphTarget', value: null }); },
-    draw: paintPage,
-  });
-
-  /* The long wait for the next write lives in watch.js (n-39f2); the root says
-     what to do when the log moves and when the line drops. */
+  /* The long wait for the next write lives in watch.js (n-39f2). */
   async function start() {
-    words = await window.GyReads.words();
-    window.GyEvents.wire({
-      run, setAt, go, composing, composedRecently, composedEnd, resized,
-      state: () => state,
-    });
-    WIDE.addEventListener('change', () => run({ type: 'setWide', value: WIDE.matches }));
-    await reload();
+    /* The words are a local asset, not an API: read them first so the frame is
+       written in the reader's language, then draw it before any answer. */
+    try { words = await window.GyReads.words(); } catch { words = null; }
+    paint();
+    window.GyEvents.wire({ run, setAt, go, composing, composedRecently, composedEnd, resized, retry, state: () => state });
+    refresh();
     window.GyWatch.follow(async () => { await moved(); }, on => setLive(on));
   }
 

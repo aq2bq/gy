@@ -9,41 +9,30 @@ use gy_serve::assets;
 /// cannot arrive without someone naming its role. The checks below read this
 /// table, never a file name. `network` is the one role that may open a socket;
 /// `asset` is for the files that are not code (html, css, words).
-const ROLES: [(&str, &str); 34] = [
+const ROLES: [(&str, &str); 23] = [
     ("index.html", "asset"),
     ("app.css", "asset"),
     ("state.js", "core"),
+    ("shape.js", "part"),
+    ("lanes.js", "part"),
     ("reads.js", "network"),
     ("watch.js", "network"),
-    ("ease.js", "core"),
     ("events.js", "core"),
     ("root.js", "core"),
-    ("sidebar.js", "region"),
-    ("topbar.js", "region"),
+    ("header.js", "region"),
     ("band.js", "region"),
-    ("i18n.json", "asset"),
-    ("now.css", "asset"),
-    ("sky.js", "part"),
-    ("now.js", "region"),
-    ("palette.css", "asset"),
-    ("palette.js", "region"),
-    ("list.css", "asset"),
-    ("list.js", "region"),
-    ("eye.css", "asset"),
-    ("eye.js", "region"),
-    ("history.css", "asset"),
-    ("history.js", "region"),
+    ("overview.css", "asset"),
+    ("overview.js", "region"),
+    ("cross.css", "asset"),
+    ("cross.js", "region"),
     ("node.css", "asset"),
     ("node.js", "region"),
     ("time.css", "asset"),
     ("time.js", "part"),
-    ("graph.css", "asset"),
-    ("graph-draw.js", "part"),
-    ("graph.js", "region"),
-    ("writes.js", "part"),
     ("copy.js", "part"),
-    ("rail.css", "asset"),
-    ("rail.js", "region"),
+    ("palette.css", "asset"),
+    ("palette.js", "region"),
+    ("i18n.json", "asset"),
 ];
 
 const ROLE_NAMES: [&str; 5] = ["core", "region", "part", "asset", "network"];
@@ -137,20 +126,15 @@ fn a_region_does_not_reach_for_another_region_or_the_core() {
         ("state.js", "GyState"),
         ("reads.js", "GyReads"),
         ("watch.js", "GyWatch"),
-        ("ease.js", "GyEase"),
         ("events.js", "GyEvents"),
-        ("sidebar.js", "GySidebar"),
-        ("topbar.js", "GyTopbar"),
+        ("header.js", "GyHeader"),
         ("band.js", "GyBand"),
-        ("rail.js", "GyRail"),
-        ("palette.js", "GyPalette"),
-        ("now.js", "GyNow"),
-        ("list.js", "GyList"),
-        ("eye.js", "GyEye"),
+        ("overview.js", "GyOverview"),
+        ("cross.js", "GyCross"),
         ("node.js", "GyNode"),
-        ("history.js", "GyHistory"),
-        ("graph.js", "GyGraph"),
+        ("palette.js", "GyPalette"),
     ];
+
     for (name, kind) in ROLES {
         if kind != "region" {
             continue;

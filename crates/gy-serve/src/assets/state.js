@@ -1,66 +1,87 @@
-/* The web UI's one state and the intents that move it (d-03ca, 第 2 段). No DOM
-   and no fetch here: apply returns a new state and does nothing else. */
+/* The screen's one state and the intents that move it (d-03ca). No DOM and no
+   fetch here: apply returns a new state and does nothing else. The three
+   screens read their own answer (overview / cross / path), so a page that is
+   still loading keeps the frame the root already drew (r-2d02). */
 (function () {
-  /* The route a hash names: now / list / eye / node / history / graph. `arg`
-     carries the kind, the eye key, the node id, or the graph focus. */
+  /* The route a hash names: overview (the first screen), cross, node, or a
+     route this build does not have. `query` carries the cross screen's
+     narrowing (q, from, to, scope). */
   function parseRoute(hash) {
-    const list = hash.match(/^#\/list\/(\w+)$/);
-    const node = hash.match(/^#\/n\/(.+)$/);
-    const graph = hash.match(/^#\/graph(?:\/(.+))?$/);
-    const eye = hash.match(/^#\/eye\/(wait|next|resume)$/);
-    if (hash === '' || hash === '#/') return { name: 'now', arg: null };
-    if (list) return { name: 'list', arg: list[1] };
-    if (graph) return { name: 'graph', arg: graph[1] ? decodeURIComponent(graph[1]) : null };
-    if (eye) return { name: 'eye', arg: eye[1] };
-    if (node) return { name: 'node', arg: decodeURIComponent(node[1]) };
-    if (hash === '#/history') return { name: 'history', arg: null };
-    return { name: 'missing', arg: null };
+    const text = String(hash || '');
+    const cut = text.indexOf('?');
+    const path = cut < 0 ? text : text.slice(0, cut);
+    const query = parseQuery(cut < 0 ? '' : text.slice(cut + 1));
+    const node = path.match(/^#\/n\/(.+)$/);
+    if (path === '' || path === '#/' || path === '#/overview') return { name: 'overview', arg: null, query };
+    if (path === '#/cross') return { name: 'cross', arg: null, query };
+    if (node) return { name: 'node', arg: decodeURIComponent(node[1]), query };
+    return { name: 'missing', arg: null, query };
+  }
+
+  /* `a=1&scope=b&scope=c` as `{a: '1', scope: ['b', 'c']}`. A repeated key is
+     a list; `scope` is the one the cross API takes more than once. */
+  function parseQuery(search) {
+    const found = {};
+    for (const pair of String(search || '').split('&')) {
+      if (!pair) continue;
+      const at = pair.indexOf('=');
+      const key = decodeURIComponent(at < 0 ? pair : pair.slice(0, at));
+      const value = decodeURIComponent((at < 0 ? '' : pair.slice(at + 1)).replace(/\+/g, ' '));
+      if (key === 'scope') {
+        if (!Array.isArray(found.scope)) found.scope = [];
+        found.scope.push(value);
+      } else {
+        found[key] = value;
+      }
+    }
+    return found;
+  }
+
+  /* What makes two routes the same place: the path and the whole query. */
+  function routeKey(route) {
+    const query = Object.keys(route.query || {})
+      .sort()
+      .map(key => {
+        const value = route.query[key];
+        return Array.isArray(value) ? `${key}=${value.join(',')}` : `${key}=${value}`;
+      })
+      .join('&');
+    return `${route.name}|${route.arg || ''}|${query}`;
   }
 
   /* The first state: what the person chose, then the empty places the reads
-     and the pages fill. */
+     and the pages fill. Nothing here is judged from the record. */
   function initial(env) {
     return {
       lang: env.lang,
-      scope: env.scope,
       at: null,
       route: env.route,
-      wide: env.wide,
-      /* The nodes this tab has opened, for the "came from" mark (n-...). The
-         first page counts, so the second one can name it. */
+      /* The nodes this tab has opened, for the detail tab and the way back. */
       trail: env.route.name === 'node' && env.route.arg ? [env.route.arg] : [],
-      list: { filter: 'open' },
-      history: { actor: null, since: null },
-      graph: { cam: { x: 0, y: 0, k: 1 }, target: null, selected: null, hover: null },
-      /* The node page's connections map: its own camera, so the graph page's
-         and the node's never move each other (n-9ca9). `hover` is the box the
-         pointer is on, for the card the region draws (n-dc1a). */
-      ego: { cam: { x: 0, y: 0, k: 1 }, hover: null },
+      /* The thread's width: two stages each way, or three. */
+      detail: { depth: 2 },
       palette: { open: false, query: '', selected: 0 },
       shell: null,
-      now: null,
-      map: null,
-      labels: null,
       band: null,
       page: null,
-      rail: null,
+      overview: null,
+      cross: null,
+      path: null,
       search: null,
       live: true,
       pending: {},
+      failed: {},
       copied: null,
     };
   }
 
-  /* A read that arrived: its place is filled and its pending mark cleared. */
+  /* A read that arrived: its place is filled, its marks cleared. */
   function arrived(state, kind, body) {
     const pending = { ...state.pending };
+    const failed = { ...state.failed };
     delete pending[kind];
-    if (kind === 'now') {
-      /* The band and the write rows read the shared copy's sync from here
-         (n-94bb); a local ledger leaves it null. */
-      window.GySync = (body.resume && body.resume.sync) || null;
-    }
-    return { ...state, [kind]: body, pending };
+    delete failed[kind];
+    return { ...state, [kind]: body, pending, failed };
   }
 
   /* The intents the root turns events into. A read's data never moves here. */
@@ -68,49 +89,39 @@
     switch (intent.type) {
       case 'setLang':
         return { ...state, lang: intent.value };
-      case 'setScope':
-        return { ...state, scope: intent.value, shell: null, now: null, map: null, labels: null, page: null, rail: null, graph: { ...state.graph, target: null, selected: null, hover: null } };
       case 'setAt':
-        return { ...state, at: intent.value, shell: null, now: null, map: null, labels: null, page: null, rail: null, graph: { ...state.graph, target: null, selected: null, hover: null } };
+        return { ...state, at: intent.value, shell: null, page: null, overview: null, cross: null, path: null, pending: {}, failed: {} };
       case 'go': {
         const route = intent.value;
         const last = state.trail[state.trail.length - 1];
         const trail = route.name === 'node' && route.arg && route.arg !== last
           ? [...state.trail, route.arg].slice(-20)
           : state.trail;
-        /* Another node opens at the whole figure; the same node keeps its
-           camera through a redraw (n-9ca9). The pointer's box is forgotten, so
-           a stale card cannot open with the new node (n-dc1a). */
-        const ego = route.name === 'node' && route.arg !== state.route.arg
-          ? { cam: { x: 0, y: 0, k: 1 }, hover: null }
-          : state.ego;
-        const list = route.name === 'list' ? { ...state.list, filter: 'open' } : state.list;
-        return { ...state, route, trail, ego, page: null, list };
+        return {
+          ...state,
+          route,
+          trail,
+          page: null,
+          overview: null,
+          cross: null,
+          path: null,
+          pending: {},
+          failed: {},
+          palette: { ...state.palette, open: false, query: '', selected: 0 },
+          search: null,
+        };
       }
-      case 'setWide':
-        return { ...state, wide: intent.value };
-      case 'listFilter':
-        return { ...state, list: { ...state.list, filter: intent.value } };
-      case 'historyActor':
-        return { ...state, history: { ...state.history, actor: intent.value }, page: null };
-      case 'historySince':
-        return { ...state, history: { ...state.history, since: intent.value }, page: null };
-      case 'graphCam':
-        return { ...state, graph: { ...state.graph, cam: intent.value } };
-      case 'graphTarget':
-        return { ...state, graph: { ...state.graph, target: intent.value } };
-      case 'mapCam':
-        return { ...state, ego: { ...state.ego, cam: intent.value } };
-      /* The box under the pointer, for the card the node region draws
-         (n-dc1a). The camera is not touched. */
-      case 'mapHover':
-        return { ...state, ego: { ...state.ego, hover: intent.value } };
-      case 'graphSelect':
-        return { ...state, graph: { ...state.graph, selected: intent.value }, page: null };
-      case 'graphHover':
-        return { ...state, graph: { ...state.graph, hover: intent.value } };
-      /* The palette's hits belong to the word that asked for them: opening, a
-         new word, and closing all leave the old answer behind (n-ca6d). */
+      case 'detailDepth':
+        return { ...state, detail: { depth: intent.value }, path: null, pending: {}, failed: {} };
+      /* A write moved the ledger. The band is of the old head; at the head the
+         answers are too. */
+      case 'ledgerMoved': {
+        const head = state.at === null;
+        return { ...state, band: null, ...(head ? { shell: null, page: null, overview: null, cross: null, path: null, pending: {}, failed: {} } : {}) };
+      }
+      case 'liveChanged':
+        return { ...state, live: intent.value };
+      /* The palette's hits belong to the word that asked for them. */
       case 'paletteOpen':
         return { ...state, palette: { ...state.palette, open: true, query: '', selected: 0 }, search: null };
       case 'paletteClose':
@@ -119,29 +130,20 @@
         return { ...state, palette: { ...state.palette, query: intent.value, selected: 0 }, search: null };
       case 'paletteMove':
         return { ...state, palette: { ...state.palette, selected: intent.value } };
-      /* A write moves the ledger. The band and the rail are of the old head, and
-         at the head the shell, now, and page too. The graph page keeps its map
-         and labels: its camera and selection hold their picture (n-88b2). */
-      case 'ledgerMoved': {
-        const head = state.at === null;
-        const graph = state.route.name === 'graph';
-        return {
-          ...state,
-          band: null,
-          rail: null,
-          ...(head ? { shell: null, now: null, page: null, map: graph ? state.map : null, labels: graph ? state.labels : null } : {}),
-        };
-      }
-      case 'liveChanged':
-        return { ...state, live: intent.value };
-      /* The name just copied, for the mark's sign; the root's timer clears it
-         (n-6afd). */
       case 'copied':
         return { ...state, copied: intent.value };
-      /* A read that is out: the mark keeps it from being asked twice, and
-         `dataArrived` clears it when the answer comes (n-ca6d). */
+      /* A read that is out: the mark keeps it from being asked twice. */
       case 'readStarted':
         return { ...state, pending: { ...state.pending, [intent.kind]: true } };
+      /* A read that did not answer: the frame stays and says why (r-2d02). */
+      case 'readFailed': {
+        const pending = { ...state.pending };
+        delete pending[intent.kind];
+        return { ...state, pending, failed: { ...state.failed, [intent.kind]: intent.reason } };
+      }
+      /* The reader asked again: the marks go and the root asks again. */
+      case 'readAgain':
+        return { ...state, pending: {}, failed: {} };
       case 'dataArrived':
         return arrived(state, intent.kind, intent.body);
       default:
@@ -149,8 +151,8 @@
     }
   }
 
-  /* Pure text and time helpers (no DOM, no fetch), so root and the regions share
-   one copy. They live here with the state because they judge nothing else. */
+  /* Pure text and time helpers (no DOM, no fetch), so the root and the regions
+     share one copy. */
   const PLURAL = { Need: 'Needs', Question: 'Questions', Decision: 'Decisions', Requirement: 'Requirements', Criterion: 'Criteria' };
   const SCOPE_HUES = [10, 40, 95, 140, 175, 210, 262, 320];
   const esc = text => String(text ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
@@ -168,39 +170,28 @@
     return (hash >>> 0) % SCOPE_HUES.length;
   }
 
-  /* The scope badge (n-4e5a): a hue already taken in this ledger is skipped, in
-     the server's scope order, so two scopes are told apart by colour. */
-  function scopeTag(name, scopes) {
+  /* The scope's hue among this ledger's scopes: a hue already taken is skipped,
+     in the server's scope order, so two scopes are told apart by colour. */
+  function hue(name, scopes) {
     const text = String(name ?? '');
     const names = (scopes || []).map(item => item.name);
     const wanted = names.indexOf(text);
-    let hue = SCOPE_HUES[hashIndex(text)];
+    let found = SCOPE_HUES[hashIndex(text)];
     if (wanted >= 0) {
       const taken = new Set();
       for (let at = 0; at <= wanted; at++) {
         let slot = hashIndex(names[at]);
         while (taken.has(slot) && taken.size < SCOPE_HUES.length) slot = (slot + 1) % SCOPE_HUES.length;
-        if (at === wanted) hue = SCOPE_HUES[slot];
+        if (at === wanted) found = SCOPE_HUES[slot];
         else taken.add(slot);
       }
     }
-    return `<span class="sb" style="--sb:${hue}">${esc(text)}</span>`;
+    return found;
   }
 
-  /* The card over a node the pointer is on (d-1c00): the five things that tell
-     one node from another — id (with alias), kind, status, scope, and the whole
-     title. The node page and the graph page both show it, so it is built here
-     once; `t` translates a dictionary key and `scopes` colours the badge. */
-  function card(fields, t, scopes) {
-    const kind = fields.kind ? `<span class="k k-${fields.kind}" data-testid="mapcardKind">${esc(t(fields.kind))}</span>` : '';
-    const name = fields.alias
-      ? `<span class="al">${esc(fields.alias)}</span><span class="id" data-testid="mapcardId">${esc(fields.id)}</span>`
-      : `<span class="id" data-testid="mapcardId">${esc(fields.id)}</span>`;
-    const status = fields.kind && fields.status ? `<span data-testid="mapcardStatus">${esc(t(`st.${fields.kind}.${fields.status}`))}</span>` : '';
-    const scope = fields.scope ? `<span data-testid="mapcardScope">${scopeTag(fields.scope, scopes)}</span>` : '';
-    return `<div class="egocard" data-testid="mapcard"><div class="ek">${kind}${name}</div>` +
-      `<div class="em">${status}${scope}</div>` +
-      `<div class="et" data-testid="mapcardTitle">${esc(fields.title || '')}</div></div>`;
+  /* The scope badge (n-4e5a). */
+  function scopeTag(name, scopes) {
+    return `<span class="sb" style="--sb:${hue(name, scopes)}">${esc(String(name ?? ''))}</span>`;
   }
 
   const loc = lang => (lang === 'ja' ? 'ja-JP' : 'en-GB');
@@ -217,5 +208,5 @@
     return found;
   }
 
-  window.GyState = { initial, apply, parseRoute, esc, plural, scopeTag, card, when, day, tickAt };
+  window.GyState = { initial, apply, parseRoute, routeKey, esc, plural, scopeTag, hue, when, day, tickAt };
 })();

@@ -1,5 +1,5 @@
 /* The time band, moved from the prototype (.local/proto/template.html). */
-.scrub{position:fixed;left:var(--side);right:0;bottom:0;z-index:6;background:linear-gradient(transparent,var(--ink) 30%);padding:26px 32px 18px}
+.scrub{position:fixed;left:0;right:0;bottom:0;z-index:6;background:linear-gradient(transparent,var(--ink) 30%);padding:26px 32px 18px}
 .scrub .bar{display:flex;align-items:center;gap:18px;margin-bottom:8px}
 .scrub .lbl{font-family:var(--mono);font-size:12px;color:var(--paper-3)}
 .scrub .lbl b{color:var(--paper);font-weight:500}

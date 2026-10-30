@@ -2,74 +2,52 @@
 const INDEX: &str = include_str!("assets/index.html");
 const CSS: &str = include_str!("assets/app.css");
 const STATE_JS: &str = include_str!("assets/state.js");
+const SHAPE_JS: &str = include_str!("assets/shape.js");
+const LANES_JS: &str = include_str!("assets/lanes.js");
 const READS_JS: &str = include_str!("assets/reads.js");
 const WATCH_JS: &str = include_str!("assets/watch.js");
-const EASE_JS: &str = include_str!("assets/ease.js");
 const EVENTS_JS: &str = include_str!("assets/events.js");
 const ROOT_JS: &str = include_str!("assets/root.js");
-const SIDEBAR_JS: &str = include_str!("assets/sidebar.js");
-const TOPBAR_JS: &str = include_str!("assets/topbar.js");
+const HEADER_JS: &str = include_str!("assets/header.js");
 const BAND_JS: &str = include_str!("assets/band.js");
-const I18N: &str = include_str!("assets/i18n.json");
-const NOW_CSS: &str = include_str!("assets/now.css");
-const SKY_JS: &str = include_str!("assets/sky.js");
-const NOW_JS: &str = include_str!("assets/now.js");
-const PALETTE_CSS: &str = include_str!("assets/palette.css");
-const PALETTE_JS: &str = include_str!("assets/palette.js");
-const LIST_CSS: &str = include_str!("assets/list.css");
-const LIST_JS: &str = include_str!("assets/list.js");
-const EYE_CSS: &str = include_str!("assets/eye.css");
-const EYE_JS: &str = include_str!("assets/eye.js");
-const HISTORY_CSS: &str = include_str!("assets/history.css");
-const HISTORY_JS: &str = include_str!("assets/history.js");
+const OVERVIEW_CSS: &str = include_str!("assets/overview.css");
+const OVERVIEW_JS: &str = include_str!("assets/overview.js");
+const CROSS_CSS: &str = include_str!("assets/cross.css");
+const CROSS_JS: &str = include_str!("assets/cross.js");
 const NODE_CSS: &str = include_str!("assets/node.css");
 const NODE_JS: &str = include_str!("assets/node.js");
 const TIME_CSS: &str = include_str!("assets/time.css");
 const TIME_JS: &str = include_str!("assets/time.js");
-const GRAPH_CSS: &str = include_str!("assets/graph.css");
-const GRAPH_DRAW_JS: &str = include_str!("assets/graph-draw.js");
-const GRAPH_JS: &str = include_str!("assets/graph.js");
-const WRITES_JS: &str = include_str!("assets/writes.js");
 const COPY_JS: &str = include_str!("assets/copy.js");
-const RAIL_CSS: &str = include_str!("assets/rail.css");
-const RAIL_JS: &str = include_str!("assets/rail.js");
+const PALETTE_CSS: &str = include_str!("assets/palette.css");
+const PALETTE_JS: &str = include_str!("assets/palette.js");
+const I18N: &str = include_str!("assets/i18n.json");
 
 /// Every embedded file: its name and its text.
-pub const FILES: [(&str, &str); 34] = [
+pub const FILES: [(&str, &str); 23] = [
     ("index.html", INDEX),
     ("app.css", CSS),
     ("state.js", STATE_JS),
+    ("shape.js", SHAPE_JS),
+    ("lanes.js", LANES_JS),
     ("reads.js", READS_JS),
     ("watch.js", WATCH_JS),
-    ("ease.js", EASE_JS),
     ("events.js", EVENTS_JS),
     ("root.js", ROOT_JS),
-    ("sidebar.js", SIDEBAR_JS),
-    ("topbar.js", TOPBAR_JS),
+    ("header.js", HEADER_JS),
     ("band.js", BAND_JS),
-    ("i18n.json", I18N),
-    ("now.css", NOW_CSS),
-    ("sky.js", SKY_JS),
-    ("now.js", NOW_JS),
-    ("palette.css", PALETTE_CSS),
-    ("palette.js", PALETTE_JS),
-    ("list.css", LIST_CSS),
-    ("list.js", LIST_JS),
-    ("eye.css", EYE_CSS),
-    ("eye.js", EYE_JS),
-    ("history.css", HISTORY_CSS),
-    ("history.js", HISTORY_JS),
+    ("overview.css", OVERVIEW_CSS),
+    ("overview.js", OVERVIEW_JS),
+    ("cross.css", CROSS_CSS),
+    ("cross.js", CROSS_JS),
     ("node.css", NODE_CSS),
     ("node.js", NODE_JS),
     ("time.css", TIME_CSS),
     ("time.js", TIME_JS),
-    ("graph.css", GRAPH_CSS),
-    ("graph-draw.js", GRAPH_DRAW_JS),
-    ("graph.js", GRAPH_JS),
-    ("writes.js", WRITES_JS),
     ("copy.js", COPY_JS),
-    ("rail.css", RAIL_CSS),
-    ("rail.js", RAIL_JS),
+    ("palette.css", PALETTE_CSS),
+    ("palette.js", PALETTE_JS),
+    ("i18n.json", I18N),
 ];
 
 /// The one HTML document, with `%LANG%` still in place.

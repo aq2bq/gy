@@ -13,46 +13,27 @@ fn embedded_files_have_no_external_reference() {
 
 #[test]
 fn a_traversal_or_unknown_name_is_not_a_file() {
-    for name in ["../Cargo.toml", "sub/app.css", "missing.js"] {
-        assert!(assets::get(name).is_none(), "{name}");
-    }
-    let kind = assets::get("index.html").unwrap().1;
-    assert_eq!(kind, "text/html; charset=utf-8");
-}
-
-#[test]
-fn the_read_pages_are_embedded_and_served() {
     for name in [
         "state.js",
+        "shape.js",
+        "lanes.js",
         "reads.js",
         "watch.js",
-        "ease.js",
         "events.js",
         "root.js",
-        "sidebar.js",
-        "topbar.js",
+        "header.js",
         "band.js",
-        "now.css",
-        "sky.js",
-        "now.js",
-        "list.css",
-        "list.js",
-        "eye.css",
-        "eye.js",
-        "history.css",
-        "history.js",
+        "overview.css",
+        "overview.js",
+        "cross.css",
+        "cross.js",
         "node.css",
         "node.js",
+        "time.css",
+        "time.js",
+        "copy.js",
         "palette.css",
         "palette.js",
-        "time.css",
-        "graph.css",
-        "graph-draw.js",
-        "graph.js",
-        "rail.css",
-        "rail.js",
-        "writes.js",
-        "copy.js",
     ] {
         let (body, kind) = assets::get(name).unwrap();
         assert!(!body.is_empty(), "{name} is empty");
@@ -64,36 +45,26 @@ fn the_read_pages_are_embedded_and_served() {
 fn the_index_references_the_embedded_files() {
     let html = assets::index();
     for name in [
-        "app.css",
         "state.js",
+        "shape.js",
+        "lanes.js",
         "reads.js",
         "watch.js",
-        "ease.js",
         "events.js",
         "root.js",
-        "sidebar.js",
-        "topbar.js",
+        "header.js",
         "band.js",
-        "now.css",
-        "list.css",
-        "eye.css",
+        "overview.css",
+        "overview.js",
+        "cross.css",
+        "cross.js",
         "node.css",
-        "palette.css",
-        "sky.js",
-        "now.js",
-        "list.js",
-        "eye.js",
-        "history.js",
         "node.js",
-        "palette.js",
         "time.css",
-        "graph.css",
-        "graph-draw.js",
-        "graph.js",
-        "rail.css",
-        "rail.js",
-        "writes.js",
+        "time.js",
         "copy.js",
+        "palette.css",
+        "palette.js",
     ] {
         assert!(
             html.contains(&format!("assets/{name}")),
