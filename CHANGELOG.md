@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.3.0 - 2026-10-30
 
 The bundled skills no longer speak of a team: gy has no such notion. What the
 ledger leaves out is how the work is run, unless the way of working is itself
