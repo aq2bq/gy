@@ -182,7 +182,9 @@
   }
 
   /* Rows are scopes, the width is time; the placement is lanes.js's and every
-     coordinate is finite by construction (ac-afba). */
+     coordinate is finite by construction (ac-afba). The edges are two paths and
+     the nodes are circles: a cut of hundreds must not put thousands of boxes in
+     the document, or the browser spends seconds on the frame (r-2d02). */
   function lanes(canvas, data, query, ui) {
     const width = Math.max(360, canvas.clientWidth || canvas.parentElement.clientWidth || 900);
     const from = query.from ? at(query.from) : undefined;
@@ -212,21 +214,28 @@
         `<text x="${x + 3}" y="20">${md(tick)}</text>`;
     }
     svg += `</g>`;
+    const paths = { cross: '', inside: '' };
     for (const edge of lay.edges) {
       const a = edge.a;
       const b = edge.b;
       const middle = (a.x + b.x) / 2;
       const lift = (a.y + b.y) / 2 - Math.min(40, Math.abs(a.x - b.x) * 0.15);
-      const color = edge.cross ? '#d9c8ff' : '#8f9bbd';
-      const opacity = edge.cross ? 0.7 : 0.28;
-      svg += `<path d="M${a.x},${a.y} Q${middle},${lift} ${b.x},${b.y}" fill="none" stroke="${color}" stroke-opacity="${opacity}" stroke-width="${edge.cross ? 1.6 : 1}"><title>${esc(ui.t(`rel.${EDGE[edge.relation] || edge.relation}`))}</title></path>`;
+      paths[edge.cross ? 'cross' : 'inside'] += `M${a.x},${a.y} Q${middle},${lift} ${b.x},${b.y} `;
     }
+    svg += `<path d="${paths.inside}" fill="none" stroke="#8f9bbd" stroke-opacity=".28" stroke-width="1"/>` +
+      `<path d="${paths.cross}" fill="none" stroke="#d9c8ff" stroke-opacity=".7" stroke-width="1.6"/>`;
     for (const point of lay.points) {
       const node = point.node;
       const openState = window.GyLanes.isOpen(node.state);
-      svg += `<a href="#/n/${encodeURIComponent(node.id)}"><circle class="nd" data-testid="laneNode" cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="${point.r.toFixed(1)}" fill="${openState ? HEX[node.kind] : '#0d1220'}" stroke="${HEX[node.kind] || '#8f9bbd'}" stroke-width="${openState ? 0 : 1.6}"><title>${esc(`${node.id} ${node.title} · ${ui.t(`st.${node.kind}.${node.state}`)}`)}</title></circle></a>`;
+      svg += `<circle data-testid="laneNode" data-id="${esc(node.id)}" cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="${point.r.toFixed(1)}" fill="${openState ? HEX[node.kind] : '#0d1220'}" stroke="${HEX[node.kind] || '#8f9bbd'}" stroke-width="${openState ? 0 : 1.6}"/>`;
     }
     canvas.innerHTML = `${svg}</svg>`;
+    /* One delegated click: a circle opens its node, the empty picture does not
+       need six hundred anchors. */
+    canvas.querySelector('svg').onclick = event => {
+      const id = event.target.getAttribute('data-id');
+      if (id) ui.navigate(`#/n/${encodeURIComponent(id)}`);
+    };
   }
 
   /* The relation names the server stores, as the dictionary's keys. */

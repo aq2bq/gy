@@ -31,8 +31,8 @@ test.afterAll(async () => {
 });
 
 test('the detail screen shows where a passage was retracted', async ({ page, request }) => {
-  const decisions = (await (await request.get(`${gy.url}api/list?kind=Decision`)).json()).rows;
-  const older = decisions.find((row: { title: string }) => row.title.startsWith('the retracted'));
+  const nodes = (await (await request.get(`${gy.url}api/cross?q=retracted`)).json()).nodes;
+  const older = nodes.find((row: { kind: string; title: string }) => row.kind === 'Decision' && row.title.startsWith('the retracted'));
   const node = await (await request.get(`${gy.url}api/node/${older.id}`)).json();
 
   expect(node.body).not.toContain('[[');

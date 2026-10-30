@@ -13,8 +13,8 @@ test.afterAll(async () => {
 
 test('the ID beside a node copies, and its sign comes and goes', async ({ page, context, request }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  const decisions = (await (await request.get(`${gy.url}api/list?kind=Decision`)).json()).rows;
-  const decision = decisions.find((row: { title: string }) => row.title.startsWith('closes'));
+  const nodes = (await (await request.get(`${gy.url}api/cross?q=closes`)).json()).nodes;
+  const decision = nodes.find((row: { kind: string; title: string }) => row.kind === 'Decision' && row.title.startsWith('closes'));
 
   await page.goto(`${gy.url}#/n/${decision.id}`);
   const mark = page.getByTestId('main').getByRole('button', { name: new RegExp(`Copy ${decision.id}`) });

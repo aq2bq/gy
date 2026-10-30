@@ -18,8 +18,8 @@ test('the tab names the ledger directory', async ({ page }) => {
 });
 
 test('the header names the ledger on every screen', async ({ page, request }) => {
-  const rows = (await (await request.get(`${gy.url}api/list?kind=Need`)).json()).rows;
-  const id = rows[0].id;
+  const view = await (await request.get(`${gy.url}api/overview`)).json();
+  const id = view.needs[0].id;
   const title = `gy - ${basename(gy.dir)}`;
   for (const route of ['#/', '#/cross', `#/n/${id}`]) {
     await page.goto(`${gy.url}${route}`);
@@ -60,4 +60,19 @@ test('two ledgers name themselves apart', async ({ page }) => {
   } finally {
     await other.stop();
   }
+});
+
+test('the language switch redraws without a reload', async ({ page }) => {
+  await page.goto(`${gy.url}?lang=en`);
+  const tab = page.getByTestId('tabs').getByRole('link').first();
+  const english = await tab.innerText();
+
+  // A reload would drop this mark; the switch must keep it.
+  await page.evaluate(() => {
+    (window as unknown as { kept?: boolean }).kept = true;
+  });
+  await page.getByTestId('lang').getByRole('button', { name: '日本語' }).click();
+
+  await expect(tab).not.toHaveText(english);
+  expect(await page.evaluate(() => (window as unknown as { kept?: boolean }).kept)).toBe(true);
 });

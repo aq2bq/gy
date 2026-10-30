@@ -23,7 +23,8 @@
 #canvas .lane-l{font-family:var(--mono);font-size:12px;font-weight:600;fill:var(--paper)}
 #canvas .lane-c{font-family:var(--mono);font-size:10px;fill:var(--paper-3)}
 #canvas .axis text{font-family:var(--mono);font-size:10px;fill:var(--paper-3)}
-#canvas circle.nd:hover{stroke:var(--paper);stroke-width:2}
+#canvas circle[data-id]{cursor:pointer}
+#canvas circle[data-id]:hover{stroke:var(--paper);stroke-width:2}
 .legend{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--line-soft);font-size:11px;color:var(--paper-3)}
 .legend span{display:inline-flex;gap:5px;align-items:center}
 .dotk{display:inline-block;width:8px;height:8px;border-radius:50%;border:1.5px solid currentColor;vertical-align:middle;flex:none}

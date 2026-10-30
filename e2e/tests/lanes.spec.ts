@@ -102,3 +102,50 @@ test('a mixed set with several scopes and times keeps every coordinate finite', 
   expect(Number.isFinite(result.minY)).toBe(true);
   expect(Number.isFinite(result.maxY)).toBe(true);
 });
+
+/* The property half of ac-afba: a fixed seed makes the same varied set every
+   run — the count of points and edges, the scopes, and the times all differ. */
+const varied = (seed: number): { nodes: Node[]; edges: Edge[] } => {
+  let state = seed;
+  const random = () => (state = (state * 16807) % 2147483647) / 2147483647;
+  const count = 30 + Math.floor(random() * 470);
+  const scopes = ['a', 'b', 'c', 'd', 'e'].slice(0, 1 + Math.floor(random() * 5));
+  const at = Math.floor(Date.parse('2026-06-01T00:00:00Z') / 1000);
+  const nodes: Node[] = [];
+  const edges: Edge[] = [];
+  for (let index = 0; index < count; index++) {
+    nodes.push({
+      id: `n-${index}`,
+      kind: ['Need', 'Question', 'Decision', 'Requirement', 'Criterion'][Math.floor(random() * 5)],
+      scope: scopes[Math.floor(random() * scopes.length)],
+      state: random() > 0.4 ? 'open' : 'closed',
+      created: at + Math.floor(random() * 120) * 86400 + Math.floor(random() * 86400),
+      title: `node ${index}`,
+      degree: 0,
+    });
+  }
+  const links = Math.floor(random() * count * 2);
+  for (let index = 0; index < links; index++) {
+    const from = Math.floor(random() * count);
+    const to = Math.floor(random() * count);
+    edges.push({ from: nodes[from].id, to: nodes[to].id, relation: 'depends-on' });
+  }
+  return { nodes, edges };
+};
+
+test('a seeded varied set stays finite at every size and shape', async ({ page }) => {
+  await page.goto(`${gy.url}?lang=en`);
+  for (const seed of [3, 11, 29, 101, 977]) {
+    const set = varied(seed);
+    const result = await place(page, set.nodes, set.edges);
+    expect(result.points).toBe(set.nodes.length);
+    expect(result.bad).toBe(0);
+    expect(Number.isFinite(result.minX)).toBe(true);
+    expect(Number.isFinite(result.maxX)).toBe(true);
+    expect(Number.isFinite(result.minY)).toBe(true);
+    expect(Number.isFinite(result.maxY)).toBe(true);
+    expect(result.minX).toBeGreaterThanOrEqual(0);
+    expect(result.maxX).toBeLessThanOrEqual(result.width);
+    expect(result.maxY).toBeLessThanOrEqual(result.height);
+  }
+});

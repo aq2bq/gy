@@ -1,23 +1,32 @@
-/* The time band region (d-03ca, 第 2 段; was time.js): one tick per write, a
-   head, and the two labels. It draws inside `.scrub` and never touches #clock,
-   which is the sidebar's. */
+/* The time band region (d-03ca; was time.js): the log's ticks, a head, and the
+   two labels. The ticks are drawn on one canvas, not as thousands of elements:
+   a long ledger has one write per pixel and the band must not make the screen
+   slow (r-2d02). It draws inside `.scrub`; the drag is events.js's. */
 (function () {
   const TALL = ['need', 'question', 'criterion', 'req'];
-  const COLOUR = { decide: 'var(--decision)', need: 'var(--need)', question: 'var(--question)', criterion: 'var(--criterion)' };
+  const COLOUR = { decide: '#5fd3c7', need: '#e9a63a', question: '#b79cff', criterion: '#8fd18f' };
   const height = kind => (kind === 'decide' ? 26 : TALL.includes(kind) ? 18 : 10);
+  const BASELINE = 38;
+  const PAD = 4;
+
+  const dayOf = at => {
+    const date = new Date(at * 1000);
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+  };
 
   function render(state, el, ui) {
     if (!el || !state.band) return;
     const track = el.querySelector('#track');
-    const scale = el.querySelector('#ticks');
+    const canvas = el.querySelector('#ticks');
     const head = el.querySelector('#head');
     const shade = el.querySelector('#shade');
     const now = el.querySelector('#scrub-now');
     const band = state.band;
-    const width = track.clientWidth;
+    const width = Math.max(1, track.clientWidth);
     const seqAt = state.at === null ? band.max : state.at;
     /* The point in view, for the eye and for what reads the screen (n-5e43). */
     el.dataset.at = state.at === null ? 'now' : String(state.at);
+    el.dataset.ticks = String(band.ticks.length);
     track.setAttribute('role', 'slider');
     track.setAttribute('aria-label', ui.t('rewind'));
     track.setAttribute('aria-valuemin', String(band.min));
@@ -25,8 +34,7 @@
     track.setAttribute('aria-valuenow', String(seqAt));
     const x = seq => ((seq - band.min) / Math.max(1, band.max - band.min)) * width;
 
-    scale.setAttribute('viewBox', `0 0 ${width} 46`);
-    scale.innerHTML = ticks(band, x, ui);
+    draw(canvas, band, width, x, ui);
     head.style.left = `${x(seqAt)}px`;
     shade.style.width = `${Math.max(0, width - x(seqAt))}px`;
 
@@ -38,27 +46,54 @@
     el.querySelector('#scrub-seq').textContent = `seq ${seqAt} / ${band.max}`;
   }
 
-  /* The baseline, one day label per day, then a bar per write. */
-  function ticks(band, x, ui) {
-    let svg = `<line x1="0" y1="38" x2="100%" y2="38" stroke="var(--line)"/>`;
+  /* The whole band on one canvas: the baseline, the unpushed span, one bar per
+     write, and a day label only where it has room to read. */
+  function draw(canvas, band, width, x, ui) {
+    const ratio = window.devicePixelRatio || 1;
+    const tall = 56;
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(tall * ratio);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${tall}px`;
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.clearRect(0, 0, width, tall);
+
     const sync = window.GySync;
     if (sync && sync.last_ok_seq != null && sync.last_ok_seq < band.max) {
       const left = x(Math.max(band.min, sync.last_ok_seq));
-      const right = x(band.max);
-      svg += `<rect class="unpushed" x="${left}" y="6" width="${Math.max(1, right - left)}" height="32"/>`;
+      ctx.fillStyle = 'rgba(126,122,112,.18)';
+      ctx.fillRect(left, 6, Math.max(1, x(band.max) - left), 32);
     }
-    const days = new Set();
+    ctx.strokeStyle = '#2a3450';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, BASELINE + 0.5);
+    ctx.lineTo(width, BASELINE + 0.5);
+    ctx.stroke();
+
+    let lastLabelX = -Infinity;
+    let seenDay = null;
     for (const tick of band.ticks) {
-      const label = ui.day(tick.at);
-      if (days.has(label)) continue;
-      days.add(label);
-      svg += `<text x="${x(tick.seq) + 3}" y="48" font-family="var(--mono)" font-size="10" fill="var(--paper-3)">${label}</text>`;
-    }
-    for (const tick of band.ticks) {
+      const at = x(tick.seq);
       const bar = height(tick.kind);
-      svg += `<rect x="${x(tick.seq) - 0.8}" y="${38 - bar}" width="1.6" height="${bar}" fill="${COLOUR[tick.kind] || 'var(--paper-3)'}" opacity=".9"/>`;
+      ctx.fillStyle = COLOUR[tick.kind] || '#7e7a70';
+      ctx.fillRect(at, BASELINE - bar, 1.4, bar);
+      const day = dayOf(tick.at);
+      if (day === seenDay) continue;
+      seenDay = day;
+      if (at - lastLabelX < 58) continue;
+      lastLabelX = at;
+      ctx.fillStyle = '#7e7a70';
+      ctx.font = '10px "SF Mono", Menlo, monospace';
+      ctx.fillText(day, at + PAD, tall - 4);
     }
-    return svg;
+    if (band.ticks.length && width - lastLabelX > 58) {
+      const last = band.ticks[band.ticks.length - 1];
+      ctx.fillStyle = '#7e7a70';
+      ctx.font = '10px "SF Mono", Menlo, monospace';
+      ctx.fillText(dayOf(last.at), width - 30, tall - 4);
+    }
   }
 
   /* The sequence under a pointer x, for the root's drag (it may not read the

@@ -16,8 +16,8 @@ test.afterAll(async () => {
 const palette = (page: import('@playwright/test').Page) => page.getByTestId('palette');
 
 test('/ opens the search and Enter opens the hit', async ({ page, request }) => {
-  const needs = (await (await request.get(`${gy.url}api/list?kind=Need`)).json()).rows;
-  const hit = needs[0];
+  const view = await (await request.get(`${gy.url}api/overview`)).json();
+  const hit = view.needs[0];
 
   await page.goto(gy.url);
   await page.keyboard.press('/');
@@ -45,8 +45,8 @@ test('a title part finds the node too', async ({ page, request }) => {
 });
 
 test('a word only in the body finds the node', async ({ page, request }) => {
-  const needs = (await (await request.get(`${gy.url}api/list?kind=Need`)).json()).rows;
-  const hit = needs[0];
+  const view = await (await request.get(`${gy.url}api/overview`)).json();
+  const hit = view.needs[0];
   const file = join(gy.dir, 'body.md');
   writeFileSync(file, 'the body carries zygomorphic\n');
 

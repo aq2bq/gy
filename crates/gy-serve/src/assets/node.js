@@ -10,7 +10,12 @@
 
   function render(state, el, ui) {
     if (!el) return;
-    const node = state.page;
+    const path = state.path ? window.GyShape.path(state.path) : null;
+    const center = path && path.center;
+    /* The thread's answer carries the center; the page's answer carries the
+       facts, the body, and the writes. A slow page must not hide the thread
+       (ac-0dbb): the center stands in until the page comes. */
+    const node = state.page || (center ? { ...center, data: {}, edges: [], history: [] } : null);
     if (!node) {
       el.innerHTML = `<div class="sub">${esc(state.route.arg || '')}</div>` +
         `<h1 class="hd">${esc(state.route.arg || '')}</h1>` + status(state, 'page', !!state.page, ui);
@@ -18,21 +23,25 @@
     }
     const moved = el.querySelector('[data-shown]');
     const kind = window.GyShape.kind(node.kind, node.id);
-    const mark = window.GyShape.state(condition(node, kind));
+    const mark = window.GyShape.state(node.state || condition(node, kind));
     const scope = node.scope || '';
-    const meta = [
-      `<span class="al">${esc((node.aliases || [])[0] || node.id)}</span>`,
-      ui.canCopy ? window.GyCopy.tag(node.id, state, ui) : `<span class="id">${esc(node.id)}</span>`,
-      `<span>${ui.scopeTag(scope)}</span>`,
-      `<span data-testid="created">${esc(fill(ui.t('createdOn'), { d: window.GyTime.date(node.created) }))}</span>`,
-      `<span class="stbadge ${window.GyShape.isOpen(mark) ? 'open' : ''}">${esc(ui.t(`st.${kind}.${mark}`))}</span>`,
-    ].join('');
+    const meta = state.page ? pageMeta(node, kind, mark, state, ui) : [`<span>${ui.scopeTag(scope)}</span>`,
+      `<span class="stbadge ${window.GyShape.isOpen(mark) ? 'open' : ''}">${esc(ui.t(`st.${kind}.${mark}`))}</span>`].join('');
     el.innerHTML = `<div data-shown="${esc(node.id)}">` +
-      `<a class="back" href="${window.GyShape.kind ? '#/cross' : '#/'}">${esc(ui.t('backCross'))}</a>` +
-      `<div class="nhead"><div class="meta"><span class="k k-${kind}">${esc(ui.t(kind))}</span>${meta}</div><h1>${esc(node.title)}</h1></div>` +
-      thread(state, node, ui) +
-      `<div class="ngrid"><div>${facts(node, kind, ui, state.lang)}${body(node, ui)}</div><div>${crossOut(node, ui)}${history(node, ui, state.lang)}</div></div></div>`;
+      `<a class="back" href="#/cross">${esc(ui.t('backCross'))}</a>` +
+      `<div class="nhead"><div class="meta"><span class="k k-${kind}">${esc(ui.t(kind))}</span>${state.page ? '' : `<span class="al">${esc(node.id)}</span>`}${meta}</div><h1>${esc(node.title)}</h1></div>` +
+      thread(state, node, path, ui) +
+      `<div class="ngrid"><div>${state.page ? facts(node, kind, ui, state.lang) + body(node, ui) : `<div class="sec">${status(state, 'page', false, ui)}</div>`}</div>` +
+      `<div>${state.page ? crossOut(node, ui) + history(node, ui, state.lang) : ''}</div></div></div>`;
     if (!moved || moved.dataset.shown !== node.id) window.scrollTo(0, 0);
+  }
+
+  function pageMeta(node, kind, mark, state, ui) {
+    return `<span class="al">${esc((node.aliases || [])[0] || node.id)}</span>` +
+      (ui.canCopy ? window.GyCopy.tag(node.id, state, ui) : `<span class="id">${esc(node.id)}</span>`) +
+      `<span>${ui.scopeTag(node.scope || '')}</span>` +
+      `<span data-testid="created">${esc(fill(ui.t('createdOn'), { d: window.GyTime.date(node.created) }))}</span>` +
+      `<span class="stbadge ${window.GyShape.isOpen(mark) ? 'open' : ''}">${esc(ui.t(`st.${kind}.${mark}`))}</span>`;
   }
 
   /* The state word from the typed data: the page carries no derived state for
@@ -58,8 +67,7 @@
   const TOP = 28;
   const short = text => (String(text || '').length > 22 ? `${String(text).slice(0, 21)}…` : String(text || ''));
 
-  function thread(state, node, ui) {
-    const path = state.path ? window.GyShape.path(state.path) : null;
+  function thread(state, node, path, ui) {
     const head = `<div class="sec"><h2>${esc(ui.t('detailThread'))} <span class="sub">${esc(ui.t('detailThreadSub'))}</span>` +
       `<span class="seg" style="margin-left:auto">${[2, 3].map(depth => `<button data-testid="depth" data-act="detailDepth" data-arg="${depth}" class="${state.detail.depth === depth ? 'on' : ''}">${esc(ui.t(`depth${depth}`))}</button>`).join('')}</span></h2>`;
     if (!path) {
@@ -86,8 +94,8 @@
       col.x = 20 + index * (BW + GX);
       const h = colHeight(col);
       col.y0 = TOP + (height - TOP - h) / 2;
-      if (col.side === 'center') at.set(node.id, { x: col.x, y: col.y0, node, center: true });
-      col.stage.nodes.forEach((item, row) => at.set(item.id, { x: col.x, y: col.y0 + row * (BH + GY), node: item, center: false }));
+      if (col.side === 'center') at.set(`center:${node.id}`, { x: col.x, y: col.y0, node, center: true });
+      col.stage.nodes.forEach((item, row) => at.set(`${col.side}:${item.id}`, { x: col.x, y: col.y0 + row * (BH + GY), node: item, center: false }));
     });
     return at;
   }
@@ -102,7 +110,7 @@
   }
 
   /* One line from the parent to the child, and the relation beside the child. */
-  function edgeLine(child, parent, item, ui) {
+  function edgeLine(child, parent, item, label, ui) {
     const left = child.x < parent.x ? child : parent;
     const right = child.x < parent.x ? parent : child;
     const x1 = left.x + BW;
@@ -111,19 +119,21 @@
     const y2 = right.y + BH / 2;
     const title = item.mark ? `<title>${esc(item.mark)}</title>` : '';
     const path = `<path class="e" data-to="${esc(item.id)}" d="M${x1},${y1} C${x1 + GX / 2},${y1} ${x2 - GX / 2},${y2} ${x2},${y2}">${title}</path>`;
-    if (!item.relation) return path;
-    const near = child.x < parent.x ? child : parent;
-    return path + `<text class="rl" x="${near.x + BW - 4}" y="${near.y - 5}" text-anchor="end">${esc(ui.t(`rel.${item.relation}`))}</text>`;
+    if (!label || !item.relation) return path;
+    /* The relation sits beside the child, on the side the line leaves from. */
+    const down = child.x > parent.x;
+    const x = down ? child.x + 4 : child.x + BW - 4;
+    return path + `<text class="rl" x="${x}" y="${child.y - 5}" text-anchor="${down ? 'start' : 'end'}">${esc(ui.t(`rel.${item.relation}`))}</text>`;
   }
 
-  function edgesSvg(cols, at, ui) {
+  function edgesSvg(cols, at, centerId, ui) {
     let svg = '';
     for (const col of cols) {
       if (col.side === 'center') continue;
       for (const item of col.stage.nodes) {
-        const child = at.get(item.id);
-        const parent = item.parent ? at.get(item.parent) : null;
-        if (child && parent) svg += edgeLine(child, parent, item, ui);
+        const child = at.get(`${col.side}:${item.id}`);
+        const parent = item.parent ? at.get(`${col.side}:${item.parent}`) || at.get(`center:${item.parent}`) : null;
+        if (child && parent) svg += edgeLine(child, parent, item, item.parent === centerId, ui);
       }
     }
     return svg;
@@ -141,8 +151,8 @@
 
   function boxesSvg(at, node, ui) {
     let svg = '';
-    for (const box of at.values()) {
-      if (box.center) continue;
+    for (const [key, box] of at) {
+      if (key.startsWith('center:')) continue;
       const item = box.node;
       const kind = window.GyShape.kind(item.kind, item.id);
       const scope = item.scope && item.scope !== node.scope ? item.scope : '';
@@ -153,7 +163,7 @@
 
   function centerSvg(node, kind, center, ui) {
     if (!center) return '';
-    return `<g class="bx ctr" data-testid="threadCenter" transform="translate(${center.x},${center.y})">${boxInner(node, kind, condition(node, kind), '', ui)}</g>`;
+    return `<g class="bx ctr" data-testid="threadCenter" transform="translate(${center.x},${center.y})">${boxInner(node, kind, node.state || condition(node, kind), '', ui)}</g>`;
   }
 
   function hiddenSvg(cols, ui) {
@@ -170,8 +180,8 @@
     const width = cols.length * (BW + GX) - GX + 40;
     const at = placeColumns(cols, node, height);
     return `<svg width="${width}" height="${height}" role="img" aria-label="${esc(ui.t('detailThread'))}">` +
-      stageLabels(cols, kind, ui) + edgesSvg(cols, at, ui) + boxesSvg(at, node, ui) +
-      centerSvg(node, kind, at.get(node.id), ui) + hiddenSvg(cols, ui) + `</svg>`;
+      stageLabels(cols, kind, ui) + edgesSvg(cols, at, node.id, ui) + boxesSvg(at, node, ui) +
+      centerSvg(node, kind, at.get(`center:${node.id}`), ui) + hiddenSvg(cols, ui) + `</svg>`;
   }
 
   const colour = kind => ({ Need: 'need', Question: 'question', Decision: 'decision', Requirement: 'requirement', Criterion: 'criterion' }[kind] || 'paper-2');

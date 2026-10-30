@@ -15,12 +15,12 @@ test.afterAll(async () => {
 });
 
 const main = (page: Page) => page.getByTestId('main');
-const boxes = (path: { up: { nodes: { id: string }[] }[]; down: { nodes: { id: string }[] }[] }) =>
-  new Set([...path.up, ...path.down].flatMap(stage => stage.nodes.map(node => node.id))).size;
+const boxes = (path: { up: { nodes: unknown[] }[]; down: { nodes: unknown[] }[] }) =>
+  [...path.up, ...path.down].reduce((sum, stage) => sum + stage.nodes.length, 0);
 
 async function firstNeed(request: import('@playwright/test').APIRequestContext) {
-  const rows = (await (await request.get(`${gy.url}api/list?kind=Need`)).json()).rows;
-  return rows.find((row: { status?: string }) => row.status === 'open') || rows[0];
+  const view = await (await request.get(`${gy.url}api/overview`)).json();
+  return view.needs[0];
 }
 
 test('the thread matches the path, and a box centers its node', async ({ page, request }) => {

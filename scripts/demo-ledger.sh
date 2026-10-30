@@ -55,23 +55,23 @@ q4=$(bid question add "Should the invoice email attach the PDF?" --decider lead 
   --options "Attach the PDF" --options "Link to it instead")
 
 # Decisions: one closes q1, two narrow an older decision, several spawn needs.
-d1=$(oid decide "A share link is a URL with a signed token" \
+d1=$(oid decide "A share link is a URL with a signed token" --serves "$c1" \
   --scope-note "A shared list needs no account: the URL carries a signed token with the read scope and an expiry.")
-d2=$(bid decide "Billing counts a list when it is first shared" \
+d2=$(bid decide "Billing counts a list when it is first shared" --serves "$c5" \
   --scope-note "A list is billable on its first share; keeping many private lists stays free.")
 d3=$(oid decide "The share token lives in the URL fragment" \
   --scope-note "The token goes in the fragment so it never reaches the server access log." \
   --relate narrows "$d1" --mark "the read scope and an expiry")
-d4=$(oid decide "An import runs on the server" \
+d4=$(oid decide "An import runs on the server" --serves "$c3" \
   --scope-note "The server parses the bookmark file so one code path serves every browser.")
 d5=$(oid decide "The folder comes from the file's folder attribute" \
   --scope-note "Each imported link keeps the folder recorded in its bookmark file." \
   --relate narrows "$d4" --mark "the bookmark file")
 d6=$(oid decide "Read-only sharing for the beta" --closes "$q1" \
   --scope-note "Editing by link raises a permissions model we do not have yet, so the beta is read only.")
-d7=$(bid decide "An issued invoice never changes" \
+d7=$(bid decide "An issued invoice never changes" --serves "$c5" \
   --scope-note "Once an invoice is issued it is immutable; a correction is a new invoice.")
-d8=$(oid decide "Deleting a list deletes its tokens" \
+d8=$(oid decide "Deleting a list deletes its tokens" --serves "$c4" \
   --scope-note "Deleting a list also deletes every share token that points at it.")
 
 # Needs: six, each against criteria; one closed by a fact.
