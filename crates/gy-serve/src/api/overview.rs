@@ -39,6 +39,8 @@
 //!       "stage": "before",
 //!       "blocked": true,
 //!       "last_moved": "2026-10-12T03:00:00Z",
+//!       "requirements": {"filed": 1, "approved": 0, "done": 2, "cancelled": 0},
+//!       "criteria": {"satisfied": 1, "unsatisfied": 1, "withdrawn": 0},
 //!       "waiting": [
 //!         {"id": "q-164b", "kind": "Question", "title": "…", "decider": "マスター"}
 //!       ]
@@ -54,6 +56,14 @@
 //!       "needs": ["n-b0f5", "n-da7f"],
 //!       "via": ["n-65c9"]
 //!     }
+//!   ],
+//!   "deciders": [{"name": "マスター", "count": 34}],
+//!   "overdue": [
+//!     {"id": "ac-1a2b", "scope": "crm", "title": "…", "due": "2026-10-01",
+//!      "responsible": "…", "then": "…"}
+//!   ],
+//!   "unheld": [
+//!     {"id": "q-164b", "kind": "Question", "scope": "crm", "state": "open", "title": "…"}
 //!   ]
 //! }
 //! ```
@@ -84,10 +94,12 @@
 //!   requirement is left to finish it). A need that is not open is not here.
 //!   `blocked` is `true` when `waiting` is not empty. `last_moved` is the
 //!   newest write to the need, its filed requirements, its targeted criteria,
-//!   the things it waits on, or any node pointing at it. `waiting` is what
-//!   holds it: the open questions and requirements it `waits-on` and the open
-//!   needs it `depends-on`, each `{id, kind, title, decider?}` — `decider` is
-//!   present only for a question.
+//!   the things it waits on, or any node pointing at it. `requirements` counts
+//!   the requirements it filed, by their state, and `criteria` counts the
+//!   criteria it targets, each as the model derives it (`satisfied`,
+//!   `unsatisfied`, `withdrawn`). `waiting` is what holds it: the open questions
+//!   and requirements it `waits-on` and the open needs it `depends-on`, each
+//!   `{id, kind, title, decider?}` — `decider` is present only for a question.
 //! - `blockers`: the roots of the waits. A root is a waiting question, a
 //!   waiting requirement, or a need that waits on nothing while another need
 //!   depends on it; a need blocked only through the needs it depends on is not
@@ -96,6 +108,19 @@
 //!   `via` is the chain of needs between those needs and the root, outermost
 //!   first, empty when the root holds a need directly. `decider` is present
 //!   only for a question.
+//! - `deciders`: the open questions by the person who decides them, most first,
+//!   ties by name. The name is the record's own, so the spellings it mixes
+//!   (`マスター`, `master`) stay apart; a question that names none counts under
+//!   `""`.
+//! - `overdue`: the criteria whose `due` has come and that are still
+//!   `unsatisfied` — the same wait `handover` dates (r-e9ca) — earliest date
+//!   first, ties by id. `due`, `responsible`, and `then` are the node's own
+//!   words. A withdrawn criterion is not overdue: nobody waits for it any more.
+//! - `unheld`: what nobody is working on, questions first then criteria, newest
+//!   first within each kind, ties by id. That is every open question no node
+//!   `waits-on` and no node `raised` (gy-ledger's `unwaited`), and every
+//!   `unsatisfied` criterion that no open need and no in-progress requirement
+//!   targets. A withdrawn criterion is not here either.
 //!
 //! # When a need moved
 //!
@@ -104,7 +129,8 @@
 //! newest write to the node itself. A requirement's approval, completion and
 //! cancellation carry their own instants, and so does a criterion's
 //! `satisfied_at`. A need derived `done` moved when the last of those
-//! happened. Reads the model already records are the only source: an edit that
+//! happened, or, when the record carries none of them, at the newest write to
+//! the need. Reads the model already records are the only source: an edit that
 //! changes nothing a reader sees still counts as a write to `last_moved`, but
 //! it never becomes an event of its own.
 use crate::http::Response;
