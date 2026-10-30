@@ -11,3 +11,4 @@ CLAUDE.md
 /e2e/playwright-report/
 /mutants.out*/
 .hergy
+/test-results/

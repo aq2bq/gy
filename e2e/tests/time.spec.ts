@@ -34,6 +34,8 @@ test('ArrowLeft rewinds the head, and the screens answer for that point', async 
 
 test('the now button returns to the head', async ({ page }) => {
   await page.goto(`${gy.url}?lang=en`);
+  // The band must know its end before a key can rewind from it.
+  await expect(band(page).getByText(/seq \d+ \/ \d+/)).toBeVisible();
   await page.keyboard.press('ArrowLeft');
   expect(await at(page)).not.toBe('now');
   await band(page).getByRole('button', { name: /now|いま/i }).click();
