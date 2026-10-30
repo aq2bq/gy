@@ -29,7 +29,7 @@
       `<span class="stbadge ${window.GyShape.isOpen(mark) ? 'open' : ''}">${esc(ui.t(`st.${kind}.${mark}`))}</span>`].join('');
     el.innerHTML = `<div data-shown="${esc(node.id)}">` +
       `<a class="back" href="#/cross">${esc(ui.t('backCross'))}</a>` +
-      `<div class="nhead"><div class="meta"><span class="k k-${kind}">${esc(ui.t(kind))}</span>${state.page ? '' : `<span class="al">${esc(node.id)}</span>`}${meta}</div><h1>${esc(node.title)}</h1></div>` +
+      `<div class="nhead"><div class="meta" data-testid="nodeMeta"><span class="k k-${kind}">${esc(ui.t(kind))}</span>${state.page ? '' : `<span class="al">${esc(node.id)}</span>`}${meta}</div><h1>${esc(node.title)}</h1></div>` +
       thread(state, node, path, ui) +
       `<div class="ngrid"><div>${state.page ? facts(node, kind, ui, state.lang) + body(node, ui) : `<div class="sec">${status(state, 'page', false, ui)}</div>`}</div>` +
       `<div>${state.page ? crossOut(node, ui) + history(node, ui, state.lang) : ''}</div></div></div>`;

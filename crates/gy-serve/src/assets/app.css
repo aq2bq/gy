@@ -103,7 +103,7 @@ main{padding:0 32px 150px;max-width:1280px}
 
 /* ---- the frame of the three screens (r-2d02) ---- */
 :root{--stop:#ff6b6b}
-main{padding:20px 32px 170px;max-width:1500px}
+main{padding:20px 32px 170px;max-width:1500px;container-type:inline-size;container-name:main}
 a:hover{color:var(--paper)}
 .dim{color:var(--paper-3)}
 .sub{font-family:var(--mono);font-size:11px;color:var(--paper-3);letter-spacing:.06em}
@@ -111,35 +111,6 @@ h1.hd{font-size:26px;font-weight:600;margin:4px 0 2px;line-height:1.35}
 .sec{margin-top:28px}
 .sec>h2{font-size:15px;font-weight:600;margin:0 0 6px;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
 .sec>h2 .sub{font-weight:400}
-.top{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:22px;padding:12px 28px;background:rgba(13,18,32,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line-soft)}
-.top .mark{font-weight:600;font-size:22px;letter-spacing:.05em;display:flex;align-items:baseline;gap:10px}
-.top .mark small{font-family:var(--mono);font-size:11px;font-weight:400;padding:1px 8px;border:1px solid var(--line);border-radius:6px;background:var(--ink-3);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.top .mark small:empty{display:none}
-.top .mark .logo text{fill:var(--paper);font-family:var(--sans);font-weight:600}
-.top .mark .logo .tick{fill:var(--paper-3)}
-.top .mark .logo .tick-live{fill:var(--decision)}
-.top .mark .logo .logo-dot{fill:var(--decision)}
-.tabs{display:flex;gap:4px;align-items:center}
-.tabs a,.tabs .off{padding:5px 14px;border-radius:8px;color:var(--paper-2);font-size:14px;display:flex;gap:8px;align-items:center;white-space:nowrap}
-.tabs a:hover{background:var(--ink-2);color:var(--paper)}
-.tabs a.on{background:var(--ink-3);color:var(--paper)}
-.tabs .off{color:var(--paper-3);opacity:.6}
-.tabs a .n,.tabs .off .n{font-family:var(--mono);font-size:10px;color:var(--paper-3)}
-.tabs .arrow{color:var(--paper-3);font-size:12px}
-.top .jump{margin-left:auto;display:flex;gap:10px;align-items:center}
-.top .jump input{width:280px;background:var(--ink-2);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:13px;color:var(--paper);outline:0}
-.top .jump input:focus{border-color:var(--paper-3)}
-.top .jump .seq{font-family:var(--mono);font-size:11px;color:var(--paper-3);white-space:nowrap}
-.top .jump .live{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--decision);box-shadow:0 0 0 0 rgba(95,211,199,.6);animation:pulse 2.4s infinite}
-.top .jump .live.off{background:var(--paper-3);box-shadow:none;animation:none}
-@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(95,211,199,.5)}70%{box-shadow:0 0 0 9px rgba(95,211,199,0)}100%{box-shadow:0 0 0 0 rgba(95,211,199,0)}}
-@media (prefers-reduced-motion: reduce){.top .jump .live{animation:none}}
-.top .jump .lang{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
-.top .jump .lang button{padding:2px 10px;font-family:var(--mono);font-size:11px;color:var(--paper-3)}
-.top .jump .lang button.on{background:var(--ink-3);color:var(--paper)}
-.top .jump .repo{color:var(--paper-3);display:flex}
-.top .jump .repo:hover{color:var(--paper)}
-.top .jump .repo svg{display:block;fill:currentColor}
 /* A screen says why its answer is missing: the frame stays, the words arrive. */
 .load{margin-top:22px;border:1px dashed var(--line);border-radius:10px;padding:12px 16px;font-family:var(--mono);font-size:12px;color:var(--paper-3);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .load.fail{border-color:var(--stop);color:var(--paper-2);background:rgba(255,107,107,.05)}
@@ -153,8 +124,3 @@ h1.hd{font-size:26px;font-weight:600;margin:4px 0 2px;line-height:1.35}
 .cpb{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;padding:0;border:1px solid var(--line);border-radius:5px;color:var(--paper-3);font-size:11px;line-height:1;flex:none}
 .cpb:hover{color:var(--paper);border-color:var(--paper-3)}
 .cpb.on{color:var(--decision);border-color:var(--decision)}
-@media (max-width:900px){
-  .top{flex-wrap:wrap;gap:10px}
-  .top .jump{margin-left:0;width:100%}
-  .top .jump input{flex:1;width:auto}
-}

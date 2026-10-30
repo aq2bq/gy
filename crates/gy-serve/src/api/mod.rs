@@ -3,9 +3,15 @@
 //! Three of them are the reading surface the three screens use (d-6d90):
 //! `overview` (the first screen), `cross` (the crossing screen), and `path`
 //! (the detail screen). Each file's doc comment is the shape of its JSON and
-//! the meaning of every key.
+//! the meaning of every key. The pages that came before the three keep their
+//! own answers too (`now`, `list`, `history`, and `labels`), because the home,
+//! the lists, the history, and the rail still read them (d-159a).
 pub mod cross;
+pub mod history;
+pub mod labels;
+pub mod list;
 pub mod node;
+pub mod now;
 pub mod overview;
 pub mod path;
 pub mod search;
@@ -27,6 +33,10 @@ pub fn route<S: Store>(repo: &Repository<S>, req: &Request, name: &str) -> Respo
     }
     match req.path.as_str() {
         "/api/shell" => shell::shell(repo, req),
+        "/api/now" => now::answer(repo, req),
+        "/api/history" => history::answer(repo, req),
+        "/api/labels" => labels::labels(repo, req),
+        "/api/list" => list::rows(repo, req),
         "/api/overview" => overview::answer(repo),
         "/api/cross" => cross::answer(repo, req),
         "/api/search" => search::search(repo, req),
@@ -42,22 +52,24 @@ pub fn route<S: Store>(repo: &Repository<S>, req: &Request, name: &str) -> Respo
 }
 
 /// The pages and the assets, which need no ledger: the server answers them
-/// before it opens one, so a browser's twenty-one asset reads do not each pay
-/// for the ledger (d-6d90). `None` is every other path.
+/// before it opens one, so a browser's asset reads do not each pay for the
+/// ledger (d-6d90). `None` is every other path.
 pub fn static_answer(req: &Request, name: &str) -> Option<Response> {
     match req.path.as_str() {
         "/" | "/index.html" => Some(index(req, name)),
-        "/api/wait" | "/api/shell" | "/api/overview" | "/api/cross" | "/api/search"
-        | "/api/ticks" => None,
         path if path.starts_with("/api/") => None,
         _ => Some(static_file(req)),
     }
 }
 
 /// Whether a path is one of the reading questions the server answers once per
-/// identical ask (d-6d90, ac-0dbb): the three screens' own, and one node.
+/// identical ask (d-6d90, ac-0dbb): the three screens' own, one node, and the
+/// answers the older pages read.
 pub fn is_reading(path: &str) -> bool {
-    matches!(path, "/api/overview" | "/api/cross") || path.starts_with("/api/node/")
+    matches!(
+        path,
+        "/api/overview" | "/api/cross" | "/api/now" | "/api/list" | "/api/history" | "/api/labels"
+    ) || path.starts_with("/api/node/")
 }
 
 /// The first HTML; the language comes from `Accept-Language` (ac-b9b1) and the

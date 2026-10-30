@@ -1,0 +1,6 @@
+/* The eye pages (n-c122): one of the three sidebar sets as a list. The rows
+   keep list.js's .row.wide look, with the set's own word as the fourth column
+   instead of the list page's scope and created. */
+.eye-list .head{grid-template-columns:20px 74px minmax(0,1fr) 90px 150px}
+.eye-list .row.wide{grid-template-columns:20px 74px minmax(0,1fr) 90px 150px}
+.eye-list .row.wide .own{font-family:var(--mono);font-size:11px;color:var(--paper-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

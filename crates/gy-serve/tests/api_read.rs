@@ -1,7 +1,7 @@
 use gy_ledger::link::Link;
 use gy_ledger::{
-    Actor, Alias, DecisionScope, Edit, FormatVersion, MemoryStore, Node, NodeData, NodeId,
-    NodeKind, Operation, Relation, Repository, RequirementState, show,
+    Actor, Alias, DecisionScope, Edit, Filter, FormatVersion, Listing, MemoryStore, Node, NodeData,
+    NodeId, NodeKind, Operation, Relation, Repository, RequirementState, list, show,
 };
 use gy_serve::api::route;
 use gy_serve::http::Request;
@@ -104,6 +104,61 @@ fn ids(value: &serde_json::Value) -> Vec<String> {
         .iter()
         .map(|row| row["id"].as_str().unwrap().to_string())
         .collect()
+}
+
+/// The view's rows for one filter, as ids.
+fn view_ids(repo: &Repository<MemoryStore>, filter: &Filter) -> Vec<String> {
+    match list(repo, filter).unwrap() {
+        Listing::Nodes(rows) => rows.iter().map(|row| row.id.clone()).collect(),
+        Listing::History(_) => Vec::new(),
+    }
+}
+
+#[test]
+fn list_matches_the_view() {
+    let repo = ledger();
+    let mut filter = Filter::default();
+    filter.kind = Some(NodeKind::Need);
+    assert_eq!(
+        ids(&answer(&repo, "/api/list", Some("kind=Need"))["rows"]),
+        view_ids(&repo, &filter)
+    );
+
+    let all = answer(&repo, "/api/list", None);
+    let scoped = answer(&repo, "/api/list", Some("scope=b"));
+    assert!(!all["rows"].as_array().unwrap().is_empty());
+    assert!(scoped["rows"].as_array().unwrap().len() < all["rows"].as_array().unwrap().len());
+
+    let mut grep = Filter::default();
+    grep.grep = Some("duplicated".to_string());
+    let rows = answer(&repo, "/api/list", Some("q=duplicated"));
+    assert_eq!(ids(&rows["rows"]), view_ids(&repo, &grep));
+    assert_eq!(rows["rows"].as_array().unwrap().len(), 12);
+
+    assert_eq!(status("/api/list", Some("kind=Foo")), 400);
+    assert_eq!(status("/api/list", Some("status=nonsense")), 400);
+}
+
+#[test]
+fn labels_answer_alias_and_title() {
+    let repo = ledger();
+    let decision = id(NodeKind::Decision, "0005").to_string();
+    let json = answer(
+        &repo,
+        "/api/labels",
+        Some(&format!("ids={decision},n-zzzz")),
+    );
+    let labels = json["labels"].as_object().unwrap();
+    // An id that is not here is left out; the one that is carries both words.
+    assert_eq!(labels.len(), 1, "{json}");
+    assert_eq!(labels[&decision]["alias"], "D-85");
+    assert_eq!(labels[&decision]["title"], "publish the list page");
+
+    let many = (0..201)
+        .map(|at| format!("n-{at:04}"))
+        .collect::<Vec<_>>()
+        .join(",");
+    assert_eq!(status("/api/labels", Some(&format!("ids={many}"))), 400);
 }
 
 #[test]

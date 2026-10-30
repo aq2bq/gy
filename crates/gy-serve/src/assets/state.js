@@ -1,20 +1,27 @@
 /* The screen's one state and the intents that move it (d-03ca). No DOM and no
    fetch here: apply returns a new state and does nothing else. The three
-   screens read their own answer (overview / cross / path), so a page that is
-   still loading keeps the frame the root already drew (r-2d02). */
+   screens read their own answer (overview / cross / path), and the pages that
+   came before them read theirs (now / list / eye / history / node), so a page
+   that is still loading keeps the frame the root already drew (r-2d02). */
 (function () {
-  /* The route a hash names: overview (the first screen), cross, node, or a
-     route this build does not have. `query` carries the cross screen's
-     narrowing (q, from, to, scope). */
+  /* The route a hash names: overview (the first screen, d-e239), now (the
+     home), cross, list, eye, history, node, or a route this build does not
+     have. `query` carries the cross screen's narrowing (q, from, to, scope). */
   function parseRoute(hash) {
     const text = String(hash || '');
     const cut = text.indexOf('?');
     const path = cut < 0 ? text : text.slice(0, cut);
     const query = parseQuery(cut < 0 ? '' : text.slice(cut + 1));
+    const list = path.match(/^#\/list\/(\w+)$/);
     const node = path.match(/^#\/n\/(.+)$/);
+    const eye = path.match(/^#\/eye\/(wait|next|resume)$/);
     if (path === '' || path === '#/' || path === '#/overview') return { name: 'overview', arg: null, query };
+    if (path === '#/now') return { name: 'now', arg: null, query };
     if (path === '#/cross') return { name: 'cross', arg: null, query };
+    if (list) return { name: 'list', arg: list[1], query };
+    if (eye) return { name: 'eye', arg: eye[1], query };
     if (node) return { name: 'node', arg: decodeURIComponent(node[1]), query };
+    if (path === '#/history') return { name: 'history', arg: null, query };
     return { name: 'missing', arg: null, query };
   }
 
@@ -54,16 +61,26 @@
   function initial(env) {
     return {
       lang: env.lang,
+      /* The sidebar's scope: it narrows the shell, the home, a list, the
+         history, and the rail, as it did before the three screens. */
+      scope: env.scope,
       at: null,
       route: env.route,
+      /* The rail's breakpoint, from app.css. */
+      wide: env.wide,
       /* The nodes this tab has opened, for the detail tab and the way back. */
       trail: env.route.name === 'node' && env.route.arg ? [env.route.arg] : [],
+      /* A list's open/all switch, and the history's filters. */
+      list: { filter: 'open' },
+      history: { actor: null, since: null },
       /* The thread's width: two stages each way, or three. */
       detail: { depth: 2 },
       palette: { open: false, query: '', selected: 0 },
       shell: null,
       band: null,
       page: null,
+      now: null,
+      rail: null,
       overview: null,
       cross: null,
       path: null,
@@ -89,8 +106,22 @@
     switch (intent.type) {
       case 'setLang':
         return { ...state, lang: intent.value };
+      case 'setScope':
+        return { ...state, scope: intent.value, shell: null, now: null, page: null, rail: null, pending: {}, failed: {} };
       case 'setAt':
-        return { ...state, at: intent.value, shell: null, page: null, overview: null, cross: null, path: null, pending: {}, failed: {} };
+        return {
+          ...state,
+          at: intent.value,
+          shell: null,
+          now: null,
+          page: null,
+          rail: null,
+          overview: null,
+          cross: null,
+          path: null,
+          pending: {},
+          failed: {},
+        };
       case 'go': {
         const route = intent.value;
         const last = state.trail[state.trail.length - 1];
@@ -102,22 +133,39 @@
           route,
           trail,
           page: null,
+          now: null,
+          rail: null,
           overview: null,
           cross: null,
           path: null,
           pending: {},
           failed: {},
+          /* A list opens on its open rows, whatever the last one showed. */
+          list: route.name === 'list' ? { ...state.list, filter: 'open' } : state.list,
           palette: { ...state.palette, open: false, query: '', selected: 0 },
           search: null,
         };
       }
+      case 'setWide':
+        return { ...state, wide: intent.value };
+      case 'listFilter':
+        return { ...state, list: { ...state.list, filter: intent.value } };
+      case 'historyActor':
+        return { ...state, history: { ...state.history, actor: intent.value }, page: null, pending: {}, failed: {} };
+      case 'historySince':
+        return { ...state, history: { ...state.history, since: intent.value }, page: null, pending: {}, failed: {} };
       case 'detailDepth':
         return { ...state, detail: { depth: intent.value }, path: null, pending: {}, failed: {} };
-      /* A write moved the ledger. The band is of the old head; at the head the
-         answers are too. */
+      /* A write moved the ledger. The band and the rail are of the old head; at
+         the head the answers are too. */
       case 'ledgerMoved': {
         const head = state.at === null;
-        return { ...state, band: null, ...(head ? { shell: null, page: null, overview: null, cross: null, path: null, pending: {}, failed: {} } : {}) };
+        return {
+          ...state,
+          band: null,
+          rail: null,
+          ...(head ? { shell: null, now: null, page: null, overview: null, cross: null, path: null, pending: {}, failed: {} } : {}),
+        };
       }
       case 'liveChanged':
         return { ...state, live: intent.value };
@@ -191,7 +239,7 @@
 
   /* The scope badge (n-4e5a). */
   function scopeTag(name, scopes) {
-    return `<span class="sb" style="--sb:${hue(name, scopes)}">${esc(String(name ?? ''))}</span>`;
+    return `<span class="sb" data-testid="scopeBadge" style="--sb:${hue(name, scopes)}">${esc(String(name ?? ''))}</span>`;
   }
 
   const loc = lang => (lang === 'ja' ? 'ja-JP' : 'en-GB');

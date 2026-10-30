@@ -1,12 +1,19 @@
 /* The root (d-03ca): the one place that reads, draws the regions in order,
    turns events into intents, and names a read that did not answer. The first
    frame is drawn before any API call, so a slow or refused answer leaves a
-   frame with a reason instead of an empty page (r-2d02). */
+   frame with a reason instead of an empty page (r-2d02). The screens that came
+   before the three (home, list, eye, history) read their own answer too, so a
+   page is never held back by another's read. */
 (function () {
+  /* The rail's breakpoint; app.css holds the same number (change both). */
+  const WIDE = window.matchMedia('(min-width: 1560px)');
+
   let words = null;
   let state = window.GyState.initial({
     lang: pickLang(),
+    scope: pickScope(),
     route: window.GyState.parseRoute(location.hash),
+    wide: WIDE.matches,
   });
 
   /* ?lang= wins, then the stored choice, then what the server sent (ac-b9b1). */
@@ -14,6 +21,9 @@
     const asked = new URLSearchParams(location.search).get('lang');
     if (asked === 'en' || asked === 'ja') return asked;
     return localStorage.getItem('gy-lang') || (document.documentElement.lang === 'ja' ? 'ja' : 'en');
+  }
+  function pickScope() {
+    return sessionStorage.getItem('gy-scope') || 'all';
   }
 
   /* A word by key; a dotted key walks nested objects (`st.Need.open`). */
@@ -26,6 +36,7 @@
   /* The shared pure helpers, bound to this state (state.js holds them). */
   const plural = kind => window.GyState.plural(kind, word);
   const scopeTag = name => window.GyState.scopeTag(name, state.shell ? state.shell.scopes : []);
+  const hue = name => window.GyState.hue(name, state.shell ? state.shell.scopes : []);
   const when = at => window.GyState.when(at, state.lang);
   const day = at => window.GyState.day(at, state.lang);
   const tickAt = seq => window.GyState.tickAt(state.band ? state.band.ticks : [], seq);
@@ -38,15 +49,19 @@
   /* The reads live in reads.js; the root keeps the pending marks. */
   const read = url => window.GyReads.read(state, url);
 
-  /* The answer each screen needs. The shell and the band are the frame; the
-     screen's own answer is what may be missing. */
+  /* The answer each screen needs. The shell, the band, the sidebar's eyes, and
+     the rail are the frame; the screen's own answer is what may be missing. */
   const SCREEN = {
     overview: ['overview'],
     cross: ['cross'],
     node: ['page', 'path'],
+    list: ['page'],
+    eye: [],
+    history: ['page'],
+    now: [],
     missing: [],
   };
-  const wanted = () => ['shell', 'band', ...(SCREEN[state.route.name] || [])];
+  const wanted = () => ['shell', 'band', 'now', 'rail', ...(SCREEN[state.route.name] || [])];
 
   /* One read per wanted thing that is missing; dataArrived fills the state.
      A failure keeps the frame and records why, and never starts a second
@@ -99,8 +114,11 @@
 
   /* Draw the frame in order, then hand #main to the route's screen. */
   function paint() {
-    if (window.GyHeader) window.GyHeader.render(state, document.querySelector('.top'), ui);
+    document.documentElement.lang = state.lang;
+    if (window.GySidebar) window.GySidebar.render(state, document.querySelector('.side'), ui);
+    if (window.GyTopbar) window.GyTopbar.render(state, document.getElementById('crumb'), ui);
     if (window.GyBand) window.GyBand.render(state, document.querySelector('.scrub'), ui);
+    if (window.GyRail) window.GyRail.render(state, document.getElementById('railBody'), ui);
     if (window.GyPalette) window.GyPalette.render(state, document.getElementById('pal'), ui);
     paintPage();
   }
@@ -112,6 +130,10 @@
     if (name === 'overview' && window.GyOverview) window.GyOverview.render(state, main, ui);
     else if (name === 'cross' && window.GyCross) window.GyCross.render(state, main, ui);
     else if (name === 'node' && window.GyNode) window.GyNode.render(state, main, ui);
+    else if (name === 'now' && window.GyNow) window.GyNow.render(state, main, ui);
+    else if (name === 'list' && window.GyList) window.GyList.render(state, main, ui);
+    else if (name === 'eye' && window.GyEye) window.GyEye.render(state, main, ui);
+    else if (name === 'history' && window.GyHistory) window.GyHistory.render(state, main, ui);
     else if (name === 'missing') main.innerHTML = `<div class="frame"><p class="hd">${word('notYet')}</p></div>`;
   }
 
@@ -123,8 +145,15 @@
       paint();
       return;
     }
+    if (intent.type === 'setScope') {
+      sessionStorage.setItem('gy-scope', intent.value);
+      paint();
+      await refresh();
+      return;
+    }
     if (intent.type === 'go') { paint(); await refresh(); return; }
     if (intent.type === 'detailDepth') { paint(); await refresh(); return; }
+    if (intent.type === 'historyActor' || intent.type === 'historySince') { paint(); await refresh(); return; }
     if (intent.type === 'setAt') { preview(); scheduleRefresh(); return; }
     if (intent.type === 'copied') { scheduleCopy(); paint(); return; }
     if (intent.type === 'paletteOpen') { paint(); focusPalette(); paintPalette(); return; }
@@ -174,20 +203,21 @@
     paintPalette();
   }
 
-  /* The connection mark, drawn by the header from state.live. */
+  /* The connection mark, drawn by the sidebar and the rail from state.live. */
   function setLive(on) {
     if (state.live === on) return;
     state = window.GyState.apply(state, { type: 'liveChanged', value: on });
     paintLive();
   }
   function paintLive() {
-    if (window.GyHeader) window.GyHeader.render(state, document.querySelector('.top'), ui);
+    if (window.GySidebar) window.GySidebar.render(state, document.querySelector('.side'), ui);
+    if (window.GyRail) window.GyRail.render(state, document.getElementById('railBody'), ui);
   }
 
-  /* While the head is dragged: the band and the header follow at once. */
+  /* While the head is dragged: the band and the clock follow at once. */
   function preview() {
     if (window.GyBand) window.GyBand.render(state, document.querySelector('.scrub'), ui);
-    if (window.GyHeader) window.GyHeader.render(state, document.querySelector('.top'), ui);
+    if (window.GySidebar) window.GySidebar.render(state, document.querySelector('.side'), ui);
     paintPage();
   }
   let refreshTimer = null;
@@ -222,8 +252,7 @@
     return badge ? badge.textContent.trim() : '';
   };
   const ui = {
-    t: word, plural, scopeTag, when, day, tickAt,
-    hue: name => window.GyState.hue(name, state.shell ? state.shell.scopes : []),
+    t: word, plural, scopeTag, hue, when, day, tickAt,
     canCopy: !!navigator.clipboard,
     navigate: hash => { location.hash = hash; },
     retry,
@@ -232,11 +261,14 @@
 
   /* The long wait for the next write lives in watch.js (n-39f2). */
   async function start() {
+    /* The events come first, before the one await, so a key pressed as the page
+       loads is heard: the frame draws once the words are in. */
+    window.GyEvents.wire({ run, setAt, go, composing, composedRecently, composedEnd, resized, retry, state: () => state });
+    WIDE.addEventListener('change', () => run({ type: 'setWide', value: WIDE.matches }));
     /* The words are a local asset, not an API: read them first so the frame is
        written in the reader's language, then draw it before any answer. */
     try { words = await window.GyReads.words(); } catch { words = null; }
     paint();
-    window.GyEvents.wire({ run, setAt, go, composing, composedRecently, composedEnd, resized, retry, state: () => state });
     refresh();
     window.GyWatch.follow(async () => { await moved(); }, on => setLive(on));
   }

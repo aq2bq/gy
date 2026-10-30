@@ -1,8 +1,9 @@
 /* The app's events (d-03ca, split out of root): one delegated click, one
-   keydown, the palette's input, the hash, the resize, and the band's drag. It
-   holds no state; it turns what happened into the root's calls. One event is
-   two halves (r-bb59): a choice turns the state and what happened into the
-   calls as data, and perform is the only place that runs them. */
+   keydown, the palette's input, the history's day, the hash, the resize, and
+   the band's drag. It holds no state; it turns what happened into the root's
+   calls. One event is two halves (r-bb59): a choice turns the state and what
+   happened into the calls as data, and perform is the only place that runs
+   them. */
 (function () {
   /* The calls the last event chose; read from the outside (r-bb59). */
   let last = [];
@@ -11,6 +12,11 @@
     document.addEventListener('click', event => click(api, event));
     document.addEventListener('input', event => {
       if (event.target.id === 'palq') api.run({ type: 'paletteQuery', value: event.target.value });
+    });
+    document.addEventListener('change', event => {
+      if (event.target.id === 'hist-date') {
+        api.run({ type: 'historySince', value: window.GyHistory.since(api.state(), event.target.value) });
+      }
     });
     document.addEventListener('keydown', event => keys(api, event));
     document.addEventListener('compositionend', () => api.composedEnd());
@@ -40,7 +46,10 @@
   function actPlan(act, arg) {
     switch (act) {
       case 'setLang': return [{ type: 'run', value: { type: 'setLang', value: arg } }];
+      case 'setScope': return [{ type: 'run', value: { type: 'setScope', value: arg } }];
       case 'setAt': return [{ type: 'at', value: arg === 'now' ? null : Number(arg) }];
+      case 'listFilter': return [{ type: 'run', value: { type: 'listFilter', value: arg } }];
+      case 'historyActor': return [{ type: 'run', value: { type: 'historyActor', value: arg || null } }];
       case 'copy': return [{ type: 'clipboard', text: arg }];
       case 'paletteOpen': return [{ type: 'run', value: { type: 'paletteOpen' } }];
       case 'paletteGo': return [{ type: 'hit', index: Number(arg) }];
