@@ -5,7 +5,6 @@
 //! (the detail screen). Each file's doc comment is the shape of its JSON and
 //! the meaning of every key.
 pub mod cross;
-pub mod graph;
 pub mod history;
 pub mod labels;
 pub mod list;
@@ -31,16 +30,28 @@ pub fn route<S: Store>(repo: &Repository<S>, req: &Request, name: &str) -> Respo
         "/" | "/index.html" => index(req, name),
         "/api/shell" => shell::shell(repo, req),
         "/api/now" => now::answer(repo, req),
+        "/api/overview" => overview::answer(repo),
+        "/api/cross" => cross::answer(repo, req),
         "/api/history" => history::answer(repo, req),
         "/api/labels" => labels::labels(repo, req),
         "/api/list" => list::rows(repo, req),
         "/api/search" => search::search(repo, req),
         "/api/ticks" => ticks::ticks(repo, req),
         _ => match req.path.strip_prefix("/api/node/") {
-            Some(id) => node::node(repo, &crate::http::decode(id, false)),
+            Some(rest) => match rest.strip_suffix("/path") {
+                Some(id) => path::answer(repo, &crate::http::decode(id, false), req),
+                None => node::node(repo, &crate::http::decode(rest, false)),
+            },
             None => static_file(req),
         },
     }
+}
+
+/// Whether a path is one of the three reading questions the server answers
+/// once per identical ask (d-6d90, ac-0dbb).
+pub fn is_reading(path: &str) -> bool {
+    matches!(path, "/api/overview" | "/api/cross")
+        || (path.starts_with("/api/node/") && path.ends_with("/path"))
 }
 
 /// The first HTML; the language comes from `Accept-Language` (ac-b9b1) and the

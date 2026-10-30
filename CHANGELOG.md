@@ -9,10 +9,12 @@ what is being built (d-c1a1, r-86ea).
 ### Added
 
 - **`show --json` carries every edge, `created`, and the node's creator**: each node returns `edges` (both directions, each with `name`, `to`, and `mark`), `created`, and `actor`, the writer whose write created it, with or without `--full`. The text output is unchanged (d-bbab, r-cb11, ac-88ca).
+- **`gy serve` answers from three reading APIs, and no longer lays the whole graph out**: `GET /api/overview` (the open needs by how far they got, what holds them and what the waits come from, the weeks, the scopes and their writes, the people a question waits on, the checks past due, and what nobody holds), `GET /api/cross?q=&from=&to=&scope=` (a cut of the record, or the scope-by-week grid when no cut is asked for or it holds more than 900 nodes), and `GET /api/node/<id>/path?depth=2|3` (the thread around one node, cause left and effect right). Each route file's doc comment is the shape and the meaning of every key. All three read the ledger once and judge with gy-ledger's own derivations. `GET /api/graph` and the server-side force layout are gone: the crossing screen places its cut in the browser, so the layout that diverged on kokopelli cannot come back (d-6d90, d-c302, r-44c7, ac-66f1).
 - **A criterion only closed needs aimed at reads as withdrawn**: an unmet criterion whose every `targets` bearer was closed with `need close` reads as `withdrawn`, and `gy show` names the closes (`withdrawn-by <need> (<by>: <evidence>)`) that withdrew it. The `targets` edge stays, `handover` no longer warns about it, and `list --status unsatisfied` leaves it out. No command or option was added (d-ed67, r-a8de, ac-b885).
 
 ### Changed
 
+- **`gy serve` computes each reading question once**: a second ask for the same question that arrives while the first is still being computed waits for that answer instead of starting another, so a reloading screen can no longer stack computations. A computation past five seconds is refused with 503 and the reason, and a failed or refused answer writes one line to the server's log (d-6d90, ac-0dbb).
 - **`decide --help` names only the relations it accepts**: `--relate` lists `narrows`, `widens`, `supersedes`, and `completes`, and says that `narrows` and `supersedes` also need `--mark` (d-d889, r-2bad, ac-57a8).
 - **`edit` names what changes a reserved attribute**: a refusal says which real operation changes it (`req approve`, `need close`, `req add --ref`, `question close`, …), or that it is decided when the node is made and cannot change later (d-d889, r-2bad, ac-57a8).
 - **gy-loop keeps the `GY_ACTOR` already in the environment**: it uses that name and does not change it, and names itself only when none is set (d-7fd4, r-f8be, ac-058a).
@@ -33,6 +35,11 @@ A criterion only needs closed with `need close` aimed at now reads as
 `withdrawn` instead of unmet. `handover` no longer warns about these, and
 `list --status unsatisfied` leaves them out; `gy show` names the close that
 withdrew one (d-ed67).
+
+`gy serve`'s API changed shape: `/api/graph` is gone, replaced by
+`/api/overview`, `/api/cross`, and `/api/node/<id>/path`. The API carries no
+compatibility promise (d-4d37), and the screen that reads it ships alongside
+this change.
 
 ## 2.2.0 - 2026-10-22
 

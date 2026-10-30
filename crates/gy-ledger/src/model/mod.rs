@@ -5,7 +5,6 @@ mod derive;
 mod due;
 mod edges;
 mod kind;
-pub(crate) use derive::criterion_wait;
 pub(crate) use due::{due_date, validate_wait};
 mod links;
 mod node;
@@ -16,8 +15,8 @@ mod state;
 
 pub use derive::{
     CriterionState, NeedState, bearer_count, covered, criterion_satisfied, criterion_state,
-    criterion_unsatisfied, decision_bound, edges, filed_target, find, need_closed, need_state,
-    question_open, ready, reference, requirement_in_progress, unmet_orphaned, unwaited,
+    criterion_unsatisfied, criterion_wait, decision_bound, edges, filed_target, find, need_closed,
+    need_state, question_open, ready, reference, requirement_in_progress, unmet_orphaned, unwaited,
     withdrawn_by,
 };
 pub use kind::{Alias, NodeId, NodeKind, Ref};

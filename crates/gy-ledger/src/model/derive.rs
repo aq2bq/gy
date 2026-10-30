@@ -291,10 +291,7 @@ pub fn reference(node: &Node) -> Option<&str> {
 }
 
 /// An unmet criterion's valid date and whether the reader's local day has reached it.
-pub(crate) fn criterion_wait(
-    node: &Node,
-    today: chrono::NaiveDate,
-) -> Option<(&str, &'static str)> {
+pub fn criterion_wait(node: &Node, today: chrono::NaiveDate) -> Option<(&str, &'static str)> {
     if !criterion_unsatisfied(node.data()) {
         return None;
     }

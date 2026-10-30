@@ -5,8 +5,8 @@
 //! Internal to gy: the API carries no compatibility promise (d-4d37).
 pub mod api;
 pub mod assets;
-pub mod graph_cache;
+pub mod cache;
 pub mod http;
-pub mod layout;
 pub mod server;
+pub mod snapshot;
 pub mod watch;

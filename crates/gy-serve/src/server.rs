@@ -2,7 +2,7 @@
 //! one thread per connection, and the two conversions. GET only; the request
 //! line and the headers are read, the body never is.
 use crate::api;
-use crate::graph_cache::GraphCache;
+use crate::cache::{Flights, LIMIT};
 use crate::http;
 use crate::watch::Watch;
 use gy_ledger::{Error, FileStore, MemoryStore, Repository, Result};
@@ -74,15 +74,15 @@ pub fn run(listener: TcpListener, open: Opener, ledger: PathBuf, name: String) -
     let open = Arc::new(open);
     let name = Arc::new(name);
     let watch = Watch::start(ledger);
-    let cache = GraphCache::new();
+    let flights = Flights::default();
     for stream in listener.incoming() {
         let Ok(stream) = stream else { continue };
         let open = open.clone();
         let name = name.clone();
         let watch = watch.clone();
-        let cache = cache.clone();
+        let flights = flights.clone();
         std::thread::spawn(move || {
-            let _ = connection(&open, &watch, &cache, &name, stream);
+            let _ = connection(open.clone(), &watch, &flights, name.clone(), stream);
         });
     }
     Ok(())
@@ -106,10 +106,10 @@ pub fn bind() -> Result<(TcpListener, u16)> {
 /// One connection: read the request, answer, close. A failure here ends this
 /// thread only.
 fn connection(
-    open: &Opener,
+    open: Arc<Opener>,
     watch: &Watch,
-    cache: &GraphCache,
-    name: &str,
+    flights: &Flights,
+    name: Arc<String>,
     mut stream: TcpStream,
 ) -> std::io::Result<()> {
     let _ = stream.set_read_timeout(Some(READ_TIMEOUT));
@@ -122,15 +122,29 @@ fn connection(
     };
     let answer = if session.path == "/api/wait" {
         api::wait::wait(watch, &session)
-    } else if session.path == "/api/graph" {
-        match requested_at(&session) {
-            Ok(at) => api::graph::answer(open, cache, at, &session),
-            Err(response) => response,
-        }
+    } else if api::is_reading(&session.path) {
+        /* A reading question is computed once, and a second ask for it waits
+        (d-6d90, ac-0dbb): the worker owns the ledger and the answer. */
+        let key = flight_key(&session, watch.current());
+        let request = session.clone();
+        flights.answer(&key, LIMIT, move || answer(&open, &request, &name))
     } else {
-        answer(open, &session, name)
+        answer(&open, &session, &name)
     };
     respond(stream, answer)
+}
+
+/// The one name of a reading question: its path, its query in a fixed order,
+/// and the last write the watcher has seen — so a request that follows a write
+/// never rides the computation of the ledger before it.
+fn flight_key(session: &http::Request, seen: u64) -> String {
+    let mut query: Vec<&(String, String)> = session.query.iter().collect();
+    query.sort();
+    let query: Vec<String> = query
+        .into_iter()
+        .map(|(name, value)| format!("{name}={value}"))
+        .collect();
+    format!("{}?{}@{seen}", session.path, query.join("&"))
 }
 
 /// The answer to one framework-free request: `at` picks the point in the log,
@@ -259,6 +273,7 @@ fn reason(status: u16) -> &'static str {
         405 => "Method Not Allowed",
         431 => "Request Header Fields Too Large",
         500 => "Internal Server Error",
+        503 => "Service Unavailable",
         _ => "Unknown",
     }
 }
