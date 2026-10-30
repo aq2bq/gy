@@ -92,9 +92,15 @@ To look at the record yourself, use `gy serve`. The screenshots show a demo ledg
 
 ### Progress
 
-<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-now-en.png" alt="The progress screen" width="100%">
+<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-progress-en.png" alt="The progress screen" width="100%">
 
-The first screen answers where the work stands: the open needs by scope and how far they got, what holds them and which root holds the most, the weeks, and what nobody holds.
+`gy serve` opens on progress: the open needs by scope and how far they got, what holds them and which root holds the most, the weeks, and what nobody holds.
+
+### Home
+
+<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-home-en.png" alt="The home screen" width="100%">
+
+The home is the person's view of today: the three counts under the wordmark — who waits, what is ready, and what is half-done — then the newest writes. Each box opens the rows it counts, and a list of any kind sits under the entrances.
 
 ### Across
 
@@ -107,6 +113,8 @@ A word, a period, or a scope narrows the record. The set is drawn with rows for 
 <img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-node-en.png" alt="One node's thread" width="100%">
 
 The detail screen puts where a node came from on the left and what it works on on the right; pressing a box centers it. The facts, the body, and the writes stay below.
+
+The sidebar is the way around: progress (the first screen), home, across, the lists of each kind, the scopes, the search (`⌘K` or `/`), and the history. The wordmark goes back to progress. On a wide screen the rail shows the ten newest writes as they land.
 
 ## What the ledger holds
 

@@ -92,9 +92,15 @@ gy remote set https://github.com/you/yourproject-gy.git
 
 ### 進行
 
-<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-now-ja.png" alt="進行の画面" width="100%">
+<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-progress-ja.png" alt="進行の画面" width="100%">
 
-最初の画面は、仕事がどこまで進んだかを答えます。開いているニーズをスコープと進み具合で並べ、何に止まっているかと、どの根が最も多くを止めているか、週ごとの動き、誰も持っていないものを出します。
+`gy serve` は進行の画面で開きます。開いているニーズをスコープと進み具合で並べ、何に止まっているかと、どの根が最も多くを止めているか、週ごとの動き、誰も持っていないものを出します。
+
+### ホーム
+
+<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-home-ja.png" alt="ホームの画面" width="100%">
+
+ホームはその日の人間の視点です。ワードマークの下の三つの数（誰が待っているか、次は何か、何がやりかけか）と、新しい書き込みを出します。箱を押すと、その数えた行が開きます。入口の下には、種別ごとの一覧が並びます。
 
 ### 横断
 
@@ -107,6 +113,8 @@ gy remote set https://github.com/you/yourproject-gy.git
 <img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-node-ja.png" alt="一件の筋道" width="100%">
 
 詳細の画面は、左にどこから来たか、右に何に効いているかを置きます。箱を押すとその箱が中心になります。要点・本文・経緯は下に残ります。
+
+サイドバーが道案内です。進行（最初の画面）・ホーム・横断・種別ごとの一覧・スコープ・検索（`⌘K` または `/`）・履歴が並び、ワードマークで進行に戻ります。広い画面では、rail が新しい書き込みを十件、届くたびに出します。
 
 ## 記録の中身
 

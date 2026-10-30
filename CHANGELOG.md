@@ -9,8 +9,8 @@ what is being built (d-c1a1, r-86ea).
 ### Added
 
 - **`show --json` carries every edge, `created`, and the node's creator**: each node returns `edges` (both directions, each with `name`, `to`, and `mark`), `created`, and `actor`, the writer whose write created it, with or without `--full`. The text output is unchanged (d-bbab, r-cb11, ac-88ca).
-- **`/api/shell` carries the sync state**: the same object `/api/now` answered under `resume.sync` before that route was removed — `pending`, `last_ok_at`, `last_ok_seq`, `last_error` — and nothing on a local ledger, so the band's "not pushed" mark has a home again (d-6d90, n-ecbf).
-- **`gy serve` answers from three reading APIs, and no longer lays the whole graph out**: `GET /api/overview` (the open needs by how far they got, what holds them and what the waits come from, the weeks, the scopes and their writes, the people a question waits on, the checks past due, and what nobody holds), `GET /api/cross?q=&from=&to=&scope=` (a cut of the record, or the scope-by-week grid when no cut is asked for or it holds more than 900 nodes), and `GET /api/node/<id>/path?depth=2|3` (the thread around one node, cause left and effect right). Each route file's doc comment is the shape and the meaning of every key. All three read the ledger once and judge with gy-ledger's own derivations. `GET /api/graph` and the server-side force layout are gone: the crossing screen places its cut in the browser, so the layout that diverged on kokopelli cannot come back. The routes the new screens do not read — `/api/now`, `/api/list`, `/api/history`, `/api/labels` — are gone with it (d-6d90, d-c302, r-44c7, ac-66f1).
+- **`/api/shell` carries the sync state**: the same object `/api/now` answers under `resume.sync` — `pending`, `last_ok_at`, `last_ok_seq`, `last_error` — and nothing on a local ledger, so the band's "not pushed" mark has its state in the frame it draws with (d-6d90, n-ecbf).
+- **`gy serve` adds three reading APIs, and no longer lays the whole graph out**: `GET /api/overview` (the open needs by how far they got, what holds them and what the waits come from, the weeks, the scopes and their writes, the people a question waits on, the checks past due, and what nobody holds), `GET /api/cross?q=&from=&to=&scope=` (a cut of the record, or the scope-by-week grid when no cut is asked for or it holds more than 900 nodes), and `GET /api/node/<id>/path?depth=2|3` (the thread around one node, cause left and effect right). Each route file's doc comment is the shape and the meaning of every key. All three read the ledger once and judge with gy-ledger's own derivations. `GET /api/graph` and the server-side force layout are gone: the crossing screen places its cut in the browser, so the layout that diverged on kokopelli cannot come back. The routes the older pages read — `/api/now`, `/api/list`, `/api/history`, `/api/labels` — stay, because the home, the lists, the history, and the rail still read them (d-6d90, d-c302, d-159a, r-44c7, r-0f99, ac-66f1).
 - **A criterion only closed needs aimed at reads as withdrawn**: an unmet criterion whose every `targets` bearer was closed with `need close` reads as `withdrawn`, and `gy show` names the closes (`withdrawn-by <need> (<by>: <evidence>)`) that withdrew it. The `targets` edge stays, `handover` no longer warns about it, and `list --status unsatisfied` leaves it out. No command or option was added (d-ed67, r-a8de, ac-b885).
 
 ### Changed
@@ -18,13 +18,19 @@ what is being built (d-c1a1, r-86ea).
 - **`/api/node` carries no neighbourhood, and reads the ledger once**: the ego map is gone (`neighborhood`), since the thread around a node is `/api/node/<id>/path`; the peers come from one read instead of one resolve per edge, so a need that waits on 160 questions answers in 0.035 s instead of 2.6 s. It also joins the three reading routes' guard: computed once per identical ask, 503 with the reason past five seconds, one line on failure (d-6d90, ac-0dbb).
 - **`gy serve` opens no ledger for a page or an asset, and keeps the one it opened**: `/` and `/assets/*` are answered before any ledger is read, so a browser's asset reads no longer each pay for opening the log; a reading answer keeps the opened ledger while the log's length and time stand still, and opens afresh as soon as a write lands. Opening the log was most of a small answer — on the kokopelli copy, `/api/ticks` fell from 0.135 s to 0.001 s warm and `/api/overview` from 0.184 s to 0.025 s (d-6d90).
 - **`gy serve` computes each reading question once**: a second ask for the same question that arrives while the first is still being computed waits for that answer instead of starting another, so a reloading screen can no longer stack computations. A computation past five seconds is refused with 503 and the reason, and a failed or refused answer writes one line to the server's log (d-6d90, ac-0dbb).
-- **`gy serve` is the three screens of the approved sample**: the first screen is progress (a scope × stage board, the weekly flow, and the roots of the waits), the second is across (a word, a period, or some scopes narrow the record, drawn with rows for scopes and time across, or as a scope × week grid when nothing is narrowed or the set passes 900), and the third is detail (where a node came from on the left, what it works on on the right, and a box centers its node). The first screen draws its frame before any API answer arrives and names a refused one in place; a refused answer never leaves an empty page (r-2d02, d-647f, d-6d90, n-a9f6, ac-0dbb).
+- **`gy serve` adds the three screens of the approved sample, and keeps the screens it had**: the first screen is progress (a scope × stage board, the weekly flow, and the roots of the waits), the second is across (a word, a period, or some scopes narrow the record, drawn with rows for scopes and time across, or as a scope × week grid when nothing is narrowed or the set passes 900), and the third is detail (where a node came from on the left, what it works on on the right, and a box centers its node). The first screen draws its frame before any API answer arrives and names a refused one in place; a refused answer never leaves an empty page (r-2d02, d-647f, d-159a, d-6d90, n-a9f6, ac-0dbb).
 - **The graph screen and its force layout are gone**: `/api/graph`, `graph.js`, and `graph-draw.js` are removed, and the crossing screen places its nodes from the answer alone, so a node with five hundred edges gives finite coordinates (r-2d02, ac-afba).
-- **The old now, list, eye, and history screens are gone**: the three screens above replace them. The time band, the search palette, and the header's jump box stay.
+- **Home, the lists, the eyes, the history, and the rail stay**: the sidebar's entrances are progress (the first screen), home, across, and the history, with a list of each kind and the scopes below them; the graph's entrance passes to across, and the wordmark returns to progress. The rail, the time band, the search palette, and the language switch stay too (d-159a, d-e239, r-0f99).
 - **`decide --help` names only the relations it accepts**: `--relate` lists `narrows`, `widens`, `supersedes`, and `completes`, and says that `narrows` and `supersedes` also need `--mark` (d-d889, r-2bad, ac-57a8).
 - **`edit` names what changes a reserved attribute**: a refusal says which real operation changes it (`req approve`, `need close`, `req add --ref`, `question close`, …), or that it is decided when the node is made and cannot change later (d-d889, r-2bad, ac-57a8).
 - **gy-loop keeps the `GY_ACTOR` already in the environment**: it uses that name and does not change it, and names itself only when none is set (d-7fd4, r-f8be, ac-058a).
 - **gy-loop and gy-decide**: "how the team runs" now reads "how the work is run", and a writer's name is one no other session writes under at the same time, telling a reader whose work each write was. The rule behind both is unchanged.
+
+### Fixed
+
+- **The detail screen's body wraps inside its column**: the rule named a `pre` inside `.body`, but the body is the `pre` itself, so a long passage ran under the writes beside it. The selector names what the page draws (d-159a, r-0f99).
+- **The crossing screen keeps its picture on a narrow page**: with the sidebar and the rail on screen, the two side panels share the first row and the summary moves below, so the picture is not squeezed to a hand's width (r-0f99).
+- **The history page asks for its labels in one read**: `/api/labels` read the ledger once per id, so the history page's two hundred rows opened it two hundred times and the page took 3.2 s on the kokopelli copy. One read and an index by id and alias brings the answer to 0.016 s and the page to 0.25 s (r-0f99).
 
 ### Updating
 
@@ -42,11 +48,11 @@ A criterion only needs closed with `need close` aimed at now reads as
 `list --status unsatisfied` leaves them out; `gy show` names the close that
 withdrew one (d-ed67).
 
-`gy serve`'s API changed shape: `/api/graph`, `/api/now`, `/api/list`,
-`/api/history`, and `/api/labels` are gone, replaced by `/api/overview`,
-`/api/cross`, and `/api/node/<id>/path`; `/api/shell`, `/api/ticks`,
+`gy serve`'s API grew: `/api/overview`, `/api/cross`, and
+`/api/node/<id>/path` are new, and `/api/graph` is gone. `/api/now`,
+`/api/list`, `/api/history`, `/api/labels`, `/api/shell`, `/api/ticks`,
 `/api/wait`, `/api/search`, and `/api/node/<id>` stay. The API carries no
-compatibility promise (d-4d37), and the screen that reads it ships alongside
+compatibility promise (d-4d37), and the screens that read it ship alongside
 this change.
 
 ## 2.2.0 - 2026-10-22
