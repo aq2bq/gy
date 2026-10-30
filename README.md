@@ -116,7 +116,7 @@ A criterion can be recorded as satisfied only while an approved requirement poin
 
 ## Who writes
 
-Every write needs a name in `GY_ACTOR`. Give each agent its own name, and the history shows who wrote what and why.
+Every write needs a name in `GY_ACTOR`. If the tool that starts you already sets one, keep it; otherwise give each agent its own name. The history then shows who wrote what and why.
 
 ## Commands
 

@@ -265,3 +265,22 @@ fn git_and_toml_in_the_same_dir_is_the_root() {
         toml
     );
 }
+
+/// ac-058a: the bundled gy-loop keeps a `GY_ACTOR` already in the environment
+/// and names itself only when none is set; both READMEs say the same.
+#[test]
+fn the_gy_loop_skill_keeps_an_actors_name_from_the_environment() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let skill = std::fs::read_to_string(root.join("skills/gy-loop/SKILL.md")).unwrap();
+    assert!(
+        skill.contains("`GY_ACTOR` already in the environment"),
+        "{skill}"
+    );
+    assert!(skill.contains("do not change it"), "{skill}");
+    assert!(skill.contains("only when none is"), "{skill}");
+
+    let readme = std::fs::read_to_string(root.join("../../README.md")).unwrap();
+    assert!(readme.contains("already sets one, keep it"), "{readme}");
+    let readme_ja = std::fs::read_to_string(root.join("../../README.ja.md")).unwrap();
+    assert!(readme_ja.contains("そのまま使います"), "{readme_ja}");
+}

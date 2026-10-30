@@ -66,5 +66,6 @@ gy.toml holds the scope names and, if you want, where publish writes. Keys outsi
 
   [scopes.myproject]
 
-Name yourself before a write. A read needs no name.
+A write needs a name: if `GY_ACTOR` is already in the environment, use it and
+do not change it; name yourself only when none is set. A read needs no name.
   export GY_ACTOR=<name>
