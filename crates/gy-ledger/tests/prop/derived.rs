@@ -528,13 +528,6 @@ pub fn warnings(all: &[Node]) -> Vec<Warning> {
         "open questions nobody waits on",
         all.iter().filter(|node| unwaited(node, all)).count(),
     );
-    push(
-        &mut out,
-        "criteria unmet with every need closed",
-        all.iter()
-            .filter(|node| node.kind() == NodeKind::Criterion && orphaned(node, all))
-            .count(),
-    );
     out
 }
 

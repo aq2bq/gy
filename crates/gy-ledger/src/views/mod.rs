@@ -22,7 +22,7 @@ pub use next::{NextRow, RequirementLine, next, next_on};
 pub use now::{NodeRow, Now, Ready, Resume, Waiting, now};
 pub use publish::{Publication, publish};
 pub use retraction::{Narrowed, Retraction};
-pub use show::{EdgeLine, Shown, show};
+pub use show::{EdgeLine, Shown, WithdrawalLine, show};
 pub use sync_row::SyncRow;
 
 /// How a need, question, or requirement reads its open/closed state.

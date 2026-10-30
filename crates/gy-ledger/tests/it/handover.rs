@@ -254,7 +254,7 @@ fn handover_counts_open_questions_nobody_waits_on() {
 const ORPHANED: &str = "criteria unmet with every need closed";
 
 #[test]
-fn handover_counts_unmet_criteria_with_every_need_closed() {
+fn handover_does_not_warn_about_criteria_only_closed_needs_aimed_at() {
     let mut repo = repo();
     let ac = criterion("0001", SCOPE);
     let mut bearer = need("0002", SCOPE);
@@ -267,9 +267,9 @@ fn handover_counts_unmet_criteria_with_every_need_closed() {
     seed(&mut repo, &[ac, bearer, elsewhere, other]);
 
     let all = handover(&repo, None).unwrap();
-    assert_eq!(warning_count(&all, ORPHANED), 2, "{:?}", all.warnings);
+    assert_eq!(warning_count(&all, ORPHANED), 0, "{:?}", all.warnings);
     let scoped = handover(&repo, Some(SCOPE)).unwrap();
-    assert_eq!(warning_count(&scoped, ORPHANED), 1);
+    assert_eq!(warning_count(&scoped, ORPHANED), 0, "{:?}", scoped.warnings);
 }
 
 #[test]

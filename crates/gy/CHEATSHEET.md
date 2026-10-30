@@ -12,7 +12,7 @@ Starting a session:
 
 Reads:
   gy cheat                                             print this cheatsheet as it is: no gy.toml is looked for and it has no options
-  gy show <ID|ref>... [--full]                         show nodes, with what each still lacks
+  gy show <ID|ref>... [--full]                         show nodes, with what each still lacks; a criterion only closed needs aimed at reads as withdrawn
   gy list [--type <kind>] [--status <status>] [--targets <ID>] [--grep <text>] [--actor <name>] [--since <seq|date>]   list nodes; with --actor / --since, list write units. Spelling ignores case. --since takes a seq (the writes after it, not including it) or a date (YYYY-MM-DD, from midnight where you are)
   gy next [--scope <name>]                             the needs whose prerequisites are settled, limited to the scope when given
   gy handover [--scope <name>]                         requirements in progress and the counts a session needs to resume, limited to the scope when given
@@ -28,6 +28,7 @@ Writes:
   A write that creates a node needs --scope <name> when gy.toml names more than one scope; a write to an existing node does not, and with one scope the only one is used.
   gy need add "<title>" --targets <AC>... [--spawned-by <D>] [--body-file <path>]
   gy need close <ID> --by fact|external --evidence <text>
+        the close lists the criteria the need still targeted and left unmet, so you can satisfy them or notice a wrong close. Read later, a criterion only closed needs aimed at is withdrawn: the close's evidence is its reason, and handover and list --status unsatisfied leave it out
   gy question add "<title>" --decider <name> --options <text>... [--body-file <path>]        at least two options
   gy question close <ID> --by fact|decision|non-decision --evidence <text> [--decision <D>]
   gy criterion add "<title>" [--body-file <path>]

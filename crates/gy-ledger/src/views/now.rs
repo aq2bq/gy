@@ -7,8 +7,8 @@ use super::open_or_closed;
 use super::sync_row::SyncRow;
 use super::writers::{writer, writers};
 use crate::model::{
-    NeedState, Node, NodeData, NodeKind, RequirementState, criterion_satisfied,
-    criterion_unsatisfied, need_state, question_open, reference, unwaited,
+    CriterionState, NeedState, Node, NodeData, NodeKind, RequirementState, criterion_state,
+    need_state, question_open, reference, unwaited,
 };
 use crate::ops::repository::{Repository, Result, Store};
 use serde::Serialize;
@@ -115,7 +115,10 @@ pub fn now<S: Store>(repo: &Repository<S>, scope: Option<&str>) -> Result<Now> {
     let mut unmet: Vec<&Node> = visible
         .iter()
         .copied()
-        .filter(|node| criterion_unsatisfied(node.data()))
+        .filter(|node| {
+            node.kind() == NodeKind::Criterion
+                && criterion_state(node, &all) == CriterionState::Unsatisfied
+        })
         .collect();
     unmet.sort_by(newest_first);
     let last = repo.store().history().last();
@@ -246,12 +249,7 @@ fn state_name(node: &Node, all: &[Node]) -> String {
         NodeData::Need(_) => need_state(node, all).name().to_string(),
         NodeData::Question(_) => open_or_closed(!question_open(node.data())).to_string(),
         NodeData::Requirement(data) => data.state.name().to_string(),
-        NodeData::Criterion(_) => if criterion_satisfied(node.data()) {
-            "satisfied"
-        } else {
-            "unsatisfied"
-        }
-        .to_string(),
+        NodeData::Criterion(_) => criterion_state(node, all).name().to_string(),
         NodeData::Decision(_) => String::new(),
     }
 }

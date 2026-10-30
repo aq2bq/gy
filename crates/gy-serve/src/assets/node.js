@@ -32,6 +32,7 @@
       case 'Question':
         return data.Question.closure ? 'closed' : 'open';
       case 'Criterion':
+        if (node.withdrawn_by && node.withdrawn_by.length) return 'withdrawn';
         return data.Criterion.satisfied ? 'satisfied' : 'unsatisfied';
       case 'Requirement':
         return data.Requirement.state.toLowerCase();

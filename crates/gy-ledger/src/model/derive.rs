@@ -37,6 +37,31 @@ pub fn criterion_unsatisfied(data: &NodeData) -> bool {
     matches!(data, NodeData::Criterion(criterion) if !criterion.satisfied)
 }
 
+/// A criterion's derived state: satisfied, withdrawn because every need that
+/// aimed at it was closed with `need close`, or still unsatisfied (d-ed67).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CriterionState {
+    Satisfied,
+    Withdrawn,
+    Unsatisfied,
+}
+impl CriterionState {
+    pub fn name(self) -> &'static str {
+        ["satisfied", "withdrawn", "unsatisfied"][self as usize]
+    }
+}
+
+/// The state of one criterion, from the graph (d-ed67).
+pub fn criterion_state(criterion: &Node, all: &[Node]) -> CriterionState {
+    if criterion_satisfied(criterion.data()) {
+        CriterionState::Satisfied
+    } else if unmet_orphaned(criterion, all) {
+        CriterionState::Withdrawn
+    } else {
+        CriterionState::Unsatisfied
+    }
+}
+
 /// Whether a requirement is still being built: filed or approved.
 pub fn requirement_in_progress(data: &NodeData) -> bool {
     matches!(data, NodeData::Requirement(requirement) if in_progress(requirement.state))
@@ -213,19 +238,30 @@ pub fn bearer_count(needs: &[Node], criterion: &NodeId) -> usize {
     needs.iter().filter(|node| targets(node, criterion)).count()
 }
 
-/// Whether a criterion is unsatisfied and every need that targets it is closed,
-/// so no open need bears the gap. A criterion no need targets is not orphaned:
-/// the bearer-less gap is reported where criteria are looked at (C4).
-pub fn unmet_orphaned(criterion: &Node, all: &[Node]) -> bool {
+/// The needs whose close withdrew this criterion: it is unsatisfied, at least
+/// one need targets it, and every need that targets it was closed with `need
+/// close` (d-ed67). Each returned need carries the close's `by` and evidence.
+pub fn withdrawn_by<'a>(criterion: &Node, all: &'a [Node]) -> Vec<&'a Node> {
     if !criterion_unsatisfied(criterion.data()) {
-        return false;
+        return Vec::new();
     }
     let bearers: Vec<&Node> = all
         .iter()
         .filter(|node| node.kind() == NodeKind::Need)
         .filter(|need| targets(need, criterion.id()))
         .collect();
-    !bearers.is_empty() && bearers.iter().all(|need| need_closed(need.data()))
+    if bearers.is_empty() || !bearers.iter().all(|need| need_closed(need.data())) {
+        return Vec::new();
+    }
+    bearers
+}
+
+/// Whether a criterion is unsatisfied and every need that targets it is closed,
+/// so no open need bears the gap. A criterion no need targets is not orphaned:
+/// the bearer-less gap is reported where criteria are looked at (C4). This is
+/// the withdrawal d-ed67 reads; `need close` still names these as unmet.
+pub fn unmet_orphaned(criterion: &Node, all: &[Node]) -> bool {
+    !withdrawn_by(criterion, all).is_empty()
 }
 
 /// The ids this node points at with one relation. One function for the views,

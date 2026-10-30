@@ -3,8 +3,8 @@
 use super::open_or_closed;
 use super::writers::writer;
 use crate::model::{
-    NeedState, Node, NodeData, NodeId, NodeKind, Relation, RequirementState, criterion_satisfied,
-    criterion_unsatisfied, edges, need_state, question_open, reference, unwaited,
+    CriterionState, NeedState, Node, NodeData, NodeId, NodeKind, Relation, RequirementState,
+    criterion_state, edges, need_state, question_open, reference, unwaited,
 };
 use crate::ops::local_time;
 use crate::ops::repository::{Error, Repository, Result, Store};
@@ -226,14 +226,7 @@ pub(crate) fn status_of(node: &Node, all: &[Node]) -> Option<String> {
         NodeData::Need(_) => Some(need_state(node, all).name().to_string()),
         NodeData::Question(_) => Some(open_or_closed(!question_open(node.data())).to_string()),
         NodeData::Requirement(data) => Some(data.state.name().to_string()),
-        NodeData::Criterion(_) => Some(
-            if criterion_satisfied(node.data()) {
-                "satisfied"
-            } else {
-                "unsatisfied"
-            }
-            .to_string(),
-        ),
+        NodeData::Criterion(_) => Some(criterion_state(node, all).name().to_string()),
         NodeData::Decision(_) => None,
     }
 }
@@ -297,8 +290,12 @@ fn matches_status(node: &Node, wanted: Status, all: &[Node]) -> bool {
         (NodeData::Question(_), Status::Closed) => !question_open(node.data()),
         (NodeData::Requirement(data), Status::Done) => data.state == RequirementState::Done,
         (NodeData::Requirement(data), Status::Requirement(state)) => data.state == state,
-        (NodeData::Criterion(_), Status::Satisfied) => criterion_satisfied(node.data()),
-        (NodeData::Criterion(_), Status::Unsatisfied) => criterion_unsatisfied(node.data()),
+        (NodeData::Criterion(_), Status::Satisfied) => {
+            criterion_state(node, all) == CriterionState::Satisfied
+        }
+        (NodeData::Criterion(_), Status::Unsatisfied) => {
+            criterion_state(node, all) == CriterionState::Unsatisfied
+        }
         _ => false,
     }
 }

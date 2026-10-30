@@ -164,8 +164,8 @@ fn c3_covered_is_one_function() {
 }
 
 /// C4: `bearer_count` counts needs, and an orphaned criterion (unmet, borne,
-/// every bearer closed by hand) is the count `handover` reports and the lines a
-/// closed need reports.
+/// every bearer closed by hand) reads as withdrawn: handover no longer warns
+/// about it, while a closed need still reports it as the unmet line (d-ed67).
 #[test]
 fn c4_bearer_count_and_orphaned() {
     let checked = Cell::new(0usize);
@@ -179,17 +179,13 @@ fn c4_bearer_count_and_orphaned() {
                 d::bearers(all, criterion.id()).len()
             );
         }
-        let want = all
-            .iter()
-            .filter(|node| node.kind() == NodeKind::Criterion && d::orphaned(node, all))
-            .count();
-        let got = handover(repo, None)
-            .unwrap()
-            .warnings
-            .iter()
-            .find(|warning| warning.label == "criteria unmet with every need closed")
-            .map_or(0, |warning| warning.count);
-        prop_assert_eq!(got, want);
+        prop_assert!(
+            !handover(repo, None)
+                .unwrap()
+                .warnings
+                .iter()
+                .any(|warning| warning.label == "criteria unmet with every need closed")
+        );
         for (need, shown) in all.iter().zip(&shown) {
             if !d::closed_by_hand(need) {
                 continue;

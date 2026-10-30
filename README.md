@@ -114,6 +114,8 @@ To look at the record yourself, use `gy serve`. The screenshots show a demo ledg
 
 A criterion can be recorded as satisfied only while an approved requirement points at it. Who approves is up to you, not gy.
 
+A criterion that only needs closed with `need close` aimed at is read as withdrawn: the close's evidence is its reason, it is no longer counted as unmet, and `gy show` names it.
+
 ## Who writes
 
 Every write needs a name in `GY_ACTOR`. If the tool that starts you already sets one, keep it; otherwise give each agent its own name. The history then shows who wrote what and why.

@@ -46,6 +46,6 @@ pub use versions::{max_version, newer_than, triple};
 pub use views::{
     DatedWaiting, DueRow, EGO_LIMIT, EdgeLine, Ego, EgoEdge, EgoNode, Filter, Handover, Listing,
     LogRow, Match, Narrowed, NextRow, NodeRow, Now, ProgressRow, Publication, Ready,
-    RequirementLine, Resume, Retraction, Row, Shown, SyncRow, Waiting, Warning, ego, handover,
-    handover_on, list, matches, next, next_on, now, publish, show,
+    RequirementLine, Resume, Retraction, Row, Shown, SyncRow, Waiting, Warning, WithdrawalLine,
+    ego, handover, handover_on, list, matches, next, next_on, now, publish, show,
 };

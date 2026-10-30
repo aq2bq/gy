@@ -9,6 +9,7 @@ what is being built (d-c1a1, r-86ea).
 ### Added
 
 - **`show --json` carries every edge, `created`, and the node's creator**: each node returns `edges` (both directions, each with `name`, `to`, and `mark`), `created`, and `actor`, the writer whose write created it, with or without `--full`. The text output is unchanged (d-bbab, r-cb11, ac-88ca).
+- **A criterion only closed needs aimed at reads as withdrawn**: an unmet criterion whose every `targets` bearer was closed with `need close` reads as `withdrawn`, and `gy show` names the closes (`withdrawn-by <need> (<by>: <evidence>)`) that withdrew it. The `targets` edge stays, `handover` no longer warns about it, and `list --status unsatisfied` leaves it out. No command or option was added (d-ed67, r-a8de, ac-b885).
 
 ### Changed
 
@@ -25,6 +26,11 @@ README).
 
 `show --json` now also returns `edges`, `created`, and `actor` on every node. A
 reader that matched the old keys exactly should accept them (d-bbab).
+
+A criterion only needs closed with `need close` aimed at now reads as
+`withdrawn` instead of unmet. `handover` no longer warns about these, and
+`list --status unsatisfied` leaves them out; `gy show` names the close that
+withdrew one (d-ed67).
 
 ## 2.2.0 - 2026-10-22
 

@@ -8,7 +8,7 @@ use super::sync_row::{SyncRow, sync_row};
 use super::writers::writer;
 use crate::model::{
     Node, NodeData, NodeKind, Relation, decision_bound, edges, find, question_open, ready,
-    requirement_in_progress, unmet_orphaned, unwaited,
+    requirement_in_progress, unwaited,
 };
 use crate::ops::repository::{Repository, Result, Store};
 use serde::Serialize;
@@ -198,11 +198,6 @@ fn warnings(all: &[Node], scope: Option<&str>, in_progress: &[&Node]) -> Vec<War
         "decisions serving nothing",
         serving_nothing(all, scope),
     );
-    push(
-        &mut warnings,
-        "criteria unmet with every need closed",
-        orphaned_criteria(all, scope),
-    );
     warnings
 }
 
@@ -246,13 +241,6 @@ fn empty_bodies(all: &[Node], scope: Option<&str>) -> usize {
 fn nobody_waits(all: &[Node], scope: Option<&str>) -> usize {
     all.iter()
         .filter(|node| in_scope(node, scope) && unwaited(node, all))
-        .count()
-}
-
-/// Criteria in scope whose every bearing need is closed (n-f7ef, d-f7b6).
-fn orphaned_criteria(all: &[Node], scope: Option<&str>) -> usize {
-    all.iter()
-        .filter(|node| in_scope(node, scope) && unmet_orphaned(node, all))
         .count()
 }
 

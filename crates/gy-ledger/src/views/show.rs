@@ -3,7 +3,8 @@
 use super::open_or_closed;
 use super::retraction::{Retraction, retracted, retractions_by_node, scope_marked};
 use crate::model::{
-    Criterion, Edge, Node, NodeData, NodeKind, need_state, question_open, reference,
+    ClosedBy, Criterion, Edge, Node, NodeData, NodeKind, need_state, question_open, reference,
+    withdrawn_by,
 };
 use crate::ops::repository::{Error, HistoryEntry, Repository, Result, Snapshot, Store};
 use crate::ops::{advice, local_time};
@@ -36,6 +37,16 @@ impl EdgeLine {
             None => format!("  {} {}", self.name, self.to),
         }
     }
+}
+
+/// A criterion as withdrawn by the close of the needs that aimed at it: which
+/// need closed, how, and with what evidence (d-ed67).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub struct WithdrawalLine {
+    pub need: String,
+    pub by: ClosedBy,
+    pub evidence: String,
 }
 
 /// A node as a view projects it. `data` stays typed, so `--json` is the model
@@ -71,6 +82,9 @@ pub struct Shown {
     /// What later decisions retract of this one (n-0c6f, d-bde9).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cancellation: Option<Retraction>,
+    /// For a criterion, the closes that withdrew it (d-ed67).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub withdrawn_by: Vec<WithdrawalLine>,
     /// A need's derived state (open / closed / done), from the graph (n-35cf).
     #[serde(skip_serializing)]
     pub need: Option<&'static str>,
@@ -105,6 +119,20 @@ impl Shown {
             .and_then(|retraction| retracted(&body, retraction));
         let decision_scope_marked = scope_marked(node, cancellation.as_ref());
         let (edges, outgoing) = projected_edges(node, incoming);
+        let withdrawn_by = match node.data() {
+            NodeData::Criterion(_) => withdrawn_by(node, all)
+                .into_iter()
+                .filter_map(|need| match need.data() {
+                    NodeData::Need(data) => data.closed.as_ref().map(|closed| WithdrawalLine {
+                        need: need.id().to_string(),
+                        by: closed.by,
+                        evidence: closed.evidence.clone(),
+                    }),
+                    _ => None,
+                })
+                .collect(),
+            _ => Vec::new(),
+        };
         Self {
             id: node.id().to_string(),
             reference,
@@ -119,6 +147,7 @@ impl Shown {
             aliases: projected_aliases(node, full),
             data: node.data().clone(),
             cancellation,
+            withdrawn_by,
             need: match node.data() {
                 NodeData::Need(_) => Some(need_state(node, all).name()),
                 _ => None,
@@ -179,6 +208,15 @@ impl Shown {
             }
             NodeData::Criterion(data) => {
                 let _ = writeln!(out, "{}", criterion_line(data));
+                for withdrawal in &self.withdrawn_by {
+                    let _ = writeln!(
+                        out,
+                        "withdrawn-by {} ({}: {})",
+                        withdrawal.need,
+                        closed_by_name(withdrawal.by),
+                        withdrawal.evidence
+                    );
+                }
             }
         }
         out
@@ -280,6 +318,13 @@ fn creators(history: &[HistoryEntry]) -> BTreeMap<String, String> {
         }
     }
     out
+}
+
+fn closed_by_name(by: ClosedBy) -> &'static str {
+    match by {
+        ClosedBy::Fact => "fact",
+        ClosedBy::External => "external",
+    }
 }
 
 fn criterion_line(data: &Criterion) -> String {

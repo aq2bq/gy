@@ -43,7 +43,7 @@
     "st": {
       "Need": { "open": "in progress", "done": "done", "closed": "done" },
       "Question": { "open": "open", "closed": "closed" },
-      "Criterion": { "unsatisfied": "unmet", "satisfied": "met" },
+      "Criterion": { "unsatisfied": "unmet", "satisfied": "met", "withdrawn": "withdrawn" },
       "Requirement": { "filed": "filed", "approved": "approved", "done": "done", "cancelled": "cancelled" }
     },
     "why": { "decide": "decided", "needadd": "filed", "needclose": "closed", "qadd": "asked", "qclose": "closed", "acsat": "met", "acadd": "placed", "link": "linked", "edit": "edited", "req": "advanced" },
@@ -93,7 +93,7 @@
     "st": {
       "Need": { "open": "進行中", "done": "完了", "closed": "完了" },
       "Question": { "open": "未決", "closed": "閉じた" },
-      "Criterion": { "unsatisfied": "未達", "satisfied": "満たした" },
+      "Criterion": { "unsatisfied": "未達", "satisfied": "満たした", "withdrawn": "取り下げ" },
       "Requirement": { "filed": "起票済み", "approved": "確定", "done": "完了", "cancelled": "中止" }
     },
     "why": { "decide": "を決めた", "needadd": "を立てた", "needclose": "を閉じた", "qadd": "を問うた", "qclose": "を閉じた", "acsat": "を満たした", "acadd": "を置いた", "link": "を繋いだ", "edit": "を書き換えた", "req": "を進めた" },

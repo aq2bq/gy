@@ -1,6 +1,7 @@
 use gy_ledger::{
-    Actor, Alias, Filter, FormatVersion, Link, Listing, LogRow, Match, MemoryStore, Node, NodeData,
-    NodeId, NodeKind, Ref, Relation, Repository, RequirementState, Row, Store, list, matches,
+    Actor, Alias, Closed, ClosedBy, Filter, FormatVersion, Link, Listing, LogRow, Match,
+    MemoryStore, Node, NodeData, NodeId, NodeKind, Ref, Relation, Repository, RequirementState,
+    Row, Store, list, matches,
 };
 
 const SCOPE: &str = "a";
@@ -257,4 +258,37 @@ fn list_marks_questions_nobody_waits_on() {
     assert_eq!(asked.created, DATE);
     let wanted = rows.iter().find(|row| row.id == "n-0031").unwrap();
     assert!(!wanted.unwaited);
+}
+
+/// d-ed67: an unmet criterion whose every bearing need closed by hand reads as
+/// withdrawn, so `--status unsatisfied` leaves it out.
+#[test]
+fn list_does_not_count_a_withdrawn_criterion_as_unsatisfied() {
+    let mut repo = repo();
+    let criterion =
+        Node::criterion(id(NodeKind::Criterion, "0030"), SCOPE, DATE, "a criterion").unwrap();
+    let mut need = Node::need(id(NodeKind::Need, "0031"), SCOPE, DATE, "a closed need").unwrap();
+    need.link(Link::new(need.id().clone(), Relation::Targets, criterion.id().clone()).unwrap());
+    match need.data_mut() {
+        NodeData::Need(data) => {
+            data.closed = Some(Closed {
+                by: ClosedBy::Fact,
+                evidence: "not pursued".into(),
+            });
+        }
+        _ => unreachable!(),
+    }
+    seed(&mut repo, &[criterion, need]);
+
+    let mut filter = Filter::default();
+    filter.kind = Some(NodeKind::Criterion);
+    filter.status = Some("unsatisfied".into());
+    assert!(node_rows(&repo, &filter).is_empty());
+
+    let rows = node_rows(&repo, &Filter::default());
+    let row = rows
+        .iter()
+        .find(|row| row.kind == NodeKind::Criterion)
+        .unwrap();
+    assert_eq!(row.status.as_deref(), Some("withdrawn"));
 }
