@@ -20,9 +20,11 @@ what is being built (d-c1a1, r-86ea).
 
 ### Updating
 
-Nothing in the CLI, the storage format, or `gy.toml` changed. The skills changed
-(gy-loop, gy-decide), so copy them again (see "Telling the AI about gy" in the
-README).
+The storage format and `gy.toml` are unchanged. What changed is the CLI's
+output — the keys `show --json` returns, the `withdrawn` state of a criterion,
+the warning `handover` no longer prints, and the words of `decide --help` and
+`edit`'s refusals — and the skills (gy-loop, gy-decide), so copy them again
+(see "Telling the AI about gy" in the README).
 
 `show --json` now also returns `edges`, `created`, and `actor` on every node. A
 reader that matched the old keys exactly should accept them (d-bbab).
