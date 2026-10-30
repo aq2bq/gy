@@ -5,7 +5,7 @@ use super::retraction::{Retraction, retracted, retractions_by_node, scope_marked
 use crate::model::{
     Criterion, Edge, Node, NodeData, NodeKind, need_state, question_open, reference,
 };
-use crate::ops::repository::{Error, Repository, Result, Snapshot, Store};
+use crate::ops::repository::{Error, HistoryEntry, Repository, Result, Snapshot, Store};
 use crate::ops::{advice, local_time};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -58,8 +58,13 @@ pub struct Shown {
     pub decision_scope_marked: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scope: Option<String>,
+    /// Always present in `--json`; the text output prints it only with
+    /// `--full` (d-bbab).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created: Option<String>,
+    /// The writer whose write created this node, from the history (d-bbab).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub actor: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub aliases: Vec<String>,
     pub data: NodeData,
@@ -69,8 +74,16 @@ pub struct Shown {
     /// A need's derived state (open / closed / done), from the graph (n-35cf).
     #[serde(skip_serializing)]
     pub need: Option<&'static str>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    /// Every edge, outgoing then incoming: `--json` carries both directions
+    /// (d-bbab). The text output names only what `full` shows.
     pub edges: Vec<EdgeLine>,
+    /// How many of `edges` are outgoing, so the text output can leave the
+    /// incoming ones out unless `full` asks for them.
+    #[serde(skip)]
+    outgoing: usize,
+    #[serde(skip)]
+    full: bool,
+
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub missing: Vec<String>,
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
@@ -82,6 +95,7 @@ impl Shown {
         incoming: &[Edge],
         cancellation: Option<Retraction>,
         all: &[Node],
+        actor: Option<String>,
         full: bool,
     ) -> Self {
         let reference = reference(node).map(str::to_string);
@@ -90,6 +104,7 @@ impl Shown {
             .as_ref()
             .and_then(|retraction| retracted(&body, retraction));
         let decision_scope_marked = scope_marked(node, cancellation.as_ref());
+        let (edges, outgoing) = projected_edges(node, incoming);
         Self {
             id: node.id().to_string(),
             reference,
@@ -99,7 +114,8 @@ impl Shown {
             body_marked,
             decision_scope_marked,
             scope: full.then(|| node.scope().to_string()),
-            created: full.then(|| node.created().to_string()),
+            created: Some(node.created().to_string()),
+            actor,
             aliases: projected_aliases(node, full),
             data: node.data().clone(),
             cancellation,
@@ -107,7 +123,9 @@ impl Shown {
                 NodeData::Need(_) => Some(need_state(node, all).name()),
                 _ => None,
             },
-            edges: projected_edges(node, incoming, full),
+            edges,
+            outgoing,
+            full,
             missing: advice::missing(node, all),
             attributes: projected_attributes(node, full),
         }
@@ -116,6 +134,18 @@ impl Shown {
         match &self.reference {
             Some(reference) => format!("{} ({reference}) {}", self.id, self.title),
             None => format!("{} {}", self.id, self.title),
+        }
+    }
+    /// The edges the text output names: every one with `--full`, a
+    /// requirement's outgoing ones otherwise, and none for the other kinds
+    /// (d-bbab keeps this unchanged).
+    fn visible_edges(&self) -> &[EdgeLine] {
+        if self.full {
+            &self.edges
+        } else if self.kind == NodeKind::Requirement {
+            &self.edges[..self.outgoing]
+        } else {
+            &[]
         }
     }
     /// The kind-specific verbatim of the default view, without the heading.
@@ -169,14 +199,16 @@ impl fmt::Display for Shown {
         for (name, value) in &self.attributes {
             writeln!(f, "{name}: {value}")?;
         }
-        for edge in &self.edges {
+        for edge in self.visible_edges() {
             writeln!(f, "{}", edge.line())?;
         }
         if let Some(scope) = &self.scope {
             writeln!(f, "scope: {scope}")?;
         }
-        if let Some(created) = &self.created {
-            writeln!(f, "created: {}", local_time(created))?;
+        if self.full {
+            if let Some(created) = &self.created {
+                writeln!(f, "created: {}", local_time(created))?;
+            }
         }
         if !self.aliases.is_empty() {
             writeln!(f, "aliases: {}", self.aliases.join(", "))?;
@@ -195,7 +227,7 @@ impl fmt::Display for Shown {
 
 /// Project the named texts in order; several matches is an error (proposal-v3 11).
 pub fn show<S: Store>(repo: &Repository<S>, texts: &[String], full: bool) -> Result<Vec<Shown>> {
-    show_with(&repo.snapshot()?, texts, full)
+    show_with(&repo.snapshot()?, repo.store().history(), texts, full)
 }
 
 /// Every node, from one store pass (n-2e03); for publish, which reads them all.
@@ -206,11 +238,17 @@ pub(crate) fn show_all<S: Store>(repo: &Repository<S>, full: bool) -> Result<Vec
         .iter()
         .map(|node| node.id().to_string())
         .collect();
-    show_with(&snapshot, &texts, full)
+    show_with(&snapshot, repo.store().history(), &texts, full)
 }
-fn show_with(snapshot: &Snapshot, texts: &[String], full: bool) -> Result<Vec<Shown>> {
+fn show_with(
+    snapshot: &Snapshot,
+    history: &[HistoryEntry],
+    texts: &[String],
+    full: bool,
+) -> Result<Vec<Shown>> {
     let all = snapshot.nodes();
     let retractions = retractions_by_node(all);
+    let creators = creators(history);
     let mut out = Vec::new();
     for text in texts {
         let id = snapshot.resolve(text)?;
@@ -219,9 +257,29 @@ fn show_with(snapshot: &Snapshot, texts: &[String], full: bool) -> Result<Vec<Sh
             .ok_or_else(|| Error::invalid(format!("{id} does not exist")))?;
         let incoming = snapshot.incoming(&id);
         let cancellation = retractions.get(&id.to_string()).cloned();
-        out.push(Shown::new(node, incoming, cancellation, all, full));
+        let actor = creators.get(&id.to_string()).cloned();
+        out.push(Shown::new(node, incoming, cancellation, all, actor, full));
     }
     Ok(out)
+}
+
+/// Who created each node, from the history: the last `created` write for a
+/// node, forgotten when the node is deleted, so a node made again names the
+/// writer of the node that stands (d-bbab).
+fn creators(history: &[HistoryEntry]) -> BTreeMap<String, String> {
+    let mut out = BTreeMap::new();
+    for entry in history {
+        match entry.what.as_str() {
+            "created" => {
+                out.insert(entry.node.clone(), entry.actor.name().to_string());
+            }
+            "deleted" => {
+                out.remove(&entry.node);
+            }
+            _ => {}
+        }
+    }
+    out
 }
 
 fn criterion_line(data: &Criterion) -> String {
@@ -271,15 +329,13 @@ fn projected_aliases(node: &Node, full: bool) -> Vec<String> {
     }
 }
 
-fn projected_edges(node: &Node, incoming: &[Edge], full: bool) -> Vec<EdgeLine> {
-    if !full && node.kind() != NodeKind::Requirement {
-        return Vec::new();
-    }
+/// Every edge, outgoing then incoming, and how many are outgoing. `--json`
+/// returns the whole list; the text output chooses from it (d-bbab).
+fn projected_edges(node: &Node, incoming: &[Edge]) -> (Vec<EdgeLine>, usize) {
     let mut edges: Vec<EdgeLine> = node.links().iter().map(EdgeLine::of).collect();
-    if full {
-        edges.extend(incoming.iter().map(EdgeLine::of));
-    }
-    edges
+    let outgoing = edges.len();
+    edges.extend(incoming.iter().map(EdgeLine::of));
+    (edges, outgoing)
 }
 
 /// Requirements show next_evidence and responsible; criteria show due, responsible,

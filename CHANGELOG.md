@@ -6,6 +6,10 @@ The bundled skills no longer speak of a team: gy has no such notion. What the
 ledger leaves out is how the work is run, unless the way of working is itself
 what is being built (d-c1a1, r-86ea).
 
+### Added
+
+- **`show --json` carries every edge, `created`, and the node's creator**: each node returns `edges` (both directions, each with `name`, `to`, and `mark`), `created`, and `actor`, the writer whose write created it, with or without `--full`. The text output is unchanged (d-bbab, r-cb11, ac-88ca).
+
 ### Changed
 
 - **gy-loop and gy-decide**: "how the team runs" now reads "how the work is run", and a writer's name is one no other session writes under at the same time, telling a reader whose work each write was. The rule behind both is unchanged.
@@ -15,6 +19,9 @@ what is being built (d-c1a1, r-86ea).
 Nothing in the CLI, the storage format, or `gy.toml` changed. The skills changed
 (gy-loop, gy-decide), so copy them again (see "Telling the AI about gy" in the
 README).
+
+`show --json` now also returns `edges`, `created`, and `actor` on every node. A
+reader that matched the old keys exactly should accept them (d-bbab).
 
 ## 2.2.0 - 2026-10-22
 

@@ -6,7 +6,7 @@ use crate::model::{Edge, Node, NodeId, NodeKind};
 pub(crate) use super::snapshot::Snapshot;
 use super::snapshot::{incoming_in, resolve_in};
 use crate::store::Gate;
-pub use crate::store::{Error, Result, Store, SyncStatus};
+pub use crate::store::{Error, HistoryEntry, Result, Store, SyncStatus};
 use std::sync::Arc;
 
 pub struct Repository<S: Store> {
