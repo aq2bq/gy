@@ -40,12 +40,14 @@ test('the frame is drawn before the answer, and the board matches /api/overview'
 });
 
 test('a card opens its node on the detail screen', async ({ page, request }) => {
-  const view = await (await request.get(`${gy.url}api/overview`)).json();
-  const need = view.needs[0];
   await page.goto(`${gy.url}?lang=en`);
-  await main(page).getByTestId('needCard').first().click();
-  await expect(page).toHaveURL(new RegExp(`#/n/${need.id}$`));
-  const node = await (await request.get(`${gy.url}api/node/${need.id}`)).json();
+  // The board orders blocked needs first, so the card names its own node.
+  const card = main(page).getByTestId('needCard').first();
+  const href = await card.getAttribute('href');
+  const id = href.split('/').pop() as string;
+  await card.click();
+  await expect(page).toHaveURL(new RegExp(`#/n/${id}$`));
+  const node = await (await request.get(`${gy.url}api/node/${id}`)).json();
   await expect(main(page).getByRole('heading', { level: 1 })).toHaveText(node.title);
 });
 

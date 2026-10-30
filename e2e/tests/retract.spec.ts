@@ -41,5 +41,5 @@ test('the detail screen shows where a passage was retracted', async ({ page, req
   await page.goto(`${gy.url}?lang=en#/n/${older.id}`);
   const main = page.getByTestId('main');
   await expect(main.locator('pre')).toContainText('[[retracted by');
-  await expect(main.getByText(/narrowed by d-/)).toBeVisible();
+  await expect(main.getByTestId('facts')).toContainText(/narrowed by d-/);
 });
