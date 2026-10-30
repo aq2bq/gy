@@ -110,3 +110,42 @@ fn edit_errors() {
     let out = fx.run(&["edit", "n-0002", "--reason", "x", "--set", "novalue"]);
     assert_eq!(out.status.code(), Some(2));
 }
+
+/// ac-57a8: a refused reserved attribute names the operation that changes it,
+/// or says it is decided when the node is made.
+#[test]
+fn edit_refusals_name_the_operation_that_changes_the_attribute() {
+    let fx = fixture();
+    fx.seed(&[need("0001", "a need")]);
+
+    let refusal = |key: &str| -> String {
+        let out = fx.run(&[
+            "edit",
+            "n-0001",
+            "--reason",
+            "shortcut",
+            "--set",
+            &format!("{key}=x"),
+        ]);
+        assert_eq!(out.status.code(), Some(2), "{key}");
+        stderr(&out)
+    };
+
+    let state = refusal("state");
+    assert!(state.contains("gy req approve"), "{state}");
+    assert!(state.contains("gy need close"), "{state}");
+    let reference = refusal("reference");
+    assert!(reference.contains("gy req add --ref"), "{reference}");
+    assert!(reference.contains("cannot be changed later"), "{reference}");
+    let decider = refusal("decider");
+    assert!(decider.contains("gy question add --decider"), "{decider}");
+    assert!(decider.contains("does not change"), "{decider}");
+    let title = refusal("title");
+    assert!(title.contains("gy edit --title"), "{title}");
+    for message in [state, reference, decider, title] {
+        assert!(
+            !message.contains("its own operation"),
+            "the old refusal survives: {message}"
+        );
+    }
+}

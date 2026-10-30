@@ -172,11 +172,7 @@ fn check_relates<S: Store>(
     relates: &[(Relation, NodeId, Option<String>)],
 ) -> Result<()> {
     for (relation, id, mark) in relates {
-        let lineage = matches!(
-            relation,
-            Relation::Narrows | Relation::Widens | Relation::Supersedes | Relation::Completes
-        );
-        if !lineage {
+        if !Relation::lineage().contains(relation) {
             return Err(Error::invalid(format!(
                 "{} is not a lineage relation",
                 relation.name()

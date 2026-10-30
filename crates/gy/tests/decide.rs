@@ -67,14 +67,34 @@ fn decide_relate_names_the_valid_relations() {
     }
 }
 
+/// ac-57a8: `--relate` lists only the lineage relations decide accepts and
+/// says which of them need a mark (d-d889).
 #[test]
-fn decide_help_names_the_relations() {
+fn decide_help_names_only_the_lineage_relations() {
     let fx = fixture();
     let help = fx.run(&["decide", "--help"]);
     assert!(help.status.success(), "{}", stderr(&help));
     let text = stdout(&help);
+    let relate = text
+        .lines()
+        .find(|line| line.contains("--relate"))
+        .unwrap_or_else(|| panic!("decide --help has no --relate line: {text}"));
+    for relation in gy_ledger::Relation::lineage() {
+        assert!(relate.contains(relation.name()), "{relate}");
+    }
+    assert!(
+        relate.contains("narrows and supersedes also need --mark"),
+        "{relate}"
+    );
     for relation in gy_ledger::Relation::ALL {
-        assert!(text.contains(relation.name()), "{text}");
+        if gy_ledger::Relation::lineage().contains(&relation) {
+            continue;
+        }
+        assert!(
+            !relate.contains(relation.name()),
+            "{} is not accepted by decide --relate, but the help names it: {relate}",
+            relation.name()
+        );
     }
 }
 

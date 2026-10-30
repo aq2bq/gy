@@ -159,11 +159,16 @@ pub fn relation_help() -> String {
     format!("One of {}.", Relation::names())
 }
 
-/// The help for `decide --relate`, from the names the parse reads (n-c82e).
+/// The help for `decide --relate`, from the lineage relations the parse reads
+/// (n-c82e, d-d889).
 pub fn relate_help() -> String {
+    let names = Relation::lineage()
+        .iter()
+        .map(|relation| relation.name())
+        .collect::<Vec<_>>()
+        .join(", ");
     format!(
-        "One lineage relation and its decision: <relation> <D>, at most once. One of {}.",
-        Relation::names()
+        "One lineage relation and its decision: <relation> <D>, at most once. One of {names}; narrows and supersedes also need --mark <TEXT>."
     )
 }
 

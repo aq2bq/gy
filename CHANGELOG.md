@@ -12,6 +12,8 @@ what is being built (d-c1a1, r-86ea).
 
 ### Changed
 
+- **`decide --help` names only the relations it accepts**: `--relate` lists `narrows`, `widens`, `supersedes`, and `completes`, and says that `narrows` and `supersedes` also need `--mark` (d-d889, r-2bad, ac-57a8).
+- **`edit` names what changes a reserved attribute**: a refusal says which real operation changes it (`req approve`, `need close`, `req add --ref`, `question close`, …), or that it is decided when the node is made and cannot change later (d-d889, r-2bad, ac-57a8).
 - **gy-loop and gy-decide**: "how the team runs" now reads "how the work is run", and a writer's name is one no other session writes under at the same time, telling a reader whose work each write was. The rule behind both is unchanged.
 
 ### Updating

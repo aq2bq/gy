@@ -54,6 +54,18 @@ impl Relation {
         Self::Raised,
         Self::WaitsOn,
     ];
+    /// The lineage relations `decide --relate` accepts, in the order the help
+    /// names them and the parse checks them (d-d889).
+    pub const LINEAGE: [Self; 4] = [
+        Self::Narrows,
+        Self::Widens,
+        Self::Supersedes,
+        Self::Completes,
+    ];
+    /// The lineage relations, as a slice a caller can search.
+    pub fn lineage() -> &'static [Self] {
+        &Self::LINEAGE
+    }
     /// The (from kind, to kind) pairs each relation allows. One table, in the
     /// model, so an edge that breaks a kind pairing cannot be built (D-75).
     const ALLOWED: &'static [(Self, NodeKind, NodeKind)] = &[

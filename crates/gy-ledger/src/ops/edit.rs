@@ -33,10 +33,8 @@ impl<S: Store> Operation<S> for Edit {
             ));
         }
         for (key, _) in self.set.iter().chain(&self.append) {
-            if reserved(key) {
-                return Err(Error::invalid(format!(
-                    "{key} is not editable; change it with its own operation"
-                )));
+            if let Some(refusal) = refusal(key) {
+                return Err(Error::invalid(format!("{key} is not editable: {refusal}")));
             }
         }
         let mut node = repo
@@ -168,33 +166,141 @@ fn append_one(node: &mut Node, key: &str, value: &str, changed: &mut Vec<String>
     Ok(())
 }
 
-/// Names owned by typed fields or by another operation. `edit` writes only free
-/// attributes and the two typed keys above, so these would write a parallel,
-/// unread value.
-const RESERVED: &[&str] = &[
-    "id",
-    "type",
-    "kind",
-    "created",
-    "title",
-    "body",
-    "links",
-    "state",
-    "status",
-    "reference",
-    "ref",
-    "approval",
-    "revisions",
-    "completion",
-    "cancellation",
-    "closed",
-    "closure",
-    "decider",
-    "options",
-    "satisfied",
-    "satisfied_at",
+/// Names owned by typed fields or by another operation, each with the
+/// operation that really changes it, or with the statement that it is decided
+/// when the node is made (d-d889). `edit` writes only free attributes and the
+/// two typed keys above, so these would write a parallel, unread value.
+const RESERVED: &[(&str, &str)] = &[
+    (
+        "id",
+        "an id is decided when the node is made and does not change",
+    ),
+    (
+        "type",
+        "a node's kind is decided when it is made and does not change",
+    ),
+    (
+        "kind",
+        "a node's kind is decided when it is made and does not change",
+    ),
+    (
+        "created",
+        "created is decided when the node is made and does not change",
+    ),
+    ("title", "title is changed with `gy edit --title`"),
+    ("body", "body is changed with `gy edit --body-file`"),
+    (
+        "links",
+        "edges are added with `gy link` and removed with `gy link --remove`",
+    ),
+    (
+        "state",
+        "state is moved with `gy req approve`, `gy req revise`, `gy req done`, or `gy req cancel`; a need is closed with `gy need close`",
+    ),
+    (
+        "status",
+        "status is read from the node's state: move it with `gy req approve`, `gy req revise`, `gy req done`, or `gy req cancel`, or close a need with `gy need close`",
+    ),
+    (
+        "reference",
+        "a reference is set only when the requirement is made, with `gy req add --ref`, and cannot be changed later",
+    ),
+    (
+        "ref",
+        "a reference is set only when the requirement is made, with `gy req add --ref`, and cannot be changed later",
+    ),
+    ("approval", "approval is recorded with `gy req approve`"),
+    ("revisions", "a revision is recorded with `gy req revise`"),
+    ("completion", "completion is recorded with `gy req done`"),
+    (
+        "cancellation",
+        "a cancellation is recorded with `gy req cancel`",
+    ),
+    ("closed", "a need is closed with `gy need close`"),
+    ("closure", "a question is closed with `gy question close`"),
+    (
+        "decider",
+        "a decider is decided when the question is made, with `gy question add --decider`, and does not change",
+    ),
+    (
+        "options",
+        "options are decided when the question is made, with `gy question add --options`, and do not change",
+    ),
+    (
+        "satisfied",
+        "satisfaction is recorded with `gy criterion satisfy`",
+    ),
+    (
+        "satisfied_at",
+        "satisfaction is recorded with `gy criterion satisfy`",
+    ),
 ];
 
-fn reserved(name: &str) -> bool {
-    RESERVED.contains(&name)
+/// The refusal for a reserved name, or `None` when the name is free.
+fn refusal(name: &str) -> Option<&'static str> {
+    RESERVED
+        .iter()
+        .find(|(key, _)| *key == name)
+        .map(|(_, refusal)| *refusal)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{RESERVED, refusal};
+
+    /// Every command a refusal may name. Each is a real operation of the CLI.
+    const COMMANDS: &[&str] = &[
+        "gy edit --title",
+        "gy edit --body-file",
+        "gy link",
+        "gy link --remove",
+        "gy req add --ref",
+        "gy req approve",
+        "gy req revise",
+        "gy req done",
+        "gy req cancel",
+        "gy need close",
+        "gy question add --decider",
+        "gy question add --options",
+        "gy question close",
+        "gy criterion satisfy",
+    ];
+
+    /// ac-57a8: every reserved name says which real operation changes it, or
+    /// that it is decided when the node is made and cannot change later.
+    /// `status` is not stored, so it names the operations that move the state
+    /// it reads.
+    #[test]
+    fn every_reserved_name_says_a_real_operation_or_that_it_is_fixed_at_creation() {
+        for (key, text) in RESERVED {
+            assert_eq!(refusal(key), Some(*text), "{key}");
+            let named: Vec<&str> = text
+                .split('`')
+                .skip(1)
+                .step_by(2)
+                .filter(|part| part.starts_with("gy "))
+                .collect();
+            for command in &named {
+                assert!(
+                    COMMANDS.contains(command),
+                    "{key} names {command}, which is not a known operation: {text}"
+                );
+            }
+            let creation = text.contains("is decided when") || text.contains("are decided when");
+            assert!(
+                creation || !named.is_empty(),
+                "{key} names neither an operation nor creation: {text}"
+            );
+            if creation {
+                assert!(
+                    text.contains("not change"),
+                    "{key} is decided at creation but does not say it cannot change: {text}"
+                );
+            }
+            assert!(
+                !text.contains("its own operation"),
+                "{key} still points at an operation it does not name: {text}"
+            );
+        }
+    }
 }
