@@ -1,12 +1,16 @@
 //! GET /api/node/<id or alias>: the `show` view of one node, with each edge's
-//! peer named and the node's own writes (n-bd52). No judgement here.
+//! peer named and the node's own writes (n-bd52). No judgement here, and no
+//! neighbourhood: the thread around a node is `/api/node/<id>/path` (d-6d90).
+//!
+//! The peers come from one read of the ledger, not one resolve per edge: a need
+//! that waits on 160 questions is read once, not 160 times.
 use crate::http::Response;
 use gy_ledger::{
-    EdgeLine, Ego, Filter, Listing, LogRow, NodeData, NodeKind, Repository, Retraction, Store,
-    WithdrawalLine, ego, list, show,
+    EdgeLine, Filter, Listing, LogRow, Node as Peer, NodeData, NodeKind, Repository, Retraction,
+    Store, WithdrawalLine, list, show,
 };
 use serde::Serialize;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 /// One edge with its peer's title, kind, and first alias; a peer that is gone
 /// keeps only the id.
@@ -53,8 +57,6 @@ struct Node {
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     attributes: BTreeMap<String, String>,
     edges: Vec<Edge>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    neighborhood: Option<Ego>,
     history: Vec<LogRow>,
 }
 
@@ -64,8 +66,12 @@ pub fn node<S: Store>(repo: &Repository<S>, id: &str) -> Response {
         Ok(_) => return Response::text(404, "not found"),
         Err(_) => return Response::text(404, "not found"),
     };
-    let edges = shown.edges.iter().map(|edge| named(repo, edge)).collect();
-    let neighborhood = ego(repo, &shown.id, 2).ok();
+    let all = repo.all().unwrap_or_default();
+    let peers: HashMap<String, &Peer> = all
+        .iter()
+        .map(|node| (node.id().to_string(), node))
+        .collect();
+    let edges = shown.edges.iter().map(|edge| named(&peers, edge)).collect();
     let history = history(repo, &shown.id);
     Response::json(&Node {
         id: shown.id,
@@ -84,17 +90,13 @@ pub fn node<S: Store>(repo: &Repository<S>, id: &str) -> Response {
         missing: shown.missing,
         attributes: shown.attributes,
         edges,
-        neighborhood,
         history,
     })
 }
 
-/// One edge and the peer it points at.
-fn named<S: Store>(repo: &Repository<S>, edge: &EdgeLine) -> Edge {
-    let peer = repo
-        .resolve(&edge.to)
-        .ok()
-        .and_then(|id| repo.get(&id).ok().flatten());
+/// One edge and the peer it points at, from the one read of the ledger.
+fn named(peers: &HashMap<String, &Peer>, edge: &EdgeLine) -> Edge {
+    let peer = peers.get(&edge.to).copied();
     Edge {
         name: edge.name.clone(),
         to: edge.to.clone(),

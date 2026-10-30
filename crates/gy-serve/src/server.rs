@@ -8,10 +8,10 @@ use crate::watch::Watch;
 use gy_ledger::{Error, FileStore, MemoryStore, Repository, Result};
 use std::io::{BufRead, BufReader, IsTerminal, Write};
 use std::net::{TcpListener, TcpStream};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::Arc;
-use std::time::Duration;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, SystemTime};
 
 /// The ports gy serve may take: the first that binds, 7331 first (ac-f5c4).
 const FIRST_PORT: u16 = 7331;
@@ -73,19 +73,86 @@ fn open_browser(url: &str) {
 pub fn run(listener: TcpListener, open: Opener, ledger: PathBuf, name: String) -> Result<()> {
     let open = Arc::new(open);
     let name = Arc::new(name);
-    let watch = Watch::start(ledger);
+    let watch = Watch::start(ledger.clone());
+    let kept = Arc::new(Ledger::new(&ledger));
     let flights = Flights::default();
     for stream in listener.incoming() {
         let Ok(stream) = stream else { continue };
         let open = open.clone();
         let name = name.clone();
         let watch = watch.clone();
+        let kept = kept.clone();
         let flights = flights.clone();
         std::thread::spawn(move || {
-            let _ = connection(open.clone(), &watch, &flights, name.clone(), stream);
+            let _ = connection(
+                open.clone(),
+                &watch,
+                kept.clone(),
+                &flights,
+                name.clone(),
+                stream,
+            );
         });
     }
     Ok(())
+}
+
+/// The log's length and time: the two things every write changes, and the check
+/// the watcher already makes (d-8a24).
+type Stamp = (u64, Option<SystemTime>);
+
+/// The opened ledger, kept from one request to the next while the log has not
+/// changed (d-6d90). Opening the log costs most of a small answer on a large
+/// record — more than any of the reading questions — and a write changes the
+/// log, so the stamp is what says a kept ledger is still the head. A request
+/// for a point in the log (`at`) is opened fresh, since the scrubber may ask
+/// for any point in any order.
+pub struct Ledger {
+    /// The log to stamp; `None` keeps nothing (the tests that answer directly).
+    file: Option<PathBuf>,
+    head: Mutex<Option<(Stamp, Arc<Opened>)>>,
+}
+
+impl Ledger {
+    pub fn new(dir: &Path) -> Self {
+        Self {
+            file: Some(dir.join(gy_ledger::log::FILE)),
+            head: Mutex::new(None),
+        }
+    }
+
+    /// A ledger that keeps nothing: every open is the caller's own.
+    fn uncached() -> Self {
+        Self {
+            file: None,
+            head: Mutex::new(None),
+        }
+    }
+
+    /// The ledger for a point: the kept head while the log stands still, and a
+    /// fresh open otherwise.
+    fn read(&self, open: &Opener, at: Option<u64>) -> Result<Arc<Opened>> {
+        let Some(file) = &self.file else {
+            return open(at).map(Arc::new);
+        };
+        if at.is_some() {
+            return open(at).map(Arc::new);
+        }
+        let stamp = stamp(file);
+        if let Some((held, opened)) = self.head.lock().unwrap().as_ref() {
+            if *held == stamp {
+                return Ok(Arc::clone(opened));
+            }
+        }
+        let opened = Arc::new(open(None)?);
+        *self.head.lock().unwrap() = Some((stamp, Arc::clone(&opened)));
+        Ok(opened)
+    }
+}
+
+/// The log's length and modified time, or zeros when it is not there yet.
+fn stamp(file: &Path) -> Stamp {
+    std::fs::metadata(file).map_or((0, None), |meta| (meta.len(), meta.modified().ok()))
 }
 
 /// The first port of the range that binds. A taken port is refused, so this
@@ -108,6 +175,7 @@ pub fn bind() -> Result<(TcpListener, u16)> {
 fn connection(
     open: Arc<Opener>,
     watch: &Watch,
+    kept: Arc<Ledger>,
     flights: &Flights,
     name: Arc<String>,
     mut stream: TcpStream,
@@ -120,16 +188,21 @@ fn connection(
         }
         Read::Silent => return Ok(()),
     };
-    let answer = if session.path == "/api/wait" {
+    let answer = if let Some(answer) = api::static_answer(&session, &name) {
+        answer
+    } else if session.path == "/api/wait" {
         api::wait::wait(watch, &session)
     } else if api::is_reading(&session.path) {
         /* A reading question is computed once, and a second ask for it waits
         (d-6d90, ac-0dbb): the worker owns the ledger and the answer. */
         let key = flight_key(&session, watch.current());
         let request = session.clone();
-        flights.answer(&key, LIMIT, move || answer(&open, &request, &name))
+        let kept = Arc::clone(&kept);
+        flights.answer(&key, LIMIT, move || {
+            answer_kept(&kept, &open, &request, &name)
+        })
     } else {
-        answer(&open, &session, &name)
+        answer_kept(&kept, &open, &session, &name)
     };
     respond(stream, answer)
 }
@@ -151,13 +224,25 @@ fn flight_key(session: &http::Request, seen: u64) -> String {
 /// and a broken one is 400. The scrubber always sees the whole log, so
 /// `/api/ticks` ignores `at` (n-10e1).
 pub fn answer(open: &Opener, session: &http::Request, name: &str) -> http::Response {
+    answer_kept(&Ledger::uncached(), open, session, name)
+}
+
+/// The same, from the kept head when it is still the head.
+fn answer_kept(
+    kept: &Ledger,
+    open: &Opener,
+    session: &http::Request,
+    name: &str,
+) -> http::Response {
     let at = match requested_at(session) {
         Ok(at) => at,
         Err(response) => return response,
     };
-    match open(at) {
-        Ok(Opened::Now(repo)) => api::route(&repo, session, name),
-        Ok(Opened::At(repo)) => api::route(&repo, session, name),
+    match kept.read(open, at) {
+        Ok(opened) => match &*opened {
+            Opened::Now(repo) => api::route(repo, session, name),
+            Opened::At(repo) => api::route(repo, session, name),
+        },
         Err(error) => http::Response::text(500, &error.to_string()),
     }
 }

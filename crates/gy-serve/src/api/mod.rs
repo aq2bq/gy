@@ -22,8 +22,10 @@ pub fn route<S: Store>(repo: &Repository<S>, req: &Request, name: &str) -> Respo
     if req.method != "GET" {
         return Response::method_not_allowed();
     }
+    if let Some(answer) = static_answer(req, name) {
+        return answer;
+    }
     match req.path.as_str() {
-        "/" | "/index.html" => index(req, name),
         "/api/shell" => shell::shell(repo, req),
         "/api/overview" => overview::answer(repo),
         "/api/cross" => cross::answer(repo, req),
@@ -34,16 +36,28 @@ pub fn route<S: Store>(repo: &Repository<S>, req: &Request, name: &str) -> Respo
                 Some(id) => path::answer(repo, &crate::http::decode(id, false), req),
                 None => node::node(repo, &crate::http::decode(rest, false)),
             },
-            None => static_file(req),
+            None => Response::not_found(),
         },
     }
 }
 
-/// Whether a path is one of the three reading questions the server answers
-/// once per identical ask (d-6d90, ac-0dbb).
+/// The pages and the assets, which need no ledger: the server answers them
+/// before it opens one, so a browser's twenty-one asset reads do not each pay
+/// for the ledger (d-6d90). `None` is every other path.
+pub fn static_answer(req: &Request, name: &str) -> Option<Response> {
+    match req.path.as_str() {
+        "/" | "/index.html" => Some(index(req, name)),
+        "/api/wait" | "/api/shell" | "/api/overview" | "/api/cross" | "/api/search"
+        | "/api/ticks" => None,
+        path if path.starts_with("/api/") => None,
+        _ => Some(static_file(req)),
+    }
+}
+
+/// Whether a path is one of the reading questions the server answers once per
+/// identical ask (d-6d90, ac-0dbb): the three screens' own, and one node.
 pub fn is_reading(path: &str) -> bool {
-    matches!(path, "/api/overview" | "/api/cross")
-        || (path.starts_with("/api/node/") && path.ends_with("/path"))
+    matches!(path, "/api/overview" | "/api/cross") || path.starts_with("/api/node/")
 }
 
 /// The first HTML; the language comes from `Accept-Language` (ac-b9b1) and the

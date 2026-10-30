@@ -1,7 +1,7 @@
 use gy_ledger::link::Link;
 use gy_ledger::{
     Actor, Alias, DecisionScope, Edit, FormatVersion, MemoryStore, Node, NodeData, NodeId,
-    NodeKind, Operation, Relation, Repository, RequirementState, show, status_of,
+    NodeKind, Operation, Relation, Repository, RequirementState, show,
 };
 use gy_serve::api::route;
 use gy_serve::http::Request;
@@ -127,36 +127,9 @@ fn node_names_its_edges_and_history() {
     assert!(history.iter().all(|row| row["node"] == "n-0001"));
     assert!(history[0]["seq"].as_u64().unwrap() > history[1]["seq"].as_u64().unwrap());
 
-    // The neighbourhood: the focus and its direct peer, with the edge between.
-    let hood = &json["neighborhood"];
-    assert_eq!(hood["root"], "n-0001");
-    assert_eq!(hood["truncated"], 0);
-    let reached: Vec<(&str, u64)> = hood["nodes"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|node| (node["id"].as_str().unwrap(), node["hop"].as_u64().unwrap()))
-        .collect();
-    assert_eq!(reached, vec![("n-0001", 0), ("r-0006", 1)]);
-    assert_eq!(hood["edges"][0]["from"], "n-0001");
-    assert_eq!(hood["edges"][0]["to"], "r-0006");
-    assert_eq!(hood["edges"][0]["name"], "filed-as");
-
-    // Every box's status and scope are the model's for the same node (n-dc1a):
-    // one derivation, so the map's card and a row never disagree.
-    let all = repo.all().unwrap();
-    for node in hood["nodes"].as_array().unwrap() {
-        let id = node["id"].as_str().unwrap();
-        let held = all.iter().find(|held| held.id().to_string() == id).unwrap();
-        assert_eq!(
-            node["status"].as_str(),
-            status_of(held, &all).as_deref(),
-            "the neighbourhood's status for {id} matches the model"
-        );
-        assert_eq!(node["scope"].as_str(), Some(held.scope()), "{id}");
-    }
-    assert_eq!(hood["nodes"][0]["status"], "open");
-    assert_eq!(hood["nodes"][1]["status"], "filed");
+    // The thread around a node is /api/node/<id>/path; this answer carries no
+    // neighbourhood (d-6d90).
+    assert!(json.get("neighborhood").is_none(), "{json}");
 
     let aliased = answer(&repo, "/api/node/D-85", None);
     assert_eq!(aliased["id"], "d-0005");

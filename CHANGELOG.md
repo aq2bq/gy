@@ -9,11 +9,14 @@ what is being built (d-c1a1, r-86ea).
 ### Added
 
 - **`show --json` carries every edge, `created`, and the node's creator**: each node returns `edges` (both directions, each with `name`, `to`, and `mark`), `created`, and `actor`, the writer whose write created it, with or without `--full`. The text output is unchanged (d-bbab, r-cb11, ac-88ca).
+- **`/api/shell` carries the sync state**: the same object `/api/now` answered under `resume.sync` before that route was removed — `pending`, `last_ok_at`, `last_ok_seq`, `last_error` — and nothing on a local ledger, so the band's "not pushed" mark has a home again (d-6d90, n-ecbf).
 - **`gy serve` answers from three reading APIs, and no longer lays the whole graph out**: `GET /api/overview` (the open needs by how far they got, what holds them and what the waits come from, the weeks, the scopes and their writes, the people a question waits on, the checks past due, and what nobody holds), `GET /api/cross?q=&from=&to=&scope=` (a cut of the record, or the scope-by-week grid when no cut is asked for or it holds more than 900 nodes), and `GET /api/node/<id>/path?depth=2|3` (the thread around one node, cause left and effect right). Each route file's doc comment is the shape and the meaning of every key. All three read the ledger once and judge with gy-ledger's own derivations. `GET /api/graph` and the server-side force layout are gone: the crossing screen places its cut in the browser, so the layout that diverged on kokopelli cannot come back. The routes the new screens do not read — `/api/now`, `/api/list`, `/api/history`, `/api/labels` — are gone with it (d-6d90, d-c302, r-44c7, ac-66f1).
 - **A criterion only closed needs aimed at reads as withdrawn**: an unmet criterion whose every `targets` bearer was closed with `need close` reads as `withdrawn`, and `gy show` names the closes (`withdrawn-by <need> (<by>: <evidence>)`) that withdrew it. The `targets` edge stays, `handover` no longer warns about it, and `list --status unsatisfied` leaves it out. No command or option was added (d-ed67, r-a8de, ac-b885).
 
 ### Changed
 
+- **`/api/node` carries no neighbourhood, and reads the ledger once**: the ego map is gone (`neighborhood`), since the thread around a node is `/api/node/<id>/path`; the peers come from one read instead of one resolve per edge, so a need that waits on 160 questions answers in 0.035 s instead of 2.6 s. It also joins the three reading routes' guard: computed once per identical ask, 503 with the reason past five seconds, one line on failure (d-6d90, ac-0dbb).
+- **`gy serve` opens no ledger for a page or an asset, and keeps the one it opened**: `/` and `/assets/*` are answered before any ledger is read, so a browser's asset reads no longer each pay for opening the log; a reading answer keeps the opened ledger while the log's length and time stand still, and opens afresh as soon as a write lands. Opening the log was most of a small answer — on the kokopelli copy, `/api/ticks` fell from 0.135 s to 0.001 s warm and `/api/overview` from 0.184 s to 0.025 s (d-6d90).
 - **`gy serve` computes each reading question once**: a second ask for the same question that arrives while the first is still being computed waits for that answer instead of starting another, so a reloading screen can no longer stack computations. A computation past five seconds is refused with 503 and the reason, and a failed or refused answer writes one line to the server's log (d-6d90, ac-0dbb).
 - **`decide --help` names only the relations it accepts**: `--relate` lists `narrows`, `widens`, `supersedes`, and `completes`, and says that `narrows` and `supersedes` also need `--mark` (d-d889, r-2bad, ac-57a8).
 - **`edit` names what changes a reserved attribute**: a refusal says which real operation changes it (`req approve`, `need close`, `req add --ref`, `question close`, …), or that it is decided when the node is made and cannot change later (d-d889, r-2bad, ac-57a8).
@@ -108,6 +111,7 @@ when that day comes, instead of living in a session's memory (n-b0e5).
 
 ### Changed
 
+- **`/api/node` carries no neighbourhood, and reads the ledger once**: the ego map is gone (`neighborhood`), since the thread around a node is `/api/node/<id>/path`; the peers come from one read instead of one resolve per edge, so a need that waits on 160 questions answers in 0.035 s instead of 2.6 s. It also joins the three reading routes' guard: computed once per identical ask, 503 with the reason past five seconds, one line on failure (d-6d90, ac-0dbb).
 - **`show` displays a criterion's wait; `handover` and `next` surface it when resuming**:
   handover lists due unmet criteria and summarizes future dates; next adds due / waiting criteria beneath ready needs.
   Both honor scope and JSON. Satisfaction may still be recorded early; `now` / serve are unchanged (r-e9ca).
@@ -201,6 +205,7 @@ unchanged; a ledger written by 1.2.4 is read as it is.
 
 ### Changed
 
+- **`/api/node` carries no neighbourhood, and reads the ledger once**: the ego map is gone (`neighborhood`), since the thread around a node is `/api/node/<id>/path`; the peers come from one read instead of one resolve per edge, so a need that waits on 160 questions answers in 0.035 s instead of 2.6 s. It also joins the three reading routes' guard: computed once per identical ask, 503 with the reason past five seconds, one line on failure (d-6d90, ac-0dbb).
 - **The cheatsheet says when a write needs `--scope`, and what a mark
   requires** (n-d599, r-99e3, ac-0d9c): the Writes section now states that a
   write needs `--scope <name>` when `gy.toml` names more than one scope, and
@@ -353,6 +358,7 @@ to work with it.
 
 ### Changed
 
+- **`/api/node` carries no neighbourhood, and reads the ledger once**: the ego map is gone (`neighborhood`), since the thread around a node is `/api/node/<id>/path`; the peers come from one read instead of one resolve per edge, so a need that waits on 160 questions answers in 0.035 s instead of 2.6 s. It also joins the three reading routes' guard: computed once per identical ask, 503 with the reason past five seconds, one line on failure (d-6d90, ac-0dbb).
 - **`decide` no longer reports "a question it closes" as missing** (n-5d6a,
   d-43f624): every decision that closed no question printed `missing: a
   question it closes`. Recording a judgement as a decision without a
@@ -582,6 +588,7 @@ sheet gained one sentence, so copy the skills again when convenient.
 
 ### Changed
 
+- **`/api/node` carries no neighbourhood, and reads the ledger once**: the ego map is gone (`neighborhood`), since the thread around a node is `/api/node/<id>/path`; the peers come from one read instead of one resolve per edge, so a need that waits on 160 questions answers in 0.035 s instead of 2.6 s. It also joins the three reading routes' guard: computed once per identical ask, 503 with the reason past five seconds, one line on failure (d-6d90, ac-0dbb).
 - **`publish`'s old shape is gone** (n-b6c9, n-a391, supersedes d-7c64): the
   per-node files under `<out>/<scope>/<kind>/`, the scope index with its "how to
   read", its history and its diagnostics, and the generated time are removed.
@@ -668,6 +675,7 @@ publication kept under version control shows the whole change in one diff.
 
 ### Changed
 
+- **`/api/node` carries no neighbourhood, and reads the ledger once**: the ego map is gone (`neighborhood`), since the thread around a node is `/api/node/<id>/path`; the peers come from one read instead of one resolve per edge, so a need that waits on 160 questions answers in 0.035 s instead of 2.6 s. It also joins the three reading routes' guard: computed once per identical ask, 503 with the reason past five seconds, one line on failure (d-6d90, ac-0dbb).
 - **One search entry, in the sidebar** (n-d0cc): the dead search frame in
   the rail and the top bar is gone. The sidebar carries a single Search
   entry showing `⌘K` and `/`; pressing it opens the same palette as
@@ -916,6 +924,7 @@ brings the new one along.
 
 ### Changed
 
+- **`/api/node` carries no neighbourhood, and reads the ledger once**: the ego map is gone (`neighborhood`), since the thread around a node is `/api/node/<id>/path`; the peers come from one read instead of one resolve per edge, so a need that waits on 160 questions answers in 0.035 s instead of 2.6 s. It also joins the three reading routes' guard: computed once per identical ask, 503 with the reason past five seconds, one line on failure (d-6d90, ac-0dbb).
 - **Every write prints a fifth line, `unresolved:`** (n-847d, d-8f76). When
   `gy edit` changes a decision that a later `narrows` or `supersedes` cites
   by a mark, the edit is still applied, but a mark that named a passage
@@ -1095,6 +1104,7 @@ cargo install gy --locked    # gy 0.9.0
 
 ### Changed
 
+- **`/api/node` carries no neighbourhood, and reads the ledger once**: the ego map is gone (`neighborhood`), since the thread around a node is `/api/node/<id>/path`; the peers come from one read instead of one resolve per edge, so a need that waits on 160 questions answers in 0.035 s instead of 2.6 s. It also joins the three reading routes' guard: computed once per identical ask, 503 with the reason past five seconds, one line on failure (d-6d90, ac-0dbb).
 - **Incompatible: a node's `created` is an instant, not a day** (n-b6b6,
   d-b1f8). It is stored as UTC, RFC 3339 with seconds (`2026-09-18T07:28:56Z`),
   and a new node takes the moment of the write that made it. `show` and
@@ -1182,6 +1192,7 @@ cargo install gy --locked    # gy 0.8.1
 
 ### Changed
 
+- **`/api/node` carries no neighbourhood, and reads the ledger once**: the ego map is gone (`neighborhood`), since the thread around a node is `/api/node/<id>/path`; the peers come from one read instead of one resolve per edge, so a need that waits on 160 questions answers in 0.035 s instead of 2.6 s. It also joins the three reading routes' guard: computed once per identical ask, 503 with the reason past five seconds, one line on failure (d-6d90, ac-0dbb).
 - **The first line of a write that mints a node is labelled**: `id:
   n-1d12` where it used to be the bare `n-1d12`. Anything reading the id
   out of the output has to read it as `^id: ` now — gy's own test helper
@@ -1230,6 +1241,7 @@ in. A copy kept outside the crate still says the old thing.
 
 ### Changed
 
+- **`/api/node` carries no neighbourhood, and reads the ledger once**: the ego map is gone (`neighborhood`), since the thread around a node is `/api/node/<id>/path`; the peers come from one read instead of one resolve per edge, so a need that waits on 160 questions answers in 0.035 s instead of 2.6 s. It also joins the three reading routes' guard: computed once per identical ask, 503 with the reason past five seconds, one line on failure (d-6d90, ac-0dbb).
 - **Incompatible**: `gy-serve`'s public functions take the name shown in
   the browser tab: `server::serve`, `server::run`, `server::answer` and
   `api::route`. A caller passes the directory that holds `gy.toml`; the
@@ -1378,6 +1390,7 @@ in. A copy kept outside the crate still says the old thing.
 
 ### Changed
 
+- **`/api/node` carries no neighbourhood, and reads the ledger once**: the ego map is gone (`neighborhood`), since the thread around a node is `/api/node/<id>/path`; the peers come from one read instead of one resolve per edge, so a need that waits on 160 questions answers in 0.035 s instead of 2.6 s. It also joins the three reading routes' guard: computed once per identical ask, 503 with the reason past five seconds, one line on failure (d-6d90, ac-0dbb).
 - A need may wait on a requirement as well as a question (`waits-on`);
   the wait resolves once the requirement is done or cancelled.
 - `gy-migrate` turns a 0.4 need's `waiting-on` entries that point at a
@@ -1415,6 +1428,7 @@ configuration. A 0.4 ledger moves in one run of `gy-migrate`; see
 
 ### Changed
 
+- **`/api/node` carries no neighbourhood, and reads the ledger once**: the ego map is gone (`neighborhood`), since the thread around a node is `/api/node/<id>/path`; the peers come from one read instead of one resolve per edge, so a need that waits on 160 questions answers in 0.035 s instead of 2.6 s. It also joins the three reading routes' guard: computed once per identical ask, 503 with the reason past five seconds, one line on failure (d-6d90, ac-0dbb).
 - The operation set is closed at 20 leaves: `show`, `list`, `next`, `handover`,
   `publish`; `need add` / `need close`, `question add` / `question close`,
   `criterion add` / `criterion satisfy`, `req add` / `req approve` /
@@ -1547,6 +1561,7 @@ configuration. A 0.4 ledger moves in one run of `gy-migrate`; see
 
 ### Changed
 
+- **`/api/node` carries no neighbourhood, and reads the ledger once**: the ego map is gone (`neighborhood`), since the thread around a node is `/api/node/<id>/path`; the peers come from one read instead of one resolve per edge, so a need that waits on 160 questions answers in 0.035 s instead of 2.6 s. It also joins the three reading routes' guard: computed once per identical ask, 503 with the reason past five seconds, one line on failure (d-6d90, ac-0dbb).
 - Record links open details; neighborhood navigation remains an explicit
   action. Cluster links filter the permanent table. Selected type chips,
   Lineage on/off, and a single status strip make the active view visible.
@@ -1605,6 +1620,7 @@ configuration. A 0.4 ledger moves in one run of `gy-migrate`; see
 
 ### Changed
 
+- **`/api/node` carries no neighbourhood, and reads the ledger once**: the ego map is gone (`neighborhood`), since the thread around a node is `/api/node/<id>/path`; the peers come from one read instead of one resolve per edge, so a need that waits on 160 questions answers in 0.035 s instead of 2.6 s. It also joins the three reading routes' guard: computed once per identical ask, 503 with the reason past five seconds, one line on failure (d-6d90, ac-0dbb).
 - Give details the same width as the graph on wide screens. Separate applicability
   and body from labeled declarations, show finite metadata as badges, and retain
   complete additional attributes. Relationship marks keep exact body annotations
@@ -1683,6 +1699,7 @@ with `gy render --format html` to use the new navigation and detail layout.
 
 ### Changed
 
+- **`/api/node` carries no neighbourhood, and reads the ledger once**: the ego map is gone (`neighborhood`), since the thread around a node is `/api/node/<id>/path`; the peers come from one read instead of one resolve per edge, so a need that waits on 160 questions answers in 0.035 s instead of 2.6 s. It also joins the three reading routes' guard: computed once per identical ask, 503 with the reason past five seconds, one line on failure (d-6d90, ac-0dbb).
 - **Breaking:** the public config structs `Config`, `ImportConfig`,
   `ScopeConfig`, `RenderConfig`, `WorkflowConfig`, `RecordSchema`,
   `FieldSchema`, `StateGuard`, and `RecordCheck` are now `#[non_exhaustive]`.
@@ -1763,6 +1780,7 @@ entries are unchanged. Rust library users can set `gy-core = "0.2.1"`.
 
 ### Changed
 
+- **`/api/node` carries no neighbourhood, and reads the ledger once**: the ego map is gone (`neighborhood`), since the thread around a node is `/api/node/<id>/path`; the peers come from one read instead of one resolve per edge, so a need that waits on 160 questions answers in 0.035 s instead of 2.6 s. It also joins the three reading routes' guard: computed once per identical ask, 503 with the reason past five seconds, one line on failure (d-6d90, ac-0dbb).
 - **Breaking:** `gy-core::Config` has new import and workflow fields. Callers
   using exhaustive struct literals must initialize them or use `Default`.
 - **Breaking:** L1 uses explicit `waiting-on` / `unresolved` attributes; L2 uses

@@ -1,7 +1,28 @@
-//! `GET /api/shell?scope=<name>`: the numbers the sidebar draws (n-a493). The
-//! counts come from the `list` view, so no status is re-decided here.
+//! `GET /api/shell?scope=<name>`: the numbers the sidebar draws (n-a493), and
+//! the synced copy's state for the band (d-6d90 moved it here from the removed
+//! `/api/now`). The counts come from the `list` view, so no status is
+//! re-decided here.
+//!
+//! # The answer
+//!
+//! ```json
+//! {
+//!   "seq": 4853,
+//!   "at": "2026-10-30T04:46:44Z",
+//!   "scope": "all",
+//!   "scopes": [{"name": "crm", "count": 98}],
+//!   "kinds": [{"kind": "Need", "open": 48, "total": 266}],
+//!   "sync": {"pending": 2, "last_ok_at": 1793000000, "last_ok_seq": 4800}
+//! }
+//! ```
+//!
+//! `sync` is the object the handover row carries: `pending` writes not pushed,
+//! then `last_ok_at` (epoch seconds), `last_ok_seq`, and `last_error` (the
+//! whole message) when the copy has them. It is absent on a local ledger, or
+//! when nothing is waiting and the last sync left no error — the band then
+//! shows nothing, which is what `/api/now` answered before (n-ecbf, ac-7ae3).
 use crate::http::{Request, Response};
-use gy_ledger::{Filter, Listing, NodeKind, Repository, Result, Row, Store};
+use gy_ledger::{Filter, Listing, NodeKind, Repository, Result, Row, Store, SyncRow, sync_row};
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
@@ -11,6 +32,8 @@ struct Shell {
     scope: String,
     scopes: Vec<ScopeCount>,
     kinds: Vec<KindCount>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sync: Option<SyncRow>,
 }
 
 #[derive(Debug, Serialize)]
@@ -47,6 +70,7 @@ pub fn shell<S: Store>(repo: &Repository<S>, req: &Request) -> Response {
         scope,
         scopes: scope_counts(&all),
         kinds,
+        sync: sync_row(repo),
     })
 }
 

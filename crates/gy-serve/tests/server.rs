@@ -32,6 +32,37 @@ fn start() -> u16 {
     port
 }
 
+/// A server whose opener counts the times the ledger is opened, so a test can
+/// say which requests read it.
+fn start_counting() -> (
+    u16,
+    std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    std::path::PathBuf,
+) {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let opens = Arc::new(AtomicUsize::new(0));
+    let counted = Arc::clone(&opens);
+    let open: Opener = Box::new(move |_| {
+        counted.fetch_add(1, Ordering::SeqCst);
+        let store = MemoryStore::with_actor(FormatVersion::CURRENT, Actor::new("test").unwrap());
+        Ok(Opened::At(Repository::new(store)))
+    });
+    let dir = std::env::temp_dir().join(format!(
+        "gy-serve-static-{}-{:?}",
+        std::process::id(),
+        std::thread::current().id()
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let (listener, port) = bind().unwrap();
+    let led = dir.clone();
+    thread::spawn(move || {
+        let _ = run(listener, open, led, "gy".to_string());
+    });
+    (port, opens, dir)
+}
+
 /// One exchange: send the bytes, then read the answer to EOF (the server
 /// closes every connection).
 fn exchange(port: u16, request: &[u8]) -> String {
@@ -88,6 +119,35 @@ fn a_post_is_not_allowed_and_the_next_get_is_fine() {
     let answer = exchange(port, b"POST /api/shell HTTP/1.1\r\nHost: x\r\n\r\n");
     assert!(answer.starts_with("HTTP/1.1 405 "), "{answer}");
     assert!(get(port, "/").starts_with("HTTP/1.1 200 "));
+}
+
+#[test]
+fn the_page_and_the_assets_open_no_ledger() {
+    let (port, opens, _dir) = start_counting();
+    assert!(get(port, "/").starts_with("HTTP/1.1 200 "));
+    assert!(get(port, "/index.html").starts_with("HTTP/1.1 200 "));
+    assert!(get(port, "/assets/app.css").starts_with("HTTP/1.1 200 "));
+    assert!(get(port, "/assets/i18n.json").starts_with("HTTP/1.1 200 "));
+    assert_eq!(opens.load(std::sync::atomic::Ordering::SeqCst), 0);
+
+    // A reading question does read it.
+    assert!(get(port, "/api/overview").starts_with("HTTP/1.1 200 "));
+    std::thread::sleep(Duration::from_millis(200));
+    assert_eq!(opens.load(std::sync::atomic::Ordering::SeqCst), 1);
+}
+
+/// The kept ledger is used while the log stands still, and a write (the log's
+/// length or time changing) makes the next ask open afresh.
+#[test]
+fn the_ledger_stays_open_while_the_log_stands_still() {
+    use std::sync::atomic::Ordering;
+    let (port, opens, dir) = start_counting();
+    assert!(get(port, "/api/shell").starts_with("HTTP/1.1 200 "));
+    assert!(get(port, "/api/shell").starts_with("HTTP/1.1 200 "));
+    assert_eq!(opens.load(Ordering::SeqCst), 1);
+    std::fs::write(dir.join("events.jsonl"), "a write\n").unwrap();
+    assert!(get(port, "/api/shell").starts_with("HTTP/1.1 200 "));
+    assert_eq!(opens.load(Ordering::SeqCst), 2);
 }
 
 #[test]

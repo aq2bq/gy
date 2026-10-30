@@ -23,7 +23,7 @@ pub use now::{NodeRow, Now, Ready, Resume, Waiting, now};
 pub use publish::{Publication, publish};
 pub use retraction::{Narrowed, Retraction};
 pub use show::{EdgeLine, Shown, WithdrawalLine, show};
-pub use sync_row::SyncRow;
+pub use sync_row::{SyncRow, sync_row};
 
 /// How a need, question, or requirement reads its open/closed state.
 fn open_or_closed(closed: bool) -> &'static str {

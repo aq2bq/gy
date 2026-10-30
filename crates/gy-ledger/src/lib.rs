@@ -49,4 +49,5 @@ pub use views::{
     LogRow, Match, Narrowed, NextRow, NodeRow, Now, ProgressRow, Publication, Ready,
     RequirementLine, Resume, Retraction, Row, Shown, SyncRow, Waiting, Warning, WithdrawalLine,
     ego, handover, handover_on, list, matches, next, next_on, now, publish, show, status_of,
+    sync_row,
 };
