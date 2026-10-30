@@ -102,7 +102,7 @@ fn json(open: &Opener, path: &str, query: Option<&str>) -> serde_json::Value {
 }
 
 fn rows(value: &serde_json::Value) -> usize {
-    value["rows"].as_array().unwrap().len()
+    value["nodes"].as_array().unwrap().len()
 }
 
 fn total(value: &serde_json::Value, kind: &str) -> u64 {
@@ -122,10 +122,10 @@ fn at_reads_an_earlier_point_in_the_log() {
     ledger(&dir);
     let open = opener(dir.clone());
 
-    let full = json(&open, "/api/list", Some("kind=Need"));
-    let early = json(&open, "/api/list", Some("kind=Need&at=2"));
+    let full = json(&open, "/api/cross", Some("scope=a"));
+    let early = json(&open, "/api/cross", Some("scope=a&at=2"));
     assert!(rows(&early) < rows(&full), "{early} {full}");
-    assert_eq!(json(&open, "/api/list", Some("kind=Need&at=999")), full);
+    assert_eq!(json(&open, "/api/cross", Some("scope=a&at=999")), full);
 
     let shell = json(&open, "/api/shell", None);
     let early_shell = json(&open, "/api/shell", Some("at=2"));
@@ -134,7 +134,7 @@ fn at_reads_an_earlier_point_in_the_log() {
     assert!(total(&early_shell, "Need") < total(&shell, "Need"));
 
     assert_eq!(
-        answer(&open, &get("/api/list", Some("at=abc")), "gy").status,
+        answer(&open, &get("/api/cross", Some("at=abc")), "gy").status,
         400
     );
     let _ = std::fs::remove_dir_all(&dir);

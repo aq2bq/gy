@@ -1,6 +1,6 @@
 use gy_ledger::{
     Actor, ClosedBy, CriterionSatisfy, DecisionScope, FormatVersion, Link, MemoryStore, NeedClose,
-    Node, NodeId, NodeKind, Operation, QuestionAdd, Relation, Repository, ReqAdd, RequirementState,
+    Node, NodeId, NodeKind, Operation, Relation, Repository, RequirementState,
 };
 use gy_serve::api::route;
 use gy_serve::http::Request;
@@ -139,128 +139,6 @@ fn a_traversal_or_unknown_path_is_not_found() {
             "{path}"
         );
     }
-}
-
-#[test]
-fn now_matches_the_view() {
-    let mut repo = ledger();
-    QuestionAdd {
-        scope: "a".to_string(),
-        title: "who decides".to_string(),
-        decider: "master".to_string(),
-        options: vec!["x".to_string(), "y".to_string()],
-        body: None,
-    }
-    .run(&mut repo)
-    .unwrap();
-    ReqAdd {
-        scope: "a".to_string(),
-        title: "a requirement".to_string(),
-        needs: vec![id(NodeKind::Need, "0001")],
-        relies_on: Vec::new(),
-        targets: Vec::new(),
-        reference: None,
-        body: None,
-    }
-    .run(&mut repo)
-    .unwrap();
-
-    let view = gy_ledger::now(&repo, None).unwrap();
-    let answer = json(&route(&repo, &get("/api/now", None), "gy"));
-    assert_eq!(answer["seq"], view.seq);
-    assert!(answer["at"].as_str().unwrap().starts_with("20"));
-    assert_eq!(
-        answer["waiting"].as_array().unwrap().len(),
-        view.waiting.len()
-    );
-    assert_eq!(json_ids(&answer["in_progress"]), row_ids(&view.in_progress));
-    assert_eq!(
-        json_ids(&answer["open_questions"]),
-        row_ids(&view.open_questions)
-    );
-    assert_eq!(json_ids(&answer["unmet"]), row_ids(&view.unmet));
-    let ready: Vec<String> = answer["ready"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|item| item["row"]["id"].as_str().unwrap().to_string())
-        .collect();
-    assert_eq!(
-        ready,
-        view.ready
-            .iter()
-            .map(|item| item.row.id.clone())
-            .collect::<Vec<_>>()
-    );
-    assert_eq!(
-        json_ids(&answer["resume"]["in_progress"]),
-        view.resume
-            .in_progress
-            .iter()
-            .map(|row| row.id.clone())
-            .collect::<Vec<_>>()
-    );
-    assert_eq!(
-        answer["resume"]["open_questions"],
-        view.resume.open_questions
-    );
-    assert_eq!(answer["resume"]["warnings"], view.resume.warnings);
-    assert_eq!(
-        answer["recent"].as_array().unwrap().len(),
-        view.recent.len()
-    );
-
-    let scoped = json(&route(&repo, &get("/api/now", Some("scope=b")), "gy"));
-    let view_b = gy_ledger::now(&repo, Some("b")).unwrap();
-    assert_eq!(scoped["scope"], "b");
-    assert_eq!(
-        json_ids(&scoped["in_progress"]),
-        row_ids(&view_b.in_progress)
-    );
-    assert_eq!(
-        json_ids(&scoped["open_questions"]),
-        row_ids(&view_b.open_questions)
-    );
-}
-
-#[test]
-fn now_json_carries_unwaited_questions() {
-    let mut repo = ledger();
-    QuestionAdd {
-        scope: "a".to_string(),
-        title: "who decides".to_string(),
-        decider: "master".to_string(),
-        options: vec!["x".to_string(), "y".to_string()],
-        body: None,
-    }
-    .run(&mut repo)
-    .unwrap();
-    let answer = json(&route(&repo, &get("/api/now", None), "gy"));
-    let open = answer["open_questions"].as_array().unwrap();
-    assert_eq!(open.len(), 1);
-    assert_eq!(open[0]["unwaited"], true);
-    assert!(open[0]["created"].as_str().is_some());
-    assert!(answer["in_progress"][0].get("unwaited").is_none());
-}
-
-/// One response's body as JSON.
-fn json(res: &gy_serve::http::Response) -> serde_json::Value {
-    serde_json::from_slice(&res.body).unwrap()
-}
-
-/// The id column of a row array in an answer.
-fn json_ids(value: &serde_json::Value) -> Vec<String> {
-    value
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|row| row["id"].as_str().unwrap().to_string())
-        .collect()
-}
-
-/// The ids of a view's rows, in their order.
-fn row_ids(rows: &[gy_ledger::NodeRow]) -> Vec<String> {
-    rows.iter().map(|row| row.id.clone()).collect()
 }
 
 #[test]

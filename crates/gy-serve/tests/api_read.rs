@@ -1,7 +1,7 @@
 use gy_ledger::link::Link;
 use gy_ledger::{
-    Actor, Alias, DecisionScope, Edit, Filter, FormatVersion, Listing, MemoryStore, Node, NodeData,
-    NodeId, NodeKind, Operation, Relation, Repository, RequirementState, list, show,
+    Actor, Alias, DecisionScope, Edit, FormatVersion, MemoryStore, Node, NodeData, NodeId,
+    NodeKind, Operation, Relation, Repository, RequirementState, show, status_of,
 };
 use gy_serve::api::route;
 use gy_serve::http::Request;
@@ -106,39 +106,6 @@ fn ids(value: &serde_json::Value) -> Vec<String> {
         .collect()
 }
 
-/// The view's rows for one filter, as ids.
-fn view_ids(repo: &Repository<MemoryStore>, filter: &Filter) -> Vec<String> {
-    match list(repo, filter).unwrap() {
-        Listing::Nodes(rows) => rows.iter().map(|row| row.id.clone()).collect(),
-        Listing::History(_) => Vec::new(),
-    }
-}
-
-#[test]
-fn list_matches_the_view() {
-    let repo = ledger();
-    let mut filter = Filter::default();
-    filter.kind = Some(NodeKind::Need);
-    assert_eq!(
-        ids(&answer(&repo, "/api/list", Some("kind=Need"))["rows"]),
-        view_ids(&repo, &filter)
-    );
-
-    let all = answer(&repo, "/api/list", None);
-    let scoped = answer(&repo, "/api/list", Some("scope=b"));
-    assert!(!all["rows"].as_array().unwrap().is_empty());
-    assert!(scoped["rows"].as_array().unwrap().len() < all["rows"].as_array().unwrap().len());
-
-    let mut grep = Filter::default();
-    grep.grep = Some("duplicated".to_string());
-    let rows = answer(&repo, "/api/list", Some("q=duplicated"));
-    assert_eq!(ids(&rows["rows"]), view_ids(&repo, &grep));
-    assert_eq!(rows["rows"].as_array().unwrap().len(), 12);
-
-    assert_eq!(status("/api/list", Some("kind=Foo")), 400);
-    assert_eq!(status("/api/list", Some("status=nonsense")), 400);
-}
-
 #[test]
 fn node_names_its_edges_and_history() {
     let repo = ledger();
@@ -175,19 +142,18 @@ fn node_names_its_edges_and_history() {
     assert_eq!(hood["edges"][0]["to"], "r-0006");
     assert_eq!(hood["edges"][0]["name"], "filed-as");
 
-    // Every box's status and scope are the list's for the same node (n-dc1a):
-    // one derivation, so the map's card and the row never disagree.
-    let rows = answer(&repo, "/api/list", None);
-    let rows = rows["rows"].as_array().unwrap();
+    // Every box's status and scope are the model's for the same node (n-dc1a):
+    // one derivation, so the map's card and a row never disagree.
+    let all = repo.all().unwrap();
     for node in hood["nodes"].as_array().unwrap() {
         let id = node["id"].as_str().unwrap();
-        let row = rows.iter().find(|row| row["id"] == id).unwrap();
+        let held = all.iter().find(|held| held.id().to_string() == id).unwrap();
         assert_eq!(
             node["status"].as_str(),
-            row["status"].as_str(),
-            "the neighbourhood's status for {id} matches the list"
+            status_of(held, &all).as_deref(),
+            "the neighbourhood's status for {id} matches the model"
         );
-        assert_eq!(node["scope"].as_str(), row["scope"].as_str(), "{id}");
+        assert_eq!(node["scope"].as_str(), Some(held.scope()), "{id}");
     }
     assert_eq!(hood["nodes"][0]["status"], "open");
     assert_eq!(hood["nodes"][1]["status"], "filed");
@@ -253,26 +219,4 @@ fn query_and_path_values_are_decoded() {
     let node = answer(&repo, "/api/node/%235896", None);
     assert_eq!(node["id"], id(NodeKind::Criterion, "0002").to_string());
     assert_eq!(node["aliases"][0], "#5896");
-}
-
-#[test]
-fn labels_answer_alias_and_title() {
-    let repo = ledger();
-    let decision = id(NodeKind::Decision, "0005").to_string();
-    let json = answer(
-        &repo,
-        "/api/labels",
-        Some(&format!("ids={decision},n-zzzz")),
-    );
-    let labels = json["labels"].as_object().unwrap();
-    // An id that is not here is left out; the one that is carries both words.
-    assert_eq!(labels.len(), 1, "{json}");
-    assert_eq!(labels[&decision]["alias"], "D-85");
-    assert_eq!(labels[&decision]["title"], "publish the list page");
-
-    let many = (0..201)
-        .map(|at| format!("n-{at:04}"))
-        .collect::<Vec<_>>()
-        .join(",");
-    assert_eq!(status("/api/labels", Some(&format!("ids={many}"))), 400);
 }

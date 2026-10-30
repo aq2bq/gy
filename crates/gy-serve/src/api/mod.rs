@@ -5,11 +5,7 @@
 //! (the detail screen). Each file's doc comment is the shape of its JSON and
 //! the meaning of every key.
 pub mod cross;
-pub mod history;
-pub mod labels;
-pub mod list;
 pub mod node;
-pub mod now;
 pub mod overview;
 pub mod path;
 pub mod search;
@@ -29,12 +25,8 @@ pub fn route<S: Store>(repo: &Repository<S>, req: &Request, name: &str) -> Respo
     match req.path.as_str() {
         "/" | "/index.html" => index(req, name),
         "/api/shell" => shell::shell(repo, req),
-        "/api/now" => now::answer(repo, req),
         "/api/overview" => overview::answer(repo),
         "/api/cross" => cross::answer(repo, req),
-        "/api/history" => history::answer(repo, req),
-        "/api/labels" => labels::labels(repo, req),
-        "/api/list" => list::rows(repo, req),
         "/api/search" => search::search(repo, req),
         "/api/ticks" => ticks::ticks(repo, req),
         _ => match req.path.strip_prefix("/api/node/") {
