@@ -90,17 +90,23 @@ What remains for the human is deciding, and only deciding. Goals and needs, and 
 
 To look at the record yourself, use `gy serve`. The screenshots show a demo ledger built by `scripts/demo-ledger.sh`. Before you have a record of your own, run it and `gy serve` to see the same.
 
-### Now
+### Progress
 
-<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-now-en.png" alt="The now page" width="100%">
+<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-now-en.png" alt="The progress screen" width="100%">
 
-### Graph
+The first screen answers where the work stands: the open needs by scope and how far they got, what holds them and which root holds the most, the weeks, and what nobody holds.
 
-<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-graph-en.png" alt="The fractal graph" width="100%">
+### Across
 
-### Node detail
+<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-cross-en.png" alt="The crossing screen" width="100%">
 
-<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-node-en.png" alt="One node" width="100%">
+A word, a period, or a scope narrows the record. The set is drawn with rows for scopes and time across, with its scale and what happened in the period. With no narrowing, the screen gives the scope × week grid instead of every node.
+
+### Detail
+
+<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-node-en.png" alt="One node's thread" width="100%">
+
+The detail screen puts where a node came from on the left and what it works on on the right; pressing a box centers it. The facts, the body, and the writes stay below.
 
 ## What the ledger holds
 

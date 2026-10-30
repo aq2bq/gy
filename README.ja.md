@@ -90,17 +90,23 @@ gy remote set https://github.com/you/yourproject-gy.git
 
 記録を自分で見るには `gy serve` を使います。スクショは `scripts/demo-ledger.sh` が作る見本の記録です。自分の記録がまだ無いうちは、これを実行して `gy serve` すると同じものを見られます。
 
-### いま
+### 進行
 
-<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-now-ja.png" alt="いま" width="100%">
+<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-now-ja.png" alt="進行の画面" width="100%">
 
-### グラフ
+最初の画面は、仕事がどこまで進んだかを答えます。開いているニーズをスコープと進み具合で並べ、何に止まっているかと、どの根が最も多くを止めているか、週ごとの動き、誰も持っていないものを出します。
 
-<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-graph-ja.png" alt="フラクタルなグラフ" width="100%">
+### 横断
 
-### ノードの詳細
+<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-cross-ja.png" alt="横断の画面" width="100%">
 
-<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-node-ja.png" alt="一件" width="100%">
+語・期間・スコープで記録を絞ります。絞った集まりは、行がスコープ・横が時間の配置で、規模とその期間に起きたことと一緒に描きます。絞っていないときは、全ノードの代わりにスコープ × 週の升目を出します。
+
+### 詳細
+
+<img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-node-ja.png" alt="一件の筋道" width="100%">
+
+詳細の画面は、左にどこから来たか、右に何に効いているかを置きます。箱を押すとその箱が中心になります。要点・本文・経緯は下に残ります。
 
 ## 記録の中身
 
