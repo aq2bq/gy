@@ -42,7 +42,7 @@ jobs:
       - run: echo "$GITHUB_WORKSPACE/.ci-tools/bin" >> "$GITHUB_PATH"
       - run: ${{ matrix.check }}
 
-  # Keep the existing required check: success includes both tools and Rust.
+  # Preserve the test status: success includes both tools and Rust.
   test:
     if: always()
     needs: [rust, tools]
