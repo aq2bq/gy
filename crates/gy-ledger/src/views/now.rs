@@ -8,7 +8,7 @@ use super::sync_row::SyncRow;
 use super::writers::{writer, writers};
 use crate::model::{
     CriterionState, NeedState, Node, NodeData, NodeKind, RequirementState, criterion_state,
-    need_state, question_open, reference, unwaited,
+    need_state, question_open, reference, unwaited_questions,
 };
 use crate::ops::repository::{Repository, Result, Store};
 use serde::Serialize;
@@ -98,6 +98,7 @@ pub struct Now {
 
 pub fn now<S: Store>(repo: &Repository<S>, scope: Option<&str>) -> Result<Now> {
     let all = repo.all()?;
+    let unwaited = unwaited_questions(&all);
     let visible: Vec<&Node> = all.iter().filter(|node| in_scope(node, scope)).collect();
     let writers = writers(repo);
     let mut in_progress: Vec<&Node> = visible
@@ -127,12 +128,12 @@ pub fn now<S: Store>(repo: &Repository<S>, scope: Option<&str>) -> Result<Now> {
         seq: last.map_or(0, |entry| entry.seq),
         at: last.map_or(0, |entry| entry.at),
         scope: scope.map(ToString::to_string),
-        waiting: waiting(&visible, &all, &writers),
+        waiting: waiting(&visible, &all, &writers, &unwaited),
         ready: ready_view(&all, scope),
         resume: resume(repo, scope, &all, session),
-        in_progress: rows(&in_progress, &all),
-        open_questions: rows(&open_questions, &all),
-        unmet: rows(&unmet, &all),
+        in_progress: rows(&in_progress, &all, &unwaited),
+        open_questions: rows(&open_questions, &all, &unwaited),
+        unmet: rows(&unmet, &all, &unwaited),
         recent: recent(repo, scope, &all),
     })
 }
@@ -160,7 +161,7 @@ fn ready_view(all: &[Node], scope: Option<&str>) -> Vec<Ready> {
         .filter_map(|next| {
             let node = all.iter().find(|node| node.id().to_string() == next.id)?;
             Some(Ready {
-                row: row(node, all),
+                row: row(node, all, false),
                 satisfied: next.satisfied,
                 targets: next.targets,
             })
@@ -170,7 +171,12 @@ fn ready_view(all: &[Node], scope: Option<&str>) -> Vec<Ready> {
 
 /// A person's queue: the open questions whose decider has never written, then
 /// the filed requirements, each in created order (d-995c, d-b02d).
-fn waiting(visible: &[&Node], all: &[Node], writers: &BTreeSet<String>) -> Vec<Waiting> {
+fn waiting(
+    visible: &[&Node],
+    all: &[Node],
+    writers: &BTreeSet<String>,
+    unwaited: &BTreeSet<String>,
+) -> Vec<Waiting> {
     let mut questions: Vec<&Node> = visible
         .iter()
         .copied()
@@ -185,7 +191,7 @@ fn waiting(visible: &[&Node], all: &[Node], writers: &BTreeSet<String>) -> Vec<W
     requirements.sort_by(oldest_first);
     questions
         .iter()
-        .map(|node| question_waiting(node, all))
+        .map(|node| question_waiting(node, all, unwaited.contains(&node.id().to_string())))
         .chain(
             requirements
                 .iter()
@@ -208,12 +214,12 @@ fn is_filed(node: &Node) -> bool {
     matches!(node.data(), NodeData::Requirement(data) if data.state == RequirementState::Filed)
 }
 
-fn question_waiting(node: &Node, all: &[Node]) -> Waiting {
+fn question_waiting(node: &Node, all: &[Node], unwaited: bool) -> Waiting {
     let NodeData::Question(data) = node.data() else {
         unreachable!("only a question waits as a question")
     };
     Waiting::Question {
-        row: row(node, all),
+        row: row(node, all, unwaited),
         decider: data.decider.clone().unwrap_or_default(),
         options: data.options.clone(),
     }
@@ -221,16 +227,19 @@ fn question_waiting(node: &Node, all: &[Node]) -> Waiting {
 
 fn requirement_waiting(node: &Node, all: &[Node]) -> Waiting {
     Waiting::Requirement {
-        row: row(node, all),
+        row: row(node, all, false),
         reference: reference(node).map(str::to_string),
     }
 }
 
-fn rows(nodes: &[&Node], all: &[Node]) -> Vec<NodeRow> {
-    nodes.iter().map(|node| row(node, all)).collect()
+fn rows(nodes: &[&Node], all: &[Node], unwaited: &BTreeSet<String>) -> Vec<NodeRow> {
+    nodes
+        .iter()
+        .map(|node| row(node, all, unwaited.contains(&node.id().to_string())))
+        .collect()
 }
 
-fn row(node: &Node, all: &[Node]) -> NodeRow {
+fn row(node: &Node, all: &[Node], unwaited: bool) -> NodeRow {
     NodeRow {
         id: node.id().to_string(),
         alias: node.aliases().first().map(|alias| alias.0.clone()),
@@ -239,7 +248,7 @@ fn row(node: &Node, all: &[Node]) -> NodeRow {
         scope: node.scope().to_string(),
         status: state_name(node, all),
         created: node.created().to_string(),
-        unwaited: unwaited(node, all),
+        unwaited,
     }
 }
 

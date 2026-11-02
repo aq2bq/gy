@@ -8,7 +8,7 @@ use super::sync_row::{SyncRow, sync_row};
 use super::writers::writer;
 use crate::model::{
     Node, NodeData, NodeKind, Relation, decision_bound, edges, find, question_open, ready,
-    requirement_in_progress, unwaited,
+    requirement_in_progress, unwaited_questions,
 };
 use crate::ops::repository::{Repository, Result, Store};
 use serde::Serialize;
@@ -239,8 +239,9 @@ fn empty_bodies(all: &[Node], scope: Option<&str>) -> usize {
 
 /// Open questions in scope that no node waits on or raised (n-fa11, d-09b6).
 fn nobody_waits(all: &[Node], scope: Option<&str>) -> usize {
+    let unwaited = unwaited_questions(all);
     all.iter()
-        .filter(|node| in_scope(node, scope) && unwaited(node, all))
+        .filter(|node| in_scope(node, scope) && unwaited.contains(&node.id().to_string()))
         .count()
 }
 

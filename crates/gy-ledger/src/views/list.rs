@@ -4,7 +4,7 @@ use super::open_or_closed;
 use super::writers::writer;
 use crate::model::{
     CriterionState, NeedState, Node, NodeData, NodeId, NodeKind, Relation, RequirementState,
-    criterion_state, edges, need_state, question_open, reference, unwaited,
+    criterion_state, edges, need_state, question_open, reference, unwaited_questions,
 };
 use crate::ops::local_time;
 use crate::ops::repository::{Error, Repository, Result, Store};
@@ -106,10 +106,11 @@ pub fn list<S: Store>(repo: &Repository<S>, filter: &Filter) -> Result<Listing> 
         None => None,
     };
     let all = repo.all()?;
+    let unwaited = unwaited_questions(&all);
     let mut rows = Vec::new();
     for node in &all {
         if keep(node, filter, status, &all) {
-            rows.push(row(node, &all));
+            rows.push(row(node, &all, unwaited.contains(&node.id().to_string())));
         }
     }
     Ok(Listing::Nodes(rows))
@@ -205,7 +206,7 @@ pub fn matches(node: &Node, query: &str) -> Option<Match> {
     None
 }
 
-fn row(node: &Node, all: &[Node]) -> Row {
+fn row(node: &Node, all: &[Node], unwaited: bool) -> Row {
     Row {
         id: node.id().to_string(),
         reference: reference(node).map(str::to_string),
@@ -214,7 +215,7 @@ fn row(node: &Node, all: &[Node]) -> Row {
         title: node.title().to_string(),
         scope: node.scope().to_string(),
         created: node.created().to_string(),
-        unwaited: unwaited(node, all),
+        unwaited,
     }
 }
 

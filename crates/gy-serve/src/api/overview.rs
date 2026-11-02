@@ -137,7 +137,7 @@ use crate::http::Response;
 use crate::snapshot::{self, Snapshot, day_of, instant};
 use gy_ledger::{
     CriterionState, NeedState, Node, NodeData, NodeKind, Relation, Repository, RequirementState,
-    Store, criterion_state, criterion_wait, need_state, question_open, unwaited,
+    Store, criterion_state, criterion_wait, need_state, question_open, unwaited_questions,
 };
 use serde::Serialize;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -611,11 +611,12 @@ fn overdue(snap: &Snapshot) -> Vec<Overdue> {
 
 /// The open questions nobody waits on and the unmet criteria nobody aims at.
 fn unheld(snap: &Snapshot) -> Vec<Unheld> {
+    let unwaited = unwaited_questions(snap.nodes());
     let mut unheld: Vec<(u8, Unheld, u64)> = Vec::new();
     for (at, node) in snap.nodes().iter().enumerate() {
         let kind = node.kind();
         let unheld_node = match kind {
-            NodeKind::Question => question_open(node.data()) && unwaited(node, snap.nodes()),
+            NodeKind::Question => unwaited.contains(&node.id().to_string()),
             NodeKind::Criterion => {
                 criterion_state(node, snap.nodes()) == CriterionState::Unsatisfied
                     && !aimed_at(snap, at)

@@ -17,7 +17,7 @@ pub use derive::{
     CriterionState, NeedState, bearer_count, covered, criterion_satisfied, criterion_state,
     criterion_unsatisfied, criterion_wait, decision_bound, edges, filed_target, find, need_closed,
     need_state, question_open, ready, reference, requirement_in_progress, unmet_orphaned, unwaited,
-    withdrawn_by,
+    unwaited_questions, withdrawn_by,
 };
 pub use kind::{Alias, NodeId, NodeKind, Ref};
 pub use links::{Edge, Link, Relation};

@@ -6,6 +6,7 @@
 //! D-75). Each meaning has one definition, so `views` and `ops` call the same
 //! function and the copies that drifted (n-f60a) cannot come back.
 use super::{Node, NodeData, NodeId, NodeKind, Relation, RequirementState};
+use std::collections::BTreeSet;
 
 /// A need's derived state (D-28): open, closed by hand, or done (see
 /// `need_state`).
@@ -145,9 +146,31 @@ fn settled(data: &NodeData) -> bool {
 pub fn unwaited(node: &Node, all: &[Node]) -> bool {
     question_open(node.data())
         && !all.iter().any(|other| {
-            edges(other, Relation::WaitsOn).contains(node.id())
-                || edges(other, Relation::Raised).contains(node.id())
+            other
+                .links()
+                .iter()
+                .any(|edge| waits_on_question(edge) && &edge.to == node.id())
         })
+}
+
+/// All open questions nobody waits on, from one pass over the edges. Views
+/// listing many questions use this instead of scanning the graph per row.
+pub fn unwaited_questions(all: &[Node]) -> BTreeSet<String> {
+    let waited: BTreeSet<String> = all
+        .iter()
+        .flat_map(Node::links)
+        .filter(|edge| waits_on_question(edge))
+        .map(|edge| edge.to.to_string())
+        .collect();
+    all.iter()
+        .filter(|node| question_open(node.data()))
+        .map(|node| node.id().to_string())
+        .filter(|id| !waited.contains(id))
+        .collect()
+}
+
+fn waits_on_question(edge: &super::Edge) -> bool {
+    matches!(edge.label, Relation::WaitsOn | Relation::Raised)
 }
 
 /// Whether a decision carries what it is for (d-753c, r-0a63): it serves a need,

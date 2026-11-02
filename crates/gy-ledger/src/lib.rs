@@ -19,6 +19,7 @@ pub use model::{
     NodeData, NodeId, NodeKind, Question, Ref, Relation, Requirement, RequirementState, Revision,
     bearer_count, criterion_satisfied, criterion_state, criterion_wait, decision_bound,
     free_attribute, need_state, question_open, requirement_in_progress, unwaited,
+    unwaited_questions,
 };
 /// This build's rule as a gate, for a caller that owns the order such as
 /// `gy remote set` (n-f921). Not part of the public reading surface.

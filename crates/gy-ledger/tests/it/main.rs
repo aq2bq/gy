@@ -97,3 +97,5 @@ mod sync_timeout_waiter;
 mod undo;
 mod undo_op;
 mod writer;
+
+mod unwaited_batch;
