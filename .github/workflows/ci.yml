@@ -3,42 +3,78 @@ on:
   push:
   pull_request:
 jobs:
-  test:
+  rust:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-checks
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
       - run: cargo install --path crates/gy --locked --root install-check
-      - name: Unused dependencies (cargo-shear)
-        run: |
-          cargo install --locked cargo-shear@1.14.0
-          cargo shear
-      - name: Cognitive complexity against the baseline (knots)
-        run: |
-          cargo install --locked knots@1.18.0
-          knots --recursive crates --exclude-path 'tests/' --cognitive-threshold 15 --baseline knots-baseline.json
+
+  tools:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - tool: cargo-shear
+            version: 1.14.0
+            check: cargo shear
+          - tool: knots
+            version: 1.18.0
+            check: knots --recursive crates --exclude-path 'tests/' --cognitive-threshold 15 --baseline knots-baseline.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v4
+        id: tool-cache
+        with:
+          path: .ci-tools
+          key: ${{ runner.os }}-${{ runner.arch }}-${{ matrix.tool }}-${{ matrix.version }}
+      - if: steps.tool-cache.outputs.cache-hit != 'true'
+        run: cargo install --locked ${{ matrix.tool }}@${{ matrix.version }} --root .ci-tools
+      - run: echo "$GITHUB_WORKSPACE/.ci-tools/bin" >> "$GITHUB_PATH"
+      - run: ${{ matrix.check }}
+
+  # Keep the existing required check: success includes both tools and Rust.
+  test:
+    if: always()
+    needs: [rust, tools]
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "$RUST_RESULT" = success && test "$TOOLS_RESULT" = success
+        env:
+          RUST_RESULT: ${{ needs.rust.result }}
+          TOOLS_RESULT: ${{ needs.tools.result }}
 
   e2e:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: e2e-release
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: cargo build --release -p gy --locked
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
       - run: npm ci --prefix e2e
+      - run: npm run test:unit --prefix e2e
+      - run: cargo build --release -p gy --bin gy --example large_fixture --locked
       - uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ hashFiles('e2e/package-lock.json') }}
       - run: npx --prefix e2e playwright install --with-deps chromium
-      - run: npm test --prefix e2e
+      - run: npx --prefix e2e playwright test --config e2e/playwright.config.ts
       - if: failure()
         uses: actions/upload-artifact@v4
         with:

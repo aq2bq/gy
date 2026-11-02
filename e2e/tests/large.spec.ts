@@ -8,6 +8,8 @@ let gy: Ledger;
 
 test.beforeAll(async () => {
   gy = await start({ large: true });
+  const listing = JSON.parse(gy.gy(['list']));
+  expect(listing).toHaveLength(2170);
 });
 
 test.afterAll(async () => {
@@ -22,9 +24,12 @@ test('the first screen draws a big ledger in three seconds', async ({ page, requ
   expect(Date.now() - started).toBeLessThan(3000);
 });
 
-test('a set past 900 is a grid, drawn in three seconds', async ({ page }) => {
+test('a set past 900 is a grid, drawn in three seconds', async ({ page, request }) => {
+  const cut = await (await request.get(`${gy.url}api/cross?scope=b`)).json();
+  expect(cut.scopes.flatMap((scope: { kinds: { total: number }[] }) => scope.kinds).reduce((n: number, kind: { total: number }) => n + kind.total, 0)).toBe(901);
+  expect(cut.capped).toBe(true);
   const started = Date.now();
-  await page.goto(`${gy.url}?lang=en#/cross`);
+  await page.goto(`${gy.url}?lang=en#/cross?scope=b`);
   await expect(page.getByTestId('main').getByTestId('heatCell').first()).toBeVisible();
   expect(Date.now() - started).toBeLessThan(3000);
 });
@@ -55,4 +60,11 @@ test('the search stops at ten hits', async ({ page }) => {
   await page.keyboard.press('/');
   await page.getByTestId('palette').getByRole('textbox').fill('decision');
   await expect(page.getByTestId('palette').getByRole('option')).toHaveCount(10);
+});
+
+// A filter is essential: an unfiltered request is always a grid.
+test('exactly 900 matching nodes still form a picture', async ({ request }) => {
+  const cut = await (await request.get(`${gy.url}api/cross?scope=a`)).json();
+  expect(cut.capped).toBe(false);
+  expect(cut.nodes).toHaveLength(900);
 });

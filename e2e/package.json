@@ -3,9 +3,13 @@
   "private": true,
   "description": "The gy serve screens, end to end (n-5e13, d-244b)",
   "scripts": {
-    "test": "playwright test"
+    "test": "npm run test:unit && playwright test",
+    "test:unit": "node --test unit/*.test.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "1.47.2"
+    "@playwright/test": "1.47.2",
+    "acorn": "8.15.0",
+    "acorn-walk": "8.3.4",
+    "eslint-scope": "8.4.0"
   }
 }

@@ -51,12 +51,16 @@ export async function start(
   const dir = mkdtempSync(join(tmpdir(), 'gy-e2e-'));
   const data = join(dir, 'data');
   mkdirSync(data);
-  writeFileSync(join(dir, 'gy.toml'), 'output = "pub"\n\n[scopes.a]\n[scopes.b]\n');
+  const scopes = '[scopes.a]\n[scopes.b]\n' + (options.large ? '[scopes.c]\n' : '');
+  writeFileSync(join(dir, 'gy.toml'), `output = "pub"\n\n${scopes}`);
   const gy = (args: string[]) => run(dir, data, args);
   if (options.build) {
     options.build(gy);
   } else if (options.large) {
-    buildLarge(gy);
+    execFileSync(resolve(__dirname, '../../target/release/examples/large_fixture'), [dir], {
+      env: { ...process.env, GY_ACTOR: 'e2e', XDG_DATA_HOME: data },
+      stdio: 'pipe',
+    });
   } else {
     build(gy);
   }
@@ -101,22 +105,6 @@ function build(gy: (args: string[]) => string) {
   id([...a, 'decide', 'closes the answered question', '--scope-note', 'the master said so', '--closes', answered]);
   id([...b, 'decide', 'the second decision', '--scope-note', 'another call', '--serves', closed]);
   id([...a, 'req', 'add', 'the filed requirement', '--need', first]);
-}
-
-/** The bigger ledger: 40 needs, 60 decisions, 20 questions (loop). */
-function buildLarge(gy: (args: string[]) => string) {
-  const one = JSON.parse(gy(['--scope', 'a', 'criterion', 'add', 'the big criterion'])).id as string;
-  for (let index = 0; index < 40; index++) {
-    gy(['--scope', 'a', 'need', 'add', `need ${index}`, '--targets', one]);
-  }
-  // Every decision must say what it is for; one need in b carries all of them.
-  const subject = JSON.parse(gy(['--scope', 'b', 'need', 'add', 'the big need', '--targets', one])).id as string;
-  for (let index = 0; index < 60; index++) {
-    gy(['--scope', 'b', 'decide', `decision ${index}`, '--scope-note', 'a call', '--serves', subject]);
-  }
-  for (let index = 0; index < 20; index++) {
-    gy(['--scope', 'a', 'question', 'add', `question ${index}`, '--decider', 'lead', '--options', 'one', '--options', 'two']);
-  }
 }
 
 /** The port line the server prints, as the base URL. */
