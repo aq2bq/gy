@@ -5,7 +5,7 @@ import { violations } from './architecture.mjs';
 
 const roles = JSON.parse(readFileSync(new URL('../../crates/gy-serve/tests/asset-roles.json', import.meta.url)));
 for (const [name, role] of Object.entries(roles)) {
-  if (role === 'asset') continue;
+  if (!name.endsWith('.js')) continue;
   test(`${name} obeys its ${role} boundary`, () => {
     const source = readFileSync(new URL(`../../crates/gy-serve/src/assets/${name}`, import.meta.url), 'utf8');
     assert.deepEqual(violations(source, name, roles), []);
@@ -41,4 +41,21 @@ test('only state factories construct root state', () => {
   assert.deepEqual(violations('let state=window.GyState.initial({}); function label() { const state="open"; return state; }', 'root.js', roles), []);
   assert.ok(violations('let state={};', 'root.js', roles).length);
   assert.ok(violations('let state=window.GyState.initial({}); state.x=1;', 'root.js', roles).length);
+});
+
+
+test('a local alias of supplied state cannot be mutated', () => {
+  assert.ok(violations('function draw(props) { const state = props.state; state.x = 1; }', 'node.js', roles).includes('writes shared state'));
+});
+
+test('an earlier local variable cannot hide root state', () => {
+  const source = `(function () {
+    function label() { const state = 'open'; return state; }
+    let state = window.GyState.initial({}); state.x = 1;
+  })();`;
+  assert.ok(violations(source, 'root.js', roles).includes('builds state outside GyState'));
+});
+
+test('JavaScript cannot bypass checks through the asset role', () => {
+  assert.ok(violations('fetch("/")', 'node.js', { ...roles, 'node.js': 'asset' }).includes('JavaScript must have a code role'));
 });

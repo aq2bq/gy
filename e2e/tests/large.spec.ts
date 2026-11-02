@@ -10,6 +10,10 @@ test.beforeAll(async () => {
   gy = await start({ large: true });
   const listing = JSON.parse(gy.gy(['list']));
   expect(listing).toHaveLength(2170);
+  const counts = Object.fromEntries(['Need', 'Criterion', 'Decision', 'Question', 'Requirement']
+    .map(kind => [kind, listing.filter((row: { kind: string }) => row.kind === kind).length]));
+  expect(counts).toEqual({ Need: 607, Criterion: 685, Decision: 503, Question: 173, Requirement: 202 });
+  expect(new Set(listing.map((row: { created: string }) => row.created.slice(0, 10))).size).toBe(31);
 });
 
 test.afterAll(async () => {
@@ -18,6 +22,7 @@ test.afterAll(async () => {
 
 test('the first screen draws a big ledger in three seconds', async ({ page, request }) => {
   const view = await (await request.get(`${gy.url}api/overview`)).json();
+  expect(view.needs).toHaveLength(607);
   const started = Date.now();
   await page.goto(`${gy.url}?lang=en`);
   await expect(page.getByTestId('main').getByTestId('needCard')).toHaveCount(view.needs.length);
@@ -51,7 +56,7 @@ test('the now page and a long list draw in two seconds', async ({ page }) => {
   await page.evaluate(() => {
     location.hash = '#/list/Decision';
   });
-  await expect(page.getByTestId('main').getByRole('link')).toHaveCount(60);
+  await expect(page.getByTestId('main').getByRole('link')).toHaveCount(503);
   expect(Date.now() - listed).toBeLessThan(2000);
 });
 
@@ -63,8 +68,10 @@ test('the search stops at ten hits', async ({ page }) => {
 });
 
 // A filter is essential: an unfiltered request is always a grid.
-test('exactly 900 matching nodes still form a picture', async ({ request }) => {
+test('exactly 900 matching nodes still form a picture', async ({ page, request }) => {
   const cut = await (await request.get(`${gy.url}api/cross?scope=a`)).json();
   expect(cut.capped).toBe(false);
   expect(cut.nodes).toHaveLength(900);
+  await page.goto(`${gy.url}?lang=en#/cross?scope=a`);
+  await expect(page.getByTestId('main').getByTestId('laneNode')).toHaveCount(900);
 });

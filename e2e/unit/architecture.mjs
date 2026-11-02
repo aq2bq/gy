@@ -10,9 +10,11 @@ export function violations(source, name, roles) {
   for (const scope of scopes.scopes) {
     for (const ref of scope.references) refs.set(ref.identifier, ref);
   }
-  const rootState = scopes.scopes.flatMap(scope => scope.variables)
-    .filter(variable => variable.name === 'state' && variable.defs[0]?.type === 'Variable')
-    .sort((a, b) => a.defs[0].name.start - b.defs[0].name.start)[0];
+  const wrapper = ast.body.find(node => node.type === 'ExpressionStatement'
+    && node.expression.type === 'CallExpression'
+    && node.expression.callee.type === 'FunctionExpression')?.expression.callee;
+  const rootScope = wrapper ? scopes.acquire(wrapper) : scopes.globalScope;
+  const rootState = rootScope?.variables.find(variable => variable.name === 'state');
   const global = node => node?.type === 'Identifier' && !refs.get(node)?.resolved;
   const property = node => node.computed ? node.property.value : node.property.name;
   function path(node) {
@@ -28,6 +30,7 @@ export function violations(source, name, roles) {
   const role = roles[name];
   const passive = role === 'region' || role === 'part';
   const errors = new Set();
+  if (name.endsWith('.js') && role === 'asset') errors.add('JavaScript must have a code role');
   // Asset modules use Gy plus their capitalized file stem.
   const forbidden = new Set(Object.entries(roles)
     .filter(([file, kind]) => file !== name && ['region', 'core', 'network'].includes(kind))
@@ -36,8 +39,7 @@ export function violations(source, name, roles) {
     const id = root(target);
     if (id?.type !== 'Identifier' || id.name !== 'state') return;
     const ref = refs.get(id);
-    const parameter = ref?.resolved?.defs.some(def => def.type === 'Parameter');
-    if (passive && (parameter || !ref?.resolved)) errors.add('writes shared state');
+    if (passive) errors.add('writes shared state');
     if (name === 'root.js' && ref?.resolved === rootState) {
       const factory = value?.type === 'CallExpression' && path(value.callee);
       if (target.type !== 'Identifier' || !['window.GyState.initial', 'window.GyState.apply'].includes(factory)) {

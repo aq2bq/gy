@@ -42,22 +42,55 @@ fn nodes() -> Vec<Node> {
         aim(&mut node, Relation::Serves, id(NodeKind::Need, 40));
         nodes.push(node);
     }
-    // With the 102 nodes above, scopes a / b / c contain 900 / 901 / 369.
-    for (scope, count) in [("a", 859), ("b", 840), ("c", 369)] {
-        for n in 0..count {
-            let mut node = Node::question(
-                id(NodeKind::Question, nodes.len()),
+    // Match the observed kind proportions, with 31 creation dates. Scopes
+    // remain 900 / 901 / 369 to exercise both sides of the rendering cap.
+    for n in 0..2068 {
+        let scope = match n {
+            0..859 => "a",
+            859..1699 => "b",
+            _ => "c",
+        };
+        let date = format!("2026-10-{:02}T00:00:00Z", n % 31 + 1);
+        let hash = n + 100;
+        let mut node = match n {
+            0..566 => Node::need(
+                id(NodeKind::Need, hash),
                 scope,
-                DATE,
-                &format!("question {scope} {n}"),
-            )
-            .unwrap();
-            if let NodeData::Question(data) = node.data_mut() {
-                data.decider = Some("lead".into());
-                data.options = vec!["one".into(), "two".into()];
+                &date,
+                &format!("need {hash}"),
+            ),
+            566..1250 => {
+                Node::criterion(id(NodeKind::Criterion, hash), scope, &date, "a criterion")
             }
-            nodes.push(node);
+            1250..1693 => Node::decision(
+                id(NodeKind::Decision, hash),
+                scope,
+                &date,
+                &format!("decision {hash}"),
+                DecisionScope::recorded("load fixture").unwrap(),
+            ),
+            1693..1895 => Node::requirement(
+                id(NodeKind::Requirement, hash),
+                scope,
+                &date,
+                "a requirement",
+                gy_ledger::RequirementState::Filed,
+            ),
+            _ => Node::question(id(NodeKind::Question, hash), scope, &date, "a question"),
         }
+        .unwrap();
+        match node.kind() {
+            NodeKind::Need | NodeKind::Requirement => {
+                aim(&mut node, Relation::Targets, id(NodeKind::Criterion, 1))
+            }
+            NodeKind::Decision => aim(&mut node, Relation::Serves, id(NodeKind::Need, 40)),
+            _ => {}
+        }
+        if let NodeData::Question(data) = node.data_mut() {
+            data.decider = Some("lead".into());
+            data.options = vec!["one".into(), "two".into()];
+        }
+        nodes.push(node);
     }
     nodes
 }
