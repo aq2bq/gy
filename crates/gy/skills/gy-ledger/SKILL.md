@@ -39,6 +39,15 @@ Restore a set with `gy retire <ID>... --revoke --reason <text>`, or use `gy undo
 immediately after retiring it. Restoring only part of a connected set is
 refused. Keep the IDs from the retirement write; gy has no retired-node list.
 
+The first retirement raises the ledger to format 5, which gy 2.x cannot read.
+Before retiring anything in a shared ledger, every member must update to gy
+3.0.0 or later. Revocation and undo keep format 5; ordinary writes without
+retirement keep format 4. The history (`list --since`, `list --actor`, and serve)
+keeps the retirement write's IDs and reason, and `show <ID>` gives its sequence
+and how to restore it. Textual ID references in surviving records stay verbatim.
+Repeating retirement or restoration already in effect is refused without a new
+transaction. Repeating `undo` redoes the write it just undid.
+
 ## A team's ledger (a `remote` in gy.toml)
 
 The team is people, each with their own machine and their own copy; `gy remote set` and `gy remote join` are the person's steps (the README's "Working as a team"), and an agent does not join. Agents on one machine already share the local ledger and need no remote. (The old names `share` / `join` / `sync` still work but are deprecated.)

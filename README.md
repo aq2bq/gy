@@ -51,6 +51,20 @@ npx skills add aq2bq/gy
 
 Once a day gy runs `cargo info gy` to check for a newer release, and `gy handover` and `gy next` tell you when there is one. Unless you share a ledger with a team, that is the only network request gy makes.
 
+### Updating to 3.0.0
+
+Install with `cargo install gy --version 3.0.0 --locked`. For a shared ledger,
+update every member before anyone uses `gy retire`: the first retirement raises
+the ledger to format 5, which gy 2.x cannot read. Restoring the nodes keeps
+format 5. Ordinary writes without retirement keep format 4; no manual log
+migration or `gy.toml` change is needed.
+
+The skills changed, so copy them again: update
+`crates/gy/skills/gy-ledger/SKILL.md` in the installed skill directory (for
+example `~/.agents/skills/gy-ledger/SKILL.md`), or rerun
+`npx skills add aq2bq/gy`. Repeating installation or copying the skill is safe.
+See [3.0.0 in the changelog](CHANGELOG.md#300---2026-11-05).
+
 ### Telling the AI about gy
 
 Put a sentence like the following in a prompt or in AGENTS.md / CLAUDE.md so it gets across, and the AI agent resumes from `gy handover` and `gy next` every time.
@@ -137,6 +151,25 @@ Every write needs a name in `GY_ACTOR`. If the tool that starts you already sets
 ## Commands
 
 `gy cheat` lists them, but every write prints the commands you can type next, so there is nothing to memorize. `gy undo` takes back the last write, and the undo stays in the history too. `gy publish` writes the ledger out as a Markdown wiki you can read on GitHub.
+
+### Retiring earlier records
+
+An agent can select records that should no longer be read, such as records of
+how the work was run, and use `gy retire <ID>... --reason <text>`. gy does not
+choose candidates or judge their meaning. It refuses in-progress nodes and any
+edge between retired and visible nodes; select a connected set in one write.
+
+Retired nodes disappear from the readings, including past sequences in
+`gy serve`. A direct `gy show <ID>` gives the retirement sequence and how to
+restore the node. `list --since`, `list --actor`, and the web history keep the
+retirement write's IDs and reason. Textual references in surviving records
+remain unchanged. Original text remains in the log, snapshots, and remote git.
+The next `gy publish` rewrites the scope's directory without the retired pages.
+
+Restore the set with `gy retire <ID>... --revoke --reason <text>`, or use
+`gy undo` immediately after retiring it. Restoring only part of a connected set
+is refused. Repeating a retirement or restoration already in effect is refused
+without writing another transaction; running `undo` again redoes its last undo.
 
 ## gy.toml
 

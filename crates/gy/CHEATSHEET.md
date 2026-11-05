@@ -60,6 +60,9 @@ Writes:
         moves every node of the old scope to the new name and rewrites gy.toml, keeping comments and order
   gy retire <ID>... --reason <text> [--revoke]
         retires explicit IDs from every reading; --revoke restores them. Refuses active work and any edge between retired and visible nodes; select connected nodes together. Original text remains in the log and remote git
+        the first retirement raises the ledger to format 5, which gy 2.x cannot read; update every shared-ledger member to 3.0.0 first. Restoring nodes keeps format 5
+        list --since / --actor and web history keep the retirement write's IDs and reason; show <ID> gives its sequence and restoration command. Textual ID references in surviving records stay verbatim
+        repeating retirement or restoration already in effect is refused without a new write
   gy undo --reason <text>
         takes back the last write only. Typed again, it takes back the undo (redo). There is no way to take back two
 

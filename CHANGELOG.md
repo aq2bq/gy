@@ -1,5 +1,67 @@
 # Changelog
 
+## 3.0.0 - 2026-11-05
+
+This release lets an agent retire explicitly selected records from gy's
+readings without deleting their original text. The first retirement raises the
+ledger to format 5, so shared-ledger users must all update before using it.
+
+### Breaking
+
+- **A ledger that has used retirement requires gy 3.0.0 or later**: its first
+  `retire` write raises format 4 to 5. gy 2.x cannot open or sync that ledger.
+  Restoring the nodes with `--revoke` or `undo` keeps format 5. An older
+  `remote join` may report `the event log has a line that is not an event`
+  instead of naming the format; update gy before joining again. Ordinary
+  writes without retirement keep format 4 and remain readable by gy 2.3.0.
+
+### Added
+
+- **`gy retire <ID>... --reason <text>`** retires an explicitly selected set
+  in one appended transaction. `--revoke` restores the set, and `gy undo`
+  immediately after retirement restores it too. A write refuses in-progress
+  nodes and any edge between retired and visible nodes, naming the remaining
+  edges. Select connected nodes together; restoring only part of a connected
+  set is refused. Writes to retired nodes are also refused (r-489d).
+
+### Changed
+
+- Retired nodes are excluded from `show`, `list`, `next`, `handover`,
+  `publish`, and `serve`, including reads of past sequences. A direct `show`
+  by ID or old alias gives only the retirement sequence and how to restore it.
+  `list --since`, `list --actor`, and the web history keep the retirement
+  write's IDs and reason. Textual references to an ID in surviving records
+  stay verbatim. The original text remains in `events.jsonl`, snapshots, and
+  remote git; retiring a node does not erase it. The next `publish` rewrites
+  its scope's directory, including when that scope has no visible nodes left.
+- The set of open questions nobody waits on is derived once per reading
+  instead of scanning every node for each question. `list`, `handover`, and
+  the web home and overview reuse the result while preserving cross-scope
+  waits and `raised` edges.
+- Development checks now parse JavaScript bindings to reject state mutation,
+  including mutations through aliases and JavaScript embedded as an asset.
+  The browser load fixture has 2,170 nodes across 31 creation dates, with
+  mixed node kinds and scope sizes on both sides of the 900-node threshold.
+  This fixture is synthetic; its timings do not establish performance on a
+  real ledger. CI runs Rust and tooling in parallel and keeps `test` as their
+  aggregate result. Development guidance records retained behavior and the
+  reasons for any removed or weakened tests.
+
+### Updating
+
+Install with `cargo install gy --version 3.0.0 --locked`. For a shared ledger,
+update every member to 3.0.0 before anyone runs `gy retire`. No manual log
+migration or `gy.toml` change is needed: the first retirement raises the format.
+The skills changed, so copy them again. The changed file is
+`crates/gy/skills/gy-ledger/SKILL.md`; update the installed copy, for example
+`~/.agents/skills/gy-ledger/SKILL.md`, or rerun `npx skills add aq2bq/gy`.
+See the README's installation and retirement sections for the same steps.
+
+Repeating installation or copying the skill is safe. Repeating the same
+`retire` for nodes already retired, or `retire --revoke` for nodes already
+visible, is refused without appending a transaction. `undo` is not a retry:
+running it a second time redoes the write it just undid.
+
 ## 2.3.0 - 2026-10-30
 
 The bundled skills no longer speak of a team: gy has no such notion. What the
