@@ -110,6 +110,11 @@ fn run(cli: &Cli) -> Result<()> {
         Command::Link(args) => writes::link(cli, &ledger, args),
         Command::Edit(args) => writes::edit(cli, &root, &ledger, args),
         Command::Undo(args) => writes::undo(cli, &ledger, args),
+        Command::Retire {
+            ids,
+            reason,
+            revoke,
+        } => writes::retire(cli, &ledger, ids, reason, *revoke),
     };
     // A write to a shared copy starts a detached sync; the write itself waits
     // for nothing (n-ecbf).
@@ -203,6 +208,7 @@ fn writes(command: &Command) -> bool {
             | Command::Link(_)
             | Command::Edit(_)
             | Command::Undo(_)
+            | Command::Retire { .. }
     )
 }
 

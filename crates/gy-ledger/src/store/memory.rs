@@ -11,6 +11,12 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+#[derive(Debug)]
+enum Frame {
+    Nodes(Vec<(String, Option<Vec<u8>>)>),
+    Retirement(Vec<String>, bool),
+}
+
 /// The in-memory implementation for the skeleton and tests.
 #[derive(Debug)]
 pub struct MemoryStore {
@@ -19,9 +25,10 @@ pub struct MemoryStore {
     committed: BTreeMap<String, Vec<u8>>,
     staged: Vec<(String, Vec<u8>)>,
     staged_rename: Option<(String, String, usize)>,
+    staged_retirement: Option<(Vec<String>, bool)>,
     history: Vec<HistoryEntry>,
     staged_history: Vec<HistoryEntry>,
-    undo_stack: Vec<Vec<(String, Option<Vec<u8>>)>>,
+    undo_stack: Vec<Frame>,
     seq: u64,
     gate: Option<Arc<dyn Gate>>,
 }
@@ -45,6 +52,7 @@ impl MemoryStore {
             committed: BTreeMap::new(),
             staged: Vec::new(),
             staged_rename: None,
+            staged_retirement: None,
             history: Vec::new(),
             staged_history: Vec::new(),
             undo_stack: Vec::new(),
@@ -71,6 +79,7 @@ impl MemoryStore {
             committed,
             staged: Vec::new(),
             staged_rename: None,
+            staged_retirement: None,
             history,
             staged_history: Vec::new(),
             undo_stack: Vec::new(),
@@ -136,7 +145,29 @@ impl MemoryStore {
                 nodes: *nodes,
             });
         }
+        if let Some((nodes, revoke)) = &self.staged_retirement {
+            out.push(log::Change::Retired {
+                nodes: nodes.clone(),
+                revoke: *revoke,
+            });
+        }
         out
+    }
+    fn commit_retirement(&mut self) -> Result<()> {
+        if let Some((nodes, revoke)) = self.staged_retirement.take() {
+            self.seq += 1;
+            self.version = FormatVersion::RETIREMENT;
+            for id in &nodes {
+                if let Some(bytes) = self.committed.get_mut(id) {
+                    let mut value: Value =
+                        serde_json::from_slice(bytes).map_err(|e| Error::invalid(e.to_string()))?;
+                    super::retirement::set(&mut value, if revoke { None } else { Some(self.seq) });
+                    *bytes = super::replay::encode(&value)?;
+                }
+            }
+            self.undo_stack.push(Frame::Retirement(nodes, revoke));
+        }
+        Ok(())
     }
     /// Apply the staged writes and return each key's value before them, once
     /// per key. A transaction may write the same key twice (`req add --need N
@@ -177,6 +208,7 @@ impl Store for MemoryStore {
     fn begin(&mut self) {
         self.staged.clear();
         self.staged_rename = None;
+        self.staged_retirement = None;
         self.staged_history.clear();
     }
     fn stage(&mut self, key: impl Into<String>, value: impl Into<Vec<u8>>) {
@@ -193,11 +225,15 @@ impl Store for MemoryStore {
         self.staged_rename = Some((from.to_string(), to.to_string(), nodes));
         Ok(nodes)
     }
+    fn retire(&mut self, nodes: &[String], revoke: bool) -> Result<()> {
+        self.staged_retirement = Some((nodes.to_vec(), revoke));
+        Ok(())
+    }
     fn commit(&mut self) -> Result<()> {
         self.judged()?;
         let before = self.take_staged();
         if !before.is_empty() {
-            self.undo_stack.push(before);
+            self.undo_stack.push(Frame::Nodes(before));
             self.seq += 1;
         }
         if let Some((from, to, _)) = self.staged_rename.take() {
@@ -213,10 +249,11 @@ impl Store for MemoryStore {
                     .map_err(|_| Error::invalid("a node is not valid JSON"))?;
             }
             if !frame.is_empty() {
-                self.undo_stack.push(frame);
+                self.undo_stack.push(Frame::Nodes(frame));
                 self.seq += 1;
             }
         }
+        self.commit_retirement()?;
         for entry in &mut self.staged_history {
             entry.seq = self.seq;
         }
@@ -226,6 +263,7 @@ impl Store for MemoryStore {
     fn rollback(&mut self) {
         self.staged.clear();
         self.staged_rename = None;
+        self.staged_retirement = None;
         self.staged_history.clear();
     }
     fn record(&mut self, node: &str, what: &str, why: &str, source: &str) {
@@ -255,9 +293,17 @@ impl Store for MemoryStore {
             None => UndoneKind::Write,
         };
         self.begin();
-        for (key, previous) in frame {
-            self.stage(key.clone(), previous.unwrap_or_default());
-            self.record(&key, "undone", why, source);
+        match frame {
+            Frame::Nodes(frame) => {
+                for (key, previous) in frame {
+                    self.stage(key.clone(), previous.unwrap_or_default());
+                    self.record(&key, "undone", why, source);
+                }
+            }
+            Frame::Retirement(nodes, revoke) => {
+                self.retire(&nodes, !revoke)?;
+                self.record("", &super::retirement::line(&nodes, !revoke), why, source);
+            }
         }
         self.commit()?;
         Ok(kind)

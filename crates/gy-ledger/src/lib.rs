@@ -28,8 +28,8 @@ pub use ops::Rules;
 pub use ops::{
     CriterionAdd, CriterionSatisfy, Decide, Edit, NeedAdd, NeedClose, Operation, Outcome,
     QuestionAdd, QuestionClose, Repository, ReqAdd, ReqApprove, ReqCancel, ReqDone, ReqRevise,
-    ScopeRename, Undo, advice_for, config, link, local_clock, local_day_start, local_time, retry,
-    sync,
+    Retire, ScopeRename, Undo, advice_for, config, link, local_clock, local_day_start, local_time,
+    retry, sync,
 };
 pub use store::remote::{
     Join, Pulled, Range, Rounds, Share, Sync, clear_rejected, join_check, join_notice, join_run,

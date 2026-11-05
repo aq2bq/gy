@@ -9,7 +9,7 @@ mod loose;
 mod page;
 mod wiki;
 
-use super::show::{Shown, show_all};
+use super::show::show_all;
 use crate::model::NodeKind;
 use crate::ops::repository::{Repository, Result, Store};
 
@@ -43,8 +43,8 @@ pub fn publish<S: Store>(
     _writer: &str,
     _location: &str,
 ) -> Result<Publication> {
-    let shown = show_all(repository, true)?;
-    let names = scope_names(&shown, scope);
+    let (shown, stored_scopes) = show_all(repository, true)?;
+    let names = scope_names(stored_scopes, scope);
     let wiki = wiki::Wiki::new(shown);
     let seq = repository
         .store()
@@ -60,15 +60,13 @@ pub fn publish<S: Store>(
 }
 
 /// The scopes to publish, in a fixed order.
-fn scope_names(shown: &[Shown], scope: Option<&str>) -> Vec<String> {
+fn scope_names(mut stored: Vec<String>, scope: Option<&str>) -> Vec<String> {
     match scope {
         Some(name) => vec![name.to_string()],
         None => {
-            let mut names: Vec<String> =
-                shown.iter().filter_map(|node| node.scope.clone()).collect();
-            names.sort();
-            names.dedup();
-            names
+            stored.sort();
+            stored.dedup();
+            stored
         }
     }
 }

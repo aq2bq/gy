@@ -8,6 +8,7 @@ mod kind;
 pub(crate) use due::{due_date, validate_wait};
 mod links;
 mod node;
+mod retirement;
 mod rule;
 mod scope;
 mod shape;

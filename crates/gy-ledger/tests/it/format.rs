@@ -49,9 +49,9 @@ fn a_missing_format_file_is_an_error() {
 #[test]
 fn a_newer_format_is_rejected() {
     let temp = tempfile::tempdir().unwrap();
-    format::write(temp.path(), FormatVersion(FormatVersion::CURRENT.0 + 1)).unwrap();
+    format::write(temp.path(), FormatVersion(FormatVersion::RETIREMENT.0 + 1)).unwrap();
     assert!(format::read(temp.path()).is_err());
-    assert!(!FormatVersion(FormatVersion::CURRENT.0 + 1).supported());
+    assert!(!FormatVersion(FormatVersion::RETIREMENT.0 + 1).supported());
 }
 
 #[test]

@@ -265,18 +265,32 @@ impl fmt::Display for Shown {
 
 /// Project the named texts in order; several matches is an error (proposal-v3 11).
 pub fn show<S: Store>(repo: &Repository<S>, texts: &[String], full: bool) -> Result<Vec<Shown>> {
-    show_with(&repo.snapshot()?, repo.store().history(), texts, full)
+    match show_with(&repo.snapshot()?, repo.store().history(), texts, full) {
+        Ok(shown) => Ok(shown),
+        Err(error) => {
+            for text in texts {
+                repo.resolve(text)?;
+            }
+            Err(error)
+        }
+    }
 }
 
 /// Every node, from one store pass (n-2e03); for publish, which reads them all.
-pub(crate) fn show_all<S: Store>(repo: &Repository<S>, full: bool) -> Result<Vec<Shown>> {
-    let snapshot = repo.snapshot()?;
+pub(crate) fn show_all<S: Store>(
+    repo: &Repository<S>,
+    full: bool,
+) -> Result<(Vec<Shown>, Vec<String>)> {
+    let (snapshot, scopes) = repo.publication_snapshot()?;
     let texts: Vec<String> = snapshot
         .nodes()
         .iter()
         .map(|node| node.id().to_string())
         .collect();
-    show_with(&snapshot, repo.store().history(), &texts, full)
+    Ok((
+        show_with(&snapshot, repo.store().history(), &texts, full)?,
+        scopes,
+    ))
 }
 fn show_with(
     snapshot: &Snapshot,

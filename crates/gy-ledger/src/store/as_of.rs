@@ -16,6 +16,7 @@ pub fn open_at(
     let version = format::read(dir)?;
     let actor = Actor::from_lookup(lookup)?;
     let (events, _) = log::read(dir)?;
+    let retired = retirements(&events);
     let events: Vec<log::Event> = events
         .into_iter()
         .filter(|event| event.seq <= seq)
@@ -24,6 +25,25 @@ pub fn open_at(
     for event in &events {
         replay::apply(&mut nodes, event);
     }
+    // Retirement applies to every read, including a point before the write.
+    for (id, seq) in retired {
+        if let Some(value) = nodes.get_mut(&id) {
+            super::retirement::set(value, seq);
+        }
+    }
     let history = replay::history(&events)?;
     MemoryStore::from_replay(version, actor, nodes, history)
+}
+
+fn retirements(events: &[log::Event]) -> BTreeMap<String, Option<u64>> {
+    let mut retired = BTreeMap::new();
+    for event in events {
+        for change in &event.changes {
+            if let log::Change::Retired { nodes, revoke } = change {
+                let seq = if *revoke { None } else { Some(event.seq) };
+                retired.extend(nodes.iter().map(|id| (id.clone(), seq)));
+            }
+        }
+    }
+    retired
 }

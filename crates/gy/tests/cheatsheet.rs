@@ -18,7 +18,7 @@ const EXCLUDED: [&str; 4] = ["serve", "remote set", "remote join", "remote sync"
 
 /// Every command a row may name. A row whose command is not here fails, so a
 /// new cheatsheet line cannot be skipped in silence.
-const COMMANDS: [&str; 27] = [
+const COMMANDS: [&str; 28] = [
     "init",
     "show",
     "list",
@@ -46,6 +46,7 @@ const COMMANDS: [&str; 27] = [
     "edit",
     "scope rename",
     "undo",
+    "retire",
 ];
 
 fn read(name: &str) -> String {
@@ -606,6 +607,24 @@ fn fill(command: &str, f: &mut Fixture) -> Fill {
         "scope rename" => {
             fill.value("<old>", "a");
             fill.value("<new>", "c");
+        }
+        "retire" => {
+            let q = f.node("question", None);
+            f.run(
+                &[
+                    "question",
+                    "close",
+                    &q,
+                    "--by",
+                    "fact",
+                    "--evidence",
+                    "settled",
+                ]
+                .map(String::from),
+            );
+            fill.value("<ID>", &q);
+            fill.value("<text>", "earlier process record");
+            fill.omit("--revoke");
         }
         "undo" => {
             f.node("criterion", None);

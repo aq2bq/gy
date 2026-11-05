@@ -117,6 +117,15 @@ pub enum Command {
     Edit(EditArgs),
     /// Invert the last write as a new transaction.
     Undo(UndoArgs),
+    /// Retire explicit IDs from every reading, or restore them.
+    Retire {
+        #[arg(required = true, num_args = 1.., value_name = "ID")]
+        ids: Vec<String>,
+        #[arg(long, value_name = "TEXT")]
+        reason: String,
+        #[arg(long)]
+        revoke: bool,
+    },
 }
 
 #[derive(Subcommand)]

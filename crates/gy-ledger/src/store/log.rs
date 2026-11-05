@@ -27,6 +27,10 @@ pub enum Change {
         node: String,
         value: Value,
     },
+    Retired {
+        nodes: Vec<String>,
+        revoke: bool,
+    },
     ScopeRenamed {
         from: String,
         to: String,

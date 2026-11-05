@@ -9,6 +9,7 @@ pub mod log;
 mod memory;
 pub mod remote;
 mod replay;
+mod retirement;
 mod snapshot;
 
 pub use file::FileStore;
@@ -88,9 +89,12 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FormatVersion(pub u32);
 impl FormatVersion {
+    /// Default format: existing ledgers remain readable by older gy.
     pub const CURRENT: Self = Self(4);
+    /// A ledger adopts this format only on its first retirement.
+    pub const RETIREMENT: Self = Self(5);
     pub fn supported(self) -> bool {
-        self.0 <= Self::CURRENT.0
+        self.0 <= Self::RETIREMENT.0
     }
 }
 
@@ -205,6 +209,10 @@ pub trait Store: IdSource {
     /// carries the old scope moves to the new one, as one log change. Returns
     /// how many nodes it affects.
     fn rename_scope(&mut self, from: &str, to: &str) -> Result<usize>;
+    /// Stage retirement or its revocation, as one log change.
+    fn retire(&mut self, _nodes: &[String], _revoke: bool) -> Result<()> {
+        Err(Error::invalid("this store does not support retirement"))
+    }
     fn commit(&mut self) -> Result<()>;
     fn rollback(&mut self);
     fn record(&mut self, node: &str, what: &str, why: &str, source: &str);

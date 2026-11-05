@@ -99,7 +99,7 @@ impl fmt::Display for Listing {
 
 pub fn list<S: Store>(repo: &Repository<S>, filter: &Filter) -> Result<Listing> {
     if filter.actor.is_some() || filter.since.is_some() {
-        return Ok(Listing::History(history(repo, filter)));
+        return Ok(Listing::History(history(repo, filter)?));
     }
     let status = match &filter.status {
         Some(text) => Some(parse_status(text)?),
@@ -119,9 +119,9 @@ pub fn list<S: Store>(repo: &Repository<S>, filter: &Filter) -> Result<Listing> 
 /// The history as write units, filtered by actor and by the transaction
 /// sequence (strictly after `since`). Every entry of one transaction shares
 /// the sequence.
-fn history<S: Store>(repo: &Repository<S>, filter: &Filter) -> Vec<LogRow> {
+fn history<S: Store>(repo: &Repository<S>, filter: &Filter) -> Result<Vec<LogRow>> {
     let mut rows = Vec::new();
-    for entry in repo.store().history() {
+    for entry in repo.history()? {
         if filter.since.is_some_and(|since| entry.seq <= since) {
             continue;
         }
@@ -142,7 +142,7 @@ fn history<S: Store>(repo: &Repository<S>, filter: &Filter) -> Vec<LogRow> {
             source: entry.source.clone(),
         });
     }
-    rows
+    Ok(rows)
 }
 
 fn keep(node: &Node, filter: &Filter, status: Option<Status>, all: &[Node]) -> bool {

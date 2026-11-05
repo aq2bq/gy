@@ -39,6 +39,15 @@ impl FileStore {
                     self.stage(node.clone(), replay::encode(value)?);
                     self.record(node, "deleted", why, source);
                 }
+                log::Change::Retired { nodes, revoke } => {
+                    self.retire(nodes, !revoke)?;
+                    self.record(
+                        "",
+                        &super::super::retirement::line(nodes, !revoke),
+                        why,
+                        source,
+                    );
+                }
                 log::Change::ScopeRenamed { from, to, .. } => {
                     let nodes = self.rename_scope(to, from)?;
                     self.record("", &super::super::rename_line(to, from, nodes), why, source);

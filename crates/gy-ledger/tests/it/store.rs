@@ -81,7 +81,7 @@ fn the_format_version_enters_at_birth_and_is_checked() {
     let store = store();
     assert_eq!(store.version(), FormatVersion::CURRENT);
     assert!(FormatVersion::CURRENT.supported());
-    assert!(!FormatVersion(FormatVersion::CURRENT.0 + 1).supported());
+    assert!(!FormatVersion(FormatVersion::RETIREMENT.0 + 1).supported());
 }
 
 #[test]

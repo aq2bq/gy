@@ -96,9 +96,9 @@ fn the_raise_is_the_same_with_and_without_a_snapshot() {
 }
 
 #[test]
-fn a_version_five_ledger_is_refused() {
+fn a_version_six_ledger_is_refused() {
     let temp = tempfile::tempdir().unwrap();
-    std::fs::write(temp.path().join(format::FILE), "5\n").unwrap();
+    std::fs::write(temp.path().join(format::FILE), "6\n").unwrap();
     let error = FileStore::open_with(temp.path(), actor).err().unwrap();
     assert!(
         error.message.contains("newer than this build supports"),

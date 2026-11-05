@@ -265,10 +265,13 @@ fn state_name(node: &Node, all: &[Node]) -> String {
 
 /// The last writes, newest first, fourteen, in scope (n-3e8f).
 fn recent<S: Store>(repo: &Repository<S>, scope: Option<&str>, all: &[Node]) -> Vec<LogRow> {
-    repo.store()
-        .history()
+    repo.history()
+        .unwrap_or_default()
         .iter()
         .rev()
+        .filter(|entry| {
+            !entry.what.starts_with("retired ") && !entry.what.starts_with("retirement-revoked ")
+        })
         .filter(|entry| scope.is_none_or(|scope| scope_of(all, &entry.node) == Some(scope)))
         .take(RECENT)
         .map(|entry| {

@@ -59,24 +59,24 @@ pub struct Move {
     pub act: Option<Act>,
 }
 
-pub struct Snapshot<'a> {
+pub struct Snapshot {
     nodes: Vec<Node>,
     index: HashMap<String, usize>,
     /// The edges into each node, by the index of the node they leave.
     incoming: Vec<Vec<Arrival>>,
     /// The instant of the newest write to each node the log still names.
     last_write: HashMap<String, u64>,
-    history: &'a [HistoryEntry],
+    history: Vec<HistoryEntry>,
     /// The last write of the point this snapshot reads.
     pub seq: u64,
     pub at: u64,
 }
 
-impl<'a> Snapshot<'a> {
+impl Snapshot {
     /// Read the ledger once: the nodes, the log, and the reverse edges.
-    pub fn read<S: Store>(repo: &'a Repository<S>) -> Result<Self> {
+    pub fn read<S: Store>(repo: &Repository<S>) -> Result<Self> {
         let nodes = repo.all()?;
-        let history = repo.store().history();
+        let history = repo.history()?;
         let index: HashMap<String, usize> = nodes
             .iter()
             .enumerate()
@@ -97,7 +97,7 @@ impl<'a> Snapshot<'a> {
         }
         let (mut seq, mut at) = (0, 0);
         let mut last_write = HashMap::new();
-        for entry in history {
+        for entry in &history {
             seq = entry.seq;
             at = entry.at;
             if !entry.node.is_empty() {
@@ -281,7 +281,7 @@ impl<'a> Snapshot<'a> {
             first = Some(first.map_or(at, |held| held.min(at)));
             last = Some(last.map_or(at, |held| held.max(at)));
         };
-        for entry in self.history {
+        for entry in &self.history {
             hold(entry.at);
         }
         for node in &self.nodes {
@@ -305,7 +305,7 @@ impl<'a> Snapshot<'a> {
         let start = end - Days::new(days.saturating_sub(1));
         let mut counts: HashMap<(String, i64), usize> = HashMap::new();
         let mut counted: HashSet<(u64, String)> = HashSet::new();
-        for entry in self.history {
+        for entry in &self.history {
             if entry.node.is_empty() {
                 continue;
             }

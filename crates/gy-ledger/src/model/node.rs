@@ -94,8 +94,14 @@ pub struct Node {
     free: FreeAttributes,
     links: Vec<Edge>,
     data: NodeData,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    retired: Option<u64>,
 }
 impl Node {
+    /// The write that retired this node. The payload remains in the log.
+    pub fn retired(&self) -> Option<u64> {
+        self.retired
+    }
     fn build(id: NodeId, scope: &str, created: &str, title: &str, data: NodeData) -> Result<Self> {
         required(scope.to_string(), "a node needs a scope")?;
         if !valid_created(created) {
@@ -112,6 +118,7 @@ impl Node {
             free: FreeAttributes::new(),
             links: Vec::new(),
             data,
+            retired: None,
         })
     }
     pub fn need(id: NodeId, scope: &str, created: &str, title: &str) -> Result<Self> {

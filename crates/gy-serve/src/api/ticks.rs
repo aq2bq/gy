@@ -21,7 +21,11 @@ struct Ticks {
 
 pub fn ticks<S: Store>(repo: &Repository<S>, _req: &Request) -> Response {
     let mut ticks: Vec<Tick> = Vec::new();
-    for entry in repo.store().history() {
+    let history = match repo.history() {
+        Ok(history) => history,
+        Err(error) => return Response::text(500, &error.to_string()),
+    };
+    for entry in history {
         // One tick per write, not per changed node (a write may touch several).
         if ticks.last().is_some_and(|tick| tick.seq == entry.seq) {
             continue;

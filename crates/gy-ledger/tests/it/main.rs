@@ -99,3 +99,7 @@ mod undo_op;
 mod writer;
 
 mod unwaited_batch;
+
+mod retire;
+
+mod retire_sync;

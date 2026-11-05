@@ -17,6 +17,7 @@ pub enum Change {
     Updated(Node),
     Deleted(NodeId),
     ScopeRenamed { from: String, to: String },
+    Retired { nodes: Vec<NodeId>, revoke: bool },
 }
 
 /// The node state before a change, as the rule reads it (n-557f). The gate
@@ -33,6 +34,7 @@ pub trait Before {
 /// requirement (d-ee34), and a duplicate edge or a non-decision closes
 /// (d-fb49). Every other change is admitted.
 pub fn admit(before: &dyn Before, changes: &[Change]) -> Result<()> {
+    super::retirement::admit(before, changes)?;
     if reads_state(changes) {
         for change in changes {
             match change {
@@ -63,7 +65,7 @@ fn reads_state(changes: &[Change]) -> bool {
         Change::Created(node) | Change::Updated(node) => {
             matches!(node.kind(), NodeKind::Criterion | NodeKind::Requirement)
         }
-        Change::Deleted(_) | Change::ScopeRenamed { .. } => false,
+        Change::Deleted(_) | Change::ScopeRenamed { .. } | Change::Retired { .. } => false,
     })
 }
 

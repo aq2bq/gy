@@ -96,7 +96,7 @@ fn named_nodes(event: &log::Event) -> BTreeSet<String> {
             log::Change::Created { node, .. }
             | log::Change::Updated { node, .. }
             | log::Change::Deleted { node, .. } => Some(node.clone()),
-            log::Change::ScopeRenamed { .. } => None,
+            log::Change::ScopeRenamed { .. } | log::Change::Retired { .. } => None,
         })
         .collect()
 }

@@ -164,6 +164,9 @@ pub fn apply(nodes: &mut BTreeMap<String, Value>, event: &log::Event) {
             log::Change::Deleted { node, .. } => {
                 nodes.remove(node);
             }
+            log::Change::Retired { nodes: ids, revoke } => {
+                retire_values(nodes, ids, if *revoke { None } else { Some(event.seq) });
+            }
             log::Change::ScopeRenamed { from, to, .. } => {
                 for value in nodes.values_mut() {
                     rename_value(value, from, to);
@@ -183,6 +186,9 @@ pub fn history(events: &[log::Event]) -> Result<Vec<HistoryEntry>> {
                 log::Change::Created { node, .. } => (node.clone(), "created".to_string()),
                 log::Change::Updated { node, .. } => (node.clone(), "updated".to_string()),
                 log::Change::Deleted { node, .. } => (node.clone(), "deleted".to_string()),
+                log::Change::Retired { nodes, revoke } => {
+                    (String::new(), super::retirement::line(nodes, *revoke))
+                }
                 log::Change::ScopeRenamed { from, to, nodes } => {
                     (String::new(), super::rename_line(from, to, *nodes))
                 }
@@ -233,4 +239,12 @@ pub fn load_nodes(dir: &Path, events: &[log::Event]) -> (BTreeMap<String, Value>
 /// Serialize a value for staging or storing.
 pub fn encode(value: &Value) -> Result<Vec<u8>> {
     serde_json::to_vec(value).map_err(|error| Error::invalid(error.to_string()))
+}
+
+pub(super) fn retire_values(nodes: &mut BTreeMap<String, Value>, ids: &[String], seq: Option<u64>) {
+    for id in ids {
+        if let Some(value) = nodes.get_mut(id) {
+            super::retirement::set(value, seq);
+        }
+    }
 }

@@ -23,10 +23,10 @@ pub(super) fn check_remote_format(ledger: &Path, upstream: &str) -> Result<Optio
         .trim()
         .parse()
         .map_err(|_| Error::invalid("the remote format file is not a version number"))?;
-    if version > FormatVersion::CURRENT.0 {
+    if !FormatVersion(version).supported() {
         return Err(Error::invalid(format!(
             "the remote ledger is format {version}; this build reads up to {}\nupdate gy",
-            FormatVersion::CURRENT.0
+            FormatVersion::RETIREMENT.0
         )));
     }
     Ok(Some(version))
@@ -79,6 +79,7 @@ pub(super) fn touched(nodes: &BTreeMap<String, Value>, event: &log::Event) -> Ve
             log::Change::Created { node, .. }
             | log::Change::Updated { node, .. }
             | log::Change::Deleted { node, .. } => out.push(node.clone()),
+            log::Change::Retired { nodes, .. } => out.extend(nodes.iter().cloned()),
             log::Change::ScopeRenamed { from, .. } => {
                 for (id, value) in nodes {
                     if replay::scope_of(value).as_deref() == Some(from) {

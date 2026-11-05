@@ -287,3 +287,13 @@ fn cancel(ledger: &Path, repository: &Repository<FileStore>, action: &ReqAction)
     };
     retry(|| repo::open_write(ledger), operation)
 }
+
+pub fn retire(cli: &Cli, ledger: &Path, ids: &[String], reason: &str, revoke: bool) -> Result<()> {
+    let operation = gy_ledger::Retire {
+        ids: ids.to_vec(),
+        reason: reason.to_string(),
+        revoke,
+    };
+    let (_, outcome) = retry(|| repo::open_write(ledger), operation)?;
+    emit(cli.json, &Written::of(&outcome))
+}

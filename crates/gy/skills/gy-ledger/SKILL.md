@@ -26,6 +26,19 @@ each ready need's targeted waits as due or waiting. The latter two honor
 - A need becomes `done` by derivation when at least one of its `filed-as` requirements is `done`, none of them is still `filed` or `approved`, and every acceptance criterion it `targets` is satisfied; a `cancelled` requirement counts on neither side, so it neither completes the need nor holds it open, and a need whose requirements are all `cancelled` asks for a new `filed-as` requirement. A targeted criterion that no requirement still being built (`filed` or `approved`) covers shows as `unmet criterion <id>` under `missing`, with the command that would cover it under `next`. Closing a need with `need close` does not satisfy its criteria: the close lists the unmet ones under `missing`, so satisfy them with evidence (`criterion satisfy`) or drop them (`link --remove <need> targets <ac>`). Read later, a criterion that only needs closed with `need close` aimed at is `withdrawn`: the close's evidence is its reason, `gy show` names it as `withdrawn-by`, and `handover` and `list --status unsatisfied` leave it out (d-ed67).
 - Dates print in your local time. When you tell another writer a point in time, use the `seq` or an ID, not a date.
 
+## Retiring earlier records
+
+Use `gy retire <ID>... --reason <text>` for records of how the team worked
+that were written before the rule to record only what is being built (d-c1a1).
+The agent selects explicit IDs; gy does not suggest candidates or judge the
+meaning of a record. A set can be retired only when none is in progress and
+no edge connects it to the nodes left visible. Select connected nodes in one
+write. Retired nodes disappear from every reading, including past points in
+serve. Original text remains in the log, snapshots, and remote git.
+Restore a set with `gy retire <ID>... --revoke --reason <text>`, or use `gy undo`
+immediately after retiring it. Restoring only part of a connected set is
+refused. Keep the IDs from the retirement write; gy has no retired-node list.
+
 ## A team's ledger (a `remote` in gy.toml)
 
 The team is people, each with their own machine and their own copy; `gy remote set` and `gy remote join` are the person's steps (the README's "Working as a team"), and an agent does not join. Agents on one machine already share the local ledger and need no remote. (The old names `share` / `join` / `sync` still work but are deprecated.)

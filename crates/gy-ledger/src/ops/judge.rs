@@ -63,9 +63,24 @@ fn typed_change(change: &log::Change) -> Result<model::Change> {
         log::Change::Deleted { value, .. } => {
             model::Change::Deleted(node(value).ok_or_else(bad)?.id().clone())
         }
+        log::Change::Retired { nodes, revoke } => model::Change::Retired {
+            nodes: nodes.iter().map(|id| parse_id(id)).collect::<Result<_>>()?,
+            revoke: *revoke,
+        },
         log::Change::ScopeRenamed { from, to, .. } => model::Change::ScopeRenamed {
             from: from.clone(),
             to: to.clone(),
         },
     })
+}
+
+fn parse_id(text: &str) -> Result<NodeId> {
+    let (prefix, hash) = text
+        .split_once('-')
+        .ok_or_else(|| Error::invalid("invalid retired ID"))?;
+    let kind = NodeKind::ALL
+        .into_iter()
+        .find(|kind| kind.prefix() == prefix)
+        .ok_or_else(|| Error::invalid("invalid retired ID kind"))?;
+    NodeId::from_hash(kind, hash)
 }

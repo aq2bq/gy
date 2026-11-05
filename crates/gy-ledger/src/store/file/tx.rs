@@ -47,6 +47,12 @@ impl FileStore {
                 nodes: *nodes,
             });
         }
+        if let Some((nodes, revoke)) = &self.staged_retirement {
+            changes.push(log::Change::Retired {
+                nodes: nodes.clone(),
+                revoke: *revoke,
+            });
+        }
         Ok(changes)
     }
     /// Commit on `Ok`, roll back on `Err`, so a half-finished change writes nothing.
@@ -102,6 +108,12 @@ impl FileStore {
             by_mail,
             changes,
         };
+        if self.staged_retirement.is_some()
+            && self.version < super::super::FormatVersion::RETIREMENT
+        {
+            super::super::format::write(&self.dir, super::super::FormatVersion::RETIREMENT)?;
+            self.version = super::super::FormatVersion::RETIREMENT;
+        }
         log::append(&self.dir, &event)?;
         self.seq += 1;
         for entry in &mut self.staged_history {
@@ -112,6 +124,7 @@ impl FileStore {
         self.history.append(&mut self.staged_history);
         self.staged.clear();
         self.staged_rename = None;
+        self.staged_retirement = None;
         snapshot::write(&self.dir, self.seq, &self.nodes)?;
         Ok(())
     }
@@ -156,6 +169,7 @@ impl Store for FileStore {
     fn begin(&mut self) {
         self.staged.clear();
         self.staged_rename = None;
+        self.staged_retirement = None;
         self.staged_history.clear();
     }
     fn stage(&mut self, key: impl Into<String>, value: impl Into<Vec<u8>>) {
@@ -175,8 +189,15 @@ impl Store for FileStore {
         self.staged_rename = Some((from.to_string(), to.to_string(), nodes));
         Ok(nodes)
     }
+    fn retire(&mut self, nodes: &[String], revoke: bool) -> Result<()> {
+        self.staged_retirement = Some((nodes.to_vec(), revoke));
+        Ok(())
+    }
     fn commit(&mut self) -> Result<()> {
-        if self.staged.is_empty() && self.staged_rename.is_none() {
+        if self.staged.is_empty()
+            && self.staged_rename.is_none()
+            && self.staged_retirement.is_none()
+        {
             if self.staged_history.is_empty() {
                 return Ok(());
             }
@@ -192,6 +213,7 @@ impl Store for FileStore {
     fn rollback(&mut self) {
         self.staged.clear();
         self.staged_rename = None;
+        self.staged_retirement = None;
         self.staged_history.clear();
     }
     fn record(&mut self, node: &str, what: &str, why: &str, source: &str) {

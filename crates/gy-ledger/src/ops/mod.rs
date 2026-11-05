@@ -18,9 +18,11 @@ pub mod req_approve;
 pub mod req_cancel;
 pub mod req_done;
 pub mod req_revise;
+pub mod retire;
 pub mod scope_rename;
 mod snapshot;
 pub mod undo;
+pub use retire::Retire;
 
 pub use criterion_add::CriterionAdd;
 pub use criterion_satisfy::CriterionSatisfy;

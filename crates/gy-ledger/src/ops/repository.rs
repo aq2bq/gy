@@ -66,9 +66,18 @@ impl<S: Store> Repository<S> {
         NodeId::mint(kind, &mut self.store)
     }
     pub fn get(&self, id: &NodeId) -> Result<Option<Node>> {
-        self.load(&id.to_string())
+        let node = self.load(&id.to_string())?;
+        if let Some(node) = &node {
+            if let Some(seq) = node.retired() {
+                return Err(retired_error(node.id(), seq));
+            }
+        }
+        Ok(node)
     }
     pub fn all(&self) -> Result<Vec<Node>> {
+        Ok(visible(self.all_stored()?))
+    }
+    pub(super) fn all_stored(&self) -> Result<Vec<Node>> {
         let mut nodes = Vec::new();
         for key in self.store.keys() {
             if let Some(node) = self.load(&key)? {
@@ -76,6 +85,28 @@ impl<S: Store> Repository<S> {
             }
         }
         Ok(nodes)
+    }
+    /// Publication rewrites scopes even after their last node retires, in one pass.
+    pub(crate) fn publication_snapshot(&self) -> Result<(Snapshot, Vec<String>)> {
+        let all = self.all_stored()?;
+        let scopes = all.iter().map(|node| node.scope().to_string()).collect();
+        Ok((super::snapshot::build(visible(all)), scopes))
+    }
+    /// Ordinary history entries for retired nodes are excluded from every read.
+    pub fn history(&self) -> Result<Vec<HistoryEntry>> {
+        let hidden: std::collections::BTreeSet<String> = self
+            .all_stored()?
+            .iter()
+            .filter(|node| node.retired().is_some())
+            .map(|node| node.id().to_string())
+            .collect();
+        Ok(self
+            .store
+            .history()
+            .iter()
+            .filter(|row| !hidden.contains(&row.node))
+            .cloned()
+            .collect())
     }
     /// The reverse of every edge that points at `id`, derived from the from
     /// side's stored links (D-76: one place per edge).
@@ -119,7 +150,14 @@ impl<S: Store> Repository<S> {
     /// id wins, and the zero-padding is only among aliases, never a hash id. An
     /// unknown text is an error, and an ambiguous one lists the candidates.
     pub fn resolve(&self, text: &str) -> Result<NodeId> {
-        resolve_in(&self.all()?, text)
+        let all = self.all_stored()?;
+        let id = resolve_in(&all, text)?;
+        if let Some(node) = all.iter().find(|node| node.id() == &id) {
+            if let Some(seq) = node.retired() {
+                return Err(retired_error(&id, seq));
+            }
+        }
+        Ok(id)
     }
     /// Run `f` as one transaction with the given why and source. A failed
     /// commit rolls back, so nothing is written (AC-45).
@@ -159,4 +197,30 @@ impl<S: Store> Repository<S> {
 
 fn encode(node: &Node) -> Result<Vec<u8>> {
     serde_json::to_vec(node).map_err(|error| Error::invalid(error.to_string()))
+}
+
+fn retired_error(id: &NodeId, seq: u64) -> Error {
+    Error::invalid(format!(
+        "{id} retired at seq {seq}; restore with gy retire {id} --revoke --reason …"
+    ))
+}
+
+fn visible(all: Vec<Node>) -> Vec<Node> {
+    let hidden: std::collections::BTreeSet<String> = all
+        .iter()
+        .filter(|node| node.retired().is_some())
+        .map(|node| node.id().to_string())
+        .collect();
+    all.into_iter()
+        .filter(|node| node.retired().is_none())
+        .map(|mut node| {
+            // At an earlier point an edge may predate the unlink that allowed retirement.
+            for index in (0..node.links().len()).rev() {
+                if hidden.contains(&node.links()[index].to.to_string()) {
+                    node.unlink(index);
+                }
+            }
+            node
+        })
+        .collect()
 }

@@ -58,6 +58,8 @@ Writes:
         next shows each ready need's targeted waits as due or waiting. Both reads honor --scope and --json.
   gy scope rename <old> <new>
         moves every node of the old scope to the new name and rewrites gy.toml, keeping comments and order
+  gy retire <ID>... --reason <text> [--revoke]
+        retires explicit IDs from every reading; --revoke restores them. Refuses active work and any edge between retired and visible nodes; select connected nodes together. Original text remains in the log and remote git
   gy undo --reason <text>
         takes back the last write only. Typed again, it takes back the undo (redo). There is no way to take back two
 
