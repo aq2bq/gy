@@ -40,7 +40,7 @@
   function rowHtml(item, ui) {
     const row = item.row;
     const label = row.alias || row.id;
-    return `<a class="row wide" href="#/n/${row.id}"><span class="dot dot-${row.kind}"></span><span class="id">${esc(label)}</span><span class="t" title="${esc(row.title)}">${esc(row.title)}</span><span class="st">${esc(ui.t(`st.${row.kind}.${row.status}`))}</span><span class="own">${esc(item.own)}</span></a>`;
+    return `<a class="row wide" href="${ui.href(`#/n/${row.id}`)}"><span class="dot dot-${row.kind}"></span><span class="id">${esc(label)}</span><span class="t" title="${esc(row.title)}">${esc(row.title)}</span><span class="st">${esc(ui.t(`st.${row.kind}.${row.status}`))}</span><span class="own">${esc(item.own)}</span></a>`;
   }
 
   /* The region: #main only, from the state the root read. */

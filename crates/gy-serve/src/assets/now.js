@@ -20,6 +20,8 @@
   let actors = [];
   let t = key => key;
   let lang = 'en';
+  /* Where a row goes, with the sidebar's scope kept: the root's ui.href. */
+  let link = hash => hash;
 
   const esc = text => String(text ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
   const fill = (text, values) => text.replace(/\{(\w+)\}/g, (all, key) => (key in values ? values[key] : all));
@@ -32,7 +34,7 @@
     `<div class="head"><span class="n" data-testid="count">${n}</span><span class="l">${esc(name)}</span><span class="h">${esc(sub)}</span></div>`;
 
   const rowHtml = (row, st) =>
-    `<a class="row" href="#/n/${row.id}"><span class="dot dot-${row.kind}"></span><span class="id">${esc(label(row))}</span><span class="t" title="${esc(row.title)}">${esc(row.title)}</span><span class="st">${st}</span></a>`;
+    `<a class="row" href="${link(`#/n/${row.id}`)}"><span class="dot dot-${row.kind}"></span><span class="id">${esc(label(row))}</span><span class="t" title="${esc(row.title)}">${esc(row.title)}</span><span class="st">${st}</span></a>`;
 
   const questions = () => data.waiting.filter(item => item.waiting === 'question');
   const requirements = () => data.waiting.filter(item => item.waiting === 'requirement');
@@ -57,7 +59,7 @@
     const row = item.row;
     const options = item.options.map(option => `<li>${esc(option)}</li>`).join('');
     const mark = row.unwaited ? ` <i class="unwaited">${esc(t('unwaited'))} · ${esc(window.GyTime.age(row.created, t))}</i>` : '';
-    return `<a class="wait" href="#/n/${row.id}"><div class="who">${esc(label(row))} · ${t('decider')} ${esc(item.decider)}${mark}</div><div class="t">${esc(row.title)}</div><ol class="opts">${options}</ol></a>`;
+    return `<a class="wait" href="${link(`#/n/${row.id}`)}"><div class="who">${esc(label(row))} · ${t('decider')} ${esc(item.decider)}${mark}</div><div class="t">${esc(row.title)}</div><ol class="opts">${options}</ol></a>`;
   }
 
   /* The first eye: the questions that wait on a person, then the filed
@@ -73,7 +75,7 @@
     }
     const cards = qs.slice(0, 2).map(card).join('');
     const more = qs.length > 2
-      ? `<a class="more" href="#/list/Question">${fill(t('moreQuestions'), { n: qs.length - 2 })}</a>`
+      ? `<a class="more" href="${link('#/list/Question')}">${fill(t('moreQuestions'), { n: qs.length - 2 })}</a>`
       : '';
     const rows = rs.length
       ? `<div class="rows">${rs.map(item => rowHtml(item.row, status(item.row))).join('')}</div>`
@@ -96,7 +98,7 @@
           ? `<div class="nothing calm" role="status">${esc(pick('blockedNext'))}</div>`
           : `<div class="nothing" role="status">${esc(pick('praiseQuiet'))}</div>`;
     const tail = data.in_progress.length
-      ? `<a class="more" href="#/list/Need">${fill(t('allNeeds'), { n: data.in_progress.length })}</a>`
+      ? `<a class="more" href="${link('#/list/Need')}">${fill(t('allNeeds'), { n: data.in_progress.length })}</a>`
       : '';
     return `<section class="eye next" data-eye="next" aria-label="${esc(t('eyeNext'))}">${head('next', data.ready.length, t('readyHead'), t('readySub'))}${body}${tail}</section>`;
   }
@@ -160,7 +162,7 @@
   function what(entry) {
     const actor = esc(entry.who || entry.actor);
     const doing = esc(verb(entry));
-    const node = entry.node ? `<a href="#/n/${entry.node}">${esc(entry.node)}</a>` : '';
+    const node = entry.node ? `<a href="${link(`#/n/${entry.node}`)}">${esc(entry.node)}</a>` : '';
     if (!node) return `${actor} ${doing}`;
     return lang === 'ja' ? `${actor} が ${node} ${doing}` : `${actor} ${doing} ${node}`;
   }
@@ -196,6 +198,7 @@
     if (!el) return;
     t = ui.t;
     lang = state.lang;
+    link = ui.href;
     data = state.now;
     actors = [];
     if (!data) {

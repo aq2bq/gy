@@ -28,7 +28,7 @@
     const meta = state.page ? pageMeta(node, kind, mark, state, ui) : [`<span>${ui.scopeTag(scope)}</span>`,
       `<span class="stbadge ${window.GyShape.isOpen(mark) ? 'open' : ''}">${esc(ui.t(`st.${kind}.${mark}`))}</span>`].join('');
     el.innerHTML = `<div data-shown="${esc(node.id)}">` +
-      `<a class="back" href="#/cross">${esc(ui.t('backCross'))}</a>` +
+      `<a class="back" href="${ui.href('#/cross')}">${esc(ui.t('backCross'))}</a>` +
       `<div class="nhead"><div class="meta" data-testid="nodeMeta"><span class="k k-${kind}">${esc(ui.t(kind))}</span>${state.page ? '' : `<span class="al">${esc(node.id)}</span>`}${meta}</div><h1>${esc(node.title)}</h1></div>` +
       thread(state, node, path, ui) +
       `<div class="ngrid"><div>${state.page ? facts(node, kind, ui, state.lang) + body(node, ui) : `<div class="sec">${status(state, 'page', false, ui)}</div>`}</div>` +
@@ -156,7 +156,7 @@
       const item = box.node;
       const kind = window.GyShape.kind(item.kind, item.id);
       const scope = item.scope && item.scope !== node.scope ? item.scope : '';
-      svg += `<a href="#/n/${encodeURIComponent(item.id)}"><g class="bx" data-id="${esc(item.id)}" transform="translate(${box.x},${box.y})" data-testid="threadBox">${boxInner(item, kind, item.state, scope, ui)}</g></a>`;
+      svg += `<a href="${ui.href(`#/n/${encodeURIComponent(item.id)}`)}"><g class="bx" data-id="${esc(item.id)}" transform="translate(${box.x},${box.y})" data-testid="threadBox">${boxInner(item, kind, item.state, scope, ui)}</g></a>`;
     }
     return svg;
   }
@@ -225,7 +225,7 @@
     const before = ['narrows', 'widens', 'supersedes', 'completes'];
     const after = ['narrowed-by', 'widened-by', 'superseded-by', 'completed-by'];
     const row = edge => {
-      const link = `<a href="#/n/${encodeURIComponent(edge.to)}">${esc(edge.alias || edge.to)}</a>`;
+      const link = `<a href="${ui.href(`#/n/${encodeURIComponent(edge.to)}`)}">${esc(edge.alias || edge.to)}</a>`;
       const mark = edge.mark ? ` <span class="dim">「${esc(edge.mark)}」</span>` : '';
       return `${esc(ui.t(`rel.${edge.name}`))} ${link}${mark}`;
     };
@@ -284,11 +284,11 @@
         const one = new Date(at * 1000);
         return `${one.getFullYear()}-${String(one.getMonth() + 1).padStart(2, '0')}-${String(one.getDate()).padStart(2, '0')}`;
       };
-      links.push(`<a href="#/cross?from=${dateOf(monday)}&to=${dateOf(monday + 6 * DAY)}">${esc(fill(ui.t('madeWeek'), { from: dateOf(monday), to: dateOf(monday + 6 * DAY) }))}</a>`);
-      if (node.scope) links.push(`<a href="#/cross?scope=${encodeURIComponent(node.scope)}&from=${dateOf(day - 3 * DAY)}&to=${dateOf(day + 3 * DAY)}">${esc(fill(ui.t('around3'), { scope: node.scope }))}</a>`);
+      links.push(`<a href="${ui.href(`#/cross?from=${dateOf(monday)}&to=${dateOf(monday + 6 * DAY)}`)}">${esc(fill(ui.t('madeWeek'), { from: dateOf(monday), to: dateOf(monday + 6 * DAY) }))}</a>`);
+      if (node.scope) links.push(`<a href="${ui.href(`#/cross?scope=${encodeURIComponent(node.scope)}&from=${dateOf(day - 3 * DAY)}&to=${dateOf(day + 3 * DAY)}`)}">${esc(fill(ui.t('around3'), { scope: node.scope }))}</a>`);
     }
     const tokens = [...new Set((String(node.title).match(/[A-Za-z][A-Za-z0-9_.]{2,}|[ァ-ヴー]{3,}|[一-龥]{2,4}/g) || []))].slice(0, 6);
-    for (const token of tokens) links.push(`<a href="#/cross?q=${encodeURIComponent(token)}">${esc(fill(ui.t('wordLink'), { w: token }))}</a>`);
+    for (const token of tokens) links.push(`<a href="${ui.href(`#/cross?q=${encodeURIComponent(token)}`)}">${esc(fill(ui.t('wordLink'), { w: token }))}</a>`);
     return `<div class="sec"><h2>${esc(ui.t('crossOut'))} <span class="sub">${esc(ui.t('crossOutSub'))}</span></h2><div class="outs" data-testid="crossLinks">${links.join('')}</div></div>`;
   }
 

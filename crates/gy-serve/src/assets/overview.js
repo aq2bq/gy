@@ -65,7 +65,7 @@
       const down = (week.done / max) * band;
       const from = dateOf(week.from);
       const to = week.to ? dateOf(week.to) : dateOf(week.from + 6 * DAY);
-      return `<a href="#/cross?from=${from}&to=${to}" data-testid="week"><title>${md(week.from)}: ${week.opened} / ${week.done}</title>` +
+      return `<a href="${ui.href(`#/cross?from=${from}&to=${to}`)}" data-testid="week"><title>${md(week.from)}: ${week.opened} / ${week.done}</title>` +
         `<rect x="${x}" y="${band - up}" width="26" height="${up}" fill="var(--need)" opacity=".85"/>` +
         `<rect x="${x}" y="${band + 2}" width="26" height="${down}" fill="var(--decision)" opacity=".75"/>` +
         `<text x="${x}" y="${band * 2 + 14}">${md(week.from)}</text></a>`;
@@ -90,7 +90,7 @@
       rows += `<div class="rh" style="--h:${ui.hue(scope)}"><div class="name">${esc(scope)}</div>` +
         `<div class="meta">${fill(esc(ui.t('openDoneBlocked')), { o: row ? row.open : mine.length, d: done, b: blocked })}</div>` +
         (row && row.pulse.length ? pulse(row.pulse, scope) : '') +
-        `<a class="x" href="#/cross?scope=${encodeURIComponent(scope)}&from=${dateOf((body.now || Date.now() / 1000) - 13 * DAY)}&to=${dateOf(body.now || Date.now() / 1000)}">${esc(ui.t('cross2w'))}</a></div>`;
+        `<a class="x" href="${ui.href(`#/cross?scope=${encodeURIComponent(scope)}&from=${dateOf((body.now || Date.now() / 1000) - 13 * DAY)}&to=${dateOf(body.now || Date.now() / 1000)}`)}">${esc(ui.t('cross2w'))}</a></div>`;
       for (const stage of STAGES) {
         const cards = mine.filter(item => item.stage === stage).sort(byCard);
         rows += `<div class="cell ${stage === 'before' ? 'wide' : ''}">${cards.length ? cards.map(item => card(item, state, ui)).join('') : `<span class="none">—</span>`}</div>`;
@@ -138,7 +138,7 @@
     const waiting = item.waiting.length
       ? `<div class="why">${esc(ui.t('waitingOn'))}: <b>${item.waiting.slice(0, 3).map(one => `${esc(one.title || one.id)}${one.decider ? `（${esc(one.decider)}）` : ''}`).join('、')}</b></div>`
       : '';
-    return `<a class="card ${item.blocked ? 'blk' : ''}" data-testid="needCard" data-blocked="${item.blocked ? 'true' : 'false'}" href="#/n/${encodeURIComponent(item.id)}">` +
+    return `<a class="card ${item.blocked ? 'blk' : ''}" data-testid="needCard" data-blocked="${item.blocked ? 'true' : 'false'}" href="${ui.href(`#/n/${encodeURIComponent(item.id)}`)}">` +
       `<div class="l1"><span class="id">${esc(item.id)}</span><span class="age" style="color:${days === null ? 'var(--paper-3)' : ageCol(days)}">${esc(age)}</span></div>` +
       `<div class="t">${esc(item.title)}</div>${group.length ? `<div class="g">${group.join('')}</div>` : ''}${waiting}</a>`;
   }
@@ -151,14 +151,14 @@
     const roots = body.roots.slice().sort((a, b) => b.needs.length - a.needs.length);
     const row = item => {
       const head = item.kind === 'Question'
-        ? `<span class="who">${esc(fill(ui.t('decides'), { who: item.decider || '?' }))}</span><a href="#/n/${encodeURIComponent(item.id)}">${esc(item.id)} ${esc(trunc(item.title, 40))}</a>`
-        : `<a href="#/n/${encodeURIComponent(item.id)}">${esc(item.id)} ${esc(trunc(item.title, 40))}</a>`;
-      const needs = item.needs.map(id => `<a href="#/n/${encodeURIComponent(id)}">${esc(id)}</a>`).join('・');
-      const via = item.via.length ? ` · ${esc(ui.t('via'))} ${item.via.map(id => `<a href="#/n/${encodeURIComponent(id)}">${esc(id)}</a>`).join(' → ')}` : '';
+        ? `<span class="who">${esc(fill(ui.t('decides'), { who: item.decider || '?' }))}</span><a href="${ui.href(`#/n/${encodeURIComponent(item.id)}`)}">${esc(item.id)} ${esc(trunc(item.title, 40))}</a>`
+        : `<a href="${ui.href(`#/n/${encodeURIComponent(item.id)}`)}">${esc(item.id)} ${esc(trunc(item.title, 40))}</a>`;
+      const needs = item.needs.map(id => `<a href="${ui.href(`#/n/${encodeURIComponent(id)}`)}">${esc(id)}</a>`).join('・');
+      const via = item.via.length ? ` · ${esc(ui.t('via'))} ${item.via.map(id => `<a href="${ui.href(`#/n/${encodeURIComponent(id)}`)}">${esc(id)}</a>`).join(' → ')}` : '';
       return `<div class="chain" data-testid="chain"><div><div class="root">${head}</div><div class="via">${esc(ui.t('stoppedNeeds'))}: ${needs}${via}</div></div>` +
         `<div class="cnt">${item.needs.length}<small>${esc(ui.t('needsUnit'))}</small></div></div>`;
     };
-    const mini = (item, right, testid) => `<a class="mini" data-testid="${testid}" href="#/n/${encodeURIComponent(item.id)}"><span class="mono dim">${esc(item.id)}</span><span>${ui.scopeTag(item.scope)}</span>` +
+    const mini = (item, right, testid) => `<a class="mini" data-testid="${testid}" href="${ui.href(`#/n/${encodeURIComponent(item.id)}`)}"><span class="mono dim">${esc(item.id)}</span><span>${ui.scopeTag(item.scope)}</span>` +
       `<span class="t">${right ? `<span class="mono over">${esc(right)}</span> ` : ''}${esc(item.title)}</span></a>`;
     const overdue = body.overdue.length
       ? body.overdue.map(item => mini(item, `due ${item.due.slice(5)}`, 'overdue')).join('')

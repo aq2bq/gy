@@ -63,7 +63,7 @@
       `<span class="who ${whoCls(who, order)}">${esc(who)}</span>` +
       `<span class="nd"><div class="what">${what(entry, labels, ui, lang)}</div><div class="src" title="${esc(entry.source)}">${esc(entry.source)}</div><div class="why">${esc(entry.why)}</div></span>`;
     return entry.node
-      ? `<div role="listitem"><a class="hi" href="#/n/${entry.node}">${body}</a></div>`
+      ? `<div role="listitem"><a class="hi" href="${ui.href(`#/n/${entry.node}`)}">${body}</a></div>`
       : `<div role="listitem"><div class="hi">${body}</div></div>`;
   }
 

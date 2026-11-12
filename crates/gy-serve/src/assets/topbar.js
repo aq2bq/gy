@@ -9,7 +9,7 @@
   function render(state, el, ui) {
     if (!el) return;
     const route = state.route;
-    const root = `<a href="#/">${ui.t('tabOverview')}</a><span>›</span>`;
+    const root = `<a href="${ui.href('#/')}">${ui.t('tabOverview')}</a><span>›</span>`;
     if (route.name === 'overview' || route.name === 'missing') el.innerHTML = `<span>${ui.t('tabOverview')}</span>`;
     else if (route.name === 'now') el.innerHTML = `${root}<span>${ui.t('now')}</span>`;
     else if (route.name === 'cross') el.innerHTML = `${root}<span>${ui.t('tabCross')}</span>`;
@@ -23,7 +23,7 @@
   function trail(state, ui) {
     const node = state.page;
     if (!node) return `<span>${esc(state.route.arg)}</span>`;
-    return `<a href="#/list/${node.kind}">${ui.plural(node.kind)}</a><span>›</span>${ui.scopeTag(node.scope)}`;
+    return `<a href="${ui.href(`#/list/${node.kind}`)}">${ui.plural(node.kind)}</a><span>›</span>${ui.scopeTag(node.scope)}`;
   }
 
   window.GyTopbar = { render };

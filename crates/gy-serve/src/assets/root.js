@@ -11,7 +11,6 @@
   let words = null;
   let state = window.GyState.initial({
     lang: pickLang(),
-    scope: pickScope(),
     route: window.GyState.parseRoute(location.hash),
     wide: WIDE.matches,
   });
@@ -21,9 +20,6 @@
     const asked = new URLSearchParams(location.search).get('lang');
     if (asked === 'en' || asked === 'ja') return asked;
     return localStorage.getItem('gy-lang') || (document.documentElement.lang === 'ja' ? 'ja' : 'en');
-  }
-  function pickScope() {
-    return sessionStorage.getItem('gy-scope') || 'all';
   }
 
   /* A word by key; a dotted key walks nested objects (`st.Need.open`). */
@@ -139,16 +135,21 @@
 
   /* The insides of an intent: which ones need a read before the redraw. */
   async function run(intent) {
+    /* A scope choice is one history entry: the URL first, then the state, so
+       back and forward land where the screen already is (r-d060). Choosing the
+       scope already chosen is nothing. */
+    if (intent.type === 'setScope') {
+      if (intent.value === state.scope) return;
+      location.hash = window.GyState.hashOf(window.GyState.withScope(state.route, intent.value));
+      state = window.GyState.apply(state, intent);
+      paint();
+      await refresh();
+      return;
+    }
     state = window.GyState.apply(state, intent);
     if (intent.type === 'setLang') {
       localStorage.setItem('gy-lang', intent.value);
       paint();
-      return;
-    }
-    if (intent.type === 'setScope') {
-      sessionStorage.setItem('gy-scope', intent.value);
-      paint();
-      await refresh();
       return;
     }
     if (intent.type === 'go') { paint(); await refresh(); return; }
@@ -246,6 +247,11 @@
     if (window.GyBand) window.GyBand.render(state, document.querySelector('.scrub'), ui);
   }
 
+  /* Where a link or a move inside the screen goes: the place it names, with
+     the sidebar's scope kept (r-d060). One function, so a link and a
+     programmatic move never disagree about the hash. */
+  const href = hash => window.GyState.hashOf(window.GyState.withScope(window.GyState.parseRoute(hash), state.scope));
+
   /* What the regions may use: the read-only helpers and where a link goes. */
   const ledgerName = () => {
     const badge = document.querySelector('[data-testid="ledger"]');
@@ -254,7 +260,8 @@
   const ui = {
     t: word, plural, scopeTag, hue, when, day, tickAt,
     canCopy: !!navigator.clipboard,
-    navigate: hash => { location.hash = hash; },
+    href,
+    navigate: hash => { location.hash = href(hash); },
     retry,
   };
   Object.defineProperty(ui, 'ledger', { get: ledgerName });

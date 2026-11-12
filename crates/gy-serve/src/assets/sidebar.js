@@ -40,11 +40,20 @@
   function drawEyes(state, el, ui) {
     const now = state.now;
     const item = (key, count) =>
-      `<a href="#/eye/${key}" style="--ec:var(--${EYE_COLOR[key]})"><b>${count}</b><small>${ui.t(EYE_WORD[key])}</small></a>`;
+      `<a href="${ui.href(`#/eye/${key}`)}" style="--ec:var(--${EYE_COLOR[key]})"><b>${count}</b><small>${ui.t(EYE_WORD[key])}</small></a>`;
     el.querySelector('#eyes3').innerHTML =
       item('wait', now ? now.waiting.length : 0) +
       item('next', now ? now.ready.length : 0) +
       item('resume', now ? now.resume.in_progress.length : 0);
+  }
+
+  /* A scope the URL names that the ledger does not have (r-d060): one line and
+     one way back to all. Until the shell answers, nothing is claimed. */
+  function unknownScope(state, ui) {
+    if (!state.shell || state.scope === 'all') return '';
+    if ((state.shell.scopes || []).some(item => item.name === state.scope)) return '';
+    return `<div class="warn" data-testid="unknownScope"><span>${esc(fill(ui.t('unknownScope'), { name: state.scope }))}</span>` +
+      `<button data-act="setScope" data-arg="all">${ui.t('all')}</button></div>`;
   }
 
   function drawNav(state, el, ui) {
@@ -52,13 +61,13 @@
     const route = state.route;
     const entry = ([href, name, key, mark]) => {
       const on = route.name === name;
-      return `<a href="${href}" class="${on ? 'on' : ''}">` +
+      return `<a href="${ui.href(href)}" class="${on ? 'on' : ''}">` +
         `<span class="m" data-testid="navMark">${mark}</span>` +
         `<span class="l" data-testid="navLabel">${ui.t(key)}</span></a>`;
     };
     const kind = name => {
       const on = route.name === 'list' && route.arg === name;
-      return `<a href="#/list/${name}" class="${on ? 'on' : ''}"><span class="dot dot-${name}"></span>${ui.plural(name)}${counter(shell, name)}</a>`;
+      return `<a href="${ui.href(`#/list/${name}`)}" class="${on ? 'on' : ''}"><span class="dot dot-${name}"></span>${ui.plural(name)}${counter(shell, name)}</a>`;
     };
     const scopeRow = item =>
       `<button data-s="${esc(item.name)}" data-act="setScope" data-arg="${esc(item.name)}" class="${state.scope === item.name ? 'on' : ''}">${ui.scopeTag(item.name)}<span class="cnt">${item.count}</span></button>`;
@@ -72,6 +81,7 @@
       `<div class="h">${ui.t('nodes')}</div>` +
       KINDS.map(kind).join('') +
       `<div data-testid="scopes"><div class="h">${ui.t('scopes')}</div>` +
+      unknownScope(state, ui) +
       `<button data-s="all" data-act="setScope" data-arg="all" class="${state.scope === 'all' ? 'on' : ''}">${ui.t('all')}<span class="cnt">${nodes}</span></button>` +
       shell.scopes.map(scopeRow).join('') +
       `</div>`;
@@ -98,6 +108,10 @@
     });
     const logo = el.querySelector('.wordmark .logo');
     if (logo) logo.classList.toggle('off', !state.live);
+    /* The wordmark is the way to the first screen; it keeps the scope too
+       (r-d060), so its href is rewritten on every draw. */
+    const wordmark = el.querySelector('.wordmark');
+    if (wordmark) wordmark.setAttribute('href', ui.href('#/'));
     const repo = el.querySelector('[data-testid="repo"]');
     if (repo) {
       const name = ui.t('repoLabel');

@@ -35,7 +35,7 @@
     el.innerHTML =
       `<div class="rail-h"><span class="live${state.live ? '' : ' off'}"></span>${ui.t('railTitle')}</div>` +
       (rows.length ? `<div class="hist" role="list">${body}</div>` : `<div class="empty">${ui.t('histEmpty')}</div>`) +
-      `<a class="rail-all" href="#/history">${ui.t('railAll')}</a>`;
+      `<a class="rail-all" href="${ui.href('#/history')}">${ui.t('railAll')}</a>`;
     if (state.at === null && rows.length) head = rows[0].seq;
     if (flashed) {
       setTimeout(() => el.querySelectorAll('.ri.new').forEach(row => row.classList.remove('new')), FLASH);

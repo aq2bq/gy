@@ -109,7 +109,10 @@
     const hits = state.search ? state.search.hits || [] : [];
     const hit = hits[index];
     if (!hit) return;
-    location.hash = `#/n/${hit.id}`;
+    /* The node page keeps the sidebar's scope, as every other move does
+       (r-d060). */
+    const route = window.GyState.withScope({ name: 'node', arg: hit.id, query: {} }, state.scope);
+    location.hash = window.GyState.hashOf(route);
   }
 
   /* The band's drag: a pointer position becomes a sequence. */

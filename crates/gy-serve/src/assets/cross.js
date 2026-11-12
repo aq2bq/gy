@@ -83,7 +83,7 @@
       (query.from ? `<button class="chip" id="clearPeriod">${esc(ui.t('clearPeriod'))}</button>` : '') +
       (busiest ? `<button class="chip" id="busy">${esc(ui.t('busyWeek'))} ${md(busiest.week)}<small>${busiest.count}</small></button>` : '') + `</div>` +
       `<h3>${esc(ui.t('scopesTitle'))}</h3><div class="chips">${chips}</div>` +
-      (open ? `<div class="chips" style="margin-top:16px"><a class="chip" href="#/cross">${esc(ui.t('clearAll'))}</a></div>` : '');
+      (open ? `<div class="chips" style="margin-top:16px"><a class="chip" href="${ui.href('#/cross')}">${esc(ui.t('clearAll'))}</a></div>` : '');
   }
 
   /* The scopes to offer: the ledger's own, then any the answer adds. */
@@ -264,7 +264,7 @@
         const value = byKey[`${scope}:${week}`] || 0;
         const alpha = value ? 0.12 + 0.75 * Math.sqrt(value / max) : 0;
         const href = hash({ ...query, scope: [scope], from: dateOf(week), to: dateOf(week + 6 * DAY) });
-        html += `<td>${value ? `<a data-testid="heatCell" href="${href}" style="background:hsl(${ui.hue(scope)} 55% 50% / ${alpha})" title="${md(week)} ${scope}: ${value}">${value}</a>` : '<span class="z"></span>'}</td>`;
+        html += `<td>${value ? `<a data-testid="heatCell" href="${ui.href(href)}" style="background:hsl(${ui.hue(scope)} 55% 50% / ${alpha})" title="${md(week)} ${scope}: ${value}">${value}</a>` : '<span class="z"></span>'}</td>`;
       }
       html += `</tr>`;
     }
@@ -302,7 +302,7 @@
       : '';
     const grouped = groupNodes(data.nodes);
     const list = grouped.map(group => `<div class="gh">${esc(group.scope)} · ${group.nodes.length}</div>` +
-      group.nodes.slice(0, 30).map(node => `<a data-testid="crossNode" href="#/n/${encodeURIComponent(node.id)}"><span class="dotk ${window.GyLanes.isOpen(node.state) ? 'o' : 'c'}" style="color:${HEX[node.kind]}"></span><span class="mono dim">${esc(node.id)}</span><span class="t">${esc(node.title)}</span></a>`).join('') +
+      group.nodes.slice(0, 30).map(node => `<a data-testid="crossNode" href="${ui.href(`#/n/${encodeURIComponent(node.id)}`)}"><span class="dotk ${window.GyLanes.isOpen(node.state) ? 'o' : 'c'}" style="color:${HEX[node.kind]}"></span><span class="mono dim">${esc(node.id)}</span><span class="t">${esc(node.title)}</span></a>`).join('') +
       (group.nodes.length > 30 ? `<div class="dim" style="font-size:11px">${fill(esc(ui.t('moreNodes')), { n: group.nodes.length - 30 })}</div>` : '')).join('');
     const total = data.capped ? '900+' : String(data.nodes.length);
     const across = data.edges.filter(edge => scopeOf(data, edge.from) !== scopeOf(data, edge.to)).length;

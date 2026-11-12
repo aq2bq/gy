@@ -44,6 +44,56 @@
     return found;
   }
 
+  /* The sidebar's chosen scope travels with the place, as the query `only`
+     (r-d060). "All scopes" is the absence of the key, not an empty one. */
+  const SCOPE = 'only';
+
+  /* The scope a route carries; a repeated key keeps its last value. */
+  function scopeOf(route) {
+    const value = (route.query || {})[SCOPE];
+    const text = Array.isArray(value) ? value[value.length - 1] : value;
+    return text || 'all';
+  }
+
+  /* The same route with the sidebar's choice written in. */
+  function withScope(route, scope) {
+    const query = { ...(route.query || {}) };
+    delete query[SCOPE];
+    if (scope && scope !== 'all') query[SCOPE] = scope;
+    return { ...route, query };
+  }
+
+  /* The path a route names, as parseRoute reads it back. */
+  function pathOf(route) {
+    switch (route.name) {
+      case 'now': return '#/now';
+      case 'cross': return '#/cross';
+      case 'list': return `#/list/${route.arg}`;
+      case 'eye': return `#/eye/${route.arg}`;
+      case 'node': return `#/n/${encodeURIComponent(route.arg)}`;
+      case 'history': return '#/history';
+      default: return '#/';
+    }
+  }
+
+  /* A route as its hash: the inverse of parseRoute. The known keys keep their
+     order (the cross screen's are read in that order too), and any other key
+     follows by name; a repeated key is repeated. */
+  const ORDER = ['q', 'from', 'to', 'scope', SCOPE];
+  function hashOf(route) {
+    const query = route.query || {};
+    const keys = ORDER.filter(key => key in query)
+      .concat(Object.keys(query).filter(key => !ORDER.includes(key)).sort());
+    const parts = [];
+    for (const key of keys) {
+      for (const value of Array.isArray(query[key]) ? query[key] : [query[key]]) {
+        if (value === undefined || value === null) continue;
+        parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
+      }
+    }
+    return `${pathOf(route)}${parts.length ? `?${parts.join('&')}` : ''}`;
+  }
+
   /* What makes two routes the same place: the path and the whole query. */
   function routeKey(route) {
     const query = Object.keys(route.query || {})
@@ -62,8 +112,9 @@
     return {
       lang: env.lang,
       /* The sidebar's scope: it narrows the shell, the home, a list, the
-         history, and the rail, as it did before the three screens. */
-      scope: env.scope,
+         history, and the rail, as it did before the three screens. The place
+         in the URL is what chooses it (r-d060). */
+      scope: scopeOf(env.route),
       at: null,
       route: env.route,
       /* The rail's breakpoint, from app.css. */
@@ -107,7 +158,7 @@
       case 'setLang':
         return { ...state, lang: intent.value };
       case 'setScope':
-        return { ...state, scope: intent.value, shell: null, now: null, page: null, rail: null, pending: {}, failed: {} };
+        return { ...state, scope: intent.value, route: withScope(state.route, intent.value), shell: null, now: null, page: null, rail: null, pending: {}, failed: {} };
       case 'setAt':
         return {
           ...state,
@@ -131,6 +182,9 @@
         return {
           ...state,
           route,
+          /* The place names the sidebar's scope too: back and forward move the
+             screen and the choice together (r-d060). */
+          scope: scopeOf(route),
           trail,
           page: null,
           now: null,
@@ -256,5 +310,5 @@
     return found;
   }
 
-  window.GyState = { initial, apply, parseRoute, routeKey, esc, plural, scopeTag, hue, when, day, tickAt };
+  window.GyState = { initial, apply, parseRoute, routeKey, hashOf, scopeOf, withScope, esc, plural, scopeTag, hue, when, day, tickAt };
 })();

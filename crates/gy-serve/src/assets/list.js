@@ -21,7 +21,7 @@
     const label = row.alias || row.id;
     const word = row.status ? ui.t(`st.${row.kind}.${row.status}`) : '';
     const mark = row.unwaited ? ` <i class="unwaited">${esc(ui.t('unwaited'))} · ${esc(window.GyTime.age(row.created, ui.t))}</i>` : '';
-    return `<a class="row wide" href="#/n/${row.id}"><span class="dot dot-${row.kind}"></span><span class="id">${esc(label)}</span><span class="t" title="${esc(row.title)}">${esc(row.title)}${mark}</span>${ui.scopeTag(row.scope)}<span class="st">${esc(word)}</span><span class="sc">${esc(window.GyTime.date(row.created))}</span></a>`;
+    return `<a class="row wide" href="${ui.href(`#/n/${row.id}`)}"><span class="dot dot-${row.kind}"></span><span class="id">${esc(label)}</span><span class="t" title="${esc(row.title)}">${esc(row.title)}${mark}</span>${ui.scopeTag(row.scope)}<span class="st">${esc(word)}</span><span class="sc">${esc(window.GyTime.date(row.created))}</span></a>`;
   }
 
   /* The chips name the act events.js reads and the act it carries (第 4 段 took

@@ -62,6 +62,11 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .nav .l{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nav .cnt{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--paper-3)}
 .nav .cnt b{color:var(--paper);font-weight:500}
+/* A scope the ledger does not have (r-d060): one line, and one way back. */
+.nav .warn{margin:2px 0 4px;padding:6px 10px;border:1px solid rgba(255,107,107,.45);border-radius:7px;background:rgba(255,107,107,.06);color:var(--paper-2);font-size:12px;line-height:1.5}
+.nav .warn span{display:block}
+.nav .warn button{width:auto;padding:2px 0;color:var(--stop);font-size:12px;text-decoration:underline}
+.nav .warn button:hover{background:none;color:var(--paper)}
 .side .foot{margin-top:auto;display:flex;flex-direction:column;gap:10px;font-family:var(--mono);font-size:11px;color:var(--paper-3)}
 .side .foot .live-line b{color:var(--paper);font-weight:500}
 /* The GitHub mark at the foot of the sidebar (n-b380): the same quiet colour
