@@ -2,7 +2,7 @@
    place names the scope as the query `only`, so a fresh tab, a back step, and
    every link keep it. "All scopes" is the absence of the name, and a crossing
    keeps its own `scope` list apart from it (d-2b18). */
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { start, type Ledger } from '../fixtures/ledger';
 
 let gy: Ledger;
@@ -27,6 +27,22 @@ async function pick(page: Page, name: string) {
 /** Whether the sidebar draws that scope as chosen: the button's own mark. */
 async function selected(page: Page, name: string) {
   return scopeButton(page, name).evaluate(el => el.classList.contains('on'));
+}
+
+/** A kind's count as the sidebar draws it: decisions count all, the rest open/all. */
+function countLine(row: { kind: string; open: number; total: number }) {
+  return row.kind === 'Decision' ? `${row.total}` : `${row.open} / ${row.total}`;
+}
+
+/** The sidebar's per-kind counts must be the ones `/api/shell` answers for the
+ *  scope the URL names: the counts are the scope's, like the rows and the mark. */
+async function kindsMatch(page: Page, request: APIRequestContext, scope: string) {
+  const shell = await (await request.get(`${gy.url}api/shell?scope=${scope}`)).json();
+  expect(shell.scope).toBe(scope);
+  for (const row of shell.kinds as Array<{ kind: string; open: number; total: number }>) {
+    const cell = page.getByTestId('nav').locator(`[data-testid="kindCount"][data-kind="${row.kind}"]`);
+    await expect(cell).toHaveText(countLine(row));
+  }
 }
 
 test('a URL without a scope opens the same screen, unchanged', async ({ page, request }) => {
@@ -126,11 +142,14 @@ test('back and forward move the scope with the screen', async ({ page, request }
   await expect(page).toHaveURL(/#\/list\/Decision\?only=a$/);
   await expect(scopeButton(page, 'a')).toHaveClass(/on/);
   await expect(main(page).getByRole('link')).toHaveCount(a.rows.length);
+  // The sidebar's counts are read under the scope too: back changes them.
+  await kindsMatch(page, request, 'a');
 
   await page.goForward();
   await expect(page).toHaveURL(/#\/list\/Decision\?only=b$/);
   await expect(scopeButton(page, 'b')).toHaveClass(/on/);
   await expect(main(page).getByRole('link')).toHaveCount(b.rows.length);
+  await kindsMatch(page, request, 'b');
 
   // A place between two choices: back lands on the node with the old scope,
   // then on the list that opened it.
@@ -145,6 +164,7 @@ test('back and forward move the scope with the screen', async ({ page, request }
   await expect(page).toHaveURL(/#\/n\/[^?]+\?only=a$/);
   await expect(main(page).locator('[data-shown]')).toBeVisible();
   await expect(scopeButton(page, 'a')).toHaveClass(/on/);
+  await kindsMatch(page, request, 'a');
   await page.goBack();
   await expect(page).toHaveURL(/#\/list\/Decision\?only=a$/);
 });

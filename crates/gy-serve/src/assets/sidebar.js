@@ -31,10 +31,11 @@
 
   function counter(shell, kind) {
     const row = (shell.kinds || []).find(item => item.kind === kind);
-    if (!row) return '<span class="cnt"></span>';
+    const mark = ` data-testid="kindCount" data-kind="${kind}"`;
+    if (!row) return `<span class="cnt"${mark}></span>`;
     return kind === 'Decision'
-      ? `<span class="cnt"><b>${row.total}</b></span>`
-      : `<span class="cnt"><b>${row.open}</b> / ${row.total}</span>`;
+      ? `<span class="cnt"${mark}><b>${row.total}</b></span>`
+      : `<span class="cnt"${mark}><b>${row.open}</b> / ${row.total}</span>`;
   }
 
   function drawEyes(state, el, ui) {

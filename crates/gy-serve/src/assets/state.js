@@ -175,6 +175,7 @@
         };
       case 'go': {
         const route = intent.value;
+        const scope = scopeOf(route);
         const last = state.trail[state.trail.length - 1];
         const trail = route.name === 'node' && route.arg && route.arg !== last
           ? [...state.trail, route.arg].slice(-20)
@@ -184,7 +185,11 @@
           route,
           /* The place names the sidebar's scope too: back and forward move the
              screen and the choice together (r-d060). */
-          scope: scopeOf(route),
+          scope,
+          /* The shell's counts are the scope's (n-a493), so a move that changes
+             the scope asks again as setScope does; a move within one keeps the
+             answer it already has. */
+          shell: scope === state.scope ? state.shell : null,
           trail,
           page: null,
           now: null,
