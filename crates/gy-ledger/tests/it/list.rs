@@ -292,3 +292,67 @@ fn list_does_not_count_a_withdrawn_criterion_as_unsatisfied() {
         .unwrap();
     assert_eq!(row.status.as_deref(), Some("withdrawn"));
 }
+
+#[test]
+fn scoped_history_keeps_only_current_visible_nodes_and_preserves_unscoped_history() {
+    use gy_ledger::{Operation, Retire};
+    let mut repo = repo().with_scopes(vec!["a".into(), "b".into(), "c".into()]);
+    let nodes: Vec<Node> = ["a", "b", "c"]
+        .iter()
+        .enumerate()
+        .map(|(i, scope)| {
+            let mut node = Node::need(
+                id(NodeKind::Need, &format!("{:04x}", i + 1)),
+                scope,
+                DATE,
+                "closed need",
+            )
+            .unwrap();
+            if let NodeData::Need(data) = node.data_mut() {
+                data.closed = Some(Closed {
+                    by: ClosedBy::Fact,
+                    evidence: "finished".into(),
+                });
+            }
+            node
+        })
+        .collect();
+    seed(&mut repo, &nodes);
+    repo.transaction("delete", "test", |repo| repo.remove(nodes[2].id()))
+        .unwrap();
+    let mut filter = Filter::default();
+    filter.since = Some(0);
+    let before = log_rows(&repo, &filter);
+    assert_eq!(before.len(), 4);
+    filter.scope = Some("c".into());
+    assert!(
+        log_rows(&repo, &filter).is_empty(),
+        "deleted nodes have no current scope"
+    );
+    for revoke in [false, true] {
+        Retire {
+            ids: vec!["n-0001".into(), "n-0002".into()],
+            reason: "retire across scopes".into(),
+            revoke,
+        }
+        .run(&mut repo)
+        .unwrap();
+        for scope in ["a", "b"] {
+            filter.scope = Some(scope.into());
+            let rows = log_rows(&repo, &filter);
+            assert_eq!(rows.len(), usize::from(revoke));
+            assert!(rows.iter().all(|row| !row.node.is_empty()));
+        }
+    }
+    repo.transaction("rename", "test", |repo| {
+        repo.rename_scope("a", "renamed").map(|_| ())
+    })
+    .unwrap();
+    filter.scope = Some("renamed".into());
+    assert_eq!(log_rows(&repo, &filter), vec![before[0].clone()]);
+    filter.scope = None;
+    let after = log_rows(&repo, &filter);
+    assert_eq!(after.len(), 7);
+    assert_eq!(after[..4], before);
+    assert!(after[4..].iter().all(|row| row.node.is_empty()));
+}

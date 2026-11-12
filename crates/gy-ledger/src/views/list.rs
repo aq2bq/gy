@@ -9,12 +9,14 @@ use crate::model::{
 use crate::ops::local_time;
 use crate::ops::repository::{Error, Repository, Result, Store};
 use serde::Serialize;
+use std::collections::BTreeSet;
 use std::fmt;
 
 /// What to keep. `actor` and `since` switch the output to write units.
 #[derive(Debug, Default, Clone)]
 #[non_exhaustive]
 pub struct Filter {
+    pub scope: Option<String>,
     pub kind: Option<NodeKind>,
     pub status: Option<String>,
     pub targets: Option<NodeId>,
@@ -120,8 +122,26 @@ pub fn list<S: Store>(repo: &Repository<S>, filter: &Filter) -> Result<Listing> 
 /// sequence (strictly after `since`). Every entry of one transaction shares
 /// the sequence.
 fn history<S: Store>(repo: &Repository<S>, filter: &Filter) -> Result<Vec<LogRow>> {
+    // Scope is judged by the current visible node, as for node rows. Writes
+    // without one node (retirement, restoration, scope rename) are left out.
+    let visible: Option<BTreeSet<String>> = match filter.scope.as_deref() {
+        Some(scope) => Some(
+            repo.all()?
+                .into_iter()
+                .filter(|node| node.scope() == scope)
+                .map(|node| node.id().to_string())
+                .collect(),
+        ),
+        None => None,
+    };
     let mut rows = Vec::new();
     for entry in repo.history()? {
+        if visible
+            .as_ref()
+            .is_some_and(|ids| !ids.contains(&entry.node))
+        {
+            continue;
+        }
         if filter.since.is_some_and(|since| entry.seq <= since) {
             continue;
         }
@@ -146,6 +166,13 @@ fn history<S: Store>(repo: &Repository<S>, filter: &Filter) -> Result<Vec<LogRow
 }
 
 fn keep(node: &Node, filter: &Filter, status: Option<Status>, all: &[Node]) -> bool {
+    if filter
+        .scope
+        .as_deref()
+        .is_some_and(|scope| node.scope() != scope)
+    {
+        return false;
+    }
     if filter.kind.is_some_and(|kind| node.kind() != kind) {
         return false;
     }

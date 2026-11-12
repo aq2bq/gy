@@ -124,3 +124,36 @@ fn the_rows_name_the_writer_and_the_filter_takes_the_actor() {
     assert_eq!(answer(&repo, Some("actor=piko"))["total"], 4);
     assert_eq!(answer(&repo, Some("actor=nobody"))["total"], 0);
 }
+
+#[test]
+fn scopes_preserve_all_actors_order_limits_and_unknown_names() {
+    let mut repo = ledger();
+    repo.transaction("remove two nodes", "test", |repo| {
+        repo.remove(&id(NodeKind::Criterion, "0001"))?;
+        repo.remove(&id(NodeKind::Criterion, "0003"))?;
+        repo.rename_scope("b", "renamed")?;
+        Ok(())
+    })
+    .unwrap();
+    let all = answer(&repo, None);
+    assert_eq!(answer(&repo, Some("scope=all")), all);
+    assert!(
+        all["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["node"] == "")
+    );
+    let scoped = answer(&repo, Some("scope=a&limit=1"));
+    assert_eq!(scoped["total"], 2);
+    assert_eq!(scoped["rows"].as_array().unwrap().len(), 1);
+    assert_eq!(scoped["rows"][0]["node"], "ac-0002");
+    assert_eq!(scoped["rows"][0]["what"], "updated");
+    for query in ["scope=b", "scope=missing"] {
+        let scoped = answer(&repo, Some(query));
+        assert_eq!(scoped["total"], 0);
+        assert_eq!(scoped["rows"], serde_json::json!([]));
+        assert_eq!(scoped["actors"], all["actors"]);
+    }
+    assert_eq!(answer(&repo, Some("scope=a&actor=nobody"))["total"], 0);
+}

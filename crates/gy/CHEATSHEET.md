@@ -13,7 +13,7 @@ Starting a session:
 Reads:
   gy cheat                                             print this cheatsheet as it is: no gy.toml is looked for and it has no options
   gy show <ID|ref>... [--full]                         show nodes, with what each still lacks; a criterion only closed needs aimed at reads as withdrawn
-  gy list [--type <kind>] [--status <status>] [--targets <ID>] [--grep <text>] [--actor <name>] [--since <seq|date>]   list nodes; with --actor / --since, list write units. Spelling ignores case. --since takes a seq (the writes after it, not including it) or a date (YYYY-MM-DD, from midnight where you are)
+  gy list [--scope <name>] [--type <kind>] [--status <status>] [--targets <ID>] [--grep <text>] [--actor <name>] [--since <seq|date>]   list nodes; with --actor / --since, list write units. --scope keeps only this scope (unknown names are refused); write units must point to a current visible node in it. Spelling ignores case. --since takes a seq (the writes after it, not including it) or a date (YYYY-MM-DD, from midnight where you are)
   gy next [--scope <name>]                             the needs whose prerequisites are settled, limited to the scope when given
   gy handover [--scope <name>]                         requirements in progress and the counts a session needs to resume, limited to the scope when given
   gy publish [--scope <name>] [--out <dir>]             the wiki a person reads on GitHub: one entry README per scope and a page per need and decision, the nodes each reaches in full, and loose.md for the rest
@@ -61,7 +61,7 @@ Writes:
   gy retire <ID>... --reason <text> [--revoke]
         retires explicit IDs from every reading; --revoke restores them. Refuses active work and any edge between retired and visible nodes; select connected nodes together. Original text remains in the log and remote git
         the first retirement raises the ledger to format 5, which gy 2.x cannot read; update every shared-ledger member to 3.0.0 first. Restoring nodes keeps format 5
-        list --since / --actor and web history keep the retirement write's IDs and reason; show <ID> gives its sequence and restoration command. Textual ID references in surviving records stay verbatim
+        without a scope filter, list --since / --actor and web history keep the retirement write's IDs and reason; show <ID> gives its sequence and restoration command. Textual ID references in surviving records stay verbatim
         repeating retirement or restoration already in effect is refused without a new write
   gy undo --reason <text>
         takes back the last write only. Typed again, it takes back the undo (redo). There is no way to take back two

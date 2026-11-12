@@ -267,3 +267,15 @@ fn the_cheatsheet_writes_section_states_the_scope_rule() {
         "the Writes section no longer states the --scope rule"
     );
 }
+
+#[test]
+fn list_scope_is_described_in_help_and_cheat() {
+    assert!(help(&[]).contains("list, next, handover, and publish read only this scope"));
+    let cheat = read(CHEATSHEET);
+    let line = cheat
+        .lines()
+        .find(|line| line.trim_start().starts_with("gy list "))
+        .unwrap();
+    assert!(line.contains("[--scope <name>]"));
+    assert!(line.contains("--scope keeps only this scope (unknown names are refused)"));
+}

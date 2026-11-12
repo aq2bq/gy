@@ -15,7 +15,7 @@ pub struct Cli {
     /// The directory whose gy.toml names the repository (searched upward to the nearest .git).
     #[arg(short = 'C', global = true, value_name = "DIR")]
     pub directory: Option<PathBuf>,
-    /// The scope a write uses (required when gy.toml names more than one); next, handover, and publish read only this scope.
+    /// The scope a write uses (required when gy.toml names more than one); list, next, handover, and publish read only this scope.
     #[arg(long, global = true, value_name = "NAME")]
     pub scope: Option<String>,
     #[command(subcommand)]

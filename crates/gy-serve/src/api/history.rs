@@ -1,10 +1,9 @@
 //! GET /api/history: the list view's history mode as JSON (n-4a08). The rows
-//! and their order come from gy-ledger; this file filters by scope and shapes
+//! and their order come from gy-ledger; this file shapes
 //! the answer. It does not judge a state or a decider.
 use crate::http::{Request, Response};
 use gy_ledger::{Filter, Listing, LogRow, Repository, Result, Store, list};
 use serde::Serialize;
-use std::collections::BTreeMap;
 
 /// The most rows one answer carries; older writes are left out (n-4a08).
 const LIMIT: usize = 200;
@@ -22,26 +21,21 @@ pub fn answer<S: Store>(repo: &Repository<S>, req: &Request) -> Response {
         Err(response) => return response,
     };
     let mut filter = Filter::default();
+    filter.scope = req
+        .param("scope")
+        .filter(|scope| *scope != "all")
+        .map(str::to_string);
     filter.actor = req.param("actor").map(ToString::to_string);
     filter.since = Some(since);
-    let rows = match list(repo, &filter) {
+    let mut rows = match list(repo, &filter) {
         Ok(Listing::History(rows)) => rows,
         Ok(Listing::Nodes(_)) => Vec::new(),
         Err(error) => return Response::text(400, &error.to_string()),
     };
-    let (actors, scopes) = match (writers(repo), scopes(repo)) {
-        (Ok(actors), Ok(scopes)) => (actors, scopes),
-        (Err(error), _) | (_, Err(error)) => return Response::text(500, &error.to_string()),
+    let actors = match writers(repo) {
+        Ok(actors) => actors,
+        Err(error) => return Response::text(500, &error.to_string()),
     };
-    let mut rows: Vec<LogRow> = rows
-        .into_iter()
-        .filter(|row| {
-            in_scope(
-                req.param("scope"),
-                scopes.get(&row.node).map(String::as_str),
-            )
-        })
-        .collect();
     rows.reverse();
     let total = rows.len();
     let limit = limit_param(req);
@@ -84,18 +78,4 @@ fn writers<S: Store>(repo: &Repository<S>) -> Result<Vec<String>> {
     actors.sort();
     actors.dedup();
     Ok(actors)
-}
-
-/// The scope of every node, so a history row can be filtered by it.
-fn scopes<S: Store>(repo: &Repository<S>) -> Result<BTreeMap<String, String>> {
-    let mut map = BTreeMap::new();
-    for node in repo.all()? {
-        map.insert(node.id().to_string(), node.scope().to_string());
-    }
-    Ok(map)
-}
-
-/// The scope filter: no scope, or `all`, keeps every row.
-fn in_scope(scope: Option<&str>, row_scope: Option<&str>) -> bool {
-    scope.is_none_or(|scope| scope == "all" || row_scope == Some(scope))
 }

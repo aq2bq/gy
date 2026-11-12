@@ -86,7 +86,7 @@ fn run(cli: &Cli) -> Result<()> {
             let repository = repo::open(&ledger)?;
             emit_list(cli.json, &show(&repository, ids, *full)?)
         }
-        Command::List { .. } => reads::read_list(cli, &ledger),
+        Command::List { .. } => reads::read_list(cli, &root, &ledger),
         Command::Next => {
             release_check::poll();
             let repository = repo::open(&ledger)?;

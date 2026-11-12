@@ -125,7 +125,20 @@ fn list_matches_the_view() {
     );
 
     let all = answer(&repo, "/api/list", None);
+    assert_eq!(answer(&repo, "/api/list", Some("scope=all")), all);
+    assert_eq!(
+        answer(&repo, "/api/list", Some("scope=missing"))["rows"],
+        serde_json::json!([])
+    );
     let scoped = answer(&repo, "/api/list", Some("scope=b"));
+    let expected: Vec<_> = all["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|row| row["scope"] == "b")
+        .cloned()
+        .collect();
+    assert_eq!(scoped["rows"], serde_json::json!(expected));
     assert!(!all["rows"].as_array().unwrap().is_empty());
     assert!(scoped["rows"].as_array().unwrap().len() < all["rows"].as_array().unwrap().len());
 

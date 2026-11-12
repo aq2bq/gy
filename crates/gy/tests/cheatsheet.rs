@@ -653,6 +653,14 @@ fn run_row(row: &Row, with_scope: bool, scopes: &[&str]) -> Output {
 /// four excluded rows are named and nothing else is skipped.
 #[test]
 fn every_row_runs_as_written() {
+    let list_row = rows()
+        .into_iter()
+        .find(|row| row.command == "list")
+        .unwrap();
+    assert!(
+        list_row.tokens.contains(&"--scope".to_string()),
+        "the list row must exercise its scope option"
+    );
     let creators = creators();
     let mut ran = 0;
     for row in rows() {

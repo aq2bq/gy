@@ -11,7 +11,7 @@ use gy_serve::server::Opened;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-pub fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
+pub fn read_list(cli: &Cli, root: &Path, ledger: &Path) -> Result<()> {
     let Command::List {
         kind,
         status,
@@ -23,8 +23,13 @@ pub fn read_list(cli: &Cli, ledger: &Path) -> Result<()> {
     else {
         return Err(Error::invalid("not a list"));
     };
-    let repository = repo::open(ledger)?;
     let mut filter = Filter::default();
+    filter.scope = cli
+        .scope
+        .as_deref()
+        .map(|scope| crate::write::scope(root, Some(scope)))
+        .transpose()?;
+    let repository = repo::open(ledger)?;
     filter.kind = kind.as_deref().map(parse_kind).transpose()?;
     filter.status = status.clone();
     filter.targets = targets
