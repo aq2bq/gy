@@ -51,19 +51,19 @@ npx skills add aq2bq/gy
 
 Once a day gy runs `cargo info gy` to check for a newer release, and `gy handover` and `gy next` tell you when there is one. Unless you share a ledger with a team, that is the only network request gy makes.
 
-### Updating to 3.0.0
+### Updating to 3.1.0
 
-Install with `cargo install gy --version 3.0.0 --locked`. For a shared ledger,
-update every member before anyone uses `gy retire`: the first retirement raises
-the ledger to format 5, which gy 2.x cannot read. Restoring the nodes keeps
-format 5. Ordinary writes without retirement keep format 4; no manual log
-migration or `gy.toml` change is needed.
+Install with `cargo install gy --version 3.1.0 --locked`. The ledger format and
+`gy.toml` are unchanged, and no manual migration is needed. Members of a shared
+ledger may update one at a time.
 
 The skills changed, so copy them again: update
-`crates/gy/skills/gy-ledger/SKILL.md` in the installed skill directory (for
-example `~/.agents/skills/gy-ledger/SKILL.md`), or rerun
-`npx skills add aq2bq/gy`. Repeating installation or copying the skill is safe.
-See [3.0.0 in the changelog](CHANGELOG.md#300---2026-11-05).
+`crates/gy/skills/gy-decide/SKILL.md` and `crates/gy/skills/gy-ledger/SKILL.md`
+in the installed skill directory (for example `~/.agents/skills/gy-decide/` and
+`~/.agents/skills/gy-ledger/`), or rerun `npx skills add aq2bq/gy`. Repeating
+installation or copying the skills is safe. Coming from 2.x, read
+[3.0.0 in the changelog](CHANGELOG.md#300---2026-11-05) first; see
+[3.1.0](CHANGELOG.md#310---2026-11-12) for this release.
 
 ### Telling the AI about gy
 

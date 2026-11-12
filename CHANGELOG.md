@@ -1,26 +1,65 @@
 # Changelog
 
-## Unreleased
+## 3.1.0 - 2026-11-12
 
-- A decision can narrow distinct passages of the same older decision, one
-  `link --mark` per passage. Duplicate passages are refused; `supersedes`
-  remains one edge per pair. `link --remove --mark` removes one stored passage;
-  ambiguous removals list the passages and refuse the write. A single passage
-  can still be removed without `--mark`.
-- Concurrent narrows additions to the same pair retain both distinct passages
-  when rebased by this build. The same passage is refused. Other concurrent
+This release keeps gy's readings and the remote's history legible when several
+scopes and decisions share one ledger. The ledger format and `gy.toml` are
+unchanged; no member of a shared ledger has to update before another.
+
+### Added
+
+- **`gy list --scope <name>` keeps only that scope**: nodes and write units
+  outside it are left out, in text and `--json`. A write unit is kept when it
+  points to a current visible node in the scope; retirement, restoration, and
+  scope-rename rows that name no such node are left out. An unknown name is
+  refused with the same diagnostic as other commands. Before this release,
+  `list` ignored `--scope` and listed every scope (r-dfbd, d-ba5c).
+- **A decision can narrow several passages of the same older decision**: add
+  one `link <new D> narrows <old D> --mark <text>` per distinct passage. The
+  same passage twice is refused; `supersedes` remains one edge per pair.
+  `link --remove --mark <text>` removes one stored passage; with several
+  passages, a removal without `--mark` lists them and is refused. A single
+  passage can still be removed without `--mark` (r-0d85).
+- Concurrent narrows additions to the same pair keep both distinct passages
+  when this build rebases them. The same passage is refused. Other concurrent
   changes keep the existing node conflict rules.
-- The ledger format is unchanged. Tests with the frozen gy 3.0.0 executable
-  cover pulling three passages written by the new CLI and editing the source
-  decision above them. Its default `show` (text and JSON) names all three in
-  the summary, but may excerpt the body to `## Decision`; displayed passages
-  remain marked. `show --full`, `show --full --json`, `publish`, and the node
-  API mark all three. This build's default `show` includes the whole body when
-  an affected passage is outside its excerpt. The path API joins same-pair
-  narrows passages with newlines in its existing `mark` string.
-- **gy 3.0.0 keeps its earlier node-level rebase conflicts**: concurrent narrows
-  writes made by that release can still be rejected. Update the copy doing
-  the rebase to retain distinct concurrent passages.
+- The default `show` prints the whole body when a narrowed passage falls
+  outside its excerpt. The path API joins same-pair passages with newlines in
+  its existing `mark` string.
+
+### Changed
+
+- **Remote sync commits name what they wrote**: the subject is now
+  `<why> | [<ID>: <title>] …`, with the full title of each node the write
+  touched (`link` names both ends, `edit` the title after the edit). Line
+  breaks in a title become spaces, and titles are not truncated. The body
+  keeps the `actor`, `by`, `by_mail`, `Gy-Version`, and `Gy-Seq` trailers, so
+  gy 3.0.0 reads and syncs these commits; CI checks this against the published
+  3.0.0 binary (r-ad50, d-a4b9, d-e73b).
+- **`gy serve` keeps the selected scope in the URL**: the sidebar's scope is
+  the hash query `only=<scope>`, and "all" writes no `only`. Reopening a tab,
+  back and forward, and links inside the page return to the same selection.
+  An unknown name shows a one-line warning with a way back to all. The
+  selection is no longer kept in `sessionStorage`, so a tab opened by an older
+  build starts from all. `#/cross?scope=…` is unchanged (r-d060, d-9e57,
+  d-2b18).
+
+### Updating
+
+Install with `cargo install gy --version 3.1.0 --locked`. The ledger format
+and `gy.toml` are unchanged, and no manual migration is needed. gy 3.0.0 can
+keep syncing a shared ledger with 3.1.0. Tests with the frozen 3.0.0 binary
+cover pulling three passages of one pair written by 3.1.0: its default `show`
+names all three in the summary but may excerpt the body to `## Decision`, and
+`show --full`, `publish`, and the node API mark all three. gy 3.0.0 keeps its
+node-level rebase conflicts, so concurrent narrows writes rebased by 3.0.0 can
+still be rejected; update the member doing the rebase to keep both passages.
+
+The skills changed, so copy them again. The changed files are
+`crates/gy/skills/gy-decide/SKILL.md` and `crates/gy/skills/gy-ledger/SKILL.md`;
+update the installed copies, for example `~/.agents/skills/gy-decide/SKILL.md`
+and `~/.agents/skills/gy-ledger/SKILL.md`, or rerun `npx skills add aq2bq/gy`.
+Repeating installation or copying the skills is safe.
 
 ## 3.0.0 - 2026-11-05
 

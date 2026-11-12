@@ -51,19 +51,19 @@ npx skills add aq2bq/gy
 
 gyは1日1回`cargo info gy`で新しい版を調べ、あれば`gy handover`と`gy next`が知らせます。チームで共有しない限り、gyの通信はこれだけです。
 
-### 3.0.0 への更新
+### 3.1.0 への更新
 
-`cargo install gy --version 3.0.0 --locked` で更新します。共有の台帳では、誰かが
-`gy retire` を使う前に、使う全員を 3.0.0 に更新してください。最初の退かせで
-台帳が形式5になり、gy 2.x では読めなくなります。ノードを戻しても形式5のままです。
-退かせを使わない通常の書き込みでは形式4を保つので、ログの手動移行や
-`gy.toml` の変更は要りません。
+`cargo install gy --version 3.1.0 --locked` で更新します。台帳の形式と
+`gy.toml` は変わらないので、手動の移行は要りません。共有の台帳でも、
+一人ずつ更新してかまいません。
 
-同梱スキルも変わりました。`crates/gy/skills/gy-ledger/SKILL.md` を、利用中の
-スキルの場所（例: `~/.agents/skills/gy-ledger/SKILL.md`）へコピーし直すか、
-`npx skills add aq2bq/gy` をもう一度実行してください。インストールとスキルの
-コピーは繰り返してかまいません。詳しくは
-[CHANGELOG の 3.0.0](CHANGELOG.md#300---2026-11-05) を参照してください。
+同梱スキルも変わりました。`crates/gy/skills/gy-decide/SKILL.md` と
+`crates/gy/skills/gy-ledger/SKILL.md` を、利用中のスキルの場所
+（例: `~/.agents/skills/gy-decide/` と `~/.agents/skills/gy-ledger/`）へ
+コピーし直すか、`npx skills add aq2bq/gy` をもう一度実行してください。
+インストールとスキルのコピーは繰り返してかまいません。2.x から更新するときは、
+先に [CHANGELOG の 3.0.0](CHANGELOG.md#300---2026-11-05) を読んでください。
+この版の変更は [3.1.0](CHANGELOG.md#310---2026-11-12) にあります。
 
 ### gyについて伝える
 
