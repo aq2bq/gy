@@ -44,7 +44,7 @@ Writes:
         a decision written before this rule may serve nothing: tie it with link <D> serves <N|R|AC>, and handover counts what is left
         --mark is required with --relate narrows and supersedes, optional with widens and completes; given, it must be a passage in the older decision's body or scope note, or the write is refused
   gy link <from> <relation> <to> [--mark <text>] [--remove]
-        relations: targets, filed-as, relies-on, depends-on, waits-on, raised, spawned-by, serves, narrows, widens, supersedes, completes. closes is written by decide --closes, not by link. --mark is required with narrows and supersedes and optional with the others; given, it must be a passage in the older decision's body or scope note, or the write is refused
+        relations: targets, filed-as, relies-on, depends-on, waits-on, raised, spawned-by, serves, narrows, widens, supersedes, completes. closes is written by decide --closes, not by link. When adding an edge (without --remove), --mark is required with narrows and supersedes and optional with the others; given, it must be a passage in the older decision's body or scope note, or the write is refused
         a removal that would leave a decision serving nothing is refused: tie it to another need, requirement, or criterion first (link <D> serves <N|R|AC>)
         to narrow several passages of the same older decision, repeat link for each distinct --mark; the same passage twice is refused. supersedes stays one edge per pair
         link <from> narrows <to> --remove --mark <text> removes just that stored passage; without --mark, several distinct passages are listed and the removal is refused. A single passage still needs no selector
