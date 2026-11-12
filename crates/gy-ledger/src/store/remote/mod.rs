@@ -3,6 +3,7 @@
 pub mod git;
 mod guard;
 mod join;
+mod narrows;
 mod origin;
 mod prepare;
 mod push;

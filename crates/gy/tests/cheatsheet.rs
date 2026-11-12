@@ -925,6 +925,51 @@ fn marks_match_the_rule() {
     );
 }
 
+/// Run the drawn link row as the second passage of the same pair, rather than
+/// checking only that its first edge can be written.
+#[test]
+fn the_link_row_can_add_a_second_narrows_and_remove_only_that_passage() {
+    let row = rows()
+        .into_iter()
+        .find(|row| row.command == "link")
+        .unwrap();
+    let mut f = Fixture::new(&["a", "b"]);
+    let from = f.node("decision", None);
+    let to = f.node("decision", Some("first passage\nsecond passage"));
+    let first = f.run(&flag_argv(
+        "link",
+        "narrows",
+        &from,
+        &to,
+        Some("first passage"),
+    ));
+    assert!(first.status.success(), "{}", errors(&first));
+    let mut fill = Fill::default();
+    fill.value("<from>", &from);
+    fill.value("<relation>", "narrows");
+    fill.value("<to>", &to);
+    fill.value("<text>", "second passage");
+    fill.omit("--remove");
+    let second = f.run(&build(&row, &fill, false, "a"));
+    assert!(second.status.success(), "{}", errors(&second));
+    fill.omit.remove("--remove");
+    let removed = f.run(&build(&row, &fill, false, "a"));
+    assert!(removed.status.success(), "{}", errors(&removed));
+    let output = f.run(&["show".into(), to, "--json".into()]);
+    let value: serde_json::Value = serde_json::from_str(&text(&output)).unwrap();
+    assert_eq!(
+        value[0]["cancellation"]["narrowed"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+    assert_eq!(
+        value[0]["cancellation"]["narrowed"][0]["mark"],
+        "first passage"
+    );
+}
+
 fn flag_argv(
     command: &str,
     relation: &str,

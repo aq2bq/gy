@@ -45,11 +45,17 @@ fn check_duplicate(before: &dyn Before, node: &Node) -> Result<()> {
     Ok(())
 }
 
-fn forward_edges(node: &Node) -> BTreeMap<(&'static str, String), usize> {
+fn forward_edges(node: &Node) -> BTreeMap<(&'static str, String, Option<String>), usize> {
     let mut counts = BTreeMap::new();
     for edge in node.links().iter().filter(|edge| !edge.reversed) {
         *counts
-            .entry((edge.label.name(), edge.to.to_string()))
+            .entry((
+                edge.label.name(),
+                edge.to.to_string(),
+                (edge.label == Relation::Narrows)
+                    .then(|| edge.mark.clone())
+                    .flatten(),
+            ))
             .or_insert(0) += 1;
     }
     counts

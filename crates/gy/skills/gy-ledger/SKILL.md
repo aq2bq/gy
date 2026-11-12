@@ -26,6 +26,20 @@ each ready need's targeted waits as due or waiting. The latter two honor
 - A need becomes `done` by derivation when at least one of its `filed-as` requirements is `done`, none of them is still `filed` or `approved`, and every acceptance criterion it `targets` is satisfied; a `cancelled` requirement counts on neither side, so it neither completes the need nor holds it open, and a need whose requirements are all `cancelled` asks for a new `filed-as` requirement. A targeted criterion that no requirement still being built (`filed` or `approved`) covers shows as `unmet criterion <id>` under `missing`, with the command that would cover it under `next`. Closing a need with `need close` does not satisfy its criteria: the close lists the unmet ones under `missing`, so satisfy them with evidence (`criterion satisfy`) or drop them (`link --remove <need> targets <ac>`). Read later, a criterion that only needs closed with `need close` aimed at is `withdrawn`: the close's evidence is its reason, `gy show` names it as `withdrawn-by`, and `handover` and `list --status unsatisfied` leave it out (d-ed67).
 - Dates print in your local time. When you tell another writer a point in time, use the `seq` or an ID, not a date.
 
+## Narrowing passages
+
+One decision can narrow several passages of the same older decision: use
+`gy link <new D> narrows <old D> --mark <text>` once per distinct passage.
+The first passage can also be named by `decide --relate narrows`; add the
+others with `link`. Repeating the same passage is refused. `supersedes`
+remains one edge per pair.
+
+Use `gy link <new D> narrows <old D> --remove --mark <text>` to remove just
+one stored passage, including a passage an edit has made unresolved. If the
+pair has several distinct passages, removal without `--mark` lists them and
+is refused. A single passage can still be removed without `--mark`; `undo`
+restores the last removal.
+
 ## Retiring earlier records
 
 Use `gy retire <ID>... --reason <text>` for records of how the team worked

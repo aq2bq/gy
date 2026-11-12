@@ -26,14 +26,8 @@ impl<S: Store> Operation<S> for Link {
         let to = repo
             .get(&self.to)?
             .ok_or_else(|| Error::invalid(format!("{} does not exist", self.to)))?;
-        let existing = from
-            .links()
-            .iter()
-            .position(|edge| !edge.reversed && edge.label == self.relation && edge.to == self.to);
         if self.remove {
-            let Some(index) = existing else {
-                return Err(Error::invalid("there is no such edge to remove"));
-            };
+            let index = removal(&from, self.relation, &self.to, self.mark.as_deref())?;
             from.unlink(index);
             keeps_binding(repo, &from, &to)?;
         } else {
@@ -52,6 +46,45 @@ impl<S: Store> Operation<S> for Link {
             value: self.from,
         })
     }
+}
+
+/// Select a stored passage, including one an edit has made unresolved. Older
+/// copies of the same passage still remove one edge, as they always did.
+fn removal(from: &Node, relation: Relation, to: &NodeId, mark: Option<&str>) -> Result<usize> {
+    let candidates: Vec<_> = from
+        .links()
+        .iter()
+        .enumerate()
+        .filter(|(_, edge)| !edge.reversed && edge.label == relation && &edge.to == to)
+        .collect();
+    if relation == Relation::Narrows {
+        if let Some(mark) = mark {
+            return candidates
+                .iter()
+                .find(|(_, edge)| edge.mark.as_deref() == Some(mark))
+                .map(|(index, _)| *index)
+                .ok_or_else(|| Error::invalid("there is no such edge to remove"));
+        }
+        let marks: std::collections::BTreeSet<_> = candidates
+            .iter()
+            .map(|(_, edge)| edge.mark.as_deref())
+            .collect();
+        if marks.len() > 1 {
+            return Err(Error::invalid(format!(
+                "choose a passage with --mark to remove {} narrows {to}:\n{}",
+                from.id(),
+                marks
+                    .into_iter()
+                    .map(|mark| mark.unwrap_or("(unrecorded)"))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            )));
+        }
+    }
+    candidates
+        .first()
+        .map(|(index, _)| *index)
+        .ok_or_else(|| Error::invalid("there is no such edge to remove"))
 }
 
 /// Refuse a removal that would leave a decision with nothing that it is for

@@ -213,6 +213,38 @@ fn an_existing_duplicate_edge_passes_a_write() {
     .run(&mut repo)
     .unwrap();
 }
+
+#[test]
+fn historical_same_passage_narrows_survives_edit_and_legacy_removal() {
+    let mut old = decision("0002");
+    old.set_body("first passage; second passage");
+    let mut new = decision("0001");
+    new.link(
+        ModelLink::new(new.id().clone(), Relation::Narrows, old.id().clone())
+            .unwrap()
+            .with_mark(Some("first passage".into())),
+    );
+    let mut value = serde_json::to_value(&new).unwrap();
+    let edges = value.get_mut("links").unwrap().as_array_mut().unwrap();
+    edges.push(edges[0].clone());
+    let new: Node = serde_json::from_value(value).unwrap();
+    let mut repo = loose(&[&new, &old]);
+    rename(&mut repo, new.id());
+    assert_eq!(forwarded(&repo, new.id(), Relation::Narrows), 2);
+    let mut remove = link(new.id(), Relation::Narrows, old.id());
+    remove.remove = true;
+    remove.run(&mut repo).unwrap();
+    assert_eq!(forwarded(&repo, new.id(), Relation::Narrows), 1);
+    let mut second = link(new.id(), Relation::Narrows, old.id());
+    second.mark = Some("second passage".into());
+    second.run(&mut repo).unwrap();
+    assert_eq!(forwarded(&repo, new.id(), Relation::Narrows), 2);
+    let mut duplicate = link(new.id(), Relation::Narrows, old.id());
+    duplicate.mark = Some("first passage".into());
+    let before = seq(&repo);
+    assert!(registered(&duplicate.run(&mut repo)));
+    assert_eq!(seq(&repo), before);
+}
 #[test]
 fn question_close_refuses_a_decision_without_one() {
     for by in [Closure::Fact, Closure::NonDecision] {

@@ -25,6 +25,13 @@ Pass `--closes <Q>` when the decision closes a question. The way it closed and t
 
 To narrow or replace an older decision, use `--relate narrows|supersedes <old D> --mark <text>`. The mark is not a note: it is the exact text, inside the older decision's body or scope note, that stops applying. gy refuses a mark it cannot find there. The old body is never changed; the mark is shown beside it as the trace of the relation. Other relations (`widens`, `completes`) are made with `link`, without a mark.
 
+If the same new decision narrows several passages of the same old decision,
+add one `gy link <new D> narrows <old D> --mark <text>` per distinct passage.
+The same passage twice is refused; `supersedes` remains one edge per pair.
+Remove just one passage with `gy link <new D> narrows <old D> --remove --mark <text>`.
+With several distinct passages, omitting `--mark` lists them and refuses the
+removal. With a single passage, the earlier removal without `--mark` still works.
+
 ## When unsure
 
 The output of `decide` says what is still missing and what you could type next.

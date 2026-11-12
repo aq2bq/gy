@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+- A decision can narrow distinct passages of the same older decision, one
+  `link --mark` per passage. Duplicate passages are refused; `supersedes`
+  remains one edge per pair. `link --remove --mark` removes one stored passage;
+  ambiguous removals list the passages and refuse the write. A single passage
+  can still be removed without `--mark`.
+- Concurrent narrows additions to the same pair retain both distinct passages
+  when rebased by this build. The same passage is refused. Other concurrent
+  changes keep the existing node conflict rules.
+- The ledger format is unchanged. Tests with the frozen gy 3.0.0 executable
+  cover pulling three passages written by the new CLI and editing the source
+  decision above them. Its default `show` (text and JSON) names all three in
+  the summary, but may excerpt the body to `## Decision`; displayed passages
+  remain marked. `show --full`, `show --full --json`, `publish`, and the node
+  API mark all three. This build's default `show` includes the whole body when
+  an affected passage is outside its excerpt. The path API joins same-pair
+  narrows passages with newlines in its existing `mark` string.
+- **gy 3.0.0 keeps its earlier node-level rebase conflicts**: concurrent narrows
+  writes made by that release can still be rejected. Update the copy doing
+  the rebase to retain distinct concurrent passages.
+
 ## 3.0.0 - 2026-11-05
 
 This release lets an agent retire explicitly selected records from gy's

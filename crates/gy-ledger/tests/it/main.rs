@@ -102,4 +102,5 @@ mod unwaited_batch;
 
 mod retire;
 
+mod narrows_rebase;
 mod retire_sync;

@@ -353,7 +353,7 @@ fn criterion_line(data: &Criterion) -> String {
 }
 
 fn projected_body(node: &Node, full: bool, cancellation: Option<&Retraction>) -> String {
-    let NodeData::Decision(data) = node.data() else {
+    let NodeData::Decision(_) = node.data() else {
         return node.body().to_string();
     };
     if full {
@@ -361,8 +361,10 @@ fn projected_body(node: &Node, full: bool, cancellation: Option<&Retraction>) ->
     }
     let section = decision_section(node.body());
     if let Some(retraction) = cancellation {
-        let scope = retracted(data.scope.text(), retraction).is_some();
-        if !retraction.narrowed.is_empty() && retracted(&section, retraction).is_none() && !scope {
+        if retraction.narrowed.iter().any(|narrow| {
+            !narrow.mark.is_empty()
+                && node.body().matches(&narrow.mark).count() > section.matches(&narrow.mark).count()
+        }) {
             return node.body().to_string();
         }
     }

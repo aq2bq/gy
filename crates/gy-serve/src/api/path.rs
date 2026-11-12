@@ -45,7 +45,8 @@
 //! - `state` is the list view's word, and for a decision `live` or
 //!   `superseded` (see `/api/cross`). `relation` is the stored name of the edge
 //!   that joins the node to its `parent`, un-inverted; `mark` is the passage the
-//!   edge names, absent when it names none.
+//!   edge names, absent when it names none. Multiple narrows passages for the
+//!   same parent and child are joined with newlines, in stored order.
 //! - `parent` is the id of the node this one hangs from: the center at the first
 //!   step, a node of the previous step after that. A node appears once per
 //!   direction, so a diamond keeps its first way in.
@@ -65,7 +66,7 @@ use crate::snapshot::{Snapshot, instant};
 use gy_ledger::{NodeKind, Relation, Repository, Store};
 use serde::Serialize;
 use std::cmp::Ordering;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 /// The most boxes one step shows; the rest are counted.
 const CAP: usize = 10;
@@ -237,7 +238,7 @@ fn upstream(relation: Relation) -> bool {
 /// The node's neighbours on one side: the `to` ends of its stored edges and the
 /// `from` ends of the edges arriving at it.
 fn neighbours(snap: &Snapshot, at: usize, up: bool) -> Vec<Also> {
-    let mut found = Vec::new();
+    let mut found: Vec<Also> = Vec::new();
     for edge in snap.node(at).links() {
         if upstream(edge.label) != up {
             continue;
@@ -261,7 +262,37 @@ fn neighbours(snap: &Snapshot, at: usize, up: bool) -> Vec<Also> {
             mark: arrival.mark.clone(),
         });
     }
-    found
+    bundle_narrows(found)
+}
+
+/// Keep one arrival per narrows pair, carrying every passage to its tooltip.
+fn bundle_narrows(found: Vec<Also>) -> Vec<Also> {
+    let mut grouped: Vec<Also> = Vec::new();
+    let mut narrows = HashMap::new();
+    for neighbour in found {
+        let prior = if neighbour.relation == Relation::Narrows {
+            narrows.insert(neighbour.at, grouped.len())
+        } else {
+            None
+        };
+        if let Some(index) = prior {
+            // Keep the first group's index even when several more arrive.
+            narrows.insert(neighbour.at, index);
+            let prior = &mut grouped[index];
+            if let Some(mark) = neighbour.mark {
+                match &mut prior.mark {
+                    Some(held) => {
+                        held.push('\n');
+                        held.push_str(&mark);
+                    }
+                    None => prior.mark = Some(mark),
+                }
+            }
+        } else {
+            grouped.push(neighbour);
+        }
+    }
+    grouped
 }
 
 /// Open first, then the relation, then the kind, then the newest.

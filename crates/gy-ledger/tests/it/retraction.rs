@@ -178,6 +178,21 @@ fn a_decision_with_no_retraction_still_hides_the_other_sections() {
 }
 
 #[test]
+fn scope_only_or_decision_only_marks_keep_the_default_excerpt() {
+    for mark in ["applies at dawn", "keep"] {
+        let mut repo = repo();
+        let old = decision(
+            "0001",
+            "## Context\ncontext stays hidden\n\n## Decision\nkeep\n",
+            "applies at dawn",
+        );
+        let new = narrower(&old, "0002", mark);
+        seed(&mut repo, &[old, new]);
+        assert!(!shown(&repo, "d-0001", false).body.contains("## Context"));
+    }
+}
+
+#[test]
 fn the_longest_mark_wins_when_one_passage_contains_another() {
     let mut repo = repo();
     let older = decision("0001", "## Decision\nabcdef\n", "scope");

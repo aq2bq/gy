@@ -225,7 +225,11 @@ pub struct LinkArgs {
     #[arg(help = write::relation_help())]
     pub relation: String,
     pub to: String,
-    #[arg(long, value_name = "TEXT")]
+    #[arg(
+        long,
+        value_name = "TEXT",
+        help = "Passage in the older decision; with --remove, selects the stored narrows passage"
+    )]
     pub mark: Option<String>,
     #[arg(long)]
     pub remove: bool,

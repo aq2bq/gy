@@ -1,5 +1,6 @@
 //! Rebase uncommitted writes onto the remote's new lines (n-ecbf 2B, ac-08cc).
 use super::super::{Gate, Result, log, replay};
+use super::narrows::Narrows;
 use super::rejected::{Rejected, RejectedBy, write_rejected};
 use super::report::{Pulled, Range, Sync};
 use super::rules::{key, landed, now, parse, targets, touched};
@@ -24,11 +25,9 @@ pub(super) fn rebase(
 ) -> Result<()> {
     let (remote_text, remote, pending) = inputs(ledger, upstream, committed)?;
     let on_remote = landed(&remote, committed, &pending);
-    let (mut nodes, changed, removed, causes, remote_seq) =
-        remote_changes(&remote, committed, &on_remote);
-    let (accepted, rejects) = place(
-        &mut nodes, pending, &changed, &removed, &causes, remote_seq, &on_remote, gate,
-    );
+    let mut changes = remote_changes(&remote, committed, &on_remote);
+    let remote_seq = changes.seq;
+    let (accepted, rejects) = place(&mut changes, pending, &on_remote, gate);
     git::reset_hard(ledger, upstream)?;
     place_log(ledger, remote_text, &accepted)?;
     rebuild_snapshot(ledger)?;
@@ -91,30 +90,29 @@ fn inputs(
         .collect();
     Ok((remote_text, remote, pending))
 }
-#[allow(clippy::type_complexity)]
-fn remote_changes(
-    remote: &[log::Event],
-    committed: u64,
-    on_remote: &BTreeSet<String>,
-) -> (
-    BTreeMap<String, Value>,
-    BTreeSet<String>,
-    BTreeSet<String>,
-    BTreeMap<String, Cause>,
-    u64,
-) {
+struct Remote {
+    nodes: BTreeMap<String, Value>,
+    changed: BTreeSet<String>,
+    removed: BTreeSet<String>,
+    causes: BTreeMap<String, Cause>,
+    seq: u64,
+    narrows: Narrows,
+}
+
+fn remote_changes(remote: &[log::Event], committed: u64, on_remote: &BTreeSet<String>) -> Remote {
     let mut nodes: BTreeMap<String, Value> = BTreeMap::new();
     let mut changed = BTreeSet::new();
     let mut removed = BTreeSet::new();
     let mut causes: BTreeMap<String, Cause> = BTreeMap::new();
     let mut remote_seq = committed;
-    for event in remote {
-        if event.seq <= committed {
-            replay::apply(&mut nodes, event);
-            continue;
-        }
+    for event in remote.iter().take_while(|event| event.seq <= committed) {
+        replay::apply(&mut nodes, event);
+    }
+    let mut narrows = Narrows::new(nodes.clone());
+    for event in remote.iter().skip_while(|event| event.seq <= committed) {
         remote_seq = event.seq;
         if !on_remote.contains(&key(event)) {
+            narrows.remote(&nodes, event);
             for node in touched(&nodes, event) {
                 changed.insert(node.clone());
                 causes
@@ -129,43 +127,47 @@ fn remote_changes(
         }
         replay::apply(&mut nodes, event);
     }
-    (nodes, changed, removed, causes, remote_seq)
+    Remote {
+        nodes,
+        changed,
+        removed,
+        causes,
+        seq: remote_seq,
+        narrows,
+    }
 }
-#[allow(clippy::too_many_arguments)] // the gate is one more, next to the six
 fn place(
-    nodes: &mut BTreeMap<String, Value>,
+    remote: &mut Remote,
     pending: Vec<log::Event>,
-    changed: &BTreeSet<String>,
-    removed: &BTreeSet<String>,
-    causes: &BTreeMap<String, Cause>,
-    remote_seq: u64,
     on_remote: &BTreeSet<String>,
     gate: &dyn Gate,
 ) -> (Vec<log::Event>, Vec<Rejected>) {
     let mut accepted = Vec::new();
     let mut rejects = Vec::new();
     let mut rejected_created: BTreeSet<String> = BTreeSet::new();
-    let mut next = remote_seq + 1;
+    let mut next = remote.seq + 1;
     for event in pending {
-        if on_remote.contains(&key(&event)) {
+        let landed = on_remote.contains(&key(&event));
+        let merged = remote.narrows.place(&remote.nodes, &event, landed);
+        if landed {
             continue;
         }
-        if let Some(rejected) = rejection(
-            nodes,
-            changed,
-            removed,
+        let candidate = merged.as_ref().map_or(&event, |(event, _)| event);
+        if let Some(mut rejected) = rejection(
+            remote,
             &rejected_created,
-            causes,
-            &event,
+            candidate,
+            merged.as_ref().map(|(_, id)| id.as_str()),
             gate,
         ) {
+            rejected.event = event;
             refused_created(&rejected, &mut rejected_created);
             rejects.push(rejected);
         } else {
-            let mut placed = event;
+            let mut placed = candidate.clone();
             placed.seq = next;
             next += 1;
-            replay::apply(nodes, &placed);
+            replay::apply(&mut remote.nodes, &placed);
             accepted.push(placed);
         }
     }
@@ -181,24 +183,22 @@ fn refused_created(rejected: &Rejected, created: &mut BTreeSet<String>) {
     }
 }
 fn rejection(
-    nodes: &BTreeMap<String, Value>,
-    changed: &BTreeSet<String>,
-    removed: &BTreeSet<String>,
+    remote: &Remote,
     rejected_created: &BTreeSet<String>,
-    causes: &BTreeMap<String, Cause>,
     event: &log::Event,
+    merged: Option<&str>,
     gate: &dyn Gate,
 ) -> Option<Rejected> {
+    let nodes = &remote.nodes;
     let touched = touched(nodes, event);
-    let reason =
-        judge(nodes, changed, removed, rejected_created, event, &touched).or_else(|| {
-            gate.admit(nodes, &event.changes)
-                .err()
-                .map(|error| error.message)
-        })?;
+    let reason = judge(remote, rejected_created, event, &touched, merged).or_else(|| {
+        gate.admit(nodes, &event.changes)
+            .err()
+            .map(|error| error.message)
+    })?;
     let by = touched
         .iter()
-        .find_map(|node| causes.get(node))
+        .find_map(|node| remote.causes.get(node))
         .map(|cause| RejectedBy {
             seq: cause.0,
             actor: cause.1.clone(),
@@ -251,19 +251,19 @@ fn refused_shape(
     None
 }
 fn judge(
-    nodes: &BTreeMap<String, Value>,
-    changed: &BTreeSet<String>,
-    removed: &BTreeSet<String>,
+    remote: &Remote,
     rejected_created: &BTreeSet<String>,
     event: &log::Event,
     touched: &[String],
+    merged: Option<&str>,
 ) -> Option<String> {
+    let nodes = &remote.nodes;
     let created_here = created_in(event);
     for node in touched {
-        if removed.contains(node) {
+        if remote.removed.contains(node) {
             return Some(format!("the remote deleted {node}"));
         }
-        if changed.contains(node) {
+        if remote.changed.contains(node) && merged != Some(node.as_str()) {
             return Some(format!("the remote changed {node}"));
         }
     }
