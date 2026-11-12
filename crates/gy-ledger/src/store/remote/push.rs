@@ -4,6 +4,8 @@ use super::super::{Error, FormatVersion, Result, format, log};
 use super::report::{Range, Sync};
 use super::sync::{locked, seq_at, working_seq};
 use super::{git, guard, shape, state};
+use serde::Deserialize;
+use std::collections::BTreeMap;
 use std::path::Path;
 
 /// The version the remote must be raised to: the copy's own, when it is newer
@@ -97,15 +99,17 @@ pub(super) fn push_writes(
     let appended = text
         .strip_prefix(&base)
         .ok_or_else(|| Error::invalid("the working log is not HEAD plus writes"))?;
+    let mut titles = titles_in(&base)?;
     let mut cumulative = base;
     for line in appended.lines().filter(|line| !line.trim().is_empty()) {
         let event: log::Event = serde_json::from_str(line)
             .map_err(|_| Error::invalid("the working log has a line that is not an event"))?;
+        update_titles(&mut titles, &event);
         cumulative.push_str(line);
         cumulative.push('\n');
         let sha = git::hash_object(ledger, cumulative.as_bytes())?;
         git::update_index(ledger, log::FILE, &sha)?;
-        git::commit(ledger, &write_message(&event))?;
+        git::commit(ledger, &write_message(&event, &titles))?;
     }
     if let Err(error) = git::push_ff(ledger, branch) {
         if let Some(before) = before {
@@ -172,8 +176,15 @@ pub(super) fn first_push(
 /// The commit message of one write: its why, the actor, the human when the
 /// copy records one, the writing gy's release, and the sequence (n-670a B).
 /// A format-only commit keeps its own message.
-fn write_message(event: &log::Event) -> String {
-    let mut message = format!("{}\n\nactor: {}\n", event.why, event.actor);
+fn write_message(event: &log::Event, titles: &BTreeMap<String, String>) -> String {
+    let mut subject = event.why.clone();
+    for id in subject_ids(&event.why) {
+        if let Some(title) = titles.get(id) {
+            let title = title.replace(['\n', '\r'], " ");
+            subject.push_str(&format!(" | [{id}: {title}]"));
+        }
+    }
+    let mut message = format!("{subject}\n\nactor: {}\n", event.actor);
     if let Some(by) = &event.by {
         message.push_str(&format!("by: {by}\n"));
         if let Some(mail) = &event.by_mail {
@@ -183,4 +194,94 @@ fn write_message(event: &log::Event) -> String {
     message.push_str(&format!("Gy-Version: {}\n", env!("CARGO_PKG_VERSION")));
     message.push_str(&format!("Gy-Seq: {}\n", event.seq));
     message
+}
+
+/// The ids the command names, not every node its transaction changes. Scope
+/// names can look like ids too, so only node commands are read here.
+fn subject_ids(why: &str) -> Vec<&str> {
+    let words: Vec<&str> = why.split_whitespace().collect();
+    match words.as_slice() {
+        ["link", from, _, to] => vec![from, to],
+        ["decide" | "edit", id] => vec![id],
+        ["need", "add" | "close", id]
+        | ["question", "add" | "close", id]
+        | ["criterion", "add" | "satisfy", id]
+        | ["req", "add" | "approve" | "done" | "revise" | "cancel", id] => vec![id],
+        _ => Vec::new(),
+    }
+}
+
+/// Read the base once. Each pending write then advances this projection once,
+/// so later edits cannot change an earlier commit's subject (d-a4b9).
+fn titles_in(base: &str) -> Result<BTreeMap<String, String>> {
+    let mut titles = BTreeMap::new();
+    for line in base.lines().filter(|line| !line.trim().is_empty()) {
+        let event: log::Event = serde_json::from_str(line)
+            .map_err(|_| Error::invalid("a committed event is not an event"))?;
+        update_titles(&mut titles, &event);
+    }
+    Ok(titles)
+}
+
+#[derive(Deserialize)]
+struct Titled {
+    title: String,
+}
+
+fn update_titles(titles: &mut BTreeMap<String, String>, event: &log::Event) {
+    for change in &event.changes {
+        match change {
+            log::Change::Created { node, value } | log::Change::Updated { node, value } => {
+                if let Ok(titled) = Titled::deserialize(value) {
+                    titles.insert(node.clone(), titled.title);
+                }
+            }
+            log::Change::Deleted { node, .. } => {
+                titles.remove(node);
+            }
+            log::Change::Retired { .. } | log::Change::ScopeRenamed { .. } => {}
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{BTreeMap, log, write_message};
+
+    #[test]
+    fn body_fields_keep_their_optional_shape_and_order() {
+        for (by, mail) in [
+            (None, None),
+            (Some("human"), None),
+            (Some("human"), Some("h@example.com")),
+            (None, Some("ignored@example.com")),
+        ] {
+            let event = log::Event {
+                seq: 42,
+                at: 0,
+                actor: "agent".into(),
+                why: "edit n-0001".into(),
+                source: "test".into(),
+                retries: 0,
+                by: by.map(str::to_string),
+                by_mail: mail.map(str::to_string),
+                changes: Vec::new(),
+            };
+            let titles = BTreeMap::from([("n-0001".into(), "a title".into())]);
+            let message = write_message(&event, &titles);
+            let body = message.split_once("\n\n").unwrap().1;
+            let mut expected = "actor: agent\n".to_string();
+            if let Some(by) = by {
+                expected.push_str(&format!("by: {by}\n"));
+                if let Some(mail) = mail {
+                    expected.push_str(&format!("by_mail: {mail}\n"));
+                }
+            }
+            expected.push_str(&format!(
+                "Gy-Version: {}\nGy-Seq: 42\n",
+                env!("CARGO_PKG_VERSION")
+            ));
+            assert_eq!(body, expected);
+        }
+    }
 }

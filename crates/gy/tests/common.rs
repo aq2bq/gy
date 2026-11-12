@@ -130,6 +130,22 @@ impl Fixture {
         self.command(args).env_remove("GY_ACTOR").output().unwrap()
     }
 
+    /// CI installs this frozen release outside the canonical installation.
+    /// Missing it is a failure when an ignored compatibility test is selected.
+    pub fn compat(&self, args: &[&str]) -> Output {
+        let binary = std::env::var_os("GY_COMPAT_BIN").expect("set GY_COMPAT_BIN to gy 3.0.0");
+        let version = Command::new(&binary).arg("--version").output().unwrap();
+        assert!(version.status.success());
+        assert_eq!(stdout(&version).trim(), "gy 3.0.0");
+        Command::new(binary)
+            .current_dir(&self.root)
+            .env("XDG_DATA_HOME", &self.data)
+            .env("GY_ACTOR", "piko")
+            .args(args)
+            .output()
+            .unwrap()
+    }
+
     fn command(&self, args: &[&str]) -> Command {
         let mut command = Command::new(env!("CARGO_BIN_EXE_gy"));
         command

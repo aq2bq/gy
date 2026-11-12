@@ -270,3 +270,139 @@ fn share_judges_its_first_upload_with_the_rule() {
     let rejected = std::fs::read_to_string(two.join("rejected.jsonl")).unwrap();
     assert!(rejected.contains("ac-0001"), "{rejected}");
 }
+
+/// The same pending commands, with a link target made in this batch and a
+/// later retitle, must have the same subjects after an unrelated rebase.
+fn pending_subjects(temp: &Path, rebase: bool) -> Vec<String> {
+    let (one, two, remote) = pair(temp);
+    if rebase {
+        peer_commit(&one, 2, vec![created(&criterion("0004"))]);
+    }
+    let mut target = criterion("0002");
+    target.set_title("before edit").unwrap();
+    let mut need = Node::need(
+        id(NodeKind::Need, "0003"),
+        "a",
+        "2026-09-15T00:00:00Z",
+        "need title",
+    )
+    .unwrap();
+    need.link(
+        Link::new(
+            need.id().clone(),
+            Relation::Targets,
+            id(NodeKind::Criterion, "0001"),
+        )
+        .unwrap(),
+    );
+    let mut linked = need.clone();
+    linked.link(Link::new(need.id().clone(), Relation::Targets, target.id().clone()).unwrap());
+    let mut after = target.clone();
+    after.set_title("after edit").unwrap();
+    for (seq, why, change) in [
+        (2, "criterion add ac-0002", created(&target)),
+        (3, "need add n-0003", created(&need)),
+        (
+            4,
+            "link n-0003 targets ac-0002",
+            log::Change::Updated {
+                node: "n-0003".into(),
+                value: serde_json::to_value(&linked).unwrap(),
+            },
+        ),
+        (
+            5,
+            "edit ac-0002",
+            log::Change::Updated {
+                node: "ac-0002".into(),
+                value: serde_json::to_value(&after).unwrap(),
+            },
+        ),
+        (
+            6,
+            "link n-0003 targets ac-0002",
+            log::Change::Updated {
+                node: "n-0003".into(),
+                value: serde_json::to_value(&need).unwrap(),
+            },
+        ),
+    ] {
+        let mut write = event(seq, vec![change]);
+        write.why = why.into();
+        log::append(&two, &write).unwrap();
+    }
+    let report = sync(&two, &url(&remote)).unwrap();
+    assert!(report.rejected.is_none(), "{report:?}");
+    assert_eq!(report.rebased.is_some(), rebase);
+    git(&remote, &["log", "--reverse", "--format=%s", "main"])
+        .lines()
+        .skip(if rebase { 2 } else { 1 })
+        .map(str::to_string)
+        .collect()
+}
+
+#[test]
+fn subjects_follow_each_event_and_survive_rebase() {
+    ident();
+    let tmp = tempfile::tempdir().unwrap();
+    let plain = pending_subjects(&tmp.path().join("plain"), false);
+    let rebased = pending_subjects(&tmp.path().join("rebased"), true);
+    assert_eq!(plain, rebased);
+    assert_eq!(
+        plain,
+        [
+            "criterion add ac-0002 | [ac-0002: before edit]",
+            "need add n-0003 | [n-0003: need title]",
+            "link n-0003 targets ac-0002 | [n-0003: need title] | [ac-0002: before edit]",
+            "edit ac-0002 | [ac-0002: after edit]",
+            "link n-0003 targets ac-0002 | [n-0003: need title] | [ac-0002: after edit]",
+        ]
+    );
+}
+
+#[test]
+fn a_rebased_link_reads_the_remote_targets_current_title() {
+    ident();
+    let tmp = tempfile::tempdir().unwrap();
+    let (one, two, remote) = pair(tmp.path());
+    let mut target = criterion("0001");
+    target.set_title("remote retitled target").unwrap();
+    peer_commit(
+        &one,
+        2,
+        vec![log::Change::Updated {
+            node: "ac-0001".into(),
+            value: serde_json::to_value(&target).unwrap(),
+        }],
+    );
+    let need = Node::need(
+        id(NodeKind::Need, "0003"),
+        "a",
+        "2026-09-15T00:00:00Z",
+        "need title",
+    )
+    .unwrap();
+    let mut linked = need.clone();
+    linked.link(Link::new(need.id().clone(), Relation::Targets, target.id().clone()).unwrap());
+    for (seq, why, change) in [
+        (2, "need add n-0003", created(&need)),
+        (
+            3,
+            "link n-0003 targets ac-0001",
+            log::Change::Updated {
+                node: "n-0003".into(),
+                value: serde_json::to_value(&linked).unwrap(),
+            },
+        ),
+    ] {
+        let mut write = event(seq, vec![change]);
+        write.why = why.into();
+        log::append(&two, &write).unwrap();
+    }
+    let report = sync(&two, &url(&remote)).unwrap();
+    assert!(report.rejected.is_none(), "{report:?}");
+    assert_eq!(
+        git(&remote, &["log", "-1", "--format=%s", "main"]).trim(),
+        "link n-0003 targets ac-0001 | [n-0003: need title] | [ac-0001: remote retitled target]"
+    );
+}

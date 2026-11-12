@@ -281,3 +281,36 @@ fn sync_says_a_refused_push_is_a_permission_problem() {
         error.message
     );
 }
+
+#[test]
+fn a_refused_push_rolls_back_and_retry_keeps_the_subject() {
+    use std::os::unix::fs::PermissionsExt;
+    ident();
+    let tmp = tempfile::tempdir().unwrap();
+    let (ledger, remote) = (tmp.path().join("ledger"), tmp.path().join("remote.git"));
+    seed(&ledger);
+    bare(&remote);
+    sync(&ledger, &url(&remote)).unwrap();
+    let head = git(&ledger, &["rev-parse", "HEAD"]);
+    let mut repo = Repository::new(FileStore::open_with(&ledger, |_| Some("piko".into())).unwrap());
+    let written = CriterionAdd {
+        scope: "a".into(),
+        title: "retry title".into(),
+        body: None,
+    }
+    .run(&mut repo)
+    .unwrap()
+    .id
+    .unwrap();
+    let hook = remote.join("hooks/pre-receive");
+    std::fs::write(&hook, "#!/bin/sh\nexit 1\n").unwrap();
+    std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755)).unwrap();
+    assert!(sync(&ledger, &url(&remote)).is_err());
+    assert_eq!(git(&ledger, &["rev-parse", "HEAD"]), head);
+    std::fs::remove_file(hook).unwrap();
+    sync(&ledger, &url(&remote)).unwrap();
+    assert_eq!(
+        git(&remote, &["log", "-1", "--format=%s", "main"]).trim(),
+        format!("criterion add {written} | [{written}: retry title]")
+    );
+}
