@@ -1,21 +1,20 @@
 // Inspect references and assignments, never comments, strings, or spelling.
-import { parse } from 'acorn';
-import { full } from 'acorn-walk';
-import { analyze } from 'eslint-scope';
+import { parse, walk } from 'yuku';
 
 export function violations(source, name, roles) {
-  const ast = parse(source, { ecmaVersion: 2022, ranges: true });
-  const scopes = analyze(ast, { ecmaVersion: 2022, optimistic: true });
-  const refs = new Map();
-  for (const scope of scopes.scopes) {
-    for (const ref of scope.references) refs.set(ref.identifier, ref);
-  }
+  const file = parse(source, { sourceType: 'script', preserveParens: false, analyze: true });
+  const syntax = file.diagnostics.filter(diagnostic => diagnostic.severity === 'error');
+  if (syntax.length) throw new SyntaxError(syntax.map(diagnostic => diagnostic.message).join('\n'));
+  const ast = file.program;
   const wrapper = ast.body.find(node => node.type === 'ExpressionStatement'
     && node.expression.type === 'CallExpression'
     && node.expression.callee.type === 'FunctionExpression')?.expression.callee;
-  const rootScope = wrapper ? scopes.acquire(wrapper) : scopes.globalScope;
-  const rootState = rootScope?.variables.find(variable => variable.name === 'state');
-  const global = node => node?.type === 'Identifier' && !refs.get(node)?.resolved;
+  // Lexical declarations live in functionBody; var lives in function. find
+  // checks only that scope, so an outer or nested state cannot replace it.
+  const rootState = wrapper
+    ? file.scopeOf(wrapper.body)?.find('state') ?? file.scopeOf(wrapper)?.find('state')
+    : file.rootScope.find('state');
+  const global = node => node?.type === 'Identifier' && !file.referenceOf(node)?.binding;
   const property = node => node.computed ? node.property.value : node.property.name;
   function path(node) {
     if (node?.type === 'Identifier') return global(node) ? node.name : null;
@@ -35,20 +34,21 @@ export function violations(source, name, roles) {
   const forbidden = new Set(Object.entries(roles)
     .filter(([file, kind]) => file !== name && ['region', 'core', 'network'].includes(kind))
     .map(([file]) => `Gy${file.replace('.js', '').replace(/^./, c => c.toUpperCase())}`));
-  function mutation(target, value) {
+  function mutation(target, value, declared) {
     const id = root(target);
     if (id?.type !== 'Identifier' || id.name !== 'state') return;
-    const ref = refs.get(id);
+    const binding = declared ?? file.referenceOf(id)?.binding;
     if (passive) errors.add('writes shared state');
-    if (name === 'root.js' && ref?.resolved === rootState) {
+    if (name === 'root.js' && rootState && binding === rootState) {
       const factory = value?.type === 'CallExpression' && path(value.callee);
       if (target.type !== 'Identifier' || !['window.GyState.initial', 'window.GyState.apply'].includes(factory)) {
         errors.add('builds state outside GyState');
       }
     }
   }
-  full(ast, node => {
-    if (node.type === 'Identifier' && refs.has(node) && global(node)) {
+  // Leave preserves the previous postorder, including the order of errors.
+  walk(ast, { leave(node) {
+    if (node.type === 'Identifier' && file.referenceOf(node) && global(node)) {
       if (name === 'state.js' && ['document', 'fetch'].includes(node.name)) errors.add('state uses DOM or network');
       if (node.name === 'fetch' && role !== 'network') errors.add('network outside network role');
       if (role === 'region' && forbidden.has(node.name)) errors.add('region reaches another region or core');
@@ -63,7 +63,7 @@ export function violations(source, name, roles) {
     }
     if (node.type === 'AssignmentExpression') mutation(node.left, node.right);
     if (node.type === 'UpdateExpression' || (node.type === 'UnaryExpression' && node.operator === 'delete')) mutation(node.argument);
-    if (name === 'root.js' && node.type === 'VariableDeclarator' && node.id.name === 'state') mutation(node.id, node.init);
-  });
+    if (name === 'root.js' && node.type === 'VariableDeclarator' && node.id.name === 'state') mutation(node.id, node.init, file.bindingOf(node.id));
+  } });
   return [...errors];
 }

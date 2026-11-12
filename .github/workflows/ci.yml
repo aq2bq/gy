@@ -70,20 +70,42 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: e2e-release
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: e2e/package-lock.json
-      - run: npm ci --prefix e2e
-      - run: npm run test:unit --prefix e2e
+          bun-version: latest
+      - run: ./without-node.sh bun install --frozen-lockfile
+        working-directory: e2e
+      - name: Inspect yuku backend
+        working-directory: e2e
+        run: |
+          ./without-node.sh bun -e '
+            const loaded = [];
+            const dlopen = process.dlopen;
+            process.dlopen = function (...args) {
+              const result = dlopen.apply(this, args);
+              loaded.push(String(args[1]));
+              return result;
+            };
+            let wasmModules = 0;
+            WebAssembly.Module = new Proxy(WebAssembly.Module, {
+              construct(target, args) { wasmModules++; return Reflect.construct(target, args); }
+            });
+            const { parse } = await import("yuku");
+            parse("let value = 1; value;", { analyze: true });
+            console.log(JSON.stringify({ platform: process.platform, arch: process.arch, loaded, wasmModules }));
+            if (!loaded.length && !wasmModules) throw new Error("No parser backend observed");
+          '
+      - run: ./without-node.sh bun run test:unit
+        working-directory: e2e
       - run: cargo build --release -p gy --bin gy --example large_fixture --locked
       - uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ hashFiles('e2e/package-lock.json') }}
-      - run: npx --prefix e2e playwright install --with-deps chromium
-      - run: npx --prefix e2e playwright test --config e2e/playwright.config.ts
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('e2e/bun.lock') }}
+      - run: ./without-node.sh bunx --bun playwright install --with-deps chromium
+        working-directory: e2e
+      - run: ./without-node.sh bunx --bun playwright test
+        working-directory: e2e
       - if: failure()
         uses: actions/upload-artifact@v4
         with:

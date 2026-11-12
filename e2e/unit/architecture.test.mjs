@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import test from 'node:test';
+import { test } from 'bun:test';
 import { violations } from './architecture.mjs';
 
 const roles = JSON.parse(readFileSync(new URL('../../crates/gy-serve/tests/asset-roles.json', import.meta.url)));
@@ -58,4 +58,42 @@ test('an earlier local variable cannot hide root state', () => {
 
 test('JavaScript cannot bypass checks through the asset role', () => {
   assert.ok(violations('fetch("/")', 'node.js', { ...roles, 'node.js': 'asset' }).includes('JavaScript must have a code role'));
+});
+
+test('a local fetch is distinct from a global network reference', () => {
+  assert.deepEqual(violations('const fetch = () => {}; fetch("/");', 'node.js', roles), []);
+  assert.deepEqual(violations('function f(fetch) { return fetch("/"); }', 'state.js', roles), []);
+  assert.deepEqual(violations('fetch("/");', 'node.js', roles), ['network outside network role']);
+});
+
+test('a document parameter does not turn a local access into DOM ownership', () => {
+  assert.deepEqual(violations('function f(document) { return document.getElementById("x"); }', 'node.js', roles), []);
+  assert.deepEqual(violations('function f(document) { return document.x; }', 'state.js', roles), []);
+  assert.deepEqual(violations('document.getElementById("x");', 'node.js', roles), ['passive view owns DOM events']);
+});
+
+test('a block-local window does not hide the global window outside the block', () => {
+  assert.deepEqual(violations('{ const window = {}; window.fetch("/"); window.GyReads.read(); }', 'node.js', roles), []);
+  assert.deepEqual(violations('{ let window = {}; window.document; }', 'state.js', roles), []);
+  assert.deepEqual(violations('{ let window = {}; window.fetch("/"); } window.fetch("/");', 'node.js', roles), ['network outside network role']);
+});
+
+test('both lexical and var root declarations must use state factories', () => {
+  for (const kind of ['let', 'const', 'var']) {
+    assert.deepEqual(violations(`(function () { ${kind} state = {}; })();`, 'root.js', roles), ['builds state outside GyState']);
+    assert.deepEqual(violations(`(function () { ${kind} state = window.GyState.initial({}); })();`, 'root.js', roles), []);
+  }
+});
+
+test('root state and a state outside the immediate function stay distinct', () => {
+  const source = 'let state = {}; (function () { let state = window.GyState.initial({}); function label() { const state = "open"; return state; } })();';
+  assert.deepEqual(violations(source, 'root.js', roles), []);
+});
+
+test('compound violations retain their postorder', () => {
+  assert.deepEqual(violations('function draw(state) { state.x = fetch("/"); }', 'node.js', roles), ['network outside network role', 'writes shared state']);
+});
+
+test('invalid syntax fails rather than passing with no violations', () => {
+  assert.throws(() => violations('const = ;', 'node.js', roles), SyntaxError);
 });

@@ -214,6 +214,8 @@ test('every way out of a page keeps the chosen scope', async ({ page, request })
   await expect(page).toHaveURL(/#\/\?only=b$/);
 
   // The palette's hit.
+  // d-e78c: URL changes before hashchange has finished drawing the destination.
+  await expect(main(page).getByTestId('board')).toBeVisible();
   await page.keyboard.press('Control+k');
   const palette = page.getByTestId('palette');
   await expect(palette).toBeVisible();

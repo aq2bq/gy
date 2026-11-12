@@ -5,11 +5,19 @@ Browser tests use isolated temporary ledgers: small scenarios use the CLI, and t
 
 ```sh
 cargo build --release -p gy --bin gy --example large_fixture --locked
-cd e2e && npm ci && npx playwright install chromium && npm test
+cd e2e
+./without-node.sh bun install --frozen-lockfile
+./without-node.sh bun run test:unit
+./without-node.sh bunx --bun playwright install --with-deps chromium
+./without-node.sh bunx --bun playwright test
 ```
 
-`npm test` runs the JavaScript structure checks before the browser tests.
-`npm run test:unit` runs those checks alone, without a browser or a Rust build.
+`./without-node.sh bun run test` runs the JavaScript structure checks before the browser tests.
+`./without-node.sh bun run test:unit` runs those checks alone, without a browser or a Rust build.
+The unit script limits Bun's test collection to `unit/`; Playwright runs the browser specs.
+The wrapper excludes Node.js command names from the check's PATH, verifies that
+`node` and `nodejs` cannot be found, and prints the actual Bun version and revision.
+CI follows Bun's latest stable release; Playwright and yuku are pinned by `bun.lock`.
 They parse syntax and resolve variable bindings, ignoring comments and strings.
 In a region or part, assignments to `state` or its properties are refused,
 including local aliases of supplied state. A local declaration alone is allowed.
