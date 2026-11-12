@@ -42,9 +42,10 @@ refused. Keep the IDs from the retirement write; gy has no retired-node list.
 The first retirement raises the ledger to format 5, which gy 2.x cannot read.
 Before retiring anything in a shared ledger, every member must update to gy
 3.0.0 or later. Revocation and undo keep format 5; ordinary writes without
-retirement keep format 4. The history (`list --since`, `list --actor`, and serve)
-keeps the retirement write's IDs and reason, and `show <ID>` gives its sequence
-and how to restore it. Textual ID references in surviving records stay verbatim.
+retirement keep format 4. Without a scope filter, the history (`list --since`,
+`list --actor`, and serve) keeps the retirement write's IDs and reason, and
+`show <ID>` gives its sequence and how to restore it. Textual ID references in
+surviving records stay verbatim.
 Repeating retirement or restoration already in effect is refused without a new
 transaction. Repeating `undo` redoes the write it just undid.
 

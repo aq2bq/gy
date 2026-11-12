@@ -161,9 +161,10 @@ gy remote set https://github.com/you/yourproject-gy.git
 
 退かせたノードは、`gy serve` の過去の時点を含めて読みから外れます。
 `gy show <ID>` で直接指定すると、退かせた書き込みの番号と戻し方だけを返します。
-`list --since`、`list --actor`、ブラウザの履歴には、退かせた書き込みの ID と理由が
-残ります。残る記録の文に書かれた ID はそのままです。元の文はログ、スナップショット、
-remote の git に残り、次の `gy publish` で退かせたページを除いて書き直します。
+スコープで絞らないときは、`list --since`、`list --actor`、ブラウザの履歴に、
+退かせた書き込みの ID と理由が残ります。残る記録の文に書かれた ID はそのままです。
+元の文はログ、スナップショット、remote の git に残り、
+次の `gy publish` で退かせたページを除いて書き直します。
 
 戻すときは `gy retire <ID>... --revoke --reason <text>` を使います。退かせた直後なら
 `gy undo` でも戻せます。つながった集合の一部だけを戻す操作は拒みます。

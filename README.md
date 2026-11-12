@@ -161,9 +161,10 @@ edge between retired and visible nodes; select a connected set in one write.
 
 Retired nodes disappear from the readings, including past sequences in
 `gy serve`. A direct `gy show <ID>` gives the retirement sequence and how to
-restore the node. `list --since`, `list --actor`, and the web history keep the
-retirement write's IDs and reason. Textual references in surviving records
-remain unchanged. Original text remains in the log, snapshots, and remote git.
+restore the node. Without a scope filter, `list --since`, `list --actor`, and
+the web history keep the retirement write's IDs and reason. Textual references
+in surviving records remain unchanged. Original text remains in the log,
+snapshots, and remote git.
 The next `gy publish` rewrites the scope's directory without the retired pages.
 
 Restore the set with `gy retire <ID>... --revoke --reason <text>`, or use
