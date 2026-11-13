@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 3.1.2 - 2026-11-13
+
+This release names the selected scope on `gy serve`'s Progress screen, so the
+narrowed counts from 3.1.1 are not mistaken for the whole ledger. The ledger
+format, `gy.toml`, the CLI, the server's answers and the bundled skills are
+unchanged.
 
 ### Fixed
 
@@ -8,6 +13,12 @@
   ledger name, in Japanese and English. The label follows scope choices and
   browser back/forward, marks pending checks and names with no nodes, and is
   omitted when all scopes are selected (r-5a94).
+
+### Updating
+
+Install with `cargo install gy --version 3.1.2 --locked`. No manual migration
+is needed, and members of a shared ledger can update in any order. The skills
+did not change. Repeating installation is safe.
 
 ## 3.1.1 - 2026-11-13
 
