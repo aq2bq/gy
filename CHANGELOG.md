@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 3.1.1 - 2026-11-13
+
+This release makes `gy serve`'s Progress screen follow the scope chosen in the
+sidebar, as the other screens already did. The ledger format, `gy.toml`, the
+CLI and the bundled skills are unchanged.
 
 ### Fixed
 
@@ -10,6 +14,13 @@
   waits keep their full-ledger judgement and show scope badges on direct waits,
   intermediate needs, and roots. `/api/overview?scope=<name>` reads that scope;
   omitting it keeps the previous answer (r-e9ab, d-d6e3, d-adb9).
+
+### Updating
+
+Install with `cargo install gy --version 3.1.1 --locked`. No manual migration
+is needed, and members of a shared ledger can update in any order. Without a
+selected scope, `/api/overview` answers exactly as in 3.1.0. The skills did not
+change. Repeating installation is safe.
 
 ## 3.1.0 - 2026-11-12
 
