@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Progress labels the selected scope above its heading, separately from the
+  ledger name, in Japanese and English. The label follows scope choices and
+  browser back/forward, marks pending checks and names with no nodes, and is
+  omitted when all scopes are selected (r-5a94).
+
 ## 3.1.1 - 2026-11-13
 
 This release makes `gy serve`'s Progress screen follow the scope chosen in the

@@ -33,3 +33,8 @@ The load fixture has 607 needs, 685 criteria, 503 decisions, 173 questions and
 202 requirements, with creation dates spanning 31 days. These approximate gy's
 observed kind proportions; they do not reproduce its relationships or write
 history. Tests assert the proportions, date spread and 607 overview cards.
+
+`tests/overview-heading.spec.ts` checks the selected scope above the Progress
+heading in Japanese and English, including back/forward, pending reads, and a
+name with no nodes. Its temporary ledger's directory name differs from both
+scopes, so the ledger name and the labelled scope are checked separately.

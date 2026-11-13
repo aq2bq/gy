@@ -35,9 +35,19 @@
       seq: String((body && body.seq) || (shell && shell.seq) || '—'),
       at: now ? ui.when(now) : '—',
     });
-    el.innerHTML = `<div class="sub">${sub}</div><h1 class="hd">${esc(ui.t('overviewTitle'))}</h1>` +
+    el.innerHTML = `<div class="sub" data-testid="overviewSub">${sub}${scopeHeading(state, ui)}</div><h1 class="hd">${esc(ui.t('overviewTitle'))}</h1>` +
       (body ? stats(body, ui) + board(body, state, ui) + blockers(body, state, ui) : frame(ui)) +
       status(state, 'overview', !!state.overview, ui);
+  }
+
+  /* The URL names the selection even before its answer. The shell confirms
+     whether it has nodes; until then the heading claims only a pending check. */
+  function scopeHeading(state, ui) {
+    if (state.scope === 'all') return '';
+    const known = state.shell && (state.shell.scopes || []).some(item => item.name === state.scope);
+    const key = !state.shell ? 'overviewScopeChecking' : known ? 'overviewScope' : 'overviewScopeEmpty';
+    const label = fill(ui.t(key), { name: state.scope });
+    return ` · <span data-testid="overviewScope">${esc(label)}</span>`;
   }
 
   function stats(body, ui) {
