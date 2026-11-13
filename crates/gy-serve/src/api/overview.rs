@@ -1,6 +1,7 @@
 //! `GET /api/overview`: what the first screen asks, the shape of the progress
-//! (d-e239, d-6d90). It reads a ledger whole, judges with gy-ledger's own
-//! derivations (`model/derive.rs`), and places nothing.
+//! (d-e239, d-6d90). `scope=<name>` selects the nodes counted and listed;
+//! absent or `all` reads every scope. Judgements always use the whole ledger
+//! and gy-ledger's own derivations (`model/derive.rs`), and place nothing.
 //!
 //! # The answer
 //!
@@ -70,6 +71,10 @@
 //!
 //! # The keys
 //!
+//! Counts and rows belong to the selected scope. Direct waits, intermediate
+//! needs, and roots may come from another scope when they hold a selected need
+//! (d-0a37, d-84f6).
+//!
 //! - `counts`: `open_needs` (a need the graph derives `open`), `blocked_needs`
 //!   (an open need with at least one open wait), `open_questions` (a question
 //!   still open), `unmet_criteria` (a criterion derived `unsatisfied`; a
@@ -77,11 +82,11 @@
 //!   open: derived `done` or closed by hand).
 //! - `weeks`: Monday-start weeks, from the week of the earliest instant the
 //!   ledger holds (a write or a node's `created`) through the week of the
-//!   latest. Every week of that span is present, zeros included. `opened`
-//!   counts the needs created in the week; `done` the needs that reached
+//!   latest, even with a scope selected. Every week of that span is present,
+//!   zeros included. `opened` counts the needs created in the week; `done` the needs that reached
 //!   `done` or were closed in it (see "When a need moved").
-//! - `scopes`: every scope the ledger holds, the one with the most open needs
-//!   first, ties by name. `open`/`closed`/`blocked` count its needs as
+//! - `scopes`: the selected scope, or every scope the ledger holds if none is
+//!   selected, the one with the most open needs first, ties by name. `open`/`closed`/`blocked` count its needs as
 //!   `counts` does. `pulse` is its writes: one entry per day that has any, in
 //!   the 49 days ending on the day of the answer's last write, counted once per
 //!   write for each scope that write touched. Days without a write are left
@@ -99,7 +104,8 @@
 //!   criteria it targets, each as the model derives it (`satisfied`,
 //!   `unsatisfied`, `withdrawn`). `waiting` is what holds it: the open questions
 //!   and requirements it `waits-on` and the open needs it `depends-on`, each
-//!   `{id, kind, title, decider?}` — `decider` is present only for a question.
+//!   `{id, kind, title, decider?, scope?}` — `decider` is present only for a
+//!   question; `scope` is present only for a scope-filtered answer.
 //! - `blockers`: the roots of the waits. A root is a waiting question, a
 //!   waiting requirement, or a need that waits on nothing while another need
 //!   depends on it; a need blocked only through the needs it depends on is not
@@ -107,7 +113,8 @@
 //!   needs first, ties by id. `needs` is every open need this root holds;
 //!   `via` is the chain of needs between those needs and the root, outermost
 //!   first, empty when the root holds a need directly. `decider` is present
-//!   only for a question.
+//!   only for a question. Scoped answers add `via_scopes`, mapping each via ID
+//!   to its scope, so intermediate needs from other scopes can wear a badge.
 //! - `deciders`: the open questions by the person who decides them, most first,
 //!   ties by name. The name is the record's own, so the spellings it mixes
 //!   (`マスター`, `master`) stay apart; a question that names none counts under
@@ -133,7 +140,7 @@
 //! the need. Reads the model already records are the only source: an edit that
 //! changes nothing a reader sees still counts as a write to `last_moved`, but
 //! it never becomes an event of its own.
-use crate::http::Response;
+use crate::http::{Request, Response};
 use crate::snapshot::{self, Snapshot, day_of, instant};
 use gy_ledger::{
     CriterionState, NeedState, Node, NodeData, NodeKind, Relation, Repository, RequirementState,
@@ -179,6 +186,8 @@ struct ScopeLine {
 
 #[derive(Serialize)]
 struct Waiting {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    scope: Option<String>,
     id: String,
     kind: NodeKind,
     title: String,
@@ -224,6 +233,8 @@ struct Blocker {
     decider: Option<String>,
     needs: Vec<String>,
     via: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    via_scopes: Option<BTreeMap<String, String>>,
 }
 
 #[derive(Serialize)]
@@ -279,18 +290,23 @@ struct Info {
     criteria: CriterionCounts,
 }
 
-pub fn answer<S: Store>(repo: &Repository<S>) -> Response {
+pub fn answer<S: Store>(repo: &Repository<S>, req: &Request) -> Response {
     let snapshot = match Snapshot::read(repo) {
         Ok(snapshot) => snapshot,
         Err(error) => return Response::text(500, &error.to_string()),
     };
-    Response::json(&view(&snapshot))
+    let scope = req.param("scope").filter(|scope| *scope != "all");
+    Response::json(&view(&snapshot, scope))
 }
 
 /// The whole answer, from one read.
-fn view(snap: &Snapshot) -> Overview {
+fn view(snap: &Snapshot, scope: Option<&str>) -> Overview {
     let infos = infos(snap);
-    let needs: Vec<&Info> = infos.iter().flatten().collect();
+    let needs: Vec<&Info> = infos
+        .iter()
+        .flatten()
+        .filter(|info| in_scope(snap.node(info.at), scope))
+        .collect();
     let open: Vec<&Info> = needs
         .iter()
         .copied()
@@ -310,24 +326,28 @@ fn view(snap: &Snapshot) -> Overview {
             open_questions: snap
                 .nodes()
                 .iter()
-                .filter(|node| question_open(node.data()))
+                .filter(|node| in_scope(node, scope) && question_open(node.data()))
                 .count(),
             unmet_criteria: snap
                 .nodes()
                 .iter()
-                .filter(|node| node.kind() == NodeKind::Criterion)
+                .filter(|node| in_scope(node, scope) && node.kind() == NodeKind::Criterion)
                 .filter(|node| criterion_state(node, snap.nodes()) == CriterionState::Unsatisfied)
                 .count(),
             closed_needs: needs.len() - open.len(),
         },
         weeks: weeks(snap, &needs),
-        scopes: scopes(snap, &needs),
-        needs: need_lines(snap, &open),
-        blockers: blockers(snap, &infos, &open),
-        deciders: deciders(snap),
-        overdue: overdue(snap),
-        unheld: unheld(snap),
+        scopes: scopes(snap, &needs, scope),
+        needs: need_lines(snap, &open, scope),
+        blockers: blockers(snap, &infos, &open, scope),
+        deciders: deciders(snap, scope),
+        overdue: overdue(snap, scope),
+        unheld: unheld(snap, scope),
     }
+}
+
+fn in_scope(node: &Node, scope: Option<&str>) -> bool {
+    scope.is_none_or(|name| node.scope() == name)
 }
 
 /// One pass over the needs, so no two parts ask the graph the same thing.
@@ -431,7 +451,7 @@ fn criterion_counts(snap: &Snapshot, criteria: &[usize]) -> CriterionCounts {
 }
 
 /// The open needs' cards, the ones that wait first, then the newest move.
-fn need_lines(snap: &Snapshot, open: &[&Info]) -> Vec<NeedLine> {
+fn need_lines(snap: &Snapshot, open: &[&Info], scope: Option<&str>) -> Vec<NeedLine> {
     let mut ordered: Vec<&&Info> = open.iter().collect();
     ordered.sort_by(|left, right| {
         left.waiting
@@ -465,14 +485,19 @@ fn need_lines(snap: &Snapshot, open: &[&Info]) -> Vec<NeedLine> {
                 unsatisfied: info.criteria.unsatisfied,
                 withdrawn: info.criteria.withdrawn,
             },
-            waiting: info.waiting.iter().map(|at| waiting(snap, *at)).collect(),
+            waiting: info
+                .waiting
+                .iter()
+                .map(|at| waiting(snap, *at, scope.is_some()))
+                .collect(),
         })
         .collect()
 }
 
-fn waiting(snap: &Snapshot, at: usize) -> Waiting {
+fn waiting(snap: &Snapshot, at: usize, scoped: bool) -> Waiting {
     let node = snap.node(at);
     Waiting {
+        scope: scoped.then(|| node.scope().to_string()),
         id: id(snap, at),
         kind: node.kind(),
         title: node.title().to_string(),
@@ -489,7 +514,12 @@ fn decider(node: &Node) -> Option<String> {
 }
 
 /// The roots of every open need's wait, each with the needs it holds.
-fn blockers(snap: &Snapshot, infos: &[Option<Info>], open: &[&Info]) -> Vec<Blocker> {
+fn blockers(
+    snap: &Snapshot,
+    infos: &[Option<Info>],
+    open: &[&Info],
+    scope: Option<&str>,
+) -> Vec<Blocker> {
     let mut held: HashMap<usize, Held> = HashMap::new();
     for info in open {
         for (root, via) in roots(infos, info.at) {
@@ -526,6 +556,12 @@ fn blockers(snap: &Snapshot, infos: &[Option<Info>], open: &[&Info]) -> Vec<Bloc
                 title: node.title().to_string(),
                 decider: decider(node),
                 needs: held.needs,
+                via_scopes: scope.map(|_| {
+                    held.via
+                        .iter()
+                        .map(|at| (id(snap, *at), snap.node(*at).scope().to_string()))
+                        .collect()
+                }),
                 via: held.via.into_iter().map(|at| id(snap, at)).collect(),
             }
         })
@@ -567,10 +603,10 @@ fn roots(infos: &[Option<Info>], start: usize) -> Vec<(usize, Vec<usize>)> {
     found
 }
 
-fn deciders(snap: &Snapshot) -> Vec<Decider> {
+fn deciders(snap: &Snapshot, scope: Option<&str>) -> Vec<Decider> {
     let mut counts: BTreeMap<String, usize> = BTreeMap::new();
     for node in snap.nodes() {
-        if !question_open(node.data()) {
+        if !in_scope(node, scope) || !question_open(node.data()) {
             continue;
         }
         *counts.entry(decider(node).unwrap_or_default()).or_default() += 1;
@@ -588,11 +624,12 @@ fn deciders(snap: &Snapshot) -> Vec<Decider> {
     deciders
 }
 
-fn overdue(snap: &Snapshot) -> Vec<Overdue> {
+fn overdue(snap: &Snapshot, scope: Option<&str>) -> Vec<Overdue> {
     let today = chrono::Local::now().date_naive();
     let mut overdue: Vec<Overdue> = snap
         .nodes()
         .iter()
+        .filter(|node| in_scope(node, scope))
         .filter_map(|node| {
             let (due, status) = criterion_wait(node, today)?;
             (status == "due").then(|| Overdue {
@@ -610,10 +647,13 @@ fn overdue(snap: &Snapshot) -> Vec<Overdue> {
 }
 
 /// The open questions nobody waits on and the unmet criteria nobody aims at.
-fn unheld(snap: &Snapshot) -> Vec<Unheld> {
+fn unheld(snap: &Snapshot, scope: Option<&str>) -> Vec<Unheld> {
     let unwaited = unwaited_questions(snap.nodes());
     let mut unheld: Vec<(u8, Unheld, u64)> = Vec::new();
     for (at, node) in snap.nodes().iter().enumerate() {
+        if !in_scope(node, scope) {
+            continue;
+        }
         let kind = node.kind();
         let unheld_node = match kind {
             NodeKind::Question => unwaited.contains(&node.id().to_string()),
@@ -697,11 +737,12 @@ fn weeks(snap: &Snapshot, needs: &[&Info]) -> Vec<Week> {
 }
 
 /// Every scope's needs and writes, the busiest first.
-fn scopes(snap: &Snapshot, needs: &[&Info]) -> Vec<ScopeLine> {
+fn scopes(snap: &Snapshot, needs: &[&Info], scope: Option<&str>) -> Vec<ScopeLine> {
     let (start, pulse) = snap.pulse(PULSE_DAYS);
     let mut names: Vec<String> = snap
         .nodes()
         .iter()
+        .filter(|node| in_scope(node, scope))
         .map(|node| node.scope().to_string())
         .collect();
     names.sort();

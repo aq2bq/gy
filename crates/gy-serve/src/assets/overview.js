@@ -36,7 +36,7 @@
       at: now ? ui.when(now) : '—',
     });
     el.innerHTML = `<div class="sub">${sub}</div><h1 class="hd">${esc(ui.t('overviewTitle'))}</h1>` +
-      (body ? stats(body, ui) + board(body, state, ui) + blockers(body, ui) : frame(ui)) +
+      (body ? stats(body, ui) + board(body, state, ui) + blockers(body, state, ui) : frame(ui)) +
       status(state, 'overview', !!state.overview, ui);
   }
 
@@ -77,7 +77,7 @@
      the stop colour and names what it waits on. */
   function board(body, state, ui) {
     const needs = body.needs;
-    const scopes = scopeOrder(body);
+    const scopes = scopeOrder(body, state);
     const stages = STAGES.map(stage => ({ stage, count: needs.filter(item => item.stage === stage).length }));
     const head = `<div class="ch">${esc(ui.t('scopeCol'))}<small>${esc(ui.t('pulseSub'))}</small></div>` +
       stages.map(item => `<div class="ch">${esc(ui.t(`stage.${item.stage}`))}<span class="cnt">${item.count}</span><small>${esc(ui.t(`stage.${item.stage}Sub`))}</small></div>`).join('');
@@ -87,10 +87,10 @@
       const row = body.scopes.find(item => item.name === scope);
       const done = row ? row.done : 0;
       const blocked = row ? row.blocked : mine.filter(item => item.blocked).length;
-      rows += `<div class="rh" style="--h:${ui.hue(scope)}"><div class="name">${esc(scope)}</div>` +
+      rows += `<div class="rh" style="--h:${ui.hue(scope)}"><div class="name" data-testid="boardScopeName">${esc(scope)}</div>` +
         `<div class="meta">${fill(esc(ui.t('openDoneBlocked')), { o: row ? row.open : mine.length, d: done, b: blocked })}</div>` +
         (row && row.pulse.length ? pulse(row.pulse, scope) : '') +
-        `<a class="x" href="${ui.href(`#/cross?scope=${encodeURIComponent(scope)}&from=${dateOf((body.now || Date.now() / 1000) - 13 * DAY)}&to=${dateOf(body.now || Date.now() / 1000)}`)}">${esc(ui.t('cross2w'))}</a></div>`;
+        `<a class="x" data-testid="scopeCross" href="${ui.href(`#/cross?scope=${encodeURIComponent(scope)}&from=${dateOf((body.now || Date.now() / 1000) - 13 * DAY)}&to=${dateOf(body.now || Date.now() / 1000)}`)}">${esc(ui.t('cross2w'))}</a></div>`;
       for (const stage of STAGES) {
         const cards = mine.filter(item => item.stage === stage).sort(byCard);
         rows += `<div class="cell ${stage === 'before' ? 'wide' : ''}">${cards.length ? cards.map(item => card(item, state, ui)).join('') : `<span class="none">—</span>`}</div>`;
@@ -103,7 +103,8 @@
 
   /* The scopes with a need, the busiest first; the overview's own order wins a
      tie so the board is stable. */
-  function scopeOrder(body) {
+  function scopeOrder(body, state) {
+    if (state.scope !== 'all') return body.scopes.map(item => item.name);
     const counts = {};
     for (const item of body.needs) counts[item.scope] = (counts[item.scope] || 0) + 1;
     return Object.keys(counts).sort((a, b) => counts[b] - counts[a] || a.localeCompare(b));
@@ -119,7 +120,7 @@
       const height = Math.max(1.5, Math.sqrt(value / max) * 22);
       return `<rect x="${index * step}" y="${22 - height}" width="${Math.max(1, step - 1)}" height="${height}"/>`;
     }).join('');
-    return `<svg class="pulse" width="${width}" height="22" style="color:hsl(var(--h) 55% 60%)">${bars}</svg>`;
+    return `<svg class="pulse" data-testid="scopePulse" width="${width}" height="22" style="color:hsl(var(--h) 55% 60%)">${bars}</svg>`;
   }
 
   function card(item, state, ui) {
@@ -136,7 +137,7 @@
     if (reqTotal) group.push(`${esc(ui.t('shortRequirement'))} <i>${pips(requirements.done, reqTotal)}</i>`);
     if (critTotal) group.push(`${esc(ui.t('shortCriterion'))} <i>${pips(criteria.satisfied, critTotal)}</i>`);
     const waiting = item.waiting.length
-      ? `<div class="why">${esc(ui.t('waitingOn'))}: <b>${item.waiting.slice(0, 3).map(one => `${esc(one.title || one.id)}${one.decider ? `（${esc(one.decider)}）` : ''}`).join('、')}</b></div>`
+      ? `<div class="why">${esc(ui.t('waitingOn'))}: <b>${item.waiting.slice(0, 3).map(one => `${one.scope && one.scope !== item.scope ? ui.scopeTag(one.scope) : ''}${esc(one.title || one.id)}${one.decider ? `（${esc(one.decider)}）` : ''}`).join('、')}</b></div>`
       : '';
     return `<a class="card ${item.blocked ? 'blk' : ''}" data-testid="needCard" data-blocked="${item.blocked ? 'true' : 'false'}" href="${ui.href(`#/n/${encodeURIComponent(item.id)}`)}">` +
       `<div class="l1"><span class="id">${esc(item.id)}</span><span class="age" style="color:${days === null ? 'var(--paper-3)' : ageCol(days)}">${esc(age)}</span></div>` +
@@ -144,7 +145,7 @@
   }
 
   /* The roots of the jams, the overdue checks, and what nobody holds. */
-  function blockers(body, ui) {
+  function blockers(body, state, ui) {
     const chips = body.deciders.length
       ? body.deciders.map(item => `<span>${esc(item.name || '?')}<b>${item.count}</b></span>`).join('')
       : `<span>${esc(ui.t('none'))}</span>`;
@@ -154,8 +155,8 @@
         ? `<span class="who">${esc(fill(ui.t('decides'), { who: item.decider || '?' }))}</span><a href="${ui.href(`#/n/${encodeURIComponent(item.id)}`)}">${esc(item.id)} ${esc(trunc(item.title, 40))}</a>`
         : `<a href="${ui.href(`#/n/${encodeURIComponent(item.id)}`)}">${esc(item.id)} ${esc(trunc(item.title, 40))}</a>`;
       const needs = item.needs.map(id => `<a href="${ui.href(`#/n/${encodeURIComponent(id)}`)}">${esc(id)}</a>`).join('・');
-      const via = item.via.length ? ` · ${esc(ui.t('via'))} ${item.via.map(id => `<a href="${ui.href(`#/n/${encodeURIComponent(id)}`)}">${esc(id)}</a>`).join(' → ')}` : '';
-      return `<div class="chain" data-testid="chain"><div><div class="root">${head}</div><div class="via">${esc(ui.t('stoppedNeeds'))}: ${needs}${via}</div></div>` +
+      const via = item.via.length ? ` · ${esc(ui.t('via'))} ${item.via.map(id => `${item.viaScopes[id] && item.viaScopes[id] !== state.scope ? ui.scopeTag(item.viaScopes[id]) : ''}<a href="${ui.href(`#/n/${encodeURIComponent(id)}`)}">${esc(id)}</a>`).join(' → ')}` : '';
+      return `<div class="chain" data-testid="chain"><div><div class="root" data-testid="blockerRoot">${state.scope !== 'all' && item.scope !== state.scope ? ui.scopeTag(item.scope) : ''}${head}</div><div class="via" data-testid="blockerVia">${esc(ui.t('stoppedNeeds'))}: ${needs}${via}</div></div>` +
         `<div class="cnt">${item.needs.length}<small>${esc(ui.t('needsUnit'))}</small></div></div>`;
     };
     const mini = (item, right, testid) => `<a class="mini" data-testid="${testid}" href="${ui.href(`#/n/${encodeURIComponent(item.id)}`)}"><span class="mono dim">${esc(item.id)}</span><span>${ui.scopeTag(item.scope)}</span>` +
@@ -168,7 +169,7 @@
         (body.unheld.length > 8 ? `<div class="dim" style="font-size:12px;padding-top:4px">${fill(esc(ui.t('moreNodes')), { n: body.unheld.length - 8 })}</div>` : '')
       : `<div class="dim">${esc(ui.t('none'))}</div>`;
     return `<div class="sec blockers"><div><h2>${esc(ui.t('blockersTitle'))} <span class="sub">${esc(ui.t('blockersSub'))}</span></h2>` +
-      `<div class="decider">${esc(ui.t('deciderHead'))}: ${chips}</div>` +
+      `<div class="decider" data-testid="deciders">${esc(ui.t('deciderHead'))}: ${chips}</div>` +
       (roots.length ? roots.map(row).join('') : `<div class="dim">${esc(ui.t('noJam'))}</div>`) + `</div>` +
       `<div><h2>${esc(ui.t('overdueTitle'))} <span class="sub">${esc(fill(ui.t('overdueSub'), { n: body.overdue.length }))}</span></h2>${overdue}` +
       `<h2 style="margin-top:22px">${esc(ui.t('unheldTitle'))} <span class="sub">${esc(fill(ui.t('unheldSub'), { n: body.unheld.length }))}</span></h2>${unheld}</div></div>`;

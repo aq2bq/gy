@@ -180,7 +180,11 @@ fn ledger() -> Repository<MemoryStore> {
 }
 
 fn get(path: &str, query: Option<&str>) -> Value {
-    let response = route(&ledger(), &Request::new("GET", path, query, &[]), "gy");
+    get_from(&ledger(), path, query)
+}
+
+fn get_from(repo: &Repository<MemoryStore>, path: &str, query: Option<&str>) -> Value {
+    let response = route(repo, &Request::new("GET", path, query, &[]), "gy");
     assert_eq!(response.status, 200, "{path}");
     serde_json::from_slice(&response.body).unwrap()
 }
@@ -319,6 +323,142 @@ fn the_overview_gives_each_scope_its_needs_and_its_pulse() {
         .sum();
     // One write touched scope a; it is counted once, not once per node.
     assert_eq!(writes, 1);
+}
+
+#[test]
+fn a_scoped_overview_selects_rows_but_judges_with_the_whole_ledger() {
+    let repo = ledger();
+    let all = get_from(&repo, "/api/overview", None);
+    let a = get_from(&repo, "/api/overview", Some("scope=a"));
+    let b = get_from(&repo, "/api/overview", Some("scope=b"));
+    assert_eq!(
+        a["counts"],
+        serde_json::json!({
+            "open_needs": 1, "blocked_needs": 1, "open_questions": 2,
+            "unmet_criteria": 2, "closed_needs": 0,
+        })
+    );
+    assert_eq!(
+        b["counts"],
+        serde_json::json!({
+            "open_needs": 1, "blocked_needs": 0, "open_questions": 0,
+            "unmet_criteria": 0, "closed_needs": 0,
+        })
+    );
+    assert_eq!(ids(&a, "needs"), ["n-0001"]);
+    assert_eq!(ids(&b, "needs"), ["n-0002"]);
+    // The b criterion is met through its b requirement even in a's view.
+    assert_eq!(b["needs"][0]["stage"], "close");
+    assert_eq!(
+        a["blockers"],
+        all["blockers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|row| {
+                let mut row = row.clone();
+                row["via_scopes"] = serde_json::json!({});
+                row
+            })
+            .collect::<Value>()
+    );
+    assert_eq!(a["needs"][0]["waiting"][1]["scope"], "b");
+    assert!(b["blockers"].as_array().unwrap().is_empty());
+    assert_eq!(a["overdue"], all["overdue"]);
+    assert_eq!(a["unheld"], all["unheld"]);
+    assert_eq!(a["deciders"], all["deciders"]);
+    for key in ["overdue", "unheld", "deciders"] {
+        assert!(b[key].as_array().unwrap().is_empty(), "{key}");
+    }
+    for (scoped, index) in [(&a, 0), (&b, 1)] {
+        assert_eq!(scoped["scopes"], serde_json::json!([all["scopes"][index]]));
+        let weeks = scoped["weeks"].as_array().unwrap();
+        assert_eq!(weeks.len(), all["weeks"].as_array().unwrap().len());
+        assert_eq!(
+            weeks
+                .iter()
+                .map(|w| w["opened"].as_u64().unwrap())
+                .sum::<u64>(),
+            1
+        );
+    }
+}
+
+#[test]
+fn a_scoped_overview_keeps_foreign_waits_and_via_scopes_without_unholding_them() {
+    let mut repo = ledger();
+    let mut second = repo.get(&id(NodeKind::Need, "0002")).unwrap().unwrap();
+    let mut question = Node::question(id(NodeKind::Question, "0012"), "b", DATE, "b root").unwrap();
+    if let NodeData::Question(data) = question.data_mut() {
+        data.options = vec!["left".into(), "right".into()];
+        data.decider = Some("b decider".into());
+    }
+    link(&mut second, Relation::WaitsOn, question.id().clone());
+    repo.transaction("cross scope waits", "test", |repo| {
+        for node in [&second, &question] {
+            repo.put(node)?;
+        }
+        Ok(())
+    })
+    .unwrap();
+    let scoped = |scope| {
+        let res = route(
+            &repo,
+            &Request::new("GET", "/api/overview", Some(scope), &[]),
+            "gy",
+        );
+        serde_json::from_slice::<Value>(&res.body).unwrap()
+    };
+    let a = scoped("scope=a");
+    let b = scoped("scope=b");
+    assert_eq!(a["counts"]["blocked_needs"], 1);
+    assert_eq!(a["counts"]["open_questions"], 2);
+    let root = a["blockers"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["id"] == "q-0012")
+        .unwrap();
+    assert_eq!(root["scope"], "b");
+    assert_eq!(root["needs"], serde_json::json!(["n-0001"]));
+    assert_eq!(root["via"], serde_json::json!(["n-0002"]));
+    assert_eq!(root["via_scopes"], serde_json::json!({"n-0002": "b"}));
+    assert!(b["unheld"].as_array().unwrap().is_empty());
+    assert_eq!(
+        b["deciders"],
+        serde_json::json!([{"name":"b decider", "count":1}])
+    );
+}
+
+#[test]
+fn all_and_unknown_overview_scopes_preserve_the_period_and_unfiltered_shape() {
+    let repo = ledger();
+    let all = get_from(&repo, "/api/overview", None);
+    // All is exactly the original API shape, without the scoped-only fields.
+    assert_eq!(all, get_from(&repo, "/api/overview", Some("scope=all")));
+    assert!(all["needs"][0]["waiting"][0].get("scope").is_none());
+    assert!(all["blockers"][0].get("via_scopes").is_none());
+    let unknown = get_from(&repo, "/api/overview", Some("scope=not-here"));
+    assert_eq!(
+        unknown["counts"],
+        serde_json::json!({
+            "open_needs": 0, "blocked_needs": 0, "open_questions": 0,
+            "unmet_criteria": 0, "closed_needs": 0,
+        })
+    );
+    for key in [
+        "scopes", "needs", "blockers", "deciders", "overdue", "unheld",
+    ] {
+        assert!(unknown[key].as_array().unwrap().is_empty(), "{key}");
+    }
+    assert_eq!(
+        unknown["weeks"].as_array().unwrap().len(),
+        all["weeks"].as_array().unwrap().len()
+    );
+    for week in unknown["weeks"].as_array().unwrap() {
+        assert_eq!(week["opened"], 0);
+        assert_eq!(week["done"], 0);
+    }
 }
 
 #[test]

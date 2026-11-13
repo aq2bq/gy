@@ -37,7 +37,7 @@ pub fn route<S: Store>(repo: &Repository<S>, req: &Request, name: &str) -> Respo
         "/api/history" => history::answer(repo, req),
         "/api/labels" => labels::labels(repo, req),
         "/api/list" => list::rows(repo, req),
-        "/api/overview" => overview::answer(repo),
+        "/api/overview" => overview::answer(repo, req),
         "/api/cross" => cross::answer(repo, req),
         "/api/search" => search::search(repo, req),
         "/api/ticks" => ticks::ticks(repo, req),

@@ -61,6 +61,7 @@
       kind: kind(first(item, ['kind', 'type']), first(item, ['id', 'node'])),
       title: first(item, ['title', 'name']) || '',
       decider: first(item, ['decider', 'who']) || '',
+      scope: first(item, ['scope']) || '',
     };
   }
 
@@ -105,6 +106,7 @@
       decider: first(item, ['decider', 'who']) || '',
       needs: ids(first(item, ['needs', 'blocked', 'held'])),
       via: ids(first(item, ['via', 'through', 'path'])),
+      viaScopes: first(item, ['via_scopes']) || {},
     };
   }
 

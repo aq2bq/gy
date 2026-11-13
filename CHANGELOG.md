@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Progress now follows the sidebar's selected scope, including counts, weekly
+  activity, board rows, blockers, overdue checks, and unheld nodes. Switching
+  scopes and browser back/forward refresh it without reloading. Cross-scope
+  waits keep their full-ledger judgement and show scope badges on direct waits,
+  intermediate needs, and roots. `/api/overview?scope=<name>` reads that scope;
+  omitting it keeps the previous answer (r-e9ab, d-d6e3, d-adb9).
+
 ## 3.1.0 - 2026-11-12
 
 This release keeps gy's readings and the remote's history legible when several

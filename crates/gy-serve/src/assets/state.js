@@ -111,9 +111,8 @@
   function initial(env) {
     return {
       lang: env.lang,
-      /* The sidebar's scope: it narrows the shell, the home, a list, the
-         history, and the rail, as it did before the three screens. The place
-         in the URL is what chooses it (r-d060). */
+      /* The sidebar's scope: it narrows the shell, progress, the home, a list, the
+         history, and the rail. The place in the URL is what chooses it (r-d060). */
       scope: scopeOf(env.route),
       at: null,
       route: env.route,
@@ -158,7 +157,7 @@
       case 'setLang':
         return { ...state, lang: intent.value };
       case 'setScope':
-        return { ...state, scope: intent.value, route: withScope(state.route, intent.value), shell: null, now: null, page: null, rail: null, pending: {}, failed: {} };
+        return { ...state, scope: intent.value, route: withScope(state.route, intent.value), shell: null, now: null, page: null, rail: null, overview: null, pending: {}, failed: {} };
       case 'setAt':
         return {
           ...state,

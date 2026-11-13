@@ -45,7 +45,8 @@
   }
 
   /* Every path this state wants; a kind with no path here is null. The three
-     screens keep their own answers: the overview never waits for the cross. */
+     screens keep their own answers: overview follows the sidebar scope, while
+     cross keeps its own query and never holds up overview. */
   function paths(state) {
     const route = state.route;
     const scope = scopeParam(state);
@@ -57,7 +58,7 @@
       band: '/api/ticks',
       rail: `/api/history?limit=10${scope ? `&${scope}` : ''}`,
       page: pagePath(state),
-      overview: route.name === 'overview' ? '/api/overview' : null,
+      overview: route.name === 'overview' ? `/api/overview${only}` : null,
       cross: route.name === 'cross' ? `/api/cross${crossQuery(route)}` : null,
       path: route.name === 'node'
         ? `/api/node/${encodeURIComponent(route.arg)}/path?depth=${state.detail.depth}`

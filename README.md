@@ -108,7 +108,7 @@ To look at the record yourself, use `gy serve`. The screenshots show a demo ledg
 
 <img src="https://raw.githubusercontent.com/aq2bq/gy/main/docs/images/serve-progress-en.png" alt="The progress screen" width="100%">
 
-`gy serve` opens on progress: the open needs by scope and how far they got, what holds them and which root holds the most, the weeks, and what nobody holds.
+`gy serve` opens on progress: the open needs by scope and how far they got, what holds them and which root holds the most, the weeks, and what nobody holds. Choosing a sidebar scope narrows progress to that scope; waits that cross into another scope carry its badge. Switching scopes and browser back/forward update progress without reloading.
 
 ### Home
 
