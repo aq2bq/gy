@@ -143,7 +143,7 @@
     const openState = window.GyShape.isOpen(state);
     const colourName = colour(kind);
     const word = window.GyShape.state(state);
-    return `<rect width="${BW}" height="${BH}" rx="7" class="bx-rect ${openState ? 'open' : 'closed'}" stroke="var(--${colourName})"/>` +
+    return `<rect width="${BW}" height="${BH}" rx="8" class="bx-rect ${openState ? 'open' : 'closed'}" stroke="var(--${colourName})"/>` +
       `<circle cx="11" cy="14" r="4" fill="${openState ? `var(--${colourName})` : 'none'}" stroke="var(--${colourName})"/>` +
       `<text class="id" x="21" y="17">${esc(item.id)} · ${esc(ui.t(kind))} · ${esc(ui.t(`st.${kind}.${word}`))}${scope ? ` · ${esc(scope)}` : ''}</text>` +
       `<text x="9" y="36">${esc(short(item.title))}</text>`;

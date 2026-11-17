@@ -5,6 +5,8 @@
 (function () {
   let order = [];
   let seen = null;
+  /* How many writers stay out of the fold. */
+  const SHOWN = 3;
 
   const esc = text => String(text ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
   const fill = (text, values) => text.replace(/\{(\w+)\}/g, (all, key) => (key in values ? values[key] : all));
@@ -26,15 +28,24 @@
     return `<div class="hist" role="list">${html}</div>`;
   }
 
-  /* The writer chips: "all", then every writer the answer names; the act events.js
+  /* The writer chips: "all", then the writers the answer names; the act events.js
      reads is the only marker (第 4 段 took the old mark away). */
   function chips(state, data, ui) {
     const actor = state.history.actor;
+    const chip = name => `<button data-act="historyActor" data-arg="${esc(name)}" class="${actor === name ? 'on' : ''}">${esc(name)}</button>`;
     const all = `<button data-act="historyActor" data-arg="" class="${actor === null ? 'on' : ''}">${ui.t('filterActorAll')}</button>`;
-    const names = data.actors
-      .map(name => `<button data-act="historyActor" data-arg="${esc(name)}" class="${actor === name ? 'on' : ''}">${esc(name)}</button>`)
-      .join('');
-    return `<div class="chips hist-actors" id="hist-actors">${all}${names}</div>`;
+    /* One row (n-fd56): the chosen writer first, then the answer's order up to
+       SHOWN; the rest fold under a native disclosure, which a choice closes
+       again because the region is redrawn. */
+    const chosen = data.actors.filter(name => name === actor);
+    const others = data.actors.filter(name => name !== actor);
+    const shown = chosen.concat(others.slice(0, SHOWN - chosen.length));
+    const rest = others.slice(SHOWN - chosen.length);
+    const more = rest.length
+      ? `<details class="hist-more" data-testid="histMore"><summary>${esc(fill(ui.t('histMoreActors'), { n: rest.length }))}</summary>` +
+        `<div class="rest">${rest.map(chip).join('')}</div></details>`
+      : '';
+    return `<div class="chips hist-actors" id="hist-actors">${all}${shown.map(chip).join('')}${more}</div>`;
   }
 
   /* The sequence to ask from: the oldest write on that day, minus one, so the

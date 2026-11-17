@@ -68,17 +68,18 @@
     if (!weeks.length) return `<div class="dim">${esc(ui.t('noData'))}</div>`;
     const max = Math.max(1, ...weeks.map(week => Math.max(week.opened, week.done)));
     const band = 40;
-    const width = Math.max(120, weeks.length * 34 + 10);
+    /* A week is 40 wide: a 28 bar and room for its date at the label's size. */
+    const width = Math.max(120, weeks.length * 40);
     const bars = weeks.map((week, index) => {
-      const x = index * 34 + 4;
+      const x = index * 40 + 6;
       const up = (week.opened / max) * band;
       const down = (week.done / max) * band;
       const from = dateOf(week.from);
       const to = week.to ? dateOf(week.to) : dateOf(week.from + 6 * DAY);
       return `<a href="${ui.href(`#/cross?from=${from}&to=${to}`)}" data-testid="week"><title>${md(week.from)}: ${week.opened} / ${week.done}</title>` +
-        `<rect x="${x}" y="${band - up}" width="26" height="${up}" fill="var(--need)" opacity=".85"/>` +
-        `<rect x="${x}" y="${band + 2}" width="26" height="${down}" fill="var(--decision)" opacity=".75"/>` +
-        `<text x="${x}" y="${band * 2 + 14}">${md(week.from)}</text></a>`;
+        `<rect x="${x}" y="${band - up}" width="28" height="${up}" fill="var(--need)" opacity=".85"/>` +
+        `<rect x="${x}" y="${band + 2}" width="28" height="${down}" fill="var(--decision)" opacity=".75"/>` +
+        `<text x="${x + 14}" y="${band * 2 + 14}" text-anchor="middle">${md(week.from)}</text></a>`;
     }).join('');
     return `<svg width="${width}" height="${band * 2 + 18}">${bars}</svg>`;
   }
@@ -182,7 +183,7 @@
       `<div class="decider" data-testid="deciders">${esc(ui.t('deciderHead'))}: ${chips}</div>` +
       (roots.length ? roots.map(row).join('') : `<div class="dim">${esc(ui.t('noJam'))}</div>`) + `</div>` +
       `<div><h2>${esc(ui.t('overdueTitle'))} <span class="sub">${esc(fill(ui.t('overdueSub'), { n: body.overdue.length }))}</span></h2>${overdue}` +
-      `<h2 style="margin-top:22px">${esc(ui.t('unheldTitle'))} <span class="sub">${esc(fill(ui.t('unheldSub'), { n: body.unheld.length }))}</span></h2>${unheld}</div></div>`;
+      `<h2 style="margin-top:24px">${esc(ui.t('unheldTitle'))} <span class="sub">${esc(fill(ui.t('unheldSub'), { n: body.unheld.length }))}</span></h2>${unheld}</div></div>`;
   }
 
   /* What a screen says while its answer is missing: loading, or why not. */

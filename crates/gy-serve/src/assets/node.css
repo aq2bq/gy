@@ -1,11 +1,11 @@
 /* The detail screen's rules (r-2d02): the head, the left/right thread, the
    facts and body, and the writes. */
-.back{font-family:var(--mono);font-size:11px;color:var(--paper-3);display:inline-block;margin-top:2px}
+.back{font-size:11px;color:var(--paper-3);display:inline-block;margin-top:2px}
 .back:hover{color:var(--paper)}
 .nhead{margin-top:8px}
-.nhead .meta{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:var(--paper-3);margin-top:12px}
-.nhead .meta .al{color:var(--paper);font-size:14px}
-.nhead h1{font-family:var(--sans);font-weight:600;font-size:30px;line-height:1.45;margin:10px 0 0;text-wrap:balance}
+.nhead .meta{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--paper-3);margin-top:12px}
+.nhead .meta .al{color:var(--paper);font-size:13px}
+.nhead h1{font-family:var(--sans);font-weight:600;font-size:26px;line-height:1.45;margin:12px 0 0;text-wrap:balance}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
 .seg button{padding:2px 12px;font-size:12px;color:var(--paper-3)}
 .seg button.on{background:var(--ink-3);color:var(--paper)}
@@ -13,10 +13,10 @@
 .thread-scroll{overflow-x:auto}
 .thread svg{display:block}
 .thread text{font-family:var(--sans);font-size:12px;fill:var(--paper)}
-.thread text.ch{font-family:var(--mono);font-size:10px;letter-spacing:.1em;fill:var(--paper-3);text-transform:uppercase}
-.thread text.id{font-family:var(--mono);font-size:10px;fill:var(--paper-3)}
-.thread text.rl{font-family:var(--sans);font-size:10px;fill:var(--paper-3)}
-.thread text.more{font-family:var(--mono);font-size:11px;fill:var(--paper-3)}
+.thread text.ch{font-size:11px;fill:var(--paper-3)}
+.thread text.id{font-size:11px;fill:var(--paper-3)}
+.thread text.rl{font-family:var(--sans);font-size:11px;fill:var(--paper-3)}
+.thread text.more{font-size:11px;fill:var(--paper-3)}
 .thread .bx-rect{fill:var(--ink-3);stroke-width:1.2}
 .thread .bx-rect.closed{fill:var(--ink)}
 .thread .bx-rect.ctr{fill:var(--ink);stroke-width:2.4}
@@ -25,17 +25,17 @@
 .thread .e.hl{stroke:var(--paper-2)}
 .thread-frame{min-height:90px}
 .ngrid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(340px,1fr);gap:48px;align-items:start;margin-top:4px}
-.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 18px;font-size:14px;align-items:baseline}
-.kv .k2{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--paper-3);text-transform:uppercase;padding-top:4px}
+.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 16px;font-size:15px;align-items:baseline}
+.kv .k2{font-size:11px;color:var(--paper-3);padding-top:4px}
 .kv .v{color:var(--paper-2);line-height:1.75;min-width:0}
 .kv .v b{color:var(--paper);font-weight:500}
 .opts{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
-.opts li{border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:14px;color:var(--paper-2)}
-.opts li .tag{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--question);margin-right:8px}
-pre.body{white-space:pre-wrap;font-family:var(--sans);color:var(--paper-2);font-size:14px;border-left:1px solid var(--line);padding-left:18px;margin:12px 0 0;line-height:1.85}
-.retract{border-left:3px solid var(--need);padding:2px 0 2px 14px;margin-top:10px;font-size:13px;color:var(--paper-2)}
+.opts li{border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:15px;color:var(--paper-2)}
+.opts li .tag{font-family:var(--mono);font-size:11px;color:var(--question);margin-right:8px}
+pre.body{white-space:pre-wrap;font-family:var(--sans);color:var(--paper-2);font-size:15px;border-left:1px solid var(--line);padding-left:16px;margin:12px 0 0;line-height:1.85}
+.retract{border-left:3px solid var(--need);padding:2px 0 2px 16px;margin-top:12px;font-size:13px;color:var(--paper-2)}
 .outs{display:flex;gap:8px;flex-wrap:wrap}
-.outs a{border:1px solid var(--line);border-radius:999px;padding:2px 11px;font-size:12px;color:var(--paper-2)}
+.outs a{border:1px solid var(--line);border-radius:999px;padding:2px 12px;font-size:12px;color:var(--paper-2)}
 .outs a:hover{border-color:var(--paper-3);color:var(--paper)}
 .hist{display:flex;flex-direction:column}
 .hi{display:grid;grid-template-columns:118px 64px minmax(0,1fr);gap:12px;padding:8px 0;border-top:1px solid var(--line-soft);font-size:13px}
@@ -46,3 +46,7 @@ pre.body{white-space:pre-wrap;font-family:var(--sans);color:var(--paper-2);font-
 .hi .why{color:var(--paper-3);font-size:12px}
 .empty{font-size:13px;color:var(--paper-3)}
 @media (max-width:1100px){.ngrid{grid-template-columns:1fr;gap:20px}}
+/* A long URL in a write or in the body breaks where it must, so the page
+   itself never scrolls sideways (n-fd56). */
+.hi>*{min-width:0;overflow-wrap:anywhere}
+pre.body,.kv .v{overflow-wrap:anywhere}

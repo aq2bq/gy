@@ -7,17 +7,16 @@
      screen, d-e239), the home, the crossing (which took over the graph's
      entrance), and the history. The kinds below are the lists. */
   const ENTRIES = [
-    ['#/', 'overview', 'tabOverview', '◉'],
-    ['#/now', 'now', 'now', '⌂'],
-    ['#/cross', 'cross', 'tabCross', '✦'],
-    ['#/history', 'history', 'history', '≡'],
+    ['#/', 'overview', 'tabOverview', 'M2.5 3v10M6.5 3v6M10.5 3v8M14 3v4'],
+    ['#/now', 'now', 'now', 'M8 2.5a5.5 5.5 0 1 0 0 11a5.5 5.5 0 0 0 0-11zM8 5v3l2 1.5'],
+    ['#/cross', 'cross', 'tabCross', 'M2.5 5h11M2.5 11h11M5 2.5v11M11 2.5v11'],
+    ['#/history', 'history', 'history', 'M2.5 4h11M2.5 8h11M2.5 12h7'],
   ];
-  /* The search's magnifier (n-c795b1): an inline SVG, since the glyph is not in
-     every font; it sits in the same fixed mark box as the entrances above. */
-  const SEARCH_MARK =
-    '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">' +
-    '<circle cx="6.6" cy="6.6" r="4.6" fill="none" stroke="currentColor" stroke-width="1.6"/>' +
-    '<path d="M10.2 10.2 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  /* The marks (n-c795b1, n-fd56): one drawing hand for all five, a 16px box and
+     a 1.5 line set in app.css, since the glyphs they replace came from
+     whichever font had them. The paths are drawn here, not taken from a set. */
+  const mark = path => `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="${path}"/></svg>`;
+  const SEARCH_MARK = mark('M7 2.5a4.5 4.5 0 1 0 0 9a4.5 4.5 0 0 0 0-9zM10.3 10.3l3.2 3.2');
   const KINDS = ['Need', 'Question', 'Decision', 'Requirement', 'Criterion'];
   const EYE_COLOR = { wait: 'requirement', next: 'need', resume: 'decision' };
   const EYE_WORD = { wait: 'eyeWait', next: 'eyeNext', resume: 'eyeResume' };
@@ -60,15 +59,15 @@
   function drawNav(state, el, ui) {
     const shell = state.shell || { seq: 0, scopes: [], kinds: [] };
     const route = state.route;
-    const entry = ([href, name, key, mark]) => {
+    const entry = ([href, name, key, path]) => {
       const on = route.name === name;
       return `<a href="${ui.href(href)}" class="${on ? 'on' : ''}">` +
-        `<span class="m" data-testid="navMark">${mark}</span>` +
+        `<span class="m" data-testid="navMark">${mark(path)}</span>` +
         `<span class="l" data-testid="navLabel">${ui.t(key)}</span></a>`;
     };
     const kind = name => {
       const on = route.name === 'list' && route.arg === name;
-      return `<a href="${ui.href(`#/list/${name}`)}" class="${on ? 'on' : ''}"><span class="dot dot-${name}"></span>${ui.plural(name)}${counter(shell, name)}</a>`;
+      return `<a href="${ui.href(`#/list/${name}`)}" class="${on ? 'on' : ''}"><span class="dot dot-${name}"></span><span class="l">${ui.plural(name)}</span>${counter(shell, name)}</a>`;
     };
     const scopeRow = item =>
       `<button data-s="${esc(item.name)}" data-act="setScope" data-arg="${esc(item.name)}" class="${state.scope === item.name ? 'on' : ''}">${ui.scopeTag(item.name)}<span class="cnt">${item.count}</span></button>`;

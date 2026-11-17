@@ -3,4 +3,4 @@
    instead of the list page's scope and created. */
 .eye-list .head{grid-template-columns:20px 74px minmax(0,1fr) 90px 150px}
 .eye-list .row.wide{grid-template-columns:20px 74px minmax(0,1fr) 90px 150px}
-.eye-list .row.wide .own{font-family:var(--mono);font-size:11px;color:var(--paper-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.eye-list .row.wide .own{font-size:11px;color:var(--paper-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

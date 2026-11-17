@@ -8,40 +8,44 @@
   --sans:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",system-ui,sans-serif;
   --mono:"SF Mono","Menlo","JetBrains Mono",ui-monospace,monospace;
   --side:232px;
-  --rail:450px;
-}
+  --rail:450px}
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--ink);color:var(--paper);font-family:var(--sans);font-size:15px;line-height:1.7}
+/* The page is dark for the browser too, so its own scrollbars and date
+   pickers are; every figure keeps one width (n-fd56). */
+:root{color-scheme:dark}
+html,body{margin:0;background:var(--ink);color:var(--paper);font-family:var(--sans);font-size:15px;line-height:1.7;font-variant-numeric:tabular-nums}
 a{color:inherit;text-decoration:none}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-.k{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.08em;padding:1px 7px;border-radius:3px;border:1px solid;vertical-align:middle}
+.k{display:inline-block;font-size:11px;padding:1px 8px;border-radius:4px;border:1px solid;vertical-align:middle}
 .k-Need{color:var(--need);border-color:var(--need)} .k-Question{color:var(--question);border-color:var(--question)} .k-Decision{color:var(--decision);border-color:var(--decision)} .k-Requirement{color:var(--requirement);border-color:var(--requirement)} .k-Criterion{color:var(--criterion);border-color:var(--criterion)}
 /* A scope (n-d29f): a pill beside the outline-only kind badge, the hue from
    the name (shell.js scopeTag). Black fill, white text, the colour only in the
    frame (n-4e5a). The container decides how wide it shows. */
 .sb{display:inline-block;justify-self:start;max-width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;font-family:var(--mono);font-size:11px;padding:1px 8px;border-radius:999px;background:var(--ink);border:1px solid hsl(var(--sb) 45% 45%);color:var(--paper)}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--paper-3);vertical-align:middle;margin-right:8px;flex:none}
+/* In the sidebar the dot sits in the entrances' 16px mark column. */
+.nav .dot{margin:0 4px}
 .dot-Need{background:var(--need)} .dot-Question{background:var(--question)} .dot-Decision{background:var(--decision)} .dot-Requirement{background:var(--requirement)} .dot-Criterion{background:var(--criterion)}
 
 /* frame */
 .app{display:grid;grid-template-columns:var(--side) minmax(0,1fr);min-height:100vh}
-.side{position:sticky;top:0;height:100vh;border-right:1px solid var(--line-soft);padding:22px 18px 110px;display:flex;flex-direction:column;gap:18px;overflow:auto}
+.side{position:sticky;top:0;height:100vh;border-right:1px solid var(--line-soft);padding:24px 12px 112px;display:flex;flex-direction:column;gap:16px;overflow:auto;scrollbar-width:thin}
 /* The rail, the ten newest writes and the search, only where three columns fit
    (n-b963, n-ccd2). 1560px = 232 side + 450 rail + 880 body; it is the rail's
    one breakpoint, and rail.js matches it, so change both. */
-.rail{display:none;position:sticky;top:0;height:100vh;overflow:auto;border-left:1px solid var(--line-soft);padding:22px 18px 110px}
+.rail{display:none;position:sticky;top:0;height:100vh;overflow:auto;border-left:1px solid var(--line-soft);padding:24px 16px 112px}
 @media (min-width:1560px){.app{grid-template-columns:var(--side) minmax(0,1fr) var(--rail)}.rail{display:block}}
-.wordmark{font-family:var(--sans);font-weight:600;font-size:26px;letter-spacing:.06em;line-height:1;display:flex;align-items:baseline;gap:10px}
-.wordmark small{font-family:var(--mono);font-size:12px;color:var(--paper);letter-spacing:.02em;
-  padding:1px 8px;border:1px solid var(--line);border-radius:6px;background:var(--ink-3);
+.wordmark{font-family:var(--sans);font-weight:600;font-size:26px;line-height:1;display:flex;align-items:baseline;gap:8px}
+.wordmark small{font-family:var(--mono);font-size:12px;color:var(--paper);
+  padding:1px 8px;border:1px solid var(--line);border-radius:4px;background:var(--ink-3);
   min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wordmark small:empty{display:none}
 /* The three counts under the wordmark (d-3e8f). Each wears the colour of the
    now page's same column: waiting, next, in progress (n-4e5a). */
-.side .eyes3{display:flex;gap:6px;margin:2px 0 10px}
-.side .eyes3 a{flex:1;text-align:center;border:1px solid var(--ec,var(--line));border-radius:8px;padding:6px 0;font-weight:600;font-size:16px;color:var(--ec,var(--paper))}
-.side .eyes3 a small{display:block;font-size:10px;color:var(--paper-3);font-weight:400;letter-spacing:.06em}
+.side .eyes3{display:flex;gap:8px;margin:2px 0 12px}
+.side .eyes3 a{flex:1;text-align:center;border:1px solid var(--ec,var(--line));border-radius:8px;padding:6px 0;font-weight:600;font-size:15px;color:var(--ec,var(--paper))}
+.side .eyes3 a small{display:block;font-size:11px;color:var(--paper-3);font-weight:400}
 /* The logo: the gothic gy, the band's ticks, and a live dot (d-4e65). */
 .wordmark .logo text{fill:var(--paper);font-family:var(--sans);font-weight:600}
 .wordmark .logo .tick{fill:var(--paper-3)}
@@ -51,23 +55,24 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 @keyframes logoPulse{0%,100%{r:5}50%{r:6}}
 @media (prefers-reduced-motion: reduce){.wordmark .logo .logo-dot{animation:none}}
 .nav{display:flex;flex-direction:column;gap:2px}
-.nav .h{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--paper-3);text-transform:uppercase;margin:10px 0 6px}
-.nav a,.nav button{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:7px;color:var(--paper-2);font-size:14px;text-align:left;width:100%}
+.nav .h{font-size:11px;color:var(--paper-3);margin:16px 0 4px;padding:0 8px}
+/* One row is one line, 32px tall (n-fd56): a long name gives way to its count. */
+.nav a,.nav button{display:flex;align-items:center;gap:8px;min-height:32px;padding:4px 8px;border-radius:8px;color:var(--paper-2);font-size:13px;line-height:1.5;text-align:left;width:100%;white-space:nowrap;overflow:hidden}
 .nav a:hover,.nav button:hover{background:var(--ink-2);color:var(--paper)}
 .nav a.on,.nav button.on{background:var(--ink-3);color:var(--paper)}
 /* The mark column (n-c795b1): one fixed box, so the four entries line up even
    though the glyphs keep their own widths. */
 .nav .m{flex:none;width:16px;display:inline-flex;justify-content:center;align-items:center}
-.nav .m svg{display:block}
+.nav .m svg{display:block;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .nav .l{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.nav .cnt{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--paper-3)}
+.nav .cnt{flex:none;margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--paper-3)}
 .nav .cnt b{color:var(--paper);font-weight:500}
 /* A scope the ledger does not have (r-d060): one line, and one way back. */
-.nav .warn{margin:2px 0 4px;padding:6px 10px;border:1px solid rgba(255,107,107,.45);border-radius:7px;background:rgba(255,107,107,.06);color:var(--paper-2);font-size:12px;line-height:1.5}
+.nav .warn{margin:2px 0 4px;padding:6px 12px;border:1px solid rgba(255,107,107,.45);border-radius:8px;background:rgba(255,107,107,.06);color:var(--paper-2);font-size:12px;line-height:1.5}
 .nav .warn span{display:block}
 .nav .warn button{width:auto;padding:2px 0;color:var(--stop);font-size:12px;text-decoration:underline}
 .nav .warn button:hover{background:none;color:var(--paper)}
-.side .foot{margin-top:auto;display:flex;flex-direction:column;gap:10px;font-family:var(--mono);font-size:11px;color:var(--paper-3)}
+.side .foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;font-size:11px;color:var(--paper-3)}
 .side .foot .live-line b{color:var(--paper);font-weight:500}
 /* The GitHub mark at the foot of the sidebar (n-b380): the same quiet colour
    as `.rail-all`, the paper on hover. */
@@ -75,57 +80,65 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .side .foot .repo:hover{color:var(--paper)}
 .side .foot .repo svg{display:block;fill:currentColor}
 .lang{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;width:max-content}
-.lang button{padding:2px 10px;font-family:var(--mono);font-size:11px;color:var(--paper-3)}
+.lang button{padding:2px 12px;font-size:11px;color:var(--paper-3)}
 .lang button.on{background:var(--ink-3);color:var(--paper)}
-.live{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--decision);margin-right:6px;box-shadow:0 0 0 0 rgba(95,211,199,.6);animation:pulse 2.4s infinite}
+.live{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--decision);margin-right:8px;box-shadow:0 0 0 0 rgba(95,211,199,.6);animation:pulse 2.4s infinite}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(95,211,199,.5)}70%{box-shadow:0 0 0 9px rgba(95,211,199,0)}100%{box-shadow:0 0 0 0 rgba(95,211,199,0)}}
 .live.off{background:var(--paper-3);box-shadow:none;animation:none}
 @media (prefers-reduced-motion: reduce){.live{animation:none}}
-.topbar{display:flex;align-items:center;gap:16px;padding:18px 32px 10px;position:sticky;top:0;z-index:5;background:linear-gradient(var(--ink) 75%,transparent)}
+.topbar{display:flex;align-items:center;gap:16px;padding:16px 32px 12px;position:sticky;top:0;z-index:5;background:var(--ink)}
 /* The sidebar's search entry (n-d0cc): the one way in, with both shortcuts. */
 .nav .kbs{margin-left:auto;display:inline-flex;gap:4px;color:var(--paper-3)}
-.nav .kbs kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 5px}
-.crumb{font-family:var(--mono);font-size:12px;color:var(--paper-3);display:flex;gap:10px;align-items:center}
+.nav .kbs kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.crumb{font-size:12px;color:var(--paper-3);display:flex;gap:8px;align-items:center}
 .crumb a:hover{color:var(--paper)}
-main{padding:0 32px 150px;max-width:1280px}
+main{padding:0 32px 152px;max-width:1280px}
 /* The ID's copy mark (n-6afd): a small sign beside the name it copies. */
-.cp{display:inline-flex;align-items:center;gap:5px;min-width:0}
-.cpb{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;padding:0;border:1px solid var(--line);border-radius:5px;background:transparent;color:var(--paper-3);font:inherit;font-size:11px;line-height:1;cursor:pointer;flex:none}
+.cp{display:inline-flex;align-items:center;gap:4px;min-width:0}
+.cpb{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;padding:0;border:1px solid var(--line);border-radius:4px;background:transparent;color:var(--paper-3);font:inherit;font-size:11px;line-height:1;cursor:pointer;flex:none}
 .cpb:hover{color:var(--paper);border-color:var(--paper-3)}
 .cpb.on{color:var(--decision);border-color:var(--decision)}
 /* The card over a node the pointer is on (d-58b1, d-1c00): plain HTML beside
    the figure, so no figure's camera scales its text. It takes no pointer, so
    moving over it cannot steal the hover from the node. The node page and the
    graph page both show it (built by state.js `card`). */
-.egocard{position:absolute;z-index:2;pointer-events:none;max-width:260px;background:rgba(20,27,45,.96);border:1px solid var(--line);border-radius:10px;padding:8px 12px;box-shadow:0 14px 40px rgba(0,0,0,.45)}
-.egocard .ek{display:flex;gap:8px;align-items:center;font-family:var(--mono);font-size:11px;color:var(--paper-3);flex-wrap:wrap}
+.egocard{position:absolute;z-index:2;pointer-events:none;max-width:260px;background:rgba(20,27,45,.96);border:1px solid var(--line);border-radius:8px;padding:8px 12px;box-shadow:0 14px 40px rgba(0,0,0,.45)}
+.egocard .ek{display:flex;gap:8px;align-items:center;font-size:11px;color:var(--paper-3);flex-wrap:wrap}
 .egocard .ek .al{color:var(--paper);font-size:13px}
 .egocard .ek .id{color:var(--paper-3);font-size:11px}
-.egocard .em{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:7px;font-size:11px;color:var(--paper-2)}
-.egocard .et{font-family:var(--sans);font-size:13px;line-height:1.5;color:var(--paper);margin-top:7px;word-break:break-word}
+.egocard .em{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--paper-2)}
+.egocard .et{font-family:var(--sans);font-size:13px;line-height:1.5;color:var(--paper);margin-top:8px;word-break:break-word}
 @media (max-width:900px){.app{grid-template-columns:1fr}.side{position:static;height:auto}}
-.pushmark{font-family:var(--mono);font-size:9px;font-style:normal;color:var(--criterion);margin-left:3px}
+.pushmark{font-family:var(--mono);font-size:11px;font-style:normal;color:var(--criterion);margin-left:4px}
 
 /* ---- the frame of the three screens (r-2d02) ---- */
 :root{--stop:#ff6b6b}
-main{padding:20px 32px 170px;max-width:1500px;container-type:inline-size;container-name:main}
+main{padding:20px 32px 168px;max-width:1500px;container-type:inline-size;container-name:main}
 a:hover{color:var(--paper)}
 .dim{color:var(--paper-3)}
-.sub{font-family:var(--mono);font-size:11px;color:var(--paper-3);letter-spacing:.06em}
+.sub{font-size:12px;color:var(--paper-3)}
 h1.hd{font-size:26px;font-weight:600;margin:4px 0 2px;line-height:1.35}
 .sec{margin-top:28px}
-.sec>h2{font-size:15px;font-weight:600;margin:0 0 6px;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.sec>h2{font-size:15px;font-weight:600;margin:0 0 8px;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
 .sec>h2 .sub{font-weight:400}
 /* A screen says why its answer is missing: the frame stays, the words arrive. */
-.load{margin-top:22px;border:1px dashed var(--line);border-radius:10px;padding:12px 16px;font-family:var(--mono);font-size:12px;color:var(--paper-3);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.load{margin-top:24px;border:1px dashed var(--line);border-radius:8px;padding:12px 16px;font-size:12px;color:var(--paper-3);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .load.fail{border-color:var(--stop);color:var(--paper-2);background:rgba(255,107,107,.05)}
 .load.fail b{color:var(--stop);font-family:var(--sans);font-weight:600}
 .load button{border:1px solid var(--line);border-radius:999px;padding:1px 12px;font-size:12px;color:var(--paper)}
 .load button:hover{border-color:var(--paper-3)}
-.stbadge{font-family:var(--mono);font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--paper-2)}
+.stbadge{font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--paper-2)}
 .stbadge.open{border-color:var(--need);color:var(--need)}
-.cp{display:inline-flex;align-items:center;gap:5px}
+.cp{display:inline-flex;align-items:center;gap:4px}
 .cp .id{font-family:var(--mono);font-size:12px;color:var(--paper-3)}
-.cpb{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;padding:0;border:1px solid var(--line);border-radius:5px;color:var(--paper-3);font-size:11px;line-height:1;flex:none}
+.cpb{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;padding:0;border:1px solid var(--line);border-radius:4px;color:var(--paper-3);font-size:11px;line-height:1;flex:none}
 .cpb:hover{color:var(--paper);border-color:var(--paper-3)}
 .cpb.on{color:var(--decision);border-color:var(--decision)}
+
+/* ---- the polish (n-fd56) ---- */
+/* The keyboard's place is always visible; the pointer's is not outlined. */
+:focus-visible{outline:2px solid var(--paper-2);outline-offset:2px;border-radius:4px}
+input:focus-visible{outline-offset:0}
+/* A hover changes colour only, in one short step with one curve. */
+a,button,input,.chip,.cpb,.board .card,.row .t,.thread .bx-rect{transition:color .15s cubic-bezier(.22,1,.36,1),background-color .15s cubic-bezier(.22,1,.36,1),border-color .15s cubic-bezier(.22,1,.36,1),fill .15s cubic-bezier(.22,1,.36,1)}
+@media (prefers-reduced-motion: reduce){a,button,input,.chip,.cpb,.board .card,.row .t,.thread .bx-rect{transition:none}}
