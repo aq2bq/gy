@@ -35,7 +35,10 @@ fn commit_with_version(fx: &common::Fixture, version: &str, seq: u64) {
     let peer = fixture();
     let ledger = peer.ledger();
     std::fs::create_dir_all(&ledger).unwrap();
-    git(&ledger, &["clone", "-q", "--branch", "main", remote.trim(), "."]);
+    git(
+        &ledger,
+        &["clone", "-q", "--branch", "main", remote.trim(), "."],
+    );
     let out = run(&peer, &["criterion", "add", "peer ac"]);
     assert!(out.status.success(), "{}", stderr(&out));
 
