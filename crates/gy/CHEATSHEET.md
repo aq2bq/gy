@@ -12,7 +12,7 @@ Starting a session:
 
 Reads:
   gy cheat                                             print this cheatsheet as it is: no gy.toml is looked for and it has no options
-  gy show <ID|ref>... [--full]                         show nodes, with what each still lacks; a criterion only closed needs aimed at reads as withdrawn
+  gy show <ID|ref>... [--full]                         show nodes, with what each still lacks; --full includes all free attributes; a criterion only closed needs aimed at reads as withdrawn
   gy list [--scope <name>] [--type <kind>] [--status <status>] [--targets <ID>] [--grep <text>] [--actor <name>] [--since <seq|date>]   list nodes; with --actor / --since, list write units. --scope keeps only this scope (unknown names are refused); write units must point to a current visible node in it. Spelling ignores case. --since takes a seq (the writes after it, not including it) or a date (YYYY-MM-DD, from midnight where you are)
   gy next [--scope <name>]                             the needs whose prerequisites are settled, limited to the scope when given
   gy handover [--scope <name>]                         requirements in progress and the counts a session needs to resume, limited to the scope when given
@@ -51,6 +51,7 @@ Writes:
   gy edit <ID> --reason <text> [--title <title>] [--body-file <path>] [--set k=v] [--append k=v]
         for a criterion wait: --set due=YYYY-MM-DD --set responsible=<who> --set then="<action>"
         free attributes are strings. --set overwrites, --set k= removes, --append adds one line
+        Read free attributes with gy show <ID> --full (also with --json).
         --set scope=<name> moves the node to a scope in gy.toml. --set decision_scope=<text> records a missing scope note, once
 
         the edit is applied; a later decision's mark that stops resolving is named on unresolved:

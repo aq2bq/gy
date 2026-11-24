@@ -97,6 +97,8 @@ pub struct Shown {
     outgoing: usize,
     #[serde(skip)]
     full: bool,
+    #[serde(skip)]
+    has_hidden_attributes: bool,
 
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub missing: Vec<String>,
@@ -119,6 +121,8 @@ impl Shown {
             .and_then(|retraction| retracted(&body, retraction));
         let decision_scope_marked = scope_marked(node, cancellation.as_ref());
         let (edges, outgoing) = projected_edges(node, incoming);
+        let attributes = projected_attributes(node, full);
+        let has_hidden_attributes = node.free_attributes().len() > attributes.len();
         let withdrawn_by = match node.data() {
             NodeData::Criterion(_) => withdrawn_by(node, all)
                 .into_iter()
@@ -155,8 +159,9 @@ impl Shown {
             edges,
             outgoing,
             full,
+            has_hidden_attributes,
             missing: advice::missing(node, all),
-            attributes: projected_attributes(node, full),
+            attributes,
         }
     }
     fn heading(&self) -> String {
@@ -164,6 +169,12 @@ impl Shown {
             Some(reference) => format!("{} ({reference}) {}", self.id, self.title),
             None => format!("{} {}", self.id, self.title),
         }
+    }
+    fn fmt_attributes(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (name, value) in &self.attributes {
+            writeln!(f, "{name}: {value}")?;
+        }
+        Ok(())
     }
     /// The edges the text output names: every one with `--full`, a
     /// requirement's outgoing ones otherwise, and none for the other kinds
@@ -234,9 +245,7 @@ impl fmt::Display for Shown {
             }
         }
         f.write_str(&self.verbatim())?;
-        for (name, value) in &self.attributes {
-            writeln!(f, "{name}: {value}")?;
-        }
+        self.fmt_attributes(f)?;
         for edge in self.visible_edges() {
             writeln!(f, "{}", edge.line())?;
         }
@@ -258,6 +267,13 @@ impl fmt::Display for Shown {
         }
         if !self.missing.is_empty() {
             writeln!(f, "missing: {}", self.missing.join(", "))?;
+        }
+        if self.has_hidden_attributes {
+            writeln!(
+                f,
+                "\nTo read all free attributes, run `gy show {} --full`.",
+                self.id
+            )?;
         }
         Ok(())
     }

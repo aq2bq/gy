@@ -32,6 +32,73 @@ fn edit_changes_title_and_free_attributes() {
 }
 
 #[test]
+fn a_writer_can_follow_show_to_read_free_attributes() {
+    let fx = fixture();
+    fx.seed(&[need("0001", "a need")]);
+    for change in [["--append", "k=v"], ["--set", "k2=v2"]] {
+        let out = fx.run(&["edit", "n-0001", "--reason", "record", change[0], change[1]]);
+        assert!(out.status.success(), "{}", stderr(&out));
+        assert!(stdout(&out).contains("missing: \nnext: \n"));
+    }
+
+    let out = fx.run(&["show", "n-0001"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    let text = stdout(&out);
+    assert!(!text.contains("k: v"), "{text}");
+    assert!(!text.contains("k2: v2"), "{text}");
+    let command = text
+        .lines()
+        .find_map(|line| {
+            line.strip_prefix("To read all free attributes, run `gy ")
+                .and_then(|command| command.strip_suffix("`."))
+        })
+        .unwrap_or_else(|| panic!("no reading command: {text}"));
+    let mut args: Vec<&str> = command.split_whitespace().collect();
+    assert_eq!(args, ["show", "n-0001", "--full"]);
+    let out = fx.run(&args);
+    assert!(out.status.success(), "{}", stderr(&out));
+    let full = stdout(&out);
+    assert!(full.contains("k: v"), "{full}");
+    assert!(full.contains("k2: v2"), "{full}");
+    assert!(!full.contains("To read all free attributes"), "{full}");
+
+    args.push("--json");
+    let out = fx.run(&args);
+    assert!(out.status.success(), "{}", stderr(&out));
+    let full: serde_json::Value = serde_json::from_str(&stdout(&out)).unwrap();
+    assert_eq!(
+        full[0]["attributes"],
+        serde_json::json!({"k": "v", "k2": "v2"})
+    );
+    let out = fx.run(&["show", "n-0001", "--json"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    let shown: serde_json::Value = serde_json::from_str(&stdout(&out)).unwrap();
+    assert!(shown[0].get("attributes").is_none(), "{shown}");
+
+    let out = fx.run(&[
+        "edit", "n-0001", "--reason", "clarify", "--title", "renamed",
+    ]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    let text = stdout(&fx.run(&["show", "n-0001"]));
+    assert!(text.contains(command), "{text}");
+
+    let out = fx.run(&[
+        "edit", "n-0001", "--reason", "remove", "--set", "k=", "--set", "k2=",
+    ]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    let text = stdout(&fx.run(&["show", "n-0001"]));
+    assert!(!text.contains(command), "{text}");
+
+    let out = fx.run(&["cheat"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    let text = stdout(&out);
+    assert!(
+        text.contains("Read free attributes with gy show <ID> --full (also with --json)."),
+        "{text}"
+    );
+}
+
+#[test]
 fn edit_moves_a_node_to_a_declared_scope() {
     let fx = fixture();
     std::fs::write(fx.root.join("gy.toml"), "[scopes.a]\n[scopes.b]\n").unwrap();

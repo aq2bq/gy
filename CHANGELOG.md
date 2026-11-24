@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- When the default `show` omits free attributes, it now names
+  `gy show <ID> --full` to read them. The cheatsheet's `show` and `edit`
+  descriptions also explain how to read free attributes, including JSON.
+  The default attribute projection, full output, and JSON shape are unchanged
+  (r-d87d).
+
 ## 3.1.2 - 2026-11-13
 
 This release names the selected scope on `gy serve`'s Progress screen, so the

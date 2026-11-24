@@ -138,6 +138,62 @@ fn a_requirement_shows_ref_state_attributes_and_edges() {
 }
 
 #[test]
+fn hidden_attributes_get_a_text_hint_without_changing_the_projection() {
+    let mut request = requirement("0010", "https://example/6010");
+    request.set_free("next_evidence", "watch the logs");
+    request.set_free("responsible", "piko");
+    let mut criterion =
+        Node::criterion(id(NodeKind::Criterion, "0011"), SCOPE, DATE, "a criterion").unwrap();
+    criterion.set_free("due", "2028-02-29");
+    criterion.set_free("responsible", "piko");
+    criterion.set_free("then", "measure");
+
+    for mut node in [request, criterion] {
+        let mut repo = repo();
+        let texts = [node.id().to_string()];
+        let visible = node.free_attributes().clone();
+        seed(&mut repo, &[node.clone()]);
+        let before = show(&repo, &texts, false).unwrap();
+        let before_json = serde_json::to_value(&before).unwrap();
+        assert_eq!(before[0].attributes, visible);
+        assert!(
+            !before[0]
+                .to_string()
+                .contains("To read all free attributes")
+        );
+
+        node.set_free("k", "v");
+        node.set_free("k2", "v2");
+        seed(&mut repo, &[node.clone()]);
+        let shown = show(&repo, &texts, false).unwrap();
+        let text = shown[0].to_string();
+        assert_eq!(shown[0].attributes, visible);
+        assert_eq!(serde_json::to_value(&shown).unwrap(), before_json);
+        assert!(
+            text.ends_with(&format!(
+                "\nTo read all free attributes, run `gy show {} --full`.\n",
+                node.id()
+            )),
+            "{text}"
+        );
+        assert!(!text.contains("k: v"), "{text}");
+        assert!(!text.contains("k2: v2"), "{text}");
+
+        let full = show(&repo, &texts, true).unwrap();
+        assert_eq!(&full[0].attributes, node.free_attributes());
+        let full_json = serde_json::to_value(&full).unwrap();
+        assert_eq!(
+            full_json[0]["attributes"],
+            serde_json::to_value(node.free_attributes()).unwrap()
+        );
+        let text = full[0].to_string();
+        assert!(text.contains("k: v"), "{text}");
+        assert!(text.contains("k2: v2"), "{text}");
+        assert!(!text.contains("To read all free attributes"), "{text}");
+    }
+}
+
+#[test]
 fn a_criterion_shows_satisfaction_and_a_question_shows_closure() {
     let mut repo = repo();
     let mut criterion =
