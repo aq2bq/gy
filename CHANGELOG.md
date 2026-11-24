@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 3.1.3 - 2026-11-24
+
+This release tells a writer how to read the free attributes they wrote, and
+repairs broken layouts on `gy serve`'s screens. The ledger format, `gy.toml`,
+the server's answers, the JSON output and the bundled skills are unchanged.
 
 ### Fixed
 
@@ -9,6 +13,18 @@
   descriptions also explain how to read free attributes, including JSON.
   The default attribute projection, full output, and JSON shape are unchanged
   (r-d87d).
+- `gy serve` no longer lets board cards spill into the next column, scrolls a
+  node page sideways on a long URL, shows the body through the time strip and
+  breadcrumbs, draws white scrollbars, or wraps the sidebar's row names. Font
+  sizes, corner radii and spacing follow one small set of values, and the
+  navigation icons are redrawn. Colours, the logo, the layout and the API are
+  unchanged (r-1dd6).
+
+### Updating
+
+Install with `cargo install gy --version 3.1.3 --locked`. No manual migration
+is needed, and members of a shared ledger can update in any order. The skills
+did not change. Repeating installation is safe.
 
 ## 3.1.2 - 2026-11-13
 
