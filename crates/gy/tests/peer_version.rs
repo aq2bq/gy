@@ -1,7 +1,7 @@
 //! A peer writing with a newer gy (n-670a B, r-3f07): the pulled
 //! `Gy-Version` is noticed on sync and handover, and silence when versions
-//! match. Two copies share one file:// remote; the peer's newer version is
-//! hand-written into its commit message.
+//! match. Copies share one file:// remote; a local-only clone supplies the
+//! peer's hand-written version without racing a detached sync.
 mod common;
 use common::{fixture, stderr, stdout};
 use std::path::Path;
@@ -20,30 +20,29 @@ fn git(cwd: &Path, args: &[&str]) {
         .unwrap();
     assert!(
         out.status.success(),
-        "git {args:?}: {}",
-        String::from_utf8_lossy(&out.stderr)
+        "git {args:?}: {}\nstdout: {}\nstderr: {}",
+        out.status,
+        stdout(&out),
+        stderr(&out)
     );
 }
 
-fn commit_with_version(ledger: &Path, version: &str, seq: u64) {
-    git(ledger, &["add", "events.jsonl"]);
+fn commit_with_version(fx: &common::Fixture, version: &str, seq: u64) {
+    // pair() already synced the initial record. Prepare the next record in
+    // its own clone: no remote in gy.toml means no detached sync can commit
+    // it before this test supplies the version trailer.
+    let remote = std::fs::read_to_string(fx.ledger().join("remote")).unwrap();
+    let peer = fixture();
+    let ledger = peer.ledger();
+    std::fs::create_dir_all(&ledger).unwrap();
+    git(&ledger, &["clone", "-q", "--branch", "main", remote.trim(), "."]);
+    let out = run(&peer, &["criterion", "add", "peer ac"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+
+    git(&ledger, &["add", "events.jsonl"]);
     let message = format!("hand\n\nactor: piko\nby: piko\nGy-Version: {version}\nGy-Seq: {seq}\n");
-    let out = Command::new("git")
-        .args(["commit", "-q", "-m", &message])
-        .current_dir(ledger)
-        .env("GIT_TERMINAL_PROMPT", "0")
-        .env("GIT_AUTHOR_NAME", "piko")
-        .env("GIT_AUTHOR_EMAIL", "piko@example.com")
-        .env("GIT_COMMITTER_NAME", "piko")
-        .env("GIT_COMMITTER_EMAIL", "piko@example.com")
-        .output()
-        .unwrap();
-    assert!(
-        out.status.success(),
-        "{}",
-        String::from_utf8_lossy(&out.stderr)
-    );
-    git(ledger, &["push", "-q", "origin", "HEAD:main"]);
+    git(&ledger, &["commit", "-q", "-m", &message]);
+    git(&ledger, &["push", "-q", "origin", "HEAD:main"]);
 }
 
 fn run(fx: &common::Fixture, args: &[&str]) -> std::process::Output {
@@ -95,9 +94,7 @@ fn pair() -> (tempfile::TempDir, common::Fixture, common::Fixture) {
 #[test]
 fn newer_peer_is_noticed_on_sync_and_handover() {
     let (_temp, fx1, fx2) = pair();
-    let out = run(&fx1, &["criterion", "add", "peer ac"]);
-    assert!(out.status.success(), "{}", stderr(&out));
-    commit_with_version(&fx1.ledger(), "9.9.9", 2);
+    commit_with_version(&fx1, "9.9.9", 2);
 
     let out = run(&fx2, &["remote", "sync"]);
     assert!(out.status.success(), "{}", stderr(&out));
@@ -117,9 +114,7 @@ fn newer_peer_is_noticed_on_sync_and_handover() {
 #[test]
 fn newer_peer_keeps_json_stdout_pure() {
     let (_temp, fx1, fx2) = pair();
-    let out = run(&fx1, &["criterion", "add", "peer ac"]);
-    assert!(out.status.success(), "{}", stderr(&out));
-    commit_with_version(&fx1.ledger(), "9.9.9", 2);
+    commit_with_version(&fx1, "9.9.9", 2);
 
     let out = run(&fx2, &["remote", "sync", "--json"]);
     assert!(out.status.success(), "{}", stderr(&out));
