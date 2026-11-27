@@ -98,7 +98,7 @@ sets a remote repository, and from then on `gy remote sync` is called in the bac
 - On "how much, and what, to tell the AI" when conveying a need: telling it in detail leads to the questions and the acceptance criteria being on the table early, and telling it "a rough fantasy for now" leads to a way of working where the necessary decisions are postponed. In the end, the number of decisions needed does not change.
 - When you overturn a past decision, the new decision cannot be written without quoting which part of the old decision loses effect. The mark goes on the quoted passage only, and the rest stays in force. gy does not find the contradiction for you. Because the work being picked up is connected to that decision node by edges, the AI can understand which decisions are in force.
 
-What remains for the human is deciding, and only deciding. Goals and needs, and answers to the questions and options the AI presents. The first line of `gy-loop` says the same: "A person cannot escape the critical decisions. gy frees them from everything else."
+What remains for the human is deciding, and only deciding. Goals and needs, and answers to the questions and options the AI presents.
 
 ## The view for humans: gy serve
 

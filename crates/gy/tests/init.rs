@@ -272,12 +272,9 @@ fn git_and_toml_in_the_same_dir_is_the_root() {
 fn the_gy_loop_skill_keeps_an_actors_name_from_the_environment() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let skill = std::fs::read_to_string(root.join("skills/gy-loop/SKILL.md")).unwrap();
-    assert!(
-        skill.contains("`GY_ACTOR` already in the environment"),
-        "{skill}"
-    );
+    assert!(skill.contains("`GY_ACTOR` is already set"), "{skill}");
     assert!(skill.contains("do not change it"), "{skill}");
-    assert!(skill.contains("only when none is"), "{skill}");
+    assert!(skill.contains("If it is not set, set a name"), "{skill}");
 
     let readme = std::fs::read_to_string(root.join("../../README.md")).unwrap();
     assert!(readme.contains("already sets one, keep it"), "{readme}");
