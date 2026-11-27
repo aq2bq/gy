@@ -123,6 +123,7 @@ fn a_requirement_shows_ref_state_attributes_and_edges() {
     let mut node = requirement("0004", "https://example/6027");
     node.set_free("next_evidence", "watch the logs");
     node.set_free("responsible", "piko");
+    node.set_body(format!("Measure {criterion_id} before closing."));
     node.link(Link::new(node.id().clone(), Relation::Targets, criterion_id.clone()).unwrap());
     let requirement_id = node.id().clone();
     seed(&mut repo, &[criterion, node]);
@@ -134,7 +135,30 @@ fn a_requirement_shows_ref_state_attributes_and_edges() {
     assert!(text.contains("state: filed"));
     assert!(text.contains("next_evidence: watch the logs"));
     assert!(text.contains("responsible: piko"));
-    assert!(text.contains(&format!("targets {criterion_id}")));
+    assert!(text.contains(&format!("  targets {criterion_id} a criterion\n")));
+    assert!(text.contains(&format!("Measure {criterion_id} before closing.\n")));
+}
+
+#[test]
+fn an_edge_to_a_deleted_node_keeps_its_id_without_a_title() {
+    let mut repo = repo();
+    let criterion =
+        Node::criterion(id(NodeKind::Criterion, "0013"), SCOPE, DATE, "a criterion").unwrap();
+    let criterion_id = criterion.id().clone();
+    let mut node = requirement("0014", "https://example/6014");
+    node.link(Link::new(node.id().clone(), Relation::Targets, criterion_id.clone()).unwrap());
+    let request = [node.id().to_string()];
+    seed(&mut repo, &[criterion, node]);
+    repo.transaction("delete target", "test", |repo| repo.remove(&criterion_id))
+        .unwrap();
+
+    let shown = show(&repo, &request, false).unwrap();
+    assert!(shown[0].to_string().contains("  targets ac-0013\n"));
+    let json = serde_json::to_value(&shown).unwrap();
+    assert_eq!(
+        json[0]["edges"],
+        serde_json::json!([{"name": "targets", "to": "ac-0013"}])
+    );
 }
 
 #[test]
@@ -281,8 +305,19 @@ fn full_shows_scope_created_aliases_and_both_edge_directions() {
         .to_string();
     assert!(text.contains(&format!("created: {created}")), "{text}");
     assert!(text.contains("aliases: old-9"));
-    assert!(text.contains(&format!("targets {criterion_id}")));
-    assert!(text.contains(&format!("files {need_id}")));
+    assert!(text.contains(&format!("  targets {criterion_id} a criterion\n")));
+    assert!(text.contains(&format!("  files {need_id} a need\n")));
+
+    let shown = show(&repo, &[requirement_id.to_string()], false).unwrap();
+    assert!(!shown[0].to_string().contains("  files "));
+    let json = serde_json::to_value(&shown).unwrap();
+    assert_eq!(
+        json[0]["edges"],
+        serde_json::json!([
+            {"name": "targets", "to": criterion_id.to_string(), "title": "a criterion"},
+            {"name": "files", "to": need_id.to_string(), "title": "a need"}
+        ])
+    );
 }
 
 #[test]

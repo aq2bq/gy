@@ -107,26 +107,32 @@ fn next_skips_closed_and_done_needs_and_counts_targets() {
 }
 
 #[test]
-fn next_lists_filed_requirements_with_ref_and_state() {
+fn next_lists_filed_requirements_with_optional_ref_state_and_title() {
     let mut repo = repo();
-    let mut requirement = requirement("0006", RequirementState::Filed);
-    if let NodeData::Requirement(data) = requirement.data_mut() {
+    let mut with_ref = requirement("0006", RequirementState::Filed);
+    if let NodeData::Requirement(data) = with_ref.data_mut() {
         data.reference = Some(Ref("https://example/6".into()));
     }
-    let requirement_id = requirement.id().clone();
+    let without_ref = requirement("0008", RequirementState::Approved);
     let mut need = need("0007", SCOPE, "with requirement");
-    need.link(Link::new(need.id().clone(), Relation::FiledAs, requirement_id.clone()).unwrap());
-    seed(&mut repo, &[requirement, need]);
+    for request in [&with_ref, &without_ref] {
+        need.link(Link::new(need.id().clone(), Relation::FiledAs, request.id().clone()).unwrap());
+    }
+    seed(&mut repo, &[with_ref, without_ref, need]);
 
     let rows = next(&repo, None).unwrap();
     assert_eq!(ids(&rows), ["n-0007"]);
-    assert_eq!(rows[0].requirements.len(), 1);
-    assert_eq!(rows[0].requirements[0].id, requirement_id.to_string());
+    let text = rows[0].to_string();
+    assert!(text.contains("  r-0006 (https://example/6) filed a requirement\n"));
+    assert!(text.contains("  r-0008 approved a requirement\n"));
+    let json = serde_json::to_value(&rows).unwrap();
     assert_eq!(
-        rows[0].requirements[0].reference.as_deref(),
-        Some("https://example/6")
+        json[0]["requirements"],
+        serde_json::json!([
+            {"id": "r-0006", "reference": "https://example/6", "state": "filed", "title": "a requirement"},
+            {"id": "r-0008", "state": "approved", "title": "a requirement"}
+        ])
     );
-    assert_eq!(rows[0].requirements[0].state, "filed");
 }
 
 #[test]

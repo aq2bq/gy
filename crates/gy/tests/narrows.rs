@@ -15,7 +15,7 @@ fn three_passages_survive_every_new_reader_and_both_creation_routes() {
         let source = stdout(&ok(fx.run(&["show", &x, "--full"])));
         for mark in MARKS {
             assert!(
-                source.contains(&format!("narrows {y} ({mark})")),
+                source.contains(&format!("  narrows {y} ({mark}) older\n")),
                 "{source}"
             );
         }

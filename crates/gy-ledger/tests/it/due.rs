@@ -226,12 +226,13 @@ fn next_links_waits_with_status_and_scope_without_changing_now() {
     let rows = next_on(&repo, Some("a"), date("2026-10-26")).unwrap();
     assert_eq!(rows.len(), 1);
     let text = rows[0].to_string();
-    assert!(text.contains("  ac-0002 due 2026-10-26 (due)"));
-    assert!(text.contains("  ac-0003 due 2026-10-27 (waiting)"));
+    assert!(text.contains("  ac-0002 due 2026-10-26 (due) measure 0002\n"));
+    assert!(text.contains("  ac-0003 due 2026-10-27 (waiting) measure 0003\n"));
     assert!(!text.contains("ac-0004"));
     assert_eq!(rows[0].criteria.len(), 4);
     let json = serde_json::to_value(&rows).unwrap();
     assert_eq!(json[0]["criteria"][1]["status"], "due");
+    assert_eq!(json[0]["criteria"][1]["title"], "measure 0002");
     assert_eq!(json[0]["criteria"][2]["status"], "waiting");
     assert!(
         next_on(&repo, Some("b"), date("2026-10-26"))

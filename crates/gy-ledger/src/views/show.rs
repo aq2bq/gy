@@ -14,7 +14,7 @@ use std::fmt;
 use std::fmt::Write as _;
 
 /// One edge as a view prints it: the name from this node's side, the other id,
-/// and the mark a narrows / supersedes carries.
+/// the mark a narrows / supersedes carries, and the other node's title when available.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[non_exhaustive]
 pub struct EdgeLine {
@@ -22,20 +22,27 @@ pub struct EdgeLine {
     pub to: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mark: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
 }
 impl EdgeLine {
-    fn of(edge: &Edge) -> Self {
+    fn of(edge: &Edge, snapshot: &Snapshot) -> Self {
         Self {
             name: edge.name().to_string(),
             to: edge.to.to_string(),
             mark: edge.mark.clone(),
+            title: snapshot.get(&edge.to).map(|node| node.title().to_string()),
         }
     }
     fn line(&self) -> String {
-        match &self.mark {
+        let mut line = match &self.mark {
             Some(mark) => format!("  {} {} ({})", self.name, self.to, mark),
             None => format!("  {} {}", self.name, self.to),
+        };
+        if let Some(title) = &self.title {
+            let _ = write!(line, " {title}");
         }
+        line
     }
 }
 
@@ -108,19 +115,19 @@ pub struct Shown {
 impl Shown {
     fn new(
         node: &Node,
-        incoming: &[Edge],
+        snapshot: &Snapshot,
         cancellation: Option<Retraction>,
-        all: &[Node],
         actor: Option<String>,
         full: bool,
     ) -> Self {
+        let all = snapshot.nodes();
         let reference = reference(node).map(str::to_string);
         let body = projected_body(node, full, cancellation.as_ref());
         let body_marked = cancellation
             .as_ref()
             .and_then(|retraction| retracted(&body, retraction));
         let decision_scope_marked = scope_marked(node, cancellation.as_ref());
-        let (edges, outgoing) = projected_edges(node, incoming);
+        let (edges, outgoing) = projected_edges(node, snapshot);
         let attributes = projected_attributes(node, full);
         let has_hidden_attributes = node.free_attributes().len() > attributes.len();
         let withdrawn_by = match node.data() {
@@ -323,10 +330,9 @@ fn show_with(
         let node = snapshot
             .get(&id)
             .ok_or_else(|| Error::invalid(format!("{id} does not exist")))?;
-        let incoming = snapshot.incoming(&id);
         let cancellation = retractions.get(&id.to_string()).cloned();
         let actor = creators.get(&id.to_string()).cloned();
-        out.push(Shown::new(node, incoming, cancellation, all, actor, full));
+        out.push(Shown::new(node, snapshot, cancellation, actor, full));
     }
     Ok(out)
 }
@@ -408,10 +414,14 @@ fn projected_aliases(node: &Node, full: bool) -> Vec<String> {
 
 /// Every edge, outgoing then incoming, and how many are outgoing. `--json`
 /// returns the whole list; the text output chooses from it (d-bbab).
-fn projected_edges(node: &Node, incoming: &[Edge]) -> (Vec<EdgeLine>, usize) {
-    let mut edges: Vec<EdgeLine> = node.links().iter().map(EdgeLine::of).collect();
-    let outgoing = edges.len();
-    edges.extend(incoming.iter().map(EdgeLine::of));
+fn projected_edges(node: &Node, snapshot: &Snapshot) -> (Vec<EdgeLine>, usize) {
+    let outgoing = node.links().len();
+    let edges = node
+        .links()
+        .iter()
+        .chain(snapshot.incoming(node.id()))
+        .map(|edge| EdgeLine::of(edge, snapshot))
+        .collect();
     (edges, outgoing)
 }
 

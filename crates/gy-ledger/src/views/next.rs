@@ -7,7 +7,7 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt;
 
-/// A filed requirement as next shows it: id, ref, state.
+/// A filed requirement as next shows it: id, ref, state, and title.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[non_exhaustive]
 pub struct RequirementLine {
@@ -15,12 +15,13 @@ pub struct RequirementLine {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reference: Option<String>,
     pub state: String,
+    pub title: String,
 }
 impl fmt::Display for RequirementLine {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.reference {
-            Some(reference) => write!(f, "{} ({reference}) {}", self.id, self.state),
-            None => write!(f, "{} {}", self.id, self.state),
+            Some(reference) => write!(f, "{} ({reference}) {} {}", self.id, self.state, self.title),
+            None => write!(f, "{} {} {}", self.id, self.state, self.title),
         }
     }
 }
@@ -50,7 +51,11 @@ impl fmt::Display for NextRow {
             writeln!(f, "  {requirement}")?;
         }
         for row in &self.criteria {
-            writeln!(f, "  {} due {} ({})", row.id, row.due, row.status)?;
+            writeln!(
+                f,
+                "  {} due {} ({}) {}",
+                row.id, row.due, row.status, row.title
+            )?;
         }
         Ok(())
     }
@@ -118,6 +123,7 @@ fn row(need: &Node, all: &[Node]) -> NextRow {
                 .state()
                 .map(|state| state.name().to_string())
                 .unwrap_or_default(),
+            title: node.title().to_string(),
         })
         .collect();
     NextRow {
